@@ -2,8 +2,9 @@
 Miniflie is an experimental minimalist version of the 
 [Crazyflie firmware](https://github.com/bitcraze/crazyflie-firmware),
 with support for SITL simulation in Webots.  This minimalist version doesn't 
-support Loco positioning or swarms, so for running your Crazyflie
-you'll probably want to use the official Crazyflie firmware.
+support Loco positioning or swarms, and requires you to have a Crazyflie Flowdeck v2,
+so for running your Crazyflie you'll probably want to use the official
+Crazyflie firmware.
 
 If you do want to try out Miniflie, here's how:
 
