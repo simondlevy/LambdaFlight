@@ -1,5 +1,5 @@
 /**
- * Hackflight class for real and simulated flight controllers.
+ * Miniflie class for real and simulated flight controllers.
  *
  * Copyright (C) 2024 Simon D. Levy
  *
@@ -31,7 +31,7 @@
 #include <closedloops/yaw_angle.hpp>
 #include <closedloops/yaw_rate.hpp>
 
-class Hackflight {
+class Miniflie {
 
     public:
 

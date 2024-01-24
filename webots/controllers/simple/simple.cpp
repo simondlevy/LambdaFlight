@@ -130,7 +130,7 @@ static WbDeviceTag makeSensor(
 
 int main(int argc, char ** argv)
 {
-    static Hackflight hackflight;
+    static Miniflie hackflight;
 
     hackflight.init(
             mixQuadrotor,

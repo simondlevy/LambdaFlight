@@ -96,7 +96,7 @@ class CoreTask : public FreeRTOSTask {
 
         static const auto PID_UPDATE_RATE = Clock::RATE_500_HZ;
 
-        Hackflight _hackflight;
+        Miniflie _hackflight;
 
         demands_t _demands;
 
@@ -160,7 +160,7 @@ class CoreTask : public FreeRTOSTask {
                 _estimatorTask->getVehicleState(&vehicleState);
 
                 // Get state vector angular velocities directly from gyro
-                Hackflight::gyroToVehicleState(sensorData.gyro, vehicleState);
+                Miniflie::gyroToVehicleState(sensorData.gyro, vehicleState);
 
                 const auto areMotorsAllowedToRun = _safety->areMotorsAllowedToRun();
 
