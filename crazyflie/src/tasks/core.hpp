@@ -21,7 +21,7 @@
 #include <tasks/imu.hpp>
 
 #include <crossplatform.h>
-#include <hackflight.hpp>
+#include <miniflie.hpp>
 #include <kalman.hpp>
 #include <motors.h>
 #include <rateSupervisor.hpp>
@@ -56,7 +56,7 @@ class CoreTask : public FreeRTOSTask {
 
             _openLoopFun = openLoopFun;
 
-            _hackflight.init(
+            _miniflie.init(
                     mixFun,
                     PID_UPDATE_RATE,
                     THRUST_SCALE,
@@ -81,7 +81,7 @@ class CoreTask : public FreeRTOSTask {
         // Called from crtp_commander_openloop
         void resetControllers(void)
         {
-            _hackflight.resetControllers();
+            _miniflie.resetControllers();
         }
 
     private:
@@ -96,7 +96,7 @@ class CoreTask : public FreeRTOSTask {
 
         static const auto PID_UPDATE_RATE = Clock::RATE_500_HZ;
 
-        Miniflie _hackflight;
+        Miniflie _miniflie;
 
         demands_t _demands;
 
@@ -179,9 +179,9 @@ class CoreTask : public FreeRTOSTask {
                     // and open-loop info
                     _safety->update(sensorData, step, timestamp, _demands);
 
-                    // Run hackflight core algorithm to get motor spins from open
+                    // Run miniflie core algorithm to get motor spins from open
                     // loop demands via closed-loop control and mixer
-                    _hackflight.step(inHoverMode, vehicleState, _demands, _motorvals);
+                    _miniflie.step(inHoverMode, vehicleState, _demands, _motorvals);
                 }
 
                 if (areMotorsAllowedToRun) {

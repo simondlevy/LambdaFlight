@@ -25,7 +25,7 @@
 
 // #include <simdvs.hpp>
 
-#include <hackflight.hpp>
+#include <miniflie.hpp>
 #include <mixers/quadrotor.hpp>
 
 #include "sticks.hpp"
@@ -130,9 +130,9 @@ static WbDeviceTag makeSensor(
 
 int main(int argc, char ** argv)
 {
-    static Miniflie hackflight;
+    static Miniflie miniflie;
 
-    hackflight.init(
+    miniflie.init(
             mixQuadrotor,
             PID_UPDATE_RATE,
             THRUST_SCALE,
@@ -192,10 +192,10 @@ int main(int argc, char ** argv)
         // Get vehicle state from sensors
         auto state = getVehicleState(gyro, imu, gps);
 
-        // Run hackflight algorithm on open-loop demands and vehicle state to 
+        // Run miniflie algorithm on open-loop demands and vehicle state to 
         // get motor values
         float motorvals[4] = {};
-        hackflight.step(inHoverMode, state, demands, motorvals);
+        miniflie.step(inHoverMode, state, demands, motorvals);
 
         // Set simulated motor values
         wb_motor_set_velocity(m1_motor, +motorvals[0]);
