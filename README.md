@@ -19,17 +19,21 @@ how to fly using the keybord.
 
 ## Crazyflie (2.1 and Bolt 1.1)
 
-1. Install [STM32Duino](https://github.com/stm32duino)
+1. Install the
+[Crazyflie Flowdeck v2](https://www.bitcraze.io/products/flow-deck-v2/)
+ on your Crazyflie board.
 
-2. Edit <tt>Miniflie/crazyflie/Makefile</tt> to reflect where you 
+2. Install [STM32Duino](https://github.com/stm32duino)
+
+3. Edit <tt>Miniflie/crazyflie/Makefile</tt> to reflect where you 
 installed STM32Duino
 
-3. <tt>cd Miniflie/crazyflie</tt>
+4. <tt>cd Miniflie/crazyflie</tt>
 
-4. For CF2, <tt>make clean && make cf2_defconfig</tt> 
+5. For CF2, <tt>make clean && make cf2_defconfig</tt> 
 
-5. For Bolt, <tt>make clean && make bolt_defconfig</tt> 
+6. For Bolt, <tt>make clean && make bolt_defconfig</tt> 
 
-6. <tt>make cload</tt>
+7. <tt>make cload</tt>
 
 
