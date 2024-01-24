@@ -35,6 +35,6 @@ installed STM32Duino
 
 6. For Bolt, <tt>make clean && make bolt_defconfig</tt> 
 
-7. <tt>make cload</tt>
+7. <tt>make -j 32 && make cload</tt>
 
 
