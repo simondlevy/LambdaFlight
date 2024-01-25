@@ -23,9 +23,9 @@ how to fly using the keyboard.
 
 ## Crazyflie (2.1 and Bolt 1.1)
 
-1. Install the
+1. Attach the
 [Crazyflie Flowdeck v2](https://www.bitcraze.io/products/flow-deck-v2/)
- on your Crazyflie board.
+to your Crazyflie board.
 
 2. Install [STM32Duino](https://github.com/stm32duino)
 
