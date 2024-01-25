@@ -14,9 +14,12 @@ If you do want to try out Miniflie, here's how:
 
 2. Launch Webots and use <b>File / Open World</b> to open <b>Minifile/webots/worlds/simple.wbt</b>.
 
-3.  Build and run the code.  If you have a game controller or R/C/ transmitter with
+3. In the upper-right of the Webots app you will see a label <b>Text Editor</b> with a little file-folder
+icon below it.  Use that icon to open <b>Controllers/simple/simple.cpp</b>.
+
+4.  Build and run the code.  If you have a game controller or R/C/ transmitter with
 adapter dongle, you can use that to fly;  otherwise, the simulator will tell you 
-how to fly using the keybord.
+how to fly using the keyboard.
 
 ## Crazyflie (2.1 and Bolt 1.1)
 
