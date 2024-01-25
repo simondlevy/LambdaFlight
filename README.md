@@ -29,15 +29,21 @@ to your Crazyflie board.
 
 2. Install [STM32Duino](https://github.com/stm32duino)
 
-3. Edit <tt>Miniflie/crazyflie/Makefile</tt> to reflect where you 
+3. Install the following Arduino libraries:
+
+* [VL53L1](https://github.com/simondlevy/VL53L1)
+* [PWM3901](https://github.com/simondlevy/PMW3901)
+* [BoschSensors](https://github.com/simondlevy/BoschSensors)
+
+4. Edit <tt>Miniflie/crazyflie/Makefile</tt> to reflect where you 
 installed STM32Duino
 
-4. <tt>cd Miniflie/crazyflie</tt>
+5. <tt>cd Miniflie/crazyflie</tt>
 
-5. For CF2, <tt>make clean && make cf2_defconfig</tt> 
+6. For CF2, <tt>make clean && make cf2_defconfig</tt> 
 
-6. For Bolt, <tt>make clean && make bolt_defconfig</tt> 
+7. For Bolt, <tt>make clean && make bolt_defconfig</tt> 
 
-7. <tt>make -j 32 && make cload</tt>
+8. <tt>make -j 32 && make cload</tt>
 
 
