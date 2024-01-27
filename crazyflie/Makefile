@@ -46,8 +46,10 @@ image_LDFLAGS += -T $(LINKER_DIR)/FLASH_CLOAD.ld
 
 ##############################################################################
 
+CMSIS_VERSION = 5.9.0
+
 STM32DUINO = $(HOME)/.arduino15/packages/STMicroelectronics
-CMSIS = $(STM32DUINO)/tools/CMSIS/5.7.0/CMSIS
+CMSIS = $(STM32DUINO)/tools/CMSIS/$(CMSIS_VERSION)/CMSIS
 
 ARDUINO = $(HOME)/Documents/Arduino/libraries
 
