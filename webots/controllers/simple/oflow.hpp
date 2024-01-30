@@ -46,7 +46,13 @@ class OpticalFlow {
          *  @param new_OF new filtered_OF filtered optical-flow value
          *  @alpha filter parameter (between 0 and 1)
          */
-        static void ofoLPF(int16_t *filtered_OF, int16_t *new_OF, float alpha);
+        static void ofoLPF(
+                int16_t *filtered_OF, 
+                const int16_t *new_OF, 
+                const float alpha)
+        {
+            (*filtered_OF)=(*filtered_OF)+((float)(*new_OF)-(*filtered_OF))	* alpha;
+        }
 
         /**
          *	Adds new optical flow value to accumulation sum iff only new value
@@ -56,7 +62,20 @@ class OpticalFlow {
          *  @param threshold threshold value
          *  @return true if value was added, false otherwise
          */
-        bool ofoAccumulate(int16_t new_OF, int16_t *acc_OF, int16_t threshold);
+        bool ofoAccumulate(
+                const int16_t new_OF, 
+                int16_t *acc_OF, 
+                const int16_t threshold)
+        {
+            auto reset = false;
+
+            if ((new_OF>threshold)||(new_OF<-threshold)) {
+                *acc_OF += new_OF;
+                reset = true;
+            }
+
+            return reset;
+        }
 
         /**
          *	Runs a one-dimensional version of the image interpolation algorithm
@@ -87,9 +106,42 @@ class OpticalFlow {
         static void ofoIIA_1D(
                 uint8_t * curr_img, 
                 uint8_t * last_img, 
-                uint8_t numpix, 
-                uint16_t scale, 
-                int16_t *out);
+                const uint8_t numpix, 
+                const uint16_t scale, 
+                int16_t *out)
+        {
+            // Set up pointers
+            auto * pleft = curr_img;	//left-shifted image
+            auto * pone = curr_img+1;	//center image
+            auto * pright = curr_img+2;	//right-shifted image
+            auto * ptwo = last_img+1;	//time-shifted image
+
+            int32_t top    = 0;
+            int32_t bottom = 0;
+
+            for (uint8_t i=0; i<numpix-2; ++i) {
+
+                // temporal gradient i.e. pixel change over time
+                int32_t deltat = (int)(*ptwo) - (int)(*pone);    
+
+                // spatial gradient i.e. pixel change over space
+                int32_t deltax = (int)(*pright) - (int)(*pleft); 
+                top += deltat * deltax;
+                bottom += deltax * deltax;
+
+                // Increment pointers
+                pleft++;
+                pone++;
+                pright++;
+                ptwo++;
+            }
+
+            // Compute final output. Note use of "scale" here to multiply 2*top   
+            // to a larger number so that it may be meaningfully divided using 
+            // fixed point arithmetic
+            *out = 2*top*scale/bottom;
+        }
+
 
         /**
          *  Runs a two-dimensional version of the Srinivasan algorithm, using a
@@ -103,26 +155,132 @@ class OpticalFlow {
          *	@param ofx pointer to integer value for X shift.
          *	@param ofy pointer to integer value for Y shift.
          */
-
         void ofoIIA_Plus_2D(
-                uint8_t * curr_img, 
-                uint8_t * last_img, 
-                uint16_t rows, 
-                uint16_t cols, 
-                uint16_t scale,
-                int16_t * ofx,int16_t * ofy);
+                const uint8_t * curr_img, 
+                const uint8_t * last_img, 
+                const uint16_t rows, 
+                const uint16_t cols, 
+                const uint16_t scale,
+                int16_t * ofx,
+                int16_t * ofy)
+        {
+            int32_t  A=0, BD=0, C=0, E=0, F=0;
+
+            // set up pointers
+            auto *f0 = curr_img + cols + 1;   // center image
+            auto *f1 = curr_img + cols + 2;   // right-shifted image
+            auto *f2 = curr_img + cols;       // left-shifted image	
+            auto *f3 = curr_img + 2*cols + 1; // down-shifted image	
+            auto *f4 = curr_img + 1;		     // up-shifted image
+            auto *fz = last_img + cols + 1; 	 // time-shifted image
+
+            // loop through
+            for (uint16_t r=1; r<rows-1; ++r) { 
+
+                for (uint16_t c=1; c<cols-1; ++c) { 
+
+                    // compute differentials, then increment pointers 
+                    int16_t F2F1 = (*(f2++) - *(f1++));
+                    int16_t F4F3 = (*(f4++) - *(f3++));
+                    int16_t FCF0 = (*(fz++) - *(f0++));
+
+                    // update summations
+                    A += (F2F1 * F2F1);
+                    BD += (F4F3 * F2F1);
+                    C  += (FCF0 * F2F1);                   
+                    E += (F4F3 * F4F3);
+                    F  += (FCF0 * F4F3);                                   
+                }
+
+                f0+=2;	//move to next row of image
+                fz+=2;
+                f1+=2;
+                f2+=2;
+                f3+=2;
+                f4+=2;
+            }
+
+            int64_t top1=( (int64_t)(C)*E - (int64_t)(F)*BD );
+            int64_t top2=( (int64_t)(A)*F - (int64_t)(C)*BD );
+            int64_t bottom=( (int64_t)(A)*E - (int64_t)(BD)*BD );
+
+            // Compute final output. Note use of "scale" here to multiply 2*top   
+            // to a larger number so that it may be meaningfully divided using 
+            // fixed point arithmetic
+            int64_t XS = (2*scale*top1)/bottom;
+            int64_t YS = (2*scale*top2)/bottom;
+
+            (*ofx) = (int16_t)XS;
+            (*ofy) = (int16_t)YS;
+        }
+
 
         /**
          * Same as above, using square configuration
          */
         static void ofoIIA_Square_2D(
-                uint8_t * curr_img, 
-                uint8_t * last_img, 
-                uint16_t rows, 
-                uint16_t cols, 
-                uint16_t scale,
+                const uint8_t * curr_img, 
+                const uint8_t * last_img, 
+                const uint16_t rows, 
+                const uint16_t cols, 
+                const uint16_t scale,
                 int16_t * ofx,
-                int16_t * ofy);
+                int16_t * ofy)
+        {
+            int32_t  A=0, BD=0, C=0, E=0, F=0;
+
+            // set up pointers
+            auto *f0 = curr_img;             // top left 
+            auto *f1 = curr_img + 1; 		// top right
+            auto *f2 = curr_img + cols; 	    // bottom left
+            auto *f3 = curr_img + cols + 1; 	// bottom right
+            auto *fz = last_img; 		    // top left time-shifted
+
+            for (uint16_t r=0; r<rows-1; ++r) { 
+
+                for (uint16_t c=0; c<cols-1; ++c) { 
+
+                    // compute differentials
+                    int16_t F2F1 = ((*(f0) - *(f1)) + (*(f2) - *(f3))) ;
+                    int16_t F4F3 = ((*(f0) - *(f2)) + (*(f1) - *(f3))) ;
+                    int16_t FCF0 = (*(fz) - *(f0));
+
+                    //increment pointers
+                    f0++;
+                    fz++;
+                    f1++;
+                    f2++;
+                    f3++;
+
+                    // update summations
+                    A += (F2F1 * F2F1);
+                    BD += (F4F3 * F2F1);
+                    C  += (FCF0 * F2F1);                   
+                    E += (F4F3 * F4F3);
+                    F  += (FCF0 * F4F3);                                   
+                }
+
+                //go to next row
+                f0++;
+                fz++;
+                f1++;
+                f2++;
+                f3++;
+            }
+
+            int64_t top1=( (int64_t)(C)*E - (int64_t)(F)*BD );
+            int64_t top2=( (int64_t)(A)*F - (int64_t)(C)*BD );
+            int64_t bottom=( (int64_t)(A)*E - (int64_t)(BD)*BD );
+
+            // Compute final output. Note use of "scale" here to multiply 2*top   
+            // to a larger number so that it may be meaningfully divided using 
+            // fixed point arithmetic
+            int64_t XS = (2*scale*top1)/bottom;
+            int64_t YS = (2*scale*top2)/bottom;
+
+            (*ofx) = (int16_t)XS;
+            (*ofy) = (int16_t)YS;
+        }
 
         /**
          *	Computes optical flow in plus configuration between two images using
@@ -157,12 +315,63 @@ class OpticalFlow {
          *	@param ofy pointer to integer value for Y shift.
          */
         static void ofoLK_Plus_2D(
-                uint8_t * curr_img, 
-                uint8_t * last_img, 
-                uint16_t rows, uint16_t cols, 
-                uint16_t scale, 
+                const uint8_t * curr_img, 
+                const uint8_t * last_img, 
+                const uint16_t rows, 
+                const uint16_t cols, 
+                const uint16_t scale, 
                 int16_t * ofx, 
-                int16_t * ofy);
+                int16_t * ofy)
+        {
+            int32_t  A11=0, A12=0, A22=0, b1=0, b2=0;
+            int16_t  F2F1, F4F3, FCF0;
+
+            // set up pointers
+            auto *f0 = curr_img + cols + 1;   // center image
+            auto *f1 = curr_img + cols + 2;   // right-shifted image
+            auto *f2 = curr_img + cols;       // left-shifted image	
+            auto *f3 = curr_img + 2*cols + 1; // down-shifted image	
+            auto *f4 = curr_img + 1;		     // up-shifted image
+            auto *fz = last_img + cols + 1; 	 // time-shifted image
+
+            for (uint16_t r=1; r<rows-1; ++r) { 
+
+                for (uint16_t c=1; c<cols-1; ++c) { 
+
+                    // compute differentials, then increment pointers (post-increment)
+                    F2F1 = (*(f2++) - *(f1++));	//horizontal differential
+                    F4F3 = (*(f4++) - *(f3++));	//vertical differential
+                    FCF0 = (*(fz++) - *(f0++));	//time differential
+
+                    // update summations
+                    A11 += (F2F1 * F2F1);
+                    A12 += (F4F3 * F2F1);
+                    A22 += (F4F3 * F4F3);
+                    b1  += (FCF0 * F2F1);                   
+                    b2  += (FCF0 * F4F3);                                   
+                }
+                f0+=2;	//move to next row of image
+                fz+=2;
+                f1+=2;
+                f2+=2;
+                f3+=2;
+                f4+=2;
+            }
+
+            //determinant
+            int64_t detA = ( (int64_t)(A11)*A22 - (int64_t)(A12)*A12 );
+
+            // Compute final output. Note use of "scale" here to multiply 2*top   
+            // to a larger number so that it may be meaningfully divided using 
+            // fixed point arithmetic
+            int64_t XS = detA == 0 ? 0 : 
+                ( (int64_t)(b1)*A22 - (int64_t)(b2)*A12 ) * scale / detA;
+            int64_t YS = detA == 0 ? 0 : 
+                ( (int64_t)(b2)*A11 - (int64_t)(b1)*A12 ) * scale / detA;
+
+            (*ofx) = (int16_t)XS;
+            (*ofy) = (int16_t)YS;
+        }
 
         /**
          * Same as above, using square pixel configuration
@@ -174,278 +383,63 @@ class OpticalFlow {
                 uint16_t cols, 
                 uint16_t scale,
                 int16_t * ofx,
-                int16_t * ofy);
+                int16_t * ofy)
+        {
+            int32_t  A11=0, A12=0, A22=0, b1=0, b2=0;
+
+            // set up pointers
+            auto *f0 = curr_img;             // top left 
+            auto *f1 = curr_img + 1; 		// top right
+            auto *f2 = curr_img + cols; 	    // bottom left
+            auto *f3 = curr_img + cols + 1; 	// bottom right
+            auto *fz = last_img; 		    // top left time-shifted
+
+            // loop through
+            for (uint16_t r=0; r<rows-1; ++r) { 
+
+                for (uint16_t c=0; c<cols-1; ++c) { 
+
+                    // compute differentials      
+                    int16_t F2F1 = ((*(f0) - *(f1)) + (*(f2) - *(f3))) ;
+                    int16_t F4F3 = ((*(f0) - *(f2)) + (*(f1) - *(f3))) ;
+                    int16_t FCF0 = (*(fz) - *(f0));
+
+                    //increment pointers
+                    f0++;
+                    fz++;
+                    f1++;
+                    f2++;
+                    f3++;
+
+                    // update summations
+                    A11 += (F2F1 * F2F1);
+                    A12 += (F4F3 * F2F1);
+                    A22 += (F4F3 * F4F3);
+                    b1  += (FCF0 * F2F1);                   
+                    b2  += (FCF0 * F4F3);                                   
+                }
+
+                //go to next row
+                f0++;
+                fz++;
+                f1++;
+                f2++;
+                f3++;
+            }
+
+            //compute determinant
+            int64_t detA = ( (int64_t)(A11)*A22 - (int64_t)(A12)*A12 );
+
+            // Compute final output. Note use of "scale" here to multiply 2*top
+            // to a larger number so that it may be meaningfully divided using
+            // fixed point arithmetic
+            int64_t XS = detA == 0 ? 0 : 
+                ( (int64_t)(b1)*A22 - (int64_t)(b2)*A12 ) * scale / detA;
+            int64_t YS = detA == 0 ? 0 : 
+                ( (int64_t)(b2)*A11 - (int64_t)(b1)*A12 ) * scale / detA;
+
+            (*ofx) = (int16_t)XS;
+            (*ofy) = (int16_t)YS;
+        }
 
 };
-
-#if 0
-
-void ofoLPF(int16_t *filtered_OF, int16_t *new_OF, float alpha)
-{
-    (*filtered_OF)=(*filtered_OF)+((float)(*new_OF)-(*filtered_OF))	*alpha;
-}
-
-bool ofoAccumulate(int16_t new_OF, int16_t *acc_OF, uint16_t threshold)
-{
-    bool reset = false;
-
-    if((new_OF>threshold)||(new_OF<-threshold))
-    {
-        *acc_OF += new_OF;
-        reset = true;
-    }
-
-    return reset;
-}
-
-
-void ofoIIA_1D(uint8_t * curr_img, uint8_t * last_img, uint16_t	numpix, uint16_t scale, uint16_t *out) 
-{
-    // Set up pointers
-    uint8_t * pleft = curr_img;	    //left-shifted image
-    uint8_t * pone = curr_img+1;	//center image
-    uint8_t * pright = curr_img+2;	//right-shifted image
-    uint8_t * ptwo = last_img+1;	//time-shifted image
-
-    int32_t top    = 0;
-    int32_t bottom = 0;
-
-    for (uint8_t i=0; i<numpix-2; ++i) 
-    {
-        int32_t deltat = (int)(*ptwo) - (int)(*pone);    // temporal gradient i.e. pixel change over time
-        int32_t deltax = (int)(*pright) - (int)(*pleft); // spatial gradient i.e. pixel change over space
-        top += deltat * deltax;
-        bottom += deltax * deltax;
-
-        // Increment pointers
-        pleft++;
-        pone++;
-        pright++;
-        ptwo++;
-    }
-
-    // Compute final output. Note use of "scale" here to multiply 2*top   
-    // to a larger number so that it may be meaningfully divided using 
-    // fixed point arithmetic
-    *out = 2*top*scale/bottom;
-}
-
-
-void ofoIIA_Plus_2D(uint8_t * curr_img, uint8_t * last_img, uint16_t rows,uint16_t cols, uint16_t scale, int16_t * ofx, int16_t * ofy)
-{
-    int32_t  A=0, BD=0, C=0, E=0, F=0;
-
-    // set up pointers
-    uint8_t *f0 = curr_img + cols + 1;   // center image
-    uint8_t *f1 = curr_img + cols + 2;   // right-shifted image
-    uint8_t *f2 = curr_img + cols;       // left-shifted image	
-    uint8_t *f3 = curr_img + 2*cols + 1; // down-shifted image	
-    uint8_t *f4 = curr_img + 1;		     // up-shifted image
-    uint8_t *fz = last_img + cols + 1; 	 // time-shifted image
-
-    // loop through
-    for (uint16_t r=1; r<rows-1; ++r) { 
-
-        for (uint16_t c=1; c<cols-1; ++c) { 
-
-            // compute differentials, then increment pointers 
-            int16_t F2F1 = (*(f2++) - *(f1++));
-            int16_t F4F3 = (*(f4++) - *(f3++));
-            int16_t FCF0 = (*(fz++) - *(f0++));
-
-            // update summations
-            A += (F2F1 * F2F1);
-            BD += (F4F3 * F2F1);
-            C  += (FCF0 * F2F1);                   
-            E += (F4F3 * F4F3);
-            F  += (FCF0 * F4F3);                                   
-        }
-
-        f0+=2;	//move to next row of image
-        fz+=2;
-        f1+=2;
-        f2+=2;
-        f3+=2;
-        f4+=2;
-    }
-
-    int64_t top1=( (int64_t)(C)*E - (int64_t)(F)*BD );
-    int64_t top2=( (int64_t)(A)*F - (int64_t)(C)*BD );
-    int64_t bottom=( (int64_t)(A)*E - (int64_t)(BD)*BD );
-
-    // Compute final output. Note use of "scale" here to multiply 2*top   
-    // to a larger number so that it may be meaningfully divided using 
-    // fixed point arithmetic
-    int64_t XS = (2*scale*top1)/bottom;
-    int64_t YS = (2*scale*top2)/bottom;
-
-    (*ofx) = (int16_t)XS;
-    (*ofy) = (int16_t)YS;
-}
-
-
-void ofoIIA_Square_2D(uint8_t * curr_img, uint8_t * last_img, uint16_t rows,uint16_t cols, uint16_t scale, int16_t * ofx, int16_t * ofy)
-{
-    int32_t  A=0, BD=0, C=0, E=0, F=0;
-
-    // set up pointers
-    uint8_t *f0 = curr_img;             // top left 
-    uint8_t *f1 = curr_img + 1; 		// top right
-    uint8_t *f2 = curr_img + cols; 	    // bottom left
-    uint8_t *f3 = curr_img + cols + 1; 	// bottom right
-    uint8_t *fz = last_img; 		    // top left time-shifted
-
-    for (uint16_t r=0; r<rows-1; ++r) { 
-
-        for (uint16_t c=0; c<cols-1; ++c) { 
-
-            // compute differentials
-            int16_t F2F1 = ((*(f0) - *(f1)) + (*(f2) - *(f3))) ;
-            int16_t F4F3 = ((*(f0) - *(f2)) + (*(f1) - *(f3))) ;
-            int16_t FCF0 = (*(fz) - *(f0));
-
-            //increment pointers
-            f0++;
-            fz++;
-            f1++;
-            f2++;
-            f3++;
-
-            // update summations
-            A += (F2F1 * F2F1);
-            BD += (F4F3 * F2F1);
-            C  += (FCF0 * F2F1);                   
-            E += (F4F3 * F4F3);
-            F  += (FCF0 * F4F3);                                   
-        }
-
-        //go to next row
-        f0++;
-        fz++;
-        f1++;
-        f2++;
-        f3++;
-    }
-
-    int64_t top1=( (int64_t)(C)*E - (int64_t)(F)*BD );
-    int64_t top2=( (int64_t)(A)*F - (int64_t)(C)*BD );
-    int64_t bottom=( (int64_t)(A)*E - (int64_t)(BD)*BD );
-
-    // Compute final output. Note use of "scale" here to multiply 2*top   
-    // to a larger number so that it may be meaningfully divided using 
-    // fixed point arithmetic
-    int64_t XS = (2*scale*top1)/bottom;
-    int64_t YS = (2*scale*top2)/bottom;
-
-    (*ofx) = (int16_t)XS;
-    (*ofy) = (int16_t)YS;
-}
-
-void ofoLK_Plus_2D(uint8_t * curr_img, uint8_t * last_img, uint16_t rows,uint16_t cols, uint16_t scale, int16_t * ofx, int16_t * ofy)
-{
-    int32_t  A11=0, A12=0, A22=0, b1=0, b2=0;
-    int16_t  F2F1, F4F3, FCF0;
-
-    // set up pointers
-    uint8_t *f0 = curr_img + cols + 1;   // center image
-    uint8_t *f1 = curr_img + cols + 2;   // right-shifted image
-    uint8_t *f2 = curr_img + cols;       // left-shifted image	
-    uint8_t *f3 = curr_img + 2*cols + 1; // down-shifted image	
-    uint8_t *f4 = curr_img + 1;		     // up-shifted image
-    uint8_t *fz = last_img + cols + 1; 	 // time-shifted image
-
-    for (uint16_t r=1; r<rows-1; ++r) { 
-
-        for (uint16_t c=1; c<cols-1; ++c) { 
-
-            // compute differentials, then increment pointers (post-increment)
-            F2F1 = (*(f2++) - *(f1++));	//horizontal differential
-            F4F3 = (*(f4++) - *(f3++));	//vertical differential
-            FCF0 = (*(fz++) - *(f0++));	//time differential
-
-            // update summations
-            A11 += (F2F1 * F2F1);
-            A12 += (F4F3 * F2F1);
-            A22 += (F4F3 * F4F3);
-            b1  += (FCF0 * F2F1);                   
-            b2  += (FCF0 * F4F3);                                   
-        }
-        f0+=2;	//move to next row of image
-        fz+=2;
-        f1+=2;
-        f2+=2;
-        f3+=2;
-        f4+=2;
-    }
-
-    //determinant
-    int64_t detA = ( (int64_t)(A11)*A22 - (int64_t)(A12)*A12 );
-
-    // Compute final output. Note use of "scale" here to multiply 2*top   
-    // to a larger number so that it may be meaningfully divided using 
-    // fixed point arithmetic
-    int64_t XS = detA == 0 ? 0 : ( (int64_t)(b1)*A22 - (int64_t)(b2)*A12 ) * scale / detA;
-    int64_t YS = detA == 0 ? 0 : ( (int64_t)(b2)*A11 - (int64_t)(b1)*A12 ) * scale / detA;
-
-    (*ofx) = (int16_t)XS;
-    (*ofy) = (int16_t)YS;
-}
-
-void ofoLK_Square_2D(uint8_t * curr_img, uint8_t * last_img, uint16_t rows,uint16_t cols, uint16_t scale, int16_t * ofx, int16_t * ofy)
-{
-    int32_t  A11=0, A12=0, A22=0, b1=0, b2=0;
-
-    // set up pointers
-    uint8_t *f0 = curr_img;             // top left 
-    uint8_t *f1 = curr_img + 1; 		// top right
-    uint8_t *f2 = curr_img + cols; 	    // bottom left
-    uint8_t *f3 = curr_img + cols + 1; 	// bottom right
-    uint8_t *fz = last_img; 		    // top left time-shifted
-
-    // loop through
-    for (uint16_t r=0; r<rows-1; ++r) { 
-
-        for (uint16_t c=0; c<cols-1; ++c) { 
-
-            // compute differentials      
-            int16_t F2F1 = ((*(f0) - *(f1)) + (*(f2) - *(f3))) ;
-            int16_t F4F3 = ((*(f0) - *(f2)) + (*(f1) - *(f3))) ;
-            int16_t FCF0 = (*(fz) - *(f0));
-
-            //increment pointers
-            f0++;
-            fz++;
-            f1++;
-            f2++;
-            f3++;
-
-            // update summations
-            A11 += (F2F1 * F2F1);
-            A12 += (F4F3 * F2F1);
-            A22 += (F4F3 * F4F3);
-            b1  += (FCF0 * F2F1);                   
-            b2  += (FCF0 * F4F3);                                   
-        }
-
-        //go to next row
-        f0++;
-        fz++;
-        f1++;
-        f2++;
-        f3++;
-    }
-
-    //compute determinant
-    int64_t detA = ( (int64_t)(A11)*A22 - (int64_t)(A12)*A12 );
-
-    // Compute final output. Note use of "scale" here to multiply 2*top   
-    // to a larger number so that it may be meaningfully divided using 
-    // fixed point arithmetic
-    int64_t XS = detA == 0 ? 0 : ( (int64_t)(b1)*A22 - (int64_t)(b2)*A12 ) * scale / detA;
-    int64_t YS = detA == 0 ? 0 : ( (int64_t)(b2)*A11 - (int64_t)(b1)*A12 ) * scale / detA;
-
-    (*ofx) = (int16_t)XS;
-    (*ofy) = (int16_t)YS;
-}
-
-#endif
