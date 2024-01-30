@@ -29,6 +29,7 @@
 #include<opencv2/opencv.hpp>
 
 #include "sticks.hpp"
+#include "paa3905.hpp"
 
 // These constants allow our PID constants to be in the same intervals as in
 // the actual vehicle
@@ -53,18 +54,6 @@ static WbDeviceTag makeMotor(const char * name, const float direction)
     wb_motor_set_velocity(motor, direction);
 
     return motor;
-}
-
-static void runCamera(WbDeviceTag &camera)
-{
-       auto image = cv::Mat(cv::Size(wb_camera_get_width(camera), 
-       wb_camera_get_height(camera)), CV_8UC4);
-
-       image.data = (uint8_t *)wb_camera_get_image(camera);
-
-       cv::imshow("Image", image);
-
-       cv::waitKey(1);
 }
 
 static vehicleState_t getVehicleState(
