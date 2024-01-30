@@ -3,7 +3,6 @@ CFLAGS = -Wno-unused-variable
 SRC = ../../../src
 
 INCLUDE = -I$(SRC)
-INCLUDE += -I$(HOME)/Desktop/simdvs/cpp
 
 CXX_SOURCES = simple.cpp console.cpp
 

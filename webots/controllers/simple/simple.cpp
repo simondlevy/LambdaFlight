@@ -23,10 +23,10 @@
 #include <webots/motor.h>
 #include <webots/robot.h>
 
-#include <simdvs.hpp>
-
 #include <miniflie.hpp>
 #include <mixers/quadrotor.hpp>
+
+#include<opencv2/opencv.hpp>
 
 #include "sticks.hpp"
 
@@ -45,8 +45,6 @@ static const Clock::rate_t PID_UPDATE_RATE = Clock::RATE_100_HZ;
 static const float FLIGHT_CLIMB_RATE = 0.5;
 static const float TAKEOFF_LAND_CLIMB_RATE= 0.1;
 
-static SimDvs dvs;
-
 static WbDeviceTag makeMotor(const char * name, const float direction)
 {
     auto motor = wb_robot_get_device(name);
@@ -59,14 +57,14 @@ static WbDeviceTag makeMotor(const char * name, const float direction)
 
 static void runCamera(WbDeviceTag &camera)
 {
-       auto image = Mat(Size(wb_camera_get_width(camera), 
+       auto image = cv::Mat(cv::Size(wb_camera_get_width(camera), 
        wb_camera_get_height(camera)), CV_8UC4);
 
        image.data = (uint8_t *)wb_camera_get_image(camera);
 
-       auto events = dvs.getEvents(image);
+       cv::imshow("Image", image);
 
-       dvs.display(image, events);
+       cv::waitKey(1);
 }
 
 static vehicleState_t getVehicleState(
@@ -157,8 +155,6 @@ int main(int argc, char ** argv)
     auto gyro = makeSensor("gyro", timestep, wb_gyro_enable);
     auto gps = makeSensor("gps", timestep, wb_gps_enable);
     auto camera = makeSensor("camera", timestep, wb_camera_enable);
-
-    // static SimDvs dvs;
 
     sticksInit();
 
