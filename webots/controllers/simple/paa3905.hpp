@@ -20,15 +20,23 @@
 
 static void runCamera(WbDeviceTag &camera)
 {
-    auto image = cv::Mat(
-            cv::Size(
-                wb_camera_get_width(camera),
-                wb_camera_get_height(camera)), 
-            CV_8UC4);
+    auto wid = wb_camera_get_width(camera);
+    auto hgt = wb_camera_get_height(camera);
+
+    auto image = cv::Mat(cv::Size(wid, hgt), CV_8UC4); 
 
     image.data = (uint8_t *)wb_camera_get_image(camera);
 
-    cv::imshow("Image", image);
+    cv::Mat gray;
+    cv::cvtColor(image, gray, cv::COLOR_BGR2GRAY);
+
+    cv::Mat downsized;
+    cv::resize(gray, downsized, cv::Size(35, 35), cv::INTER_LINEAR);
+
+    cv::Mat upsized;
+    cv::resize(downsized, upsized, cv::Size(wid, hgt), cv::INTER_NEAREST);
+
+    cv::imshow("PAA3905", upsized);
 
     cv::waitKey(1);
 }

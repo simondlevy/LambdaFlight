@@ -10,12 +10,13 @@ ifeq ($(OS),Windows_NT)
 	OPENCV = "D:/opencv-mingw"
 	INCLUDE = -I$(OPENCV)/include
 	LIBRARIES = -L$(OPENCV)/x64/mingw/bin 
-	LIBRARIES += -lopencv_core455 -lopencv_videoio455 -lopencv_highgui455
+	LIBRARIES += -lopencv_core455 -lopencv_videoio455 -lopencv_highgui455 \
+				 -lopencv_imgproc455
 				
 else
 	INCLUDE += -I/usr/include/opencv4
 	LIBRARIES = -L/usr/lib/x86_64-linux-gnu
-    LIBRARIES += -lopencv_core -lopencv_videoio -lopencv_highgui 
+    LIBRARIES += -lopencv_core -lopencv_videoio -lopencv_highgui -lopencv_imgproc
 endif
 
 # Use the Webots C API in your C++ controller program
