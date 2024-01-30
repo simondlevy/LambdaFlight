@@ -14,7 +14,7 @@ ifeq ($(OS),Windows_NT)
 	LIBRARIES += -lopencv_core455 -lopencv_videoio455 -lopencv_highgui455
 				
 else
-	INCLUDE += -I/usr/include/opencv4 -I../../joystick/linux
+	INCLUDE += -I/usr/include/opencv4
 	LIBRARIES = -L/usr/lib/x86_64-linux-gnu
     LIBRARIES += -lopencv_core -lopencv_videoio -lopencv_highgui 
 endif
