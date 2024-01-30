@@ -35,6 +35,149 @@
 #include <stdio.h>
 #include <stdint.h>
 
+class OpticalFlow {
+
+    public:
+
+        /**
+         *	Changes current optical flow value by low-pass filter with new.
+         *
+         *  @param filtered_OF filtered_OF filtered optical-flow value
+         *  @param new_OF new filtered_OF filtered optical-flow value
+         *  @alpha filter parameter (between 0 and 1)
+         */
+        static void ofoLPF(int16_t *filtered_OF, int16_t *new_OF, float alpha);
+
+        /**
+         *	Adds new optical flow value to accumulation sum iff only new value
+         *  falls outside threshold.
+         *  @param new_OF new optical-flow value
+         *  @param acc_OF pointer to accumulated value
+         *  @param threshold threshold value
+         *  @return true if value was added, false otherwise
+         */
+        bool ofoAccumulate(int16_t new_OF, int16_t *acc_OF, int16_t threshold);
+
+        /**
+         *	Runs a one-dimensional version of the image interpolation algorithm
+         *	(IIA) described in
+         *
+         *  \@article{Srinivasan1994,<br>
+         *  author="Srinivasan, M. V.",<br>
+         *  title="An image-interpolation technique for the computation of optic flow and 
+         *         egomotion",<br>
+         *  journal="Biological Cybernetics",<br>
+         *  year="1994",<br>
+         *  month="Sep",<br>
+         *  day="01",<br>
+         *  volume="71",<br>
+         *  number="5",<br>
+         *  pages="401--415",<br>
+         *  issn="1432-0770",<br>
+         *  doi="10.1007/BF00198917",<br>
+         *  url={https://doi.org/10.1007/BF00198917}<br>
+         *  }
+         *
+         *	@param curr_img pixels of current image
+         *	@param last_img pixels of previous image
+         *	@param numpix number of pixels
+         *	@param scale value of one pixel of motion (for scaling output)
+         *	@param out pointer to integer value for output.
+         */
+        static void ofoIIA_1D(
+                uint8_t * curr_img, 
+                uint8_t * last_img, 
+                uint8_t numpix, 
+                uint16_t scale, 
+                int16_t *out);
+
+        /**
+         *  Runs a two-dimensional version of the Srinivasan algorithm, using a
+         *  plus-shaped configuration of pixels
+         *
+         *	@param curr_img pixels of current image
+         *	@param last_img pixels of previous image
+         *	@param rows number of rows in image
+         *	@param cols number of cols in image
+         *	@param scale value of one pixel of motion (for scaling output)
+         *	@param ofx pointer to integer value for X shift.
+         *	@param ofy pointer to integer value for Y shift.
+         */
+
+        void ofoIIA_Plus_2D(
+                uint8_t * curr_img, 
+                uint8_t * last_img, 
+                uint16_t rows, 
+                uint16_t cols, 
+                uint16_t scale,
+                int16_t * ofx,int16_t * ofy);
+
+        /**
+         * Same as above, using square configuration
+         */
+        static void ofoIIA_Square_2D(
+                uint8_t * curr_img, 
+                uint8_t * last_img, 
+                uint16_t rows, 
+                uint16_t cols, 
+                uint16_t scale,
+                int16_t * ofx,
+                int16_t * ofy);
+
+        /**
+         *	Computes optical flow in plus configuration between two images using
+         *	the algorithm desribed in
+         *
+         * \@inproceedings{Lucas:1981:IIR:1623264.1623280,<br>
+         * author = {Lucas, Bruce D. and Kanade, Takeo},<br>
+         * title = {An Iterative Image Registration Technique with an Application
+         * to Stereo Vision},<br> booktitle = {Proceedings of the 7th International
+         * Joint Conference on Artificial Intelligence - Volume 2},<br>
+         * series = {IJCAI'81},<br>
+         * year = {1981},<br>
+         * location = {Vancouver, BC, Canada},<br>
+         * pages = {674--679},<br>
+         * numpages = {6},<br>
+         * url = {http://dl.acm.org/citation.cfm?id=1623264.1623280},<br>
+         * acmid = {1623280},<br>
+         * publisher = {Morgan Kaufmann Publishers Inc.},<br>
+         * address = {San Francisco, CA, USA}<br>
+         * }
+         *
+         *	This algorithm assumes that displacements are generally on the order of
+         *	one pixel or less.  This version uses a plus-shaped configuration of
+         *	pixels.
+         *
+         *	@param curr_img pixels of current image
+         *	@param last_img pixels of previous image
+         *	@param rows number of rows in image
+         *	@param cols number of cols in image
+         *	@param scale value of one pixel of motion (for scaling output)
+         *	@param ofx pointer to integer value for X shift.
+         *	@param ofy pointer to integer value for Y shift.
+         */
+        static void ofoLK_Plus_2D(
+                uint8_t * curr_img, 
+                uint8_t * last_img, 
+                uint16_t rows, uint16_t cols, 
+                uint16_t scale, 
+                int16_t * ofx, 
+                int16_t * ofy);
+
+        /**
+         * Same as above, using square pixel configuration
+         */
+        static void ofoLK_Square_2D(
+                uint8_t * curr_img, 
+                uint8_t * last_img, 
+                uint16_t rows, 
+                uint16_t cols, 
+                uint16_t scale,
+                int16_t * ofx,
+                int16_t * ofy);
+
+};
+
 #if 0
 
 void ofoLPF(int16_t *filtered_OF, int16_t *new_OF, float alpha)
