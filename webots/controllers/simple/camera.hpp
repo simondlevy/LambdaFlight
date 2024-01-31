@@ -20,8 +20,6 @@
 
 #include<opencv2/opencv.hpp>
 
-#include "oflow.hpp"
-
 static void runCamera(WbDeviceTag &camera)
 {
     auto wid = wb_camera_get_width(camera);
@@ -31,29 +29,7 @@ static void runCamera(WbDeviceTag &camera)
 
     image.data = (uint8_t *)wb_camera_get_image(camera);
 
-    cv::Mat gray;
-    cv::cvtColor(image, gray, cv::COLOR_BGR2GRAY);
-
-    static cv::Mat downprev;
-
-    cv::Mat downsized;
-    cv::resize(gray, downsized, cv::Size(35, 35), cv::INTER_NEAREST);
-
-    if (downprev.data != NULL) {
-    }
-
-    downprev = downsized.clone();
-
-    uint8_t * data = downsized.data;
-
-    for (uint8_t k=0; k<35; ++k) {
-        data[k*35 + k] = 0;
-    }
-
-    cv::Mat upsized;
-    cv::resize(downsized, upsized, cv::Size(wid, hgt), cv::INTER_LINEAR);
-
-    cv::imshow("PAA3905", upsized);
+    cv::imshow("Camera", image);
 
     cv::waitKey(1);
 }

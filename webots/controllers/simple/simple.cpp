@@ -26,10 +26,10 @@
 #include <miniflie.hpp>
 #include <mixers/quadrotor.hpp>
 
-#include<opencv2/opencv.hpp>
+//Un-comment if you want to try OpenCV
+//#include "camera.hpp"
 
 #include "sticks.hpp"
-#include "paa3905.hpp"
 
 // These constants allow our PID constants to be in the same intervals as in
 // the actual vehicle
@@ -149,7 +149,8 @@ int main(int argc, char ** argv)
 
     while (wb_robot_step(timestep) != -1) {
 
-        runCamera(camera);
+        //Un-comment if you want to try OpenCV
+        // runCamera(camera);
 
         // Get open-loop demands from input device (keyboard, joystick, etc.)
         auto demands = sticksRead();
