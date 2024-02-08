@@ -4,7 +4,7 @@ SRC = ../../../src
 
 INCLUDE = -I$(SRC)
 
-CXX_SOURCES = simple.cpp console.cpp
+CXX_SOURCES = cplusplus.cpp console.cpp
 
 #Un-comment if you want to try OpenCV
 #ifeq ($(OS),Windows_NT)
