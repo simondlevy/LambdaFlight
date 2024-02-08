@@ -4,7 +4,7 @@
 # documentation url: https://www.cyberbotics.com/doc/guide/crazyflie
 # The "Crazyflie" is a robot developed by "Bitcraze": https://bitcraze.io
 
-PROTO Crazyflie [
+PROTO Cplusplus [
   field SFVec3f    translation     0 0 0.015   # Is `Pose.translation`.
   field SFRotation rotation        0 0 1 0     # Is `Pose.rotation`.
   field SFString   name            "Crazyflie" # Is `Solid.name`.
