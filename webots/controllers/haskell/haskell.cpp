@@ -24,7 +24,6 @@
 #include <webots/robot.h>
 
 #include "flie.hpp"
-#include "quad.hpp"
 
 #include "sticks.hpp"
 
@@ -171,7 +170,6 @@ int main(int argc, char ** argv)
     static const float YAW_SCALE = 4e-5;
 
     miniflie.init(
-            mixQuadrotor,
             PID_UPDATE_RATE,
             THRUST_SCALE,
             THRUST_BASE,
@@ -227,13 +225,24 @@ int main(int argc, char ** argv)
 
         // Run miniflie algorithm on open-loop demands and vehicle state to 
         // get motor values
-        float motorvals[4] = {};
-        miniflie.step(in_hover_mode, state, demands, motorvals);
+        miniflie.step(in_hover_mode, state, demands);
 
-        m1 = motorvals[0];
-        m2 = motorvals[1];
-        m3 = motorvals[2];
-        m4 = motorvals[3];
+        auto t = demands.thrust;
+        auto r = demands.roll;
+        auto p = demands.pitch;
+        auto y = demands.yaw;
+
+        m1 = t - r + p + y;
+        m2 = t - r - p - y;
+        m3 = t + r - p + y;
+        m4 = t + r + p - y;
+
+        //m1 = motorvals[0];
+        //m2 = motorvals[1];
+        //m3 = motorvals[2];
+        //m4 = motorvals[3];
+
+        printf("%f => %f\n", demands.thrust, m1);
 
         // Call Haskell Copilot, which will call runMotors()
         step();
