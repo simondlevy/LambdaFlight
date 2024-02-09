@@ -90,10 +90,20 @@ altitudeHold :: Stream Bool ->
                 Stream Float -> 
                 Stream Float
 
-altitudeHold inHoverMode updateRate thrust z dz = thrust -- thrust'
+altitudeHold inHoverMode updateRate thrust z dz = thrust'
 
+  where thrust_base  = 48.0
+        thrust_scale = 0.25
+        thrust_min   = 0.0
+        thrust_max   = 60
+ 
+        thrust' = constrain (thrust * thrust_scale + thrust_base)
+                            thrust_min
+                            thrust_max
+ {--
         where thrust_max = 60.0
 
               thrust' = if inHoverMode 
                         then runAltitudeHold updateRate thrust z dz thrust_max
                         else thrust * thrust_max
+--}

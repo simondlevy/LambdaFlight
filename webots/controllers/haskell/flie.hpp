@@ -90,11 +90,6 @@ class Miniflie {
                 _positionController.run(vehicleState, demands); 
 
                 _altitudeController.run(vehicleState, demands); 
-
-                // Scale up thrust demand for motors
-                demands.thrust = Num::fconstrain(
-                        demands.thrust * _thrustScale + _thrustBase,
-                        _thrustMin, _thrustMax);
             }
 
             else {
