@@ -184,6 +184,9 @@ int main(int argc, char ** argv)
         // Altitude target, normalized to [-1,+1]
         static float _altitudeTarget;
 
+        // Get vehicle state from sensors
+        getVehicleState(gyro, imu, gps);
+
         // Hover mode: integrate stick demand
         if (in_hover_mode) {
             const float DT = .01;
@@ -196,9 +199,6 @@ int main(int argc, char ** argv)
             demands.thrust = fconstrain(demands.thrust, 0, 1);
             _altitudeTarget = 0;
         }
-
-        // Get vehicle state from sensors
-        getVehicleState(gyro, imu, gps);
 
         // Call Haskell Copilot, which will call runMotors()
         step();
