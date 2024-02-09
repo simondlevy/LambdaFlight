@@ -81,14 +81,13 @@ class Miniflie {
         {
             if (inHoverMode) {
 
-                // In hover mode, thrust demand comes in as [-1,+1], so
-                // we convert it to a target altitude in meters
-                demands.thrust = Num::rescale(demands.thrust, -1, +1, 0.2, 2.0);
-
                 // Position controller converts meters per second to
                 // degrees
                 _positionController.run(vehicleState, demands); 
 
+                // In hover mode, thrust demand comes in as [-1,+1], so
+                // we convert it to a target altitude in meters
+                demands.thrust = Num::rescale(demands.thrust, -1, +1, 0.2, 2.0);
                 _altitudeController.run(vehicleState, demands); 
             }
 
