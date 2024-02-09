@@ -56,7 +56,9 @@ static WbDeviceTag makeMotor(const char * name, const float direction)
     return motor;
 }
 
-static vehicleState_t getVehicleState(
+static vehicleState_t state;
+
+static void getVehicleState(
         WbDeviceTag & gyro, 
         WbDeviceTag & imu, 
         WbDeviceTag & gps)
@@ -78,31 +80,25 @@ static vehicleState_t getVehicleState(
     //   phi, dphi: positive roll right
     //   theta,dtheta: positive nose up (requires negating imu, gyro)
     //   psi,dpsi: positive nose left
-    const float x = wb_gps_get_values(gps)[0];
-    const float y = wb_gps_get_values(gps)[1];
-    const float z = wb_gps_get_values(gps)[2];
-    const float phi =     rad2deg(wb_inertial_unit_get_roll_pitch_yaw(imu)[0]);
-    const float dphi =    rad2deg(wb_gyro_get_values(gyro)[0]);
-    const float theta =  -rad2deg(wb_inertial_unit_get_roll_pitch_yaw(imu)[1]);
-    const float dtheta = -rad2deg(wb_gyro_get_values(gyro)[1]); 
-    const float psi =     rad2deg(wb_inertial_unit_get_roll_pitch_yaw(imu)[2]);
-    const float dpsi =    rad2deg(wb_gyro_get_values(gyro)[2]);
+    state.x = wb_gps_get_values(gps)[0];
+    state.y = wb_gps_get_values(gps)[1];
+    state.z = wb_gps_get_values(gps)[2];
+    state.phi =     rad2deg(wb_inertial_unit_get_roll_pitch_yaw(imu)[0]);
+    state.dphi =    rad2deg(wb_gyro_get_values(gyro)[0]);
+    state.theta =  -rad2deg(wb_inertial_unit_get_roll_pitch_yaw(imu)[1]);
+    state.dtheta = -rad2deg(wb_gyro_get_values(gyro)[1]); 
+    state.psi =     rad2deg(wb_inertial_unit_get_roll_pitch_yaw(imu)[2]);
+    state.dpsi =    rad2deg(wb_gyro_get_values(gyro)[2]);
 
     // Use temporal first difference to get world-cooredinate velocities
-    const float dx = (x - xprev) / dt;
-    const float dy = (y - yprev) / dt;
-    const float dz = (z - zprev) / dt;
-
-    vehicleState_t state = {
-        x, dx, y, dy, z, dz, phi, dphi, theta, dtheta, psi, dpsi
-    };
+    state.dx = (state.x - xprev) / dt;
+    state.dy = (state.y - yprev) / dt;
+    state.dz = (state.z - zprev) / dt;
 
     // Save past time and position for next time step
-    xprev = x;
-    yprev = y;
-    zprev = z;
-
-    return state;
+    xprev = state.x;
+    yprev = state.y;
+    zprev = state.z;
 }
 
 static WbDeviceTag makeSensor(
@@ -164,7 +160,7 @@ int main(int argc, char ** argv)
         static float _altitudeTarget;
 
         // Get vehicle state from sensors
-        auto state = getVehicleState(gyro, imu, gps);
+        getVehicleState(gyro, imu, gps);
 
         // Hover mode: integrate stick demand to get altitude target
         if (inHoverMode) {
@@ -172,9 +168,6 @@ int main(int argc, char ** argv)
             _altitudeTarget = Num::fconstrain(
                     _altitudeTarget + demands.thrust * DT, -1, +1);
             demands.thrust = _altitudeTarget;
-
-            printf("target=%f  actual=%f\n", demands.thrust, state.z);
-
         }
 
         // Non-hover mode: use raw stick value with min 0
