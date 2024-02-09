@@ -52,6 +52,8 @@ altitudeHold inHoverMode updateRate thrust z dz = thrust''
         thrust_min   = 0.0
         thrust_max   = 60
 
+        dt = rateToPeriod updateRate
+
         thrust' = if inHoverMode 
                   then runAltitudeHold updateRate thrust z dz
                   else thrust * thrust_max

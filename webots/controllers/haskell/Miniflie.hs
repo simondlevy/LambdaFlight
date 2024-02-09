@@ -30,11 +30,11 @@ spec = do
 
   let demands' = liftDemands demandsStruct
 
-  let thrust' = altitudeHold inHoverMode 
-                             RATE_100_HZ 
-                             (thrust demands') 
-                             (z state) 
-                             (dz state)
+  let thrust'= altitudeHold inHoverMode 
+                            RATE_100_HZ 
+                            (thrust demands') 
+                            (z state) 
+                            (dz state)
 
   let demands'' = Demands thrust' (roll demands') (pitch demands') (yaw demands')
 
