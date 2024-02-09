@@ -3,14 +3,13 @@
 EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2023a/projects/objects/backgrounds/protos/TexturedBackground.proto"
 EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2023a/projects/objects/backgrounds/protos/TexturedBackgroundLight.proto"
 EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2023a/projects/objects/floors/protos/Floor.proto"
-
 EXTERNPROTO "../protos/Haskell.proto"
 
 WorldInfo {
 }
 Viewpoint {
   orientation 0 1 -1.0656348786755114e-16 0.749999999999997
-  position -1.857334164905688 -0.07692169759352534 1.773711384300034
+  position -4.804378324296457 -0.07692169759352505 4.519167290487313
   follow "Haskell"
 }
 TexturedBackground {

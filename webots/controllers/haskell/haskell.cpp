@@ -133,9 +133,9 @@ static void getVehicleState(
     state.dpsi =    rad2deg(wb_gyro_get_values(gyro)[2]);
 
     // Use temporal first difference to get world-cooredinate velocities
-    const float dx = (state.x - xprev) / dt;
-    const float dy = (state.y - yprev) / dt;
-    const float dz = (state.z - zprev) / dt;
+    state.dx = (state.x - xprev) / dt;
+    state.dy = (state.y - yprev) / dt;
+    state.dz = (state.z - zprev) / dt;
 
     // Save past time and position for next time step
     xprev = state.x;
