@@ -36,12 +36,16 @@ spec = do
 
   let motors = quadAPMixer demands'
 
+  trigger "runMotors" true [ ]
+
+{--
   trigger "runMotors" true [
                        arg $ qm1 motors, 
                        arg $ qm2 motors, 
                        arg $ qm3 motors, 
                        arg $ qm4 motors
                      ] 
+--}
 
 -- Compile the spec
 main = reify spec >>= compile "copilot"

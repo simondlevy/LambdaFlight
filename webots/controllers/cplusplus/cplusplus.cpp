@@ -42,10 +42,6 @@ static const float YAW_SCALE = 4e-5;
 
 static const Clock::rate_t PID_UPDATE_RATE = Clock::RATE_100_HZ;
 
-// These constants set limits on the output of the altitude controller
-static const float FLIGHT_CLIMB_RATE = 0.5;
-static const float TAKEOFF_LAND_CLIMB_RATE= 0.1;
-
 static WbDeviceTag makeMotor(const char * name, const float direction)
 {
     auto motor = wb_robot_get_device(name);

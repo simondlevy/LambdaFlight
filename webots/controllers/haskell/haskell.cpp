@@ -23,13 +23,12 @@
 #include <webots/motor.h>
 #include <webots/robot.h>
 
+#include <miniflie.hpp>
+#include <mixers/quadrotor.hpp>
+
 #include "sticks.hpp"
 
-// From Eqn. (11) in Bouabdallah,  Murrieri, Siegwart (2004). 
-// We use ENU coordinates based on 
-// https://www.bitcraze.io/documentation/system/platform/cf2-coordinate-system
-// Position in meters, velocity in meters/second, angles in degrees,
-// angular velocity in degrees/second.
+/*
 typedef struct {
 
     float x;       // positive forward
@@ -46,11 +45,17 @@ typedef struct {
     float dpsi;    // positive nose left
 
 } vehicleState_t;
+*/
 
 static WbDeviceTag m1_motor;
 static WbDeviceTag m2_motor;
 static WbDeviceTag m3_motor;
 static WbDeviceTag m4_motor;
+
+static float m1;
+static float m2;
+static float m3;
+static float m4;
 
 //////////////////////////////////////////////////////////////////////////////
 
@@ -66,10 +71,9 @@ extern "C" {
 
     void step(void);
 
-    void runMotors(float m1, float m2, float m3, float m4)
+    // void runMotors(float m1, float m2, float m3, float m4)
+    void runMotors(/*float m1, float m2, float m3, float m4*/)
     {
-        printf("%f %f %f %f\n", m1, m2, m3, m4);
-
         // Set simulated motor values
         wb_motor_set_velocity(m1_motor, +m1);
         wb_motor_set_velocity(m2_motor, -m2);
@@ -85,10 +89,11 @@ static float fconstrain(const float val, const float lo, const float hi)
     return val < lo ? lo : val > hi ? hi : val;
 }
 
+/*
 static float rad2deg(const float rad)
 {
     return rad * 180 / M_PI;
-}
+}*/
 
 static WbDeviceTag makeMotor(const char * name, const float direction)
 {
@@ -155,6 +160,26 @@ static WbDeviceTag makeSensor(
 
 int main(int argc, char ** argv)
 {
+    static Miniflie miniflie;
+
+    static const Clock::rate_t PID_UPDATE_RATE = Clock::RATE_100_HZ;
+    static const float THRUST_BASE = 48;
+    static const float THRUST_SCALE = 0.25;
+    static const float THRUST_MIN = 0;
+    static const float THRUST_MAX   = 60;
+    static const float PITCH_ROLL_SCALE = 1e-4;
+    static const float YAW_SCALE = 4e-5;
+
+    miniflie.init(
+            mixQuadrotor,
+            PID_UPDATE_RATE,
+            THRUST_SCALE,
+            THRUST_BASE,
+            THRUST_MIN,
+            THRUST_MAX,
+            PITCH_ROLL_SCALE,
+            YAW_SCALE);
+
     wb_robot_init();
 
     const int timestep = (int)wb_robot_get_basic_time_step();
@@ -199,6 +224,16 @@ int main(int argc, char ** argv)
             demands.thrust = fconstrain(demands.thrust, 0, 1);
             _altitudeTarget = 0;
         }
+
+        // Run miniflie algorithm on open-loop demands and vehicle state to 
+        // get motor values
+        float motorvals[4] = {};
+        miniflie.step(in_hover_mode, state, demands, motorvals);
+
+        m1 = motorvals[0];
+        m2 = motorvals[1];
+        m3 = motorvals[2];
+        m4 = motorvals[3];
 
         // Call Haskell Copilot, which will call runMotors()
         step();

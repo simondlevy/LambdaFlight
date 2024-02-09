@@ -38,6 +38,7 @@ typedef struct {
 
 } joystickAxes_t;
 
+/*
 typedef struct {
 
     float thrust;
@@ -46,6 +47,7 @@ typedef struct {
     float yaw;
 
 } demands_t;
+*/
 
 typedef enum {
 
