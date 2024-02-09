@@ -161,12 +161,18 @@ int main(int argc, char ** argv)
         // Altitude target, normalized to [-1,+1]
         static float _altitudeTarget;
 
-        // Hover mode: integrate stick demand
+        // Get vehicle state from sensors
+        auto state = getVehicleState(gyro, imu, gps);
+
+        // Hover mode: integrate stick demand to get altitude target
         if (inHoverMode) {
             const float DT = .01;
             _altitudeTarget = Num::fconstrain(
                     _altitudeTarget + demands.thrust * DT, -1, +1);
             demands.thrust = _altitudeTarget;
+
+            printf("target=%f  actual=%f\n", demands.thrust, state.z);
+
         }
 
         // Non-hover mode: use raw stick value with min 0
@@ -174,9 +180,6 @@ int main(int argc, char ** argv)
             demands.thrust = Num::fconstrain(demands.thrust, 0, 1);
             _altitudeTarget = 0;
         }
-
-        // Get vehicle state from sensors
-        auto state = getVehicleState(gyro, imu, gps);
 
         // Run miniflie algorithm on open-loop demands and vehicle state to 
         // get motor values

@@ -57,7 +57,6 @@ class AltitudeController : public ClosedLoopController {
             _altitudePid.setOutputLimit(limit);
         }
 
-
     private:
 
         static constexpr float VEL_MAX = 1;
