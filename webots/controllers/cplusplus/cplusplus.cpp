@@ -152,8 +152,10 @@ int main(int argc, char ** argv)
         //Un-comment if you want to try OpenCV
         // runCamera(camera);
 
+        demands_t demands = {};
+
         // Get open-loop demands from input device (keyboard, joystick, etc.)
-        auto demands = sticksRead();
+        sticksRead(demands);
 
         // Check where we're in hover mode (button press on game controller)
         auto inHoverMode = sticksInHoverMode();

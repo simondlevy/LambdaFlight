@@ -125,26 +125,20 @@ static float readJoystickThrust(const char * name, const joystickAxes_t axes)
         readThrottleNormal(axes);
 }
 
-static demands_t readJoystick(void)
+static void readJoystick(demands_t & demands)
 {
     auto joyname = wb_joystick_get_model();
 
     auto axes = JOYSTICK_AXIS_MAP[joyname];
 
-    return demands_t {
-
-        readJoystickThrust(joyname, axes), 
-            -readJoystickAxis(axes.roll),  // postive roll-leftward
-            readJoystickAxis(axes.pitch), 
-            readJoystickAxis(axes.yaw)
-
-    };
+    demands.thrust = readJoystickThrust(joyname, axes);
+    demands.roll = -readJoystickAxis(axes.roll);  // postive roll-leftward
+    demands.pitch = readJoystickAxis(axes.pitch); 
+    demands.yaw = readJoystickAxis(axes.yaw);
 }
 
-static demands_t readKeyboard(void)
+static void readKeyboard(demands_t & demands)
 {
-    demands_t demands = {0, 0, 0, 0};
-
     switch (wb_keyboard_get_key()) {
 
         case WB_KEYBOARD_UP:
@@ -179,9 +173,6 @@ static demands_t readKeyboard(void)
             demands.thrust = -0.5;
             break;
     }
-
-    return demands;
-
 }
 
 static joystickStatus_e haveJoystick(void)
@@ -230,7 +221,6 @@ static demands_t reportJoystick(void)
     return demands_t {0, 0, 0, 0};
 }
 
-
 static bool getHoverModeFromJoystick(void)
 {
     auto joyname = wb_joystick_get_model();
@@ -264,12 +254,19 @@ static void sticksInit(void)
     wb_keyboard_enable(timestep);
 }
 
-static demands_t sticksRead(void)
+static void sticksRead(demands_t & demands)
 {
     auto joystickStatus = haveJoystick();
 
-    return 
-        joystickStatus == JOYSTICK_RECOGNIZED ? readJoystick() : 
-        joystickStatus == JOYSTICK_UNRECOGNIZED ? reportJoystick() :
-        readKeyboard();
+    if (joystickStatus == JOYSTICK_RECOGNIZED) {
+        readJoystick(demands);
+    }
+
+    else if (joystickStatus == JOYSTICK_UNRECOGNIZED) {
+        reportJoystick();
+    }
+
+    else {
+        readKeyboard(demands);
+    }
 }
