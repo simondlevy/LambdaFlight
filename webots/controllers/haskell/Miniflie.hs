@@ -26,26 +26,22 @@ inHoverMode = extern "in_hover_mode" Nothing
 
 spec = do
 
-  let state = liftState stateStruct
+  -- let state = liftState stateStruct
 
-  let demands = liftDemands demandsStruct
+  let demands' = liftDemands demandsStruct
 
-  let thrust' = altitudeHold inHoverMode RATE_100_HZ (thrust demands) (z state) (dz state)
+  -- let thrust' = altitudeHold inHoverMode RATE_100_HZ (thrust demands) (z state) (dz state)
 
-  let demands' = Demands thrust' 0 0 0
+  -- let demands' = Demands thrust' 0 0 0
 
-  let motors = quadAPMixer demands'
+  let motors = quadCFMixer demands'
 
-  trigger "runMotors" true [ ]
-
-{--
   trigger "runMotors" true [
                        arg $ qm1 motors, 
                        arg $ qm2 motors, 
                        arg $ qm3 motors, 
                        arg $ qm4 motors
                      ] 
---}
 
 -- Compile the spec
 main = reify spec >>= compile "copilot"

@@ -70,8 +70,7 @@ extern "C" {
 
     void step(void);
 
-    // void runMotors(float m1, float m2, float m3, float m4)
-    void runMotors(/*float m1, float m2, float m3, float m4*/)
+    void runMotors(float m1, float m2, float m3, float m4)
     {
         // Set simulated motor values
         wb_motor_set_velocity(m1_motor, +m1);
@@ -226,23 +225,6 @@ int main(int argc, char ** argv)
         // Run miniflie algorithm on open-loop demands and vehicle state to 
         // get motor values
         miniflie.step(in_hover_mode, state, demands);
-
-        auto t = demands.thrust;
-        auto r = demands.roll;
-        auto p = demands.pitch;
-        auto y = demands.yaw;
-
-        m1 = t - r + p + y;
-        m2 = t - r - p - y;
-        m3 = t + r - p + y;
-        m4 = t + r + p - y;
-
-        //m1 = motorvals[0];
-        //m2 = motorvals[1];
-        //m3 = motorvals[2];
-        //m4 = motorvals[3];
-
-        printf("%f => %f\n", demands.thrust, m1);
 
         // Call Haskell Copilot, which will call runMotors()
         step();
