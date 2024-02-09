@@ -23,8 +23,8 @@
 #include <webots/motor.h>
 #include <webots/robot.h>
 
-#include <miniflie.hpp>
-#include <mixers/quadrotor.hpp>
+#include "flie.hpp"
+#include "quad.hpp"
 
 #include "sticks.hpp"
 
