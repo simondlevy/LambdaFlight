@@ -59,15 +59,15 @@ runAltitudeHold :: ClockRate ->
                    Stream Float -> 
                    Stream Float -> 
                    Stream Float -> 
-                   Stream Float -> 
                    Stream Float
 
-runAltitudeHold updateRate thrust z dz thrust_max = thrust'''
+runAltitudeHold updateRate thrust z dz = thrust''
 
-  where thrust_base  = 48.0
-        thrust_scale = 0.25
-        thrust_min   = 0.0
+  where 
 
+        thrust'' = thrust
+        
+{--
         -- In hover mode, thrust demand comes in as [-1,+1], so
         -- we convert it to a target altitude in meters
         thrust' = rescale thrust (-1) 1 0.2 2.0
@@ -77,12 +77,8 @@ runAltitudeHold updateRate thrust z dz thrust_max = thrust'''
         climbRate = altitudePid dt thrust' z
 
         thrust'' = climbRatePid dt climbRate dz
+--}
                 
-        -- Scale up thrust for motors
-        thrust''' = constrain (thrust'' * thrust_scale + thrust_base)
-                              thrust_min
-                              thrust_max
-
 altitudeHold :: Stream Bool ->
                 ClockRate -> 
                 Stream Float -> 
@@ -97,7 +93,9 @@ altitudeHold inHoverMode updateRate thrust z dz = thrust''
         thrust_min   = 0.0
         thrust_max   = 60
 
-        thrust' = if inHoverMode then thrust else thrust * thrust_max
+        thrust' = if inHoverMode 
+                  then runAltitudeHold updateRate thrust z dz
+                  else thrust * thrust_max
 
         thrust'' = constrain (thrust' * thrust_scale + thrust_base)
                              thrust_min
