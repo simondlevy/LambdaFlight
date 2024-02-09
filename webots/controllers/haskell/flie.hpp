@@ -24,12 +24,13 @@
 #include <datatypes.h>
 #include <num.hpp>
 
-#include <closedloops/altitude.hpp>
 #include <closedloops/pitchroll_angle.hpp>
 #include <closedloops/pitchroll_rate.hpp>
 #include <closedloops/position.hpp>
 #include <closedloops/yaw_angle.hpp>
 #include <closedloops/yaw_rate.hpp>
+
+#include "tude.hpp"
 
 class Miniflie {
 
