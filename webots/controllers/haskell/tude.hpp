@@ -64,11 +64,8 @@ class AltitudeController : public ClosedLoopController {
         {
             ClosedLoopController::init(updateRate);
 
-            _altitudePi.init(altitudeKp, altitueKi, _dt, _updateRate,
-                    FILTER_CUTOFF, true);
-
-            _climbRatePi.init(climbRateKp, climbRateKi, _dt, _updateRate,
-                    FILTER_CUTOFF, true); 
+            _altitudePi.init(altitudeKp, altitueKi, _dt, _updateRate);
+            _climbRatePi.init(climbRateKp, climbRateKi, _dt, _updateRate);
         }
 
         /**

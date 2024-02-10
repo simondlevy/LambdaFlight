@@ -26,9 +26,7 @@ class Pi {
                 const float kp,
                 const float ki,
                 const float dt,
-                const float samplingRate,
-                const float cutoffFreq,
-                bool enableDFilter)
+                const float samplingRate)
         {
             _integ         = 0;
             _kp            = kp;
@@ -36,11 +34,6 @@ class Pi {
             _iLimit        = DEFAULT_PID_INTEGRATION_LIMIT;
             _outputLimit   = DEFAULT_PID_OUTPUT_LIMIT;
             _dt            = dt;
-            _enableDFilter = enableDFilter;
-
-            if (_enableDFilter) {
-                _dFilter.init(samplingRate, cutoffFreq);
-            }
         }
 
         float run(const float desired, const float measured)
