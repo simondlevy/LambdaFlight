@@ -44,11 +44,11 @@ static float climbRatePid(const float desired, const float measured)
     return KP * error + KI * _integ;
 }
 
-static void runAltitudeController(const float z, const float dz, demands_t & demands)
+static float runAltitudeController(const float z, const float dz, const float thrust)
 {
     // Set climb rate based on target altitude
-    auto climbRate = altitudePid(demands.thrust, z);
+    auto climbRate = altitudePid(thrust, z);
 
     // Set thrust for desired climb rate
-    demands.thrust = climbRatePid(climbRate, dz);
+    return climbRatePid(climbRate, dz);
 }
