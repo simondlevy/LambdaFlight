@@ -167,6 +167,5 @@ class Miniflie {
             _yawAngleController.init(pidUpdateRate);
             _yawRateController.init(pidUpdateRate);
             _positionController.init(pidUpdateRate);
-            _altitudeController.init(pidUpdateRate);
         }
 };

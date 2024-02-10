@@ -48,10 +48,7 @@ class AltitudeController : public ClosedLoopController {
 
     public:
 
-        void init(
-                const Clock::rate_t updateRate,
-                const float altitudeKp=2,
-                const float altitudeKi=0.5)
+        void init( const Clock::rate_t updateRate)
         {
             ClosedLoopController::init(updateRate);
         }
