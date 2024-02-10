@@ -54,7 +54,7 @@ static float climbRatePid(const float desired, const float measured)
     return KP * error + KI * _integ;
 }
 
-static float runAltitudeController(const float z, const float dz, const float thrust)
+static float run(const float z, const float dz, const float thrust)
 {
     // In hover mode, thrust demand comes in as [-1,+1], so
     // we convert it to a target altitude in meters
@@ -65,4 +65,13 @@ static float runAltitudeController(const float z, const float dz, const float th
 
     // Set thrust for desired climb rate
     return climbRatePid(climbRate, dz);
+}
+
+static float runAltitudeController(
+        const bool inHoverMode,
+        const float z, 
+        const float dz, 
+        const float thrust)
+{
+    return inHoverMode ? run(z, dz, thrust) : thrust;
 }

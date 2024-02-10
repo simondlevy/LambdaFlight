@@ -86,7 +86,7 @@ class Miniflie {
                 // degrees
                 _positionController.run(vehicleState, demands); 
 
-                demands.thrust = runAltitudeController(
+                demands.thrust = runAltitudeController(inHoverMode,
                         vehicleState.z, vehicleState.dz, demands.thrust); 
             }
 
