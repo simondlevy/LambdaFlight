@@ -45,29 +45,23 @@ class AltitudePi {
 
 };
 
-class ClimbRatePi {
+static float climbRatePid(const float desired, const float measured)
+{
+    static const float KP = 25;
+    static const float KI = 15;
+    static const float DT = 0.01;
 
-    public:
+    static const float INTEGRATION_LIMIT = 5000;
 
-        float run(const float desired, const float measured)
-        {
-            static const float KP = 25;
-            static const float KI = 15;
-            static const float DT = 0.01;
+    static float _integ;     
 
-            static const float INTEGRATION_LIMIT = 5000;
+    auto error = desired - measured;
 
-            static float _integ;     
+    _integ = constrain(_integ + error * DT, 
+            -INTEGRATION_LIMIT, INTEGRATION_LIMIT);
 
-            auto error = desired - measured;
-
-            _integ = constrain(_integ + error * DT, 
-                    -INTEGRATION_LIMIT, INTEGRATION_LIMIT);
-
-            return KP * error + KI * _integ;
-        }
-
-};
+    return KP * error + KI * _integ;
+}
 
 class AltitudeController : public ClosedLoopController {
 
@@ -89,11 +83,10 @@ class AltitudeController : public ClosedLoopController {
             auto climbRate = _altitudePi.run(demands.thrust, state.z);
 
             // Set thrust for desired climb rate
-            demands.thrust = _climbRatePi.run(climbRate, state.dz);
+            demands.thrust = climbRatePid(climbRate, state.dz);
         }
 
     private:
 
         AltitudePi _altitudePi;
-        ClimbRatePi _climbRatePi;
 };
