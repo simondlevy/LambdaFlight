@@ -160,9 +160,9 @@ static float runAltitudeHold(const float z, const float dz, const float thrust)
 
 static float altitudeHold(
         const bool inHoverMode,
+        const float thrust,
         const float z, 
-        const float dz, 
-        const float thrust)
+        const float dz) 
 {
     return inHoverMode ? runAltitudeHold(z, dz, thrust) : thrust;
 }
@@ -364,7 +364,7 @@ int main(int argc, char ** argv)
         demands.pitch *= _pitchRollScale;
 
         demands.thrust = 
-            altitudeHold(in_hover_mode, state.z, state.dz, demands.thrust);
+            altitudeHold(in_hover_mode, demands.thrust, state.z, state.dz);
 
         // Call Haskell Copilot, which will call runMotors()
         step();
