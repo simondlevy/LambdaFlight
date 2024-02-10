@@ -10,16 +10,10 @@ class Pi {
         static constexpr float DEFAULT_PID_INTEGRATION_LIMIT = 5000;
         static constexpr float DEFAULT_PID_OUTPUT_LIMIT =  0;
 
-        float _desired;      // set point
-        float _error;        // error
         float _integ;        // integral
-        float _deriv;        // derivative
         float _kp;           // proportional gain
         float _ki;           // integral gain
-        float _outP;         // proportional output (debugging)
         float _outI;         // integral output (debugging)
-        float _outD;         // derivative output (debugging)
-        float _outFF;        // feedforward output (debugging)
         float _iLimit;       // integral limit, absolute value. '0' means no limit.
         float _outputLimit;  // total PID output limit, absolute value. '0' means no limit.
         float _dt;           // delta-time dt
@@ -36,10 +30,7 @@ class Pi {
                 const float cutoffFreq,
                 bool enableDFilter)
         {
-            _error         = 0;
             _integ         = 0;
-            _deriv         = 0;
-            _desired       = 0;
             _kp            = kp;
             _ki            = ki;
             _iLimit        = DEFAULT_PID_INTEGRATION_LIMIT;
@@ -52,34 +43,13 @@ class Pi {
             }
         }
 
-        void setIntegralLimit(const float limit)
-        {
-            _iLimit = limit;
-        }
-
-        void reset(void)
-        {
-            _error     = 0;
-            _integ     = 0;
-            _deriv     = 0;
-        }
-
         float run(const float desired, const float measured)
         {
-            _desired = desired;
+            auto error = desired - measured;
 
-            _error = _desired - measured;
+            auto output = _kp * error;
 
-            return run();
-        }
-
-        float run(void)
-        {
-            _outP = _kp * _error;
-
-            auto output = _outP;
-
-            _integ += _error * _dt;
+            _integ += error * _dt;
 
             if(_iLimit != 0) {
                 _integ = Num::fconstrain(_integ, -_iLimit, _iLimit);
@@ -93,32 +63,6 @@ class Pi {
             }
 
             return output;
-        }
-
-        void setDesired(const float desired)
-        {
-            _desired = desired;
-        }
-
-        void setError(const float error)
-        {
-            _error = error;
-        }
-
-        void setOutputLimit(const float outputLimit)
-        {
-            _outputLimit = outputLimit;
-        }
-
-        void filterReset(const float samplingRate, const float cutoffFreq, 
-                bool enableDFilter) 
-        {
-            _enableDFilter = enableDFilter;
-
-            if (_enableDFilter)
-            {
-                _dFilter.init(samplingRate, cutoffFreq);
-            }
         }
 
 }; // class Pi
