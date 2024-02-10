@@ -90,6 +90,8 @@ class Miniflie {
                 // we convert it to a target altitude in meters
                 demands.thrust = Num::rescale(demands.thrust, -1, +1, 0.2, 2.0);
                 _altitudeController.run(vehicleState, demands); 
+                //demands.thrust = runAltitudeController(
+                //        vehicleState.z, vehicleState.dz, demands.thrust);
             }
 
             else {
@@ -131,7 +133,6 @@ class Miniflie {
             _pitchRollRateController.resetPids();
             _positionController.resetPids();
 
-            _altitudeController.resetFilters();
             _positionController.resetFilters();
         }
 

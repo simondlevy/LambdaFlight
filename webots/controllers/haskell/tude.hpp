@@ -1,7 +1,55 @@
 #pragma once
 
-#include <pid.hpp>
+#include "pi.hpp"
+
 #include <closedloop.hpp>
+
+float max(float a, float b)
+{
+    return a > b ? a : b;
+}
+
+float runAltitudePi(const float thrust, const float z)
+{
+    static const float kp = 25;
+    static const float ki = 15;
+    static const float integral_limit = 5000;
+    static const float dt = 0.01;
+    static const float vel_max = 1;
+    static const float vel_max_overhead = 1.10;
+
+    auto error = thrust - z;
+
+    static float _errorIntegral;
+
+    _errorIntegral = max((_errorIntegral + error * dt), integral_limit);
+
+    return kp * error + ki * + _errorIntegral;
+}
+
+float runClimbRatePi(const float thrust, const float dz)
+{
+    static const float kp = 25;
+    static const float ki = 15;
+    static const float integral_limit = 5000;
+    static const float dt = 0.01;
+
+    auto error = thrust - dz;
+
+    static float _errorIntegral;
+
+    _errorIntegral = max((_errorIntegral + error * dt), integral_limit);
+
+    return kp * error + ki * + _errorIntegral;
+}
+
+
+float runAltitudeController(const float z, const float dz, const float thrust)
+{
+    auto climbRate = runAltitudePi(z, thrust);
+
+    return runClimbRatePi(dz, climbRate);
+}
 
 class AltitudeController : public ClosedLoopController {
 
@@ -16,12 +64,10 @@ class AltitudeController : public ClosedLoopController {
         {
             ClosedLoopController::init(updateRate);
 
-            _altitudePid.init(altitudeKp, altitueKi, 0, 0, _dt, _updateRate,
+            _altitudePi.init(altitudeKp, altitueKi, _dt, _updateRate,
                     FILTER_CUTOFF, true);
 
-            _altitudePid.setOutputLimit(fmaxf(VEL_MAX, 0.5f)  * VEL_MAX_OVERHEAD);
-
-            _climbRatePid.init(climbRateKp, climbRateKi, 0, 0, _dt, _updateRate,
+            _climbRatePi.init(climbRateKp, climbRateKi, _dt, _updateRate,
                     FILTER_CUTOFF, true); 
         }
 
@@ -34,35 +80,16 @@ class AltitudeController : public ClosedLoopController {
                 demands_t & demands) override 
         {
             // Set climb rate based on target altitude
-            auto climbRate = _altitudePid.run(demands.thrust, state.z);
+            auto climbRate = _altitudePi.run(demands.thrust, state.z);
 
             // Set thrust for desired climb rate
-            demands.thrust = _climbRatePid.run(climbRate, state.dz);
-        }
-
-        void resetPids(void)
-        {
-            _altitudePid.reset();
-            _climbRatePid.reset();
-        }
-
-        void resetFilters(void)
-        {
-            _altitudePid.filterReset(_updateRate, FILTER_CUTOFF, true);
-            _climbRatePid.filterReset(_updateRate, FILTER_CUTOFF, true);
-        }
-
-        void setOutputLimit(const float limit)
-        {
-            _altitudePid.setOutputLimit(limit);
+            demands.thrust = _climbRatePi.run(climbRate, state.dz);
         }
 
     private:
 
-        static constexpr float VEL_MAX = 1;
-        static constexpr float VEL_MAX_OVERHEAD = 1.10;
         static constexpr float FILTER_CUTOFF = 20;
 
-        Pid _altitudePid;
-        Pid _climbRatePid;
+        Pi _altitudePi;
+        Pi _climbRatePi;
 };
