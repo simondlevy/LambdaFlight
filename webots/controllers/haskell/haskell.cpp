@@ -23,28 +23,47 @@
 #include <webots/motor.h>
 #include <webots/robot.h>
 
-#include "flie.hpp"
+#include <datatypes.h>
+#include <num.hpp>
+
+#include <closedloops/pitchroll_angle.hpp>
+#include <closedloops/pitchroll_rate.hpp>
+#include <closedloops/position.hpp>
+#include <closedloops/yaw_angle.hpp>
+#include <closedloops/yaw_rate.hpp>
+
+#include "tude.hpp"
 
 #include "sticks.hpp"
 
 /*
-typedef struct {
+   typedef struct {
 
-    float x;       // positive forward
-    float dx;      // positive forward
-    float y;       // positive leftward
-    float dy;      // positive leftward
-    float z;       // positive upward
-    float dz;      // positive upward
-    float phi;     // positive roll right
-    float dphi;    // positive roll right
-    float theta;   // positive nose up
-    float dtheta;  // positive nose up (opposite of gyro Y)
-    float psi;     // positive nose left
-    float dpsi;    // positive nose left
+   float x;       // positive forward
+   float dx;      // positive forward
+   float y;       // positive leftward
+   float dy;      // positive leftward
+   float z;       // positive upward
+   float dz;      // positive upward
+   float phi;     // positive roll right
+   float dphi;    // positive roll right
+   float theta;   // positive nose up
+   float dtheta;  // positive nose up (opposite of gyro Y)
+   float psi;     // positive nose left
+   float dpsi;    // positive nose left
 
-} vehicleState_t;
-*/
+   } vehicleState_t;
+ */
+
+static float _pitchRollScale;
+static float _yawScale;
+
+static PitchRollAngleController _pitchRollAngleController;
+static PitchRollRateController _pitchRollRateController;
+static PositionController _positionController;
+static YawAngleController _yawAngleController;
+static YawRateController _yawRateController;
+
 
 static WbDeviceTag m1_motor;
 static WbDeviceTag m2_motor;
@@ -55,6 +74,25 @@ static float m1;
 static float m2;
 static float m3;
 static float m4;
+
+static void initClosedLoopControllers(const Clock::rate_t pidUpdateRate) 
+{
+    _pitchRollAngleController.init(pidUpdateRate);
+    _pitchRollRateController.init(pidUpdateRate);
+    _yawAngleController.init(pidUpdateRate);
+    _yawRateController.init(pidUpdateRate);
+    _positionController.init(pidUpdateRate);
+}
+
+void resetControllers(void)
+{
+    _pitchRollAngleController.resetPids();
+    _pitchRollRateController.resetPids();
+    _positionController.resetPids();
+
+    _positionController.resetFilters();
+}
+
 
 //////////////////////////////////////////////////////////////////////////////
 
@@ -88,10 +126,10 @@ static float fconstrain(const float val, const float lo, const float hi)
 }
 
 /*
-static float rad2deg(const float rad)
-{
-    return rad * 180 / M_PI;
-}*/
+   static float rad2deg(const float rad)
+   {
+   return rad * 180 / M_PI;
+   }*/
 
 static WbDeviceTag makeMotor(const char * name, const float direction)
 {
@@ -158,13 +196,9 @@ static WbDeviceTag makeSensor(
 
 int main(int argc, char ** argv)
 {
-    static Miniflie miniflie;
-
     static const Clock::rate_t PID_UPDATE_RATE = Clock::RATE_100_HZ;
     static const float PITCH_ROLL_SCALE = 1e-4;
     static const float YAW_SCALE = 4e-5;
-
-    miniflie.init(PID_UPDATE_RATE, PITCH_ROLL_SCALE, YAW_SCALE);
 
     wb_robot_init();
 
@@ -183,6 +217,11 @@ int main(int argc, char ** argv)
     auto camera = makeSensor("camera", timestep, wb_camera_enable);
 
     sticksInit();
+
+    _pitchRollScale = PITCH_ROLL_SCALE;
+    _yawScale = YAW_SCALE;
+
+    initClosedLoopControllers(PID_UPDATE_RATE);
 
     while (wb_robot_step(timestep) != -1) {
 
@@ -213,7 +252,48 @@ int main(int argc, char ** argv)
 
         // Run miniflie algorithm on open-loop demands and vehicle state to 
         // get motor values
-        miniflie.step(in_hover_mode, state, demands);
+        demands.thrust = runAltitudeController(in_hover_mode,
+                state.z, state.dz, demands.thrust); 
+
+        if (in_hover_mode) {
+
+            // Position controller converts meters per second to
+            // degrees
+            _positionController.run(state, demands); 
+
+        }
+
+        else {
+
+            // In non-hover mode, pitch/roll demands come in as
+            // [-1,+1], which we convert to degrees for input to
+            // pitch/roll controller
+            demands.roll *= 30;
+            demands.pitch *= 30;
+        }
+
+        _pitchRollAngleController.run(state, demands);
+
+        _pitchRollRateController.run(state, demands);
+
+        _yawAngleController.run(state, demands);
+
+        _yawRateController.run(state, demands);
+
+        // Reset closed-loop controllers on zero thrust
+        if (demands.thrust == 0) {
+
+            demands.roll = 0;
+            demands.pitch = 0;
+            demands.yaw = 0;
+
+            resetControllers();
+        }
+
+        // Scale yaw, pitch and roll demands for mixer
+        demands.yaw *= _yawScale;
+        demands.roll *= _pitchRollScale;
+        demands.pitch *= _pitchRollScale;
 
         // Call Haskell Copilot, which will call runMotors()
         step();
