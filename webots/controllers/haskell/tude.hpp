@@ -44,21 +44,11 @@ static float climbRatePid(const float desired, const float measured)
     return KP * error + KI * _integ;
 }
 
-class AltitudeController : public ClosedLoopController {
+static void runAltitudeController(const vehicleState_t & state, demands_t & demands)
+{
+    // Set climb rate based on target altitude
+    auto climbRate = altitudePid(demands.thrust, state.z);
 
-    public:
-
-        void init( const Clock::rate_t updateRate)
-        {
-            ClosedLoopController::init(updateRate);
-        }
-
-        void run(const vehicleState_t & state, demands_t & demands)
-        {
-            // Set climb rate based on target altitude
-            auto climbRate = altitudePid(demands.thrust, state.z);
-
-            // Set thrust for desired climb rate
-            demands.thrust = climbRatePid(climbRate, state.dz);
-        }
-};
+    // Set thrust for desired climb rate
+    demands.thrust = climbRatePid(climbRate, state.dz);
+}

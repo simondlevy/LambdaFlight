@@ -89,9 +89,7 @@ class Miniflie {
                 // In hover mode, thrust demand comes in as [-1,+1], so
                 // we convert it to a target altitude in meters
                 demands.thrust = Num::rescale(demands.thrust, -1, +1, 0.2, 2.0);
-                _altitudeController.run(vehicleState, demands); 
-                //demands.thrust = runAltitudeController(
-                //        vehicleState.z, vehicleState.dz, demands.thrust);
+                runAltitudeController(vehicleState, demands); 
             }
 
             else {
@@ -156,7 +154,6 @@ class Miniflie {
         PitchRollAngleController _pitchRollAngleController;
         PitchRollRateController _pitchRollRateController;
         PositionController _positionController;
-        AltitudeController _altitudeController;
         YawAngleController _yawAngleController;
         YawRateController _yawRateController;
 
