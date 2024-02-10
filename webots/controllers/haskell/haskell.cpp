@@ -260,9 +260,6 @@ int main(int argc, char ** argv)
             _altitudeTarget = 0;
         }
 
-        demands.thrust = runAltitudeController(in_hover_mode,
-                state.z, state.dz, demands.thrust); 
-
         if (in_hover_mode) {
 
             // Position controller converts meters per second to
@@ -292,6 +289,9 @@ int main(int argc, char ** argv)
         demands.yaw *= _yawScale;
         demands.roll *= _pitchRollScale;
         demands.pitch *= _pitchRollScale;
+
+        demands.thrust = runAltitudeController(in_hover_mode,
+                state.z, state.dz, demands.thrust); 
 
         // Call Haskell Copilot, which will call runMotors()
         step();
