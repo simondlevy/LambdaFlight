@@ -2,6 +2,11 @@
 
 #include "num.hpp"
 
+float constrain(float val, float min, float max)
+{
+    return val < min ? min : val > max ? max : val;
+}
+
 class Pi {
 
     private:
@@ -32,18 +37,13 @@ class Pi {
 
             auto error = desired - measured;
 
-            _integ = Num::fconstrain(_integ + error * _dt, 
+            _integ = constrain(_integ + error * _dt, 
                     -INTEGRATION_LIMIT, INTEGRATION_LIMIT);
 
             return _kp * error + _ki * _integ;
         }
 
 }; // class Pi
-
-float constrain(float val, float min, float max)
-{
-    return val < min ? min : val > max ? max : val;
-}
 
 class AltitudeController : public ClosedLoopController {
 
