@@ -36,39 +36,12 @@ class Miniflie {
 
     public:
 
-        static const uint8_t MAX_MOTOR_COUNT = 20; // whatevs
-
         void init(
                 const Clock::rate_t pidUpdateRate,
-                const float thrustScale,
-                const float thrustBase,
-                const float thrustMin,
-                const float thrustMax)
-        {
-            init(
-                    pidUpdateRate, 
-                    thrustScale, 
-                    thrustBase, 
-                    thrustMin, 
-                    thrustMax, 
-                    1, 
-                    1);
-         }
-
-        void init(
-                const Clock::rate_t pidUpdateRate,
-                const float thrustScale,
-                const float thrustBase,
-                const float thrustMin,
-                const float thrustMax,
                 const float pitchRollScale,
                 const float yawScale)
         {
 
-            _thrustScale = thrustScale;
-            _thrustBase = thrustBase;
-            _thrustMin = thrustMin;
-            _thrustMax = thrustMax;
             _pitchRollScale = pitchRollScale;
             _yawScale = yawScale;
 
@@ -143,10 +116,6 @@ class Miniflie {
 
     private:
 
-        float _thrustScale;
-        float _thrustBase;
-        float _thrustMin;
-        float _thrustMax;
         float _pitchRollScale;
         float _yawScale;
 

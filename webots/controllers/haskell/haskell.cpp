@@ -161,21 +161,10 @@ int main(int argc, char ** argv)
     static Miniflie miniflie;
 
     static const Clock::rate_t PID_UPDATE_RATE = Clock::RATE_100_HZ;
-    static const float THRUST_BASE = 48;
-    static const float THRUST_SCALE = 0.25;
-    static const float THRUST_MIN = 0;
-    static const float THRUST_MAX   = 60;
     static const float PITCH_ROLL_SCALE = 1e-4;
     static const float YAW_SCALE = 4e-5;
 
-    miniflie.init(
-            PID_UPDATE_RATE,
-            THRUST_SCALE,
-            THRUST_BASE,
-            THRUST_MIN,
-            THRUST_MAX,
-            PITCH_ROLL_SCALE,
-            YAW_SCALE);
+    miniflie.init(PID_UPDATE_RATE, PITCH_ROLL_SCALE, YAW_SCALE);
 
     wb_robot_init();
 
