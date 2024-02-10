@@ -228,6 +228,16 @@ int main(int argc, char ** argv)
         // Get open-loop demands from input device (keyboard, joystick, etc.)
         sticksRead(demands);
 
+        // Reset closed-loop controllers on zero thrust
+        if (demands.thrust == 0) {
+
+            demands.roll = 0;
+            demands.pitch = 0;
+            demands.yaw = 0;
+
+            resetControllers();
+        }
+
         // Check where we're in hover mode (button press on game controller)
         in_hover_mode = sticksInHoverMode();
 
@@ -250,8 +260,6 @@ int main(int argc, char ** argv)
             _altitudeTarget = 0;
         }
 
-        // Run miniflie algorithm on open-loop demands and vehicle state to 
-        // get motor values
         demands.thrust = runAltitudeController(in_hover_mode,
                 state.z, state.dz, demands.thrust); 
 
@@ -279,16 +287,6 @@ int main(int argc, char ** argv)
         _yawAngleController.run(state, demands);
 
         _yawRateController.run(state, demands);
-
-        // Reset closed-loop controllers on zero thrust
-        if (demands.thrust == 0) {
-
-            demands.roll = 0;
-            demands.pitch = 0;
-            demands.yaw = 0;
-
-            resetControllers();
-        }
 
         // Scale yaw, pitch and roll demands for mixer
         demands.yaw *= _yawScale;
