@@ -145,7 +145,7 @@ static float climbRatePid(const float desired, const float measured)
     return KP * error + KI * _integ;
 }
 
-static float run(const float z, const float dz, const float thrust)
+static float runAltitudeHold(const float z, const float dz, const float thrust)
 {
     // In hover mode, thrust demand comes in as [-1,+1], so
     // we convert it to a target altitude in meters
@@ -158,13 +158,13 @@ static float run(const float z, const float dz, const float thrust)
     return climbRatePid(climbRate, dz);
 }
 
-static float runAltitudeController(
+static float altitudeHold(
         const bool inHoverMode,
         const float z, 
         const float dz, 
         const float thrust)
 {
-    return inHoverMode ? run(z, dz, thrust) : thrust;
+    return inHoverMode ? runAltitudeHold(z, dz, thrust) : thrust;
 }
 
 //////////////////////////////////////////////////////////////////////////////
@@ -363,8 +363,8 @@ int main(int argc, char ** argv)
         demands.roll *= _pitchRollScale;
         demands.pitch *= _pitchRollScale;
 
-        demands.thrust = runAltitudeController(in_hover_mode,
-                state.z, state.dz, demands.thrust); 
+        demands.thrust = 
+            altitudeHold(in_hover_mode, state.z, state.dz, demands.thrust);
 
         // Call Haskell Copilot, which will call runMotors()
         step();
