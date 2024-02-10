@@ -7,7 +7,7 @@ float constrain(float val, float min, float max)
     return val < min ? min : val > max ? max : val;
 }
 
-class Pi {
+class AltitudePi {
 
     private:
 
@@ -43,7 +43,45 @@ class Pi {
             return _kp * error + _ki * _integ;
         }
 
-}; // class Pi
+};
+
+class ClimbRatePi {
+
+    private:
+
+
+        float _kp;           // proportional gain
+        float _ki;           // integral gain
+        float _dt;           // delta-time dt
+
+    public:
+
+        void init(
+                const float kp,
+                const float ki,
+                const float dt,
+                const float samplingRate)
+        {
+            _kp    = kp;
+            _ki    = ki;
+            _dt    = dt;
+        }
+
+        float run(const float desired, const float measured)
+        {
+            static const float INTEGRATION_LIMIT = 5000;
+
+            static float _integ;     
+
+            auto error = desired - measured;
+
+            _integ = constrain(_integ + error * _dt, 
+                    -INTEGRATION_LIMIT, INTEGRATION_LIMIT);
+
+            return _kp * error + _ki * _integ;
+        }
+
+};
 
 class AltitudeController : public ClosedLoopController {
 
@@ -59,6 +97,7 @@ class AltitudeController : public ClosedLoopController {
             ClosedLoopController::init(updateRate);
 
             _altitudePi.init(altitudeKp, altitudeKi, _dt, _updateRate);
+
             _climbRatePi.init(climbRateKp, climbRateKi, _dt, _updateRate);
         }
 
@@ -73,6 +112,6 @@ class AltitudeController : public ClosedLoopController {
 
     private:
 
-        Pi _altitudePi;
-        Pi _climbRatePi;
+        AltitudePi _altitudePi;
+        ClimbRatePi _climbRatePi;
 };
