@@ -34,9 +34,6 @@
 
 #include "sticks.hpp"
 
-static const float PITCH_ROLL_SCALE = 1e-4;
-static const float YAW_SCALE = 4e-5;
-
 static PitchRollAngleController _pitchRollAngleController;
 static PitchRollRateController _pitchRollRateController;
 static PositionController _positionController;
@@ -84,6 +81,10 @@ float thrust_base  = 48.0;
 float thrust_scale = 0.25;
 float thrust_min   = 0.0;
 float thrust_max   = 60;
+
+float pitch_roll_scale = 1e-4;
+
+float yaw_scale = 4e-5;
 
 bool in_hover_mode;
 
@@ -270,11 +271,6 @@ int main(int argc, char ** argv)
         _yawAngleController.run(state, demands);
 
         _yawRateController.run(state, demands);
-
-        // Scale yaw, pitch and roll demands for mixer
-        demands.yaw *= YAW_SCALE;
-        demands.roll *= PITCH_ROLL_SCALE;
-        demands.pitch *= PITCH_ROLL_SCALE;
 
         // Call Haskell Copilot
         step();

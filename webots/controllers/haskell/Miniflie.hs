@@ -36,6 +36,12 @@ thrust_min = extern "thrust_min" Nothing
 thrust_max :: Stream Float
 thrust_max = extern "thrust_max" Nothing
 
+yaw_scale :: Stream Float
+yaw_scale = extern "yaw_scale" Nothing
+
+pitch_roll_scale :: Stream Float
+pitch_roll_scale = extern "pitch_roll_scale" Nothing
+
 spec = do
 
   let state = liftState stateStruct
@@ -58,9 +64,9 @@ spec = do
 
   trigger "setDemands" true [
                        arg $ thrust demands'', 
-                       arg $ roll demands'', 
-                       arg $ pitch demands'', 
-                       arg $ yaw demands''
+                       arg $ roll demands'' * pitch_roll_scale, 
+                       arg $ pitch demands'' * pitch_roll_scale, 
+                       arg $ yaw demands'' * yaw_scale
                      ] 
 
 {--
