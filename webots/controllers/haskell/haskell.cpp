@@ -230,7 +230,6 @@ int main(int argc, char ** argv)
             // Position controller converts meters per second to
             // degrees
             _positionController.run(state, demands); 
-
         }
 
         else {

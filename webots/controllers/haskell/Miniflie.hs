@@ -15,6 +15,7 @@ import Utils
 -- PID controllers
 import Altitude
 import ClimbRate
+import PitchRollRate
 import YawAngle
 import YawRate
 
@@ -62,7 +63,7 @@ spec = do
                              thrust_min
                              thrust_max
 
-  let yaw' = runYawAnglePid (yaw demands) (psi state) thrust'
+  let yaw' = runYawAnglePid (yaw demands) (psi state)
 
   let yaw'' = runYawRatePid yaw' (dpsi state)
 

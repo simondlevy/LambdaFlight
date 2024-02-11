@@ -24,10 +24,9 @@ cap angle = angle''
 -- Demand is input as desired angle normalized to [-1,+1] and output
 -- as degrees per second, both nose-right positive.
 
-runYawAnglePid :: Stream Float -> Stream Float -> Stream Float -> Stream Float
+runYawAnglePid :: Stream Float -> Stream Float -> Stream Float
 
-runYawAnglePid yawDemand angle thrustDemand = 
-  -(kp * error + ki * integ + kd * deriv) 
+runYawAnglePid yawDemand angle = -(kp * error + ki * integ + kd * deriv) 
   -- Return the result negated, so demand will still be nose-right positive
 
     where 
@@ -52,7 +51,6 @@ runYawAnglePid yawDemand angle thrustDemand =
 
       integ' = [0] ++ integ
 
-      -- Reset the calculated yaw angle for rate control
-      target' = [0] ++ (if thrustDemand == 0 then angle else target)
+      target' = [0] ++ target
 
       error' = [0] ++ error
