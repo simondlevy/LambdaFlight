@@ -60,13 +60,11 @@ spec = do
                              thrust_min
                              thrust_max
 
-  let demands'' = Demands thrust'''' (roll demands) (pitch demands) (yaw demands)
-
   trigger "setDemands" true [
                        arg $ thrust'''',
-                       arg $ roll demands'' * pitch_roll_scale, 
-                       arg $ pitch demands'' * pitch_roll_scale, 
-                       arg $ yaw demands'' * yaw_scale
+                       arg $ (roll demands) * pitch_roll_scale, 
+                       arg $ (pitch demands) * pitch_roll_scale, 
+                       arg $ (yaw demands) * yaw_scale
                      ] 
 
 {--
