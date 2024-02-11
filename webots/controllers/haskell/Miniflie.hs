@@ -14,6 +14,7 @@ import Demands
 import Mixers
 import Motors
 import State
+import Utils
 
 demandsStruct :: Stream DemandsStruct
 demandsStruct = extern "demands" Nothing
