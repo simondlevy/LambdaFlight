@@ -34,6 +34,11 @@
 
 #include "sticks.hpp"
 
+static const float THRUST_BASE  = 48.0;
+static const float THRUST_SCALE = 0.25;
+static const float THRUST_MIN   = 0.0;
+static const float THRUST_MAX   = 60;
+ 
 static float _pitchRollScale;
 static float _yawScale;
 
