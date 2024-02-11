@@ -12,7 +12,9 @@ import Demands
 import State
 import Utils
 
+-- PID controllers
 import Altitude
+import YawAngle
 import YawRate
 
 demandsStruct :: Stream DemandsStruct

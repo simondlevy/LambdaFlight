@@ -30,7 +30,6 @@
 #include <closedloops/pitchroll_rate.hpp>
 #include <closedloops/position.hpp>
 #include <closedloops/yaw_angle.hpp>
-#include <closedloops/yaw_rate.hpp>
 
 #include "sticks.hpp"
 
@@ -38,8 +37,6 @@ static PitchRollAngleController _pitchRollAngleController;
 static PitchRollRateController _pitchRollRateController;
 static PositionController _positionController;
 static YawAngleController _yawAngleController;
-static YawRateController _yawRateController;
-
 
 static WbDeviceTag m1_motor;
 static WbDeviceTag m2_motor;
@@ -56,7 +53,6 @@ static void initClosedLoopControllers(const Clock::rate_t pidUpdateRate)
     _pitchRollAngleController.init(pidUpdateRate);
     _pitchRollRateController.init(pidUpdateRate);
     _yawAngleController.init(pidUpdateRate);
-    _yawRateController.init(pidUpdateRate);
     _positionController.init(pidUpdateRate);
 }
 
@@ -269,8 +265,6 @@ int main(int argc, char ** argv)
         _pitchRollRateController.run(state, demands);
 
         _yawAngleController.run(state, demands);
-
-        //_yawRateController.run(state, demands);
 
         // Call Haskell Copilot
         step();
