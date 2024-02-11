@@ -365,7 +365,7 @@ int main(int argc, char ** argv)
         demands.thrust = demands.thrust * (in_hover_mode ? 1 : THRUST_MAX);
 
         demands.thrust = constrain(demands.thrust * THRUST_SCALE + THRUST_BASE,
-                THRUST_MIN THRUST_MAX);
+                THRUST_MIN, THRUST_MAX);
 
         // Call Haskell Copilot
         step();
