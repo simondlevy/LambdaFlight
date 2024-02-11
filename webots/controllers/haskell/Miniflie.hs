@@ -38,6 +38,14 @@ spec = do
 
   let demands'' = Demands thrust' (roll demands') (pitch demands') (yaw demands')
 
+  trigger "setDemands" true [
+                       arg $ thrust demands'', 
+                       arg $ roll demands'', 
+                       arg $ pitch demands'', 
+                       arg $ yaw demands''
+                     ] 
+
+{--
   let motors = quadCFMixer demands''
 
   trigger "runMotors" true [
@@ -46,6 +54,7 @@ spec = do
                        arg $ qm3 motors, 
                        arg $ qm4 motors
                      ] 
+--}
 
 -- Compile the spec
 main = reify spec >>= compile "copilot"

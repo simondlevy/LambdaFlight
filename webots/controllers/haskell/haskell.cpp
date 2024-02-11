@@ -189,6 +189,16 @@ extern "C" {
         wb_motor_set_velocity(m3_motor, +m3);
         wb_motor_set_velocity(m4_motor, -m4);
     }
+
+    void setDemands(const float t, const float r, const float p, const float y)
+    {
+        auto m1 = t - r + p  + y;
+        auto m2 = t - r - p  - y;
+        auto m3 = t + r - p  + y;
+        auto m4 = t + r + p  - y;
+
+        runMotors(m1, m2, m3, m4);
+    }
 }
 
 //////////////////////////////////////////////////////////////////////////////
@@ -366,7 +376,7 @@ int main(int argc, char ** argv)
         demands.thrust = 
             altitudeHold(in_hover_mode, demands.thrust, state.z, state.dz);
 
-        // Call Haskell Copilot, which will call runMotors()
+        // Call Haskell Copilot
         step();
     }
 
