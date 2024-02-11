@@ -26,8 +26,9 @@ cap angle = angle''
 
 runYawAnglePid :: Stream Float -> Stream Float -> Stream Float -> Stream Float
 
-runYawAnglePid angle yawDemand thrustDemand = 
-  kp * error + ki * integ + kd * deriv
+runYawAnglePid yawDemand angle thrustDemand = 
+  -(kp * error + ki * integ + kd * deriv) 
+  -- Return the result negated, so demand will still be nose-right positive
 
     where 
 
@@ -38,6 +39,9 @@ runYawAnglePid angle yawDemand thrustDemand =
       integral_limit = 360
       demand_angle_max = 200
 
+      -- Yaw angle psi is positive nose-left, whereas yaw demand is
+      -- positive nose-right.  Hence we negate the yaw demand to
+      -- accumulate the angle target.
       target = cap $ target' - demand_angle_max * yawDemand * dt
 
       error = cap $ target - angle
@@ -48,8 +52,7 @@ runYawAnglePid angle yawDemand thrustDemand =
 
       integ' = [0] ++ integ
 
+      -- Reset the calculated yaw angle for rate control
       target' = [0] ++ (if thrustDemand == 0 then angle else target)
 
       error' = [0] ++ error
-
-
