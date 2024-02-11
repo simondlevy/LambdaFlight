@@ -8,13 +8,12 @@ import Copilot.Compile.C99
 
 -- import Prelude hiding ((>), (<), div, (++))
 
-import AltitudeHold
-import Clock
 import Demands
-import Mixers
-import Motors
 import State
 import Utils
+
+import Altitude
+import YawRate
 
 demandsStruct :: Stream DemandsStruct
 demandsStruct = extern "demands" Nothing
@@ -64,7 +63,7 @@ spec = do
   let demands'' = Demands thrust'''' (roll demands) (pitch demands) (yaw demands)
 
   trigger "setDemands" true [
-                       arg $ thrust demands'', 
+                       arg $ thrust'''',
                        arg $ roll demands'' * pitch_roll_scale, 
                        arg $ pitch demands'' * pitch_roll_scale, 
                        arg $ yaw demands'' * yaw_scale

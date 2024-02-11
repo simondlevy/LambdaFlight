@@ -1,7 +1,7 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE RebindableSyntax #-}
 
-module AltitudeHold where
+module Altitude where
 
 import Language.Copilot
 import Copilot.Compile.C99
@@ -22,11 +22,11 @@ altitudePid desired measured = kp * error + ki * integ
     ki = 0.5
     dt = 0.01
 
-    integration_limit = 5000
+    integral_limit = 5000
 
     error = desired - measured
 
-    integ = constrain (integ' + error * dt) (-integration_limit) integration_limit
+    integ = constrain (integ' + error * dt) (-integral_limit) integral_limit
 
     integ' = [0] ++ integ
 
@@ -41,11 +41,11 @@ climbRatePid desired measured = kp * error + ki * integ
     ki = 15
     dt = 0.01
 
-    integration_limit = 5000
+    integral_limit = 5000
 
     error = desired - measured
 
-    integ = constrain (integ' + error * dt) (-integration_limit) integration_limit
+    integ = constrain (integ' + error * dt) (-integral_limit) integral_limit
 
     integ' = [0] ++ integ
 
