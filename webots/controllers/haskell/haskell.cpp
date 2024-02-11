@@ -82,68 +82,6 @@ static float constrain(float val, float min, float max)
     return val < min ? min : val > max ? max : val;
 }
 
-static float rescale(
-        const float value,
-        const float oldmin, 
-        const float oldmax, 
-        const float newmin, 
-        const float newmax) 
-{
-    return (value - oldmin) / (oldmax - oldmin) * 
-        (newmax - newmin) + newmin;
-}
-
-
-static float altitudePid(const float desired, const float measured)
-{
-    static const float KP = 2;
-    static const float KI = 0.5;
-    static const float DT = 0.01;
-
-    static const float INTEGRATION_LIMIT = 5000;
-
-    static float _integ;     
-
-    auto error = desired - measured;
-
-    _integ = constrain(_integ + error * DT, 
-            -INTEGRATION_LIMIT, INTEGRATION_LIMIT);
-
-    return KP * error + KI * _integ;
-}
-
-
-static float climbRatePid(const float desired, const float measured)
-{
-    static const float KP = 25;
-    static const float KI = 15;
-    static const float DT = 0.01;
-
-    static const float INTEGRATION_LIMIT = 5000;
-
-    static float _integ;     
-
-    auto error = desired - measured;
-
-    _integ = constrain(_integ + error * DT, 
-            -INTEGRATION_LIMIT, INTEGRATION_LIMIT);
-
-    return KP * error + KI * _integ;
-}
-
-static float runAltitudeHold(const float z, const float dz, const float thrust)
-{
-    // In hover mode, thrust demand comes in as [-1,+1], so
-    // we convert it to a target altitude in meters
-    const auto sthrust = rescale(thrust, -1, +1, 0.2, 2.0);
-
-    // Set climb rate based on target altitude
-    auto climbRate = altitudePid(sthrust, z);
-
-    // Set thrust for desired climb rate
-    return climbRatePid(climbRate, dz);
-}
-
 //////////////////////////////////////////////////////////////////////////////
 
 // Shared with Haskell Copilot
@@ -352,14 +290,10 @@ int main(int argc, char ** argv)
         step();
 
         /*
-        demands.thrust = in_hover_mode ? 
-            runAltitudeHold(state.z, state.dz, demands.thrust) :
-            demands.thrust;*/
-
         demands.thrust = demands.thrust * (in_hover_mode ? 1 : THRUST_MAX);
 
         demands.thrust = constrain(demands.thrust * THRUST_SCALE + THRUST_BASE,
-                THRUST_MIN, THRUST_MAX);
+                THRUST_MIN, THRUST_MAX);*/
 
         auto t = demands.thrust;
         auto r = demands.roll;

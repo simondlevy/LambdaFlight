@@ -26,6 +26,11 @@ inHoverMode = extern "in_hover_mode" Nothing
 
 spec = do
 
+  let thrust_base  = 48.0
+  let thrust_scale = 0.25
+  let thrust_min   = 0.0
+  let thrust_max   = 60
+ 
   let state = liftState stateStruct
 
   let demands = liftDemands demandsStruct
@@ -36,7 +41,13 @@ spec = do
                  then runAltitudeHold (z state) (dz state) thrust'
                  else thrust'
 
-  let demands'' = Demands thrust'' (roll demands) (pitch demands) (yaw demands)
+  let thrust''' = thrust'' * (if inHoverMode then 1 else thrust_max)
+
+  let thrust'''' = constrain (thrust''' * thrust_scale + thrust_base)
+                             thrust_min
+                             thrust_max
+
+  let demands'' = Demands thrust'''' (roll demands) (pitch demands) (yaw demands)
 
   trigger "setDemands" true [
                        arg $ thrust demands'', 
