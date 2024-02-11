@@ -32,7 +32,11 @@ spec = do
 
   let thrust' = thrust demands
 
-  let demands'' = Demands thrust' (roll demands) (pitch demands) (yaw demands)
+  let thrust'' = if inHoverMode
+                 then runAltitudeHold (z state) (dz state) thrust'
+                 else thrust'
+
+  let demands'' = Demands thrust'' (roll demands) (pitch demands) (yaw demands)
 
   trigger "setDemands" true [
                        arg $ thrust demands'', 
