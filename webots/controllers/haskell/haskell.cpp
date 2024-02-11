@@ -270,7 +270,7 @@ int main(int argc, char ** argv)
 
         _yawAngleController.run(state, demands);
 
-        _yawRateController.run(state, demands);
+        //_yawRateController.run(state, demands);
 
         // Call Haskell Copilot
         step();
