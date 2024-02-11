@@ -39,11 +39,11 @@ spec = do
 
   let thrust' = thrust demands
 
-  let thrust'' = if inHoverMode then thrust' else thrust' * thrust_max
+  -- let thrust'' = if inHoverMode then thrust' else thrust' * thrust_max
 
-  let thrust''' = constrain (thrust'' * thrust_scale + thrust_base) thrust_min thrust_max
+  let thrust'' = constrain (thrust' * thrust_scale + thrust_base) thrust_min thrust_max
 
-  let demands'' = Demands thrust''' (roll demands) (pitch demands) (yaw demands)
+  let demands'' = Demands thrust'' (roll demands) (pitch demands) (yaw demands)
 
   trigger "setDemands" true [
                        arg $ thrust demands'', 
