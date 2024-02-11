@@ -34,13 +34,8 @@
 
 #include "sticks.hpp"
 
-static const float THRUST_BASE  = 48.0;
-static const float THRUST_SCALE = 0.25;
-static const float THRUST_MIN   = 0.0;
-static const float THRUST_MAX   = 60;
- 
-static float _pitchRollScale;
-static float _yawScale;
+static const float PITCH_ROLL_SCALE = 1e-4;
+static const float YAW_SCALE = 4e-5;
 
 static PitchRollAngleController _pitchRollAngleController;
 static PitchRollRateController _pitchRollRateController;
@@ -77,11 +72,6 @@ void resetControllers(void)
     _positionController.resetFilters();
 }
 
-static float constrain(float val, float min, float max)
-{
-    return val < min ? min : val > max ? max : val;
-}
-
 //////////////////////////////////////////////////////////////////////////////
 
 // Shared with Haskell Copilot
@@ -89,6 +79,11 @@ static float constrain(float val, float min, float max)
 vehicleState_t state;
 
 demands_t demands;
+
+float thrust_base  = 48.0;
+float thrust_scale = 0.25;
+float thrust_min   = 0.0;
+float thrust_max   = 60;
 
 bool in_hover_mode;
 
@@ -193,8 +188,6 @@ static WbDeviceTag makeSensor(
 int main(int argc, char ** argv)
 {
     static const Clock::rate_t PID_UPDATE_RATE = Clock::RATE_100_HZ;
-    static const float PITCH_ROLL_SCALE = 1e-4;
-    static const float YAW_SCALE = 4e-5;
 
     wb_robot_init();
 
@@ -213,9 +206,6 @@ int main(int argc, char ** argv)
     auto camera = makeSensor("camera", timestep, wb_camera_enable);
 
     sticksInit();
-
-    _pitchRollScale = PITCH_ROLL_SCALE;
-    _yawScale = YAW_SCALE;
 
     initClosedLoopControllers(PID_UPDATE_RATE);
 
@@ -282,18 +272,12 @@ int main(int argc, char ** argv)
         _yawRateController.run(state, demands);
 
         // Scale yaw, pitch and roll demands for mixer
-        demands.yaw *= _yawScale;
-        demands.roll *= _pitchRollScale;
-        demands.pitch *= _pitchRollScale;
+        demands.yaw *= YAW_SCALE;
+        demands.roll *= PITCH_ROLL_SCALE;
+        demands.pitch *= PITCH_ROLL_SCALE;
 
         // Call Haskell Copilot
         step();
-
-        /*
-        demands.thrust = demands.thrust * (in_hover_mode ? 1 : THRUST_MAX);
-
-        demands.thrust = constrain(demands.thrust * THRUST_SCALE + THRUST_BASE,
-                THRUST_MIN, THRUST_MAX);*/
 
         auto t = demands.thrust;
         auto r = demands.roll;

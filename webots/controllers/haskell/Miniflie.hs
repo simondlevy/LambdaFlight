@@ -24,13 +24,20 @@ stateStruct = extern "state" Nothing
 inHoverMode :: Stream Bool
 inHoverMode = extern "in_hover_mode" Nothing
 
+thrust_base :: Stream Float
+thrust_base = extern "thrust_base" Nothing
+
+thrust_scale :: Stream Float
+thrust_scale = extern "thrust_scale" Nothing
+
+thrust_min :: Stream Float
+thrust_min = extern "thrust_min" Nothing
+
+thrust_max :: Stream Float
+thrust_max = extern "thrust_max" Nothing
+
 spec = do
 
-  let thrust_base  = 48.0
-  let thrust_scale = 0.25
-  let thrust_min   = 0.0
-  let thrust_max   = 60
- 
   let state = liftState stateStruct
 
   let demands = liftDemands demandsStruct
