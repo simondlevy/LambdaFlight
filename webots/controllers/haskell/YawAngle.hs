@@ -42,7 +42,14 @@ runYawAnglePid angle yawDemand thrustDemand =
 
       error = cap $ target - angle
 
+      integ = constrain (integ' + error * dt) (-integral_limit) integral_limit
+
+      deriv = (error - error') / dt
+
+      integ' = [0] ++ integ
+
       target' = [0] ++ (if thrustDemand == 0 then angle else target)
 
-      integ = 0
-      deriv = 0
+      error' = [0] ++ error
+
+
