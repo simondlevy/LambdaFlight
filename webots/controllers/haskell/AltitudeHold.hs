@@ -20,3 +20,10 @@ rescale value oldmin oldmax newmin newmax =
 constrain :: Stream Float -> Stream Float -> Stream Float -> Stream Float
 constrain val min max = if val < min then min else if val > max then max else val
 
+------------------------------------------------------------------------------
+
+runAltitudeHold :: Stream Float -> Stream Float -> Stream Float -> Stream Float
+runAltitudeHold z dz thrust = thrust
+
+
+

@@ -348,6 +348,9 @@ int main(int argc, char ** argv)
         demands.roll *= _pitchRollScale;
         demands.pitch *= _pitchRollScale;
 
+        // Call Haskell Copilot
+        step();
+
         demands.thrust = in_hover_mode ? 
             runAltitudeHold(state.z, state.dz, demands.thrust) :
             demands.thrust;
@@ -356,9 +359,6 @@ int main(int argc, char ** argv)
 
         demands.thrust = constrain(demands.thrust * THRUST_SCALE + THRUST_BASE,
                 THRUST_MIN, THRUST_MAX);
-
-        // Call Haskell Copilot
-        step();
 
         auto t = demands.thrust;
         auto r = demands.roll;
