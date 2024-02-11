@@ -144,15 +144,6 @@ static float runAltitudeHold(const float z, const float dz, const float thrust)
     return climbRatePid(climbRate, dz);
 }
 
-static float altitudeHold(
-        const bool inHoverMode,
-        const float thrust,
-        const float z, 
-        const float dz) 
-{
-    return inHoverMode ? runAltitudeHold(z, dz, thrust) : thrust;
-}
-
 //////////////////////////////////////////////////////////////////////////////
 
 // Shared with Haskell Copilot
@@ -178,12 +169,10 @@ extern "C" {
 
     void setDemands(const float t, const float r, const float p, const float y)
     {
-        auto m1 = t - r + p  + y;
-        auto m2 = t - r - p  - y;
-        auto m3 = t + r - p  + y;
-        auto m4 = t + r + p  - y;
-
-        runMotors(m1, m2, m3, m4);
+        demands.thrust = t;
+        demands.roll = r;
+        demands.pitch = p;
+        demands.yaw = y;
     }
 }
 
@@ -359,8 +348,9 @@ int main(int argc, char ** argv)
         demands.roll *= _pitchRollScale;
         demands.pitch *= _pitchRollScale;
 
-        demands.thrust = 
-            altitudeHold(in_hover_mode, demands.thrust, state.z, state.dz);
+        demands.thrust = in_hover_mode ? 
+            runAltitudeHold(state.z, state.dz, demands.thrust) :
+            demands.thrust;
 
         demands.thrust = demands.thrust * (in_hover_mode ? 1 : THRUST_MAX);
 
@@ -369,6 +359,18 @@ int main(int argc, char ** argv)
 
         // Call Haskell Copilot
         step();
+
+        auto t = demands.thrust;
+        auto r = demands.roll;
+        auto p = demands.pitch;
+        auto y = demands.yaw;
+
+        auto m1 = t - r + p  + y;
+        auto m2 = t - r - p  - y;
+        auto m3 = t + r - p  + y;
+        auto m4 = t + r + p  - y;
+
+        runMotors(m1, m2, m3, m4);
     }
 
     wb_robot_cleanup();
