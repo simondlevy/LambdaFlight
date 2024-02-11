@@ -14,6 +14,7 @@ import Utils
 
 -- PID controllers
 import Altitude
+import ClimbRate
 import YawAngle
 import YawRate
 
@@ -49,8 +50,10 @@ spec = do
 
   let thrust' = thrust demands
 
+  let climbRate = runAltitudePid thrust' (z state)
+
   let thrust'' = if inHoverMode
-                 then runAltitudeHold (z state) (dz state) thrust'
+                 then runClimbRatePid climbRate (dz state)
                  else thrust'
 
   let thrust''' = thrust'' * (if inHoverMode then 1 else thrust_max)
