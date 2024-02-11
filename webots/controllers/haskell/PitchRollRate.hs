@@ -14,19 +14,29 @@ runRollRatePid :: Stream Float ->
                   Stream Float -> 
                   Stream Float
 
-runRollRatePid kp ki kd integralLimit demand rate = 0
+runRollRatePid kp ki kd integralLimit demand rate = 
+  kp * error + ki * integ + kd * deriv
+
+  where error = 0
+        integ = 0
+        deriv = 0
 
 ------------------------------------------------------------------------------
 
 runPitchRatePid :: Stream Float -> 
-                  Stream Float -> 
-                  Stream Float -> 
-                  Stream Float -> 
-                  Stream Float -> 
-                  Stream Float -> 
-                  Stream Float
+                   Stream Float -> 
+                   Stream Float -> 
+                   Stream Float -> 
+                   Stream Float -> 
+                   Stream Float -> 
+                   Stream Float
 
-runPitchRatePid kp ki kd integralLimit demand rate = 0
+runPitchRatePid kp ki kd integralLimit demand rate =
+  kp * error + ki * integ + kd * deriv
+
+  where error = 0
+        integ = 0
+        deriv = 0
 
 ------------------------------------------------------------------------------
 
