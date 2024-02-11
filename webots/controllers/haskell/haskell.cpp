@@ -70,15 +70,6 @@ vehicleState_t state;
 
 demands_t demands;
 
-float thrust_base  = 48.0;
-float thrust_scale = 0.25;
-float thrust_min   = 0.0;
-float thrust_max   = 60;
-
-float pitch_roll_scale = 1e-4;
-
-float yaw_scale = 4e-5;
-
 bool in_hover_mode;
 
 extern "C" {

@@ -17,6 +17,19 @@ import Altitude
 import YawAngle
 import YawRate
 
+-- Constants that will be different for sim vs. actual -----------------------
+
+thrust_base  = 48.0
+thrust_scale = 0.25
+thrust_min   = 0.0
+thrust_max   = 60
+
+yaw_scale = 4e-5
+
+pitch_roll_scale = 1e-4
+
+-- Streams from C++ ----------------------------------------------------------
+
 demandsStruct :: Stream DemandsStruct
 demandsStruct = extern "demands" Nothing
 
@@ -26,23 +39,7 @@ stateStruct = extern "state" Nothing
 inHoverMode :: Stream Bool
 inHoverMode = extern "in_hover_mode" Nothing
 
-thrust_base :: Stream Float
-thrust_base = extern "thrust_base" Nothing
-
-thrust_scale :: Stream Float
-thrust_scale = extern "thrust_scale" Nothing
-
-thrust_min :: Stream Float
-thrust_min = extern "thrust_min" Nothing
-
-thrust_max :: Stream Float
-thrust_max = extern "thrust_max" Nothing
-
-yaw_scale :: Stream Float
-yaw_scale = extern "yaw_scale" Nothing
-
-pitch_roll_scale :: Stream Float
-pitch_roll_scale = extern "pitch_roll_scale" Nothing
+-- Main ----------------------------------------------------------------------
 
 spec = do
 
