@@ -351,9 +351,10 @@ int main(int argc, char ** argv)
         // Call Haskell Copilot
         step();
 
+        /*
         demands.thrust = in_hover_mode ? 
             runAltitudeHold(state.z, state.dz, demands.thrust) :
-            demands.thrust;
+            demands.thrust;*/
 
         demands.thrust = demands.thrust * (in_hover_mode ? 1 : THRUST_MAX);
 
