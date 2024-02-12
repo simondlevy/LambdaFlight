@@ -26,8 +26,7 @@
 #include <datatypes.h>
 #include <num.hpp>
 
-#include <closedloops/pitchroll_angle.hpp>
-#include <closedloops/position.hpp>
+#include "pos.hpp"
 
 #include "sticks.hpp"
 
