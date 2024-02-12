@@ -17,4 +17,7 @@ constrain :: SFloat -> SFloat -> SFloat -> SFloat
 constrain val min max = if val < min then min else if val > max then max else val
 
 rad2deg :: SFloat -> SFloat
-rad2deg rad = 180 * rad / 3.1415928
+rad2deg rad = 180 * rad / pi
+
+deg2rad :: SFloat -> SFloat
+deg2rad deg = deg * pi / 180
