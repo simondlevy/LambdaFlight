@@ -24,9 +24,6 @@
 #include <webots/robot.h>
 
 #include <datatypes.h>
-#include <num.hpp>
-
-#include "pos.hpp"
 
 #include "sticks.hpp"
 
@@ -202,10 +199,6 @@ int main(int argc, char ** argv)
             demands.thrust = fconstrain(demands.thrust, 0, 1);
             _altitudeTarget = 0;
         }
-
-        // Position controller converts meters per second to
-        // degrees
-        // runPositionPid(in_hover_mode, state, demands); 
 
         // Call Haskell Copilot
         step();
