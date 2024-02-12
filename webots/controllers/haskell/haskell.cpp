@@ -203,21 +203,9 @@ int main(int argc, char ** argv)
             _altitudeTarget = 0;
         }
 
-        if (in_hover_mode) {
-
-            // Position controller converts meters per second to
-            // degrees
-            runPositionPid(state, demands); 
-        }
-
-        else {
-
-            // In non-hover mode, pitch/roll demands come in as
-            // [-1,+1], which we convert to degrees for input to
-            // pitch/roll controller
-            demands.roll *= 30;
-            demands.pitch *= 30;
-        }
+        // Position controller converts meters per second to
+        // degrees
+        runPositionPid(in_hover_mode, state, demands); 
 
         // Call Haskell Copilot
         step();
