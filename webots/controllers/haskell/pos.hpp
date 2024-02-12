@@ -7,42 +7,21 @@
 
 class Pid {
 
-    private:
-
-        static constexpr float DEFAULT_PID_INTEGRATION_LIMIT = 5000;
-        static constexpr float DEFAULT_PID_OUTPUT_LIMIT =  0;
-
-        float _integ;        // integral
-        float _kp;           // proportional gain
-        float _ki;           // integral gain
-        float _outP;         // proportional output (debugging)
-        float _outI;         // integral output (debugging)
-        float _outD;         // derivative output (debugging)
-        float _outFF;        // feedforward output (debugging)
-        float _iLimit;       // integral limit, absolute value. '0' means no limit.
-        float _outputLimit;  // total PID output limit, absolute value. '0' means no limit.
-        float _dt;           // delta-time dt
-        Lpf _dFilter;        // filter for D term
-        bool _enableDFilter; // filter for D term enable flag
-
     public:
-
-        void init(const float kp, const float ki)
-        {
-            _kp = kp;
-            _ki = ki;
-            _dt = 0.01;
-        }
 
         float run(const float desired, const float measured)
         {
+            static const float kp = 25;
+            static const float ki = 1;
+            static const float dt = 0.01;
+
             auto error = desired - measured;
 
             static float _integ;
 
-            _integ += error * _dt;
+            _integ += error * dt;
 
-            return _kp * error + _ki * _integ;
+            return kp * error + ki * _integ;
         }
 
 
@@ -51,12 +30,6 @@ class Pid {
 class PositionController {
 
     public:
-
-        void init(const float kp=25, const float ki=1)
-        {
-            initAxis(_pidX, kp, ki);
-            initAxis(_pidY, kp, ki);
-        }
 
         /**
           * Demands are input as normalized interval [-1,+1] and output as
@@ -95,11 +68,6 @@ class PositionController {
 
         Pid _pidX;
         Pid _pidY;
-
-        void initAxis(Pid & pid, const float kp, const float ki)
-        {
-            pid.init(kp, ki);
-        }
 
         float runAxis(const float demand, const float measured, Pid & pid)
         {

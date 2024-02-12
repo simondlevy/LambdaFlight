@@ -165,8 +165,6 @@ int main(int argc, char ** argv)
 
     sticksInit();
 
-    _positionController.init();
-
     while (wb_robot_step(timestep) != -1) {
 
         // Get open-loop demands from input device (keyboard, joystick, etc.)
