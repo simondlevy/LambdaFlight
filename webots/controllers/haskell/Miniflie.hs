@@ -15,6 +15,7 @@ import Utils
 -- PID controllers
 import Altitude
 import ClimbRate
+import PitchRollAngle
 import PitchRollRate
 import YawAngle
 import YawRate
@@ -63,8 +64,11 @@ spec = do
                              thrust_min
                              thrust_max
 
-  let (roll', pitch') = runPitchRollRatePid (roll demands, pitch demands)
-                                            (dphi state, dtheta state)
+  let (roll', pitch') = runPitchRollAnglePid (roll demands, pitch demands)
+                                             (phi state, theta state)
+
+  let (roll'', pitch'') = runPitchRollRatePid (roll', pitch')
+                                              (dphi state, dtheta state)
 
   let yaw' = runYawAnglePid (yaw demands) (psi state)
 
@@ -72,8 +76,8 @@ spec = do
 
   trigger "setDemands" true [
                        arg $ thrust'''',
-                       arg $ roll' * pitch_roll_scale, 
-                       arg $ pitch'* pitch_roll_scale, 
+                       arg $ roll'' * pitch_roll_scale, 
+                       arg $ pitch''* pitch_roll_scale, 
                        arg $ yaw'' * yaw_scale
                      ] 
 
