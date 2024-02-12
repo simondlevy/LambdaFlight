@@ -205,7 +205,7 @@ int main(int argc, char ** argv)
 
         // Position controller converts meters per second to
         // degrees
-        runPositionPid(in_hover_mode, state, demands); 
+        // runPositionPid(in_hover_mode, state, demands); 
 
         // Call Haskell Copilot
         step();
