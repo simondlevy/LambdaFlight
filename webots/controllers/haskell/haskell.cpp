@@ -42,15 +42,6 @@ static float m2;
 static float m3;
 static float m4;
 
-static void initClosedLoopControllers(const Clock::rate_t pidUpdateRate) 
-{
-    _positionController.init(pidUpdateRate);
-}
-
-void resetControllers(void)
-{
-    _positionController.resetPids();
-}
 
 //////////////////////////////////////////////////////////////////////////////
 
@@ -156,8 +147,6 @@ static WbDeviceTag makeSensor(
 
 int main(int argc, char ** argv)
 {
-    static const Clock::rate_t PID_UPDATE_RATE = Clock::RATE_100_HZ;
-
     wb_robot_init();
 
     const int timestep = (int)wb_robot_get_basic_time_step();
@@ -176,7 +165,7 @@ int main(int argc, char ** argv)
 
     sticksInit();
 
-    initClosedLoopControllers(PID_UPDATE_RATE);
+    _positionController.init();
 
     while (wb_robot_step(timestep) != -1) {
 
@@ -190,7 +179,7 @@ int main(int argc, char ** argv)
             demands.pitch = 0;
             demands.yaw = 0;
 
-            resetControllers();
+            _positionController.resetPids();
         }
 
         // Check where we're in hover mode (button press on game controller)

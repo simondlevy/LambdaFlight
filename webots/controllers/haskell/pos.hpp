@@ -1,6 +1,5 @@
 #pragma once
 
-#include <closedloop.hpp>
 #include <math3d.h>
 
 #include <num.hpp>
@@ -16,11 +15,8 @@ class Pid {
         float _desired;      // set point
         float _error;        // error
         float _integ;        // integral
-        float _deriv;        // derivative
         float _kp;           // proportional gain
         float _ki;           // integral gain
-        float _kd;           // derivative gain
-        float _kff;          // feedforward gain
         float _outP;         // proportional output (debugging)
         float _outI;         // integral output (debugging)
         float _outD;         // derivative output (debugging)
@@ -33,11 +29,10 @@ class Pid {
 
     public:
 
-        void init( const float kp, const float ki)
+        void init(const float kp, const float ki)
         {
             _error         = 0;
             _integ         = 0;
-            _deriv         = 0;
             _desired       = 0;
             _kp            = kp;
             _ki            = ki;
@@ -53,7 +48,6 @@ class Pid {
         {
             _error     = 0;
             _integ     = 0;
-            _deriv     = 0;
         }
 
         float run(const float desired, const float measured)
@@ -62,11 +56,6 @@ class Pid {
 
             _error = _desired - measured;
 
-            return run();
-        }
-
-        float run(void)
-        {
             _outP = _kp * _error;
 
             auto output = _outP;
@@ -89,16 +78,6 @@ class Pid {
             return output;
         }
 
-        void setDesired(const float desired)
-        {
-            _desired = desired;
-        }
-
-        void setError(const float error)
-        {
-            _error = error;
-        }
-
         void setOutputLimit(const float outputLimit)
         {
             _outputLimit = outputLimit;
@@ -106,17 +85,12 @@ class Pid {
 
 }; // class Pid
 
-class PositionController : public ClosedLoopController {
+class PositionController {
 
     public:
 
-        void init(
-                const Clock::rate_t updateRate, 
-                const float kp=25, 
-                const float ki=1)
+        void init(const float kp=25, const float ki=1)
         {
-            ClosedLoopController::init(updateRate);
-
             initAxis(_pidX, kp, ki);
             initAxis(_pidY, kp, ki);
         }
@@ -129,8 +103,7 @@ class PositionController : public ClosedLoopController {
           *
           * pitch: input forward positive => output negative
           */
-         virtual void run(const vehicleState_t & state,
-                demands_t & demands) override 
+        void run(const vehicleState_t & state, demands_t & demands) 
         {
             // Rotate world-coordinate velocities into body coordinates
             const auto dxw = state.dx;
