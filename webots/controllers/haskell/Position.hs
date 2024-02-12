@@ -68,7 +68,7 @@ runPositionPid :: SBool ->
                   (SFloat, SFloat)
 
 runPositionPid inHoverMode psi (rollDemand, pitchDemand) (dx, dy) =
-  (rollDemand', pitchDemand') 
+  (rollDemand, pitchDemand) 
 
   where 
 

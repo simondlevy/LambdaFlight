@@ -67,12 +67,17 @@ spec = do
 
   let (roll', pitch') = (roll demands, pitch demands)
 
+  let (roll'', pitch'') = runPositionPid inHoverMode 
+                                         (psi state) 
+                                         (roll', pitch')
+                                         (dx state, dy state)
 
-  let (roll'', pitch'') = runPitchRollAnglePid (roll' , pitch')
-                                               (phi state, theta state)
 
-  let (roll''', pitch''') = runPitchRollRatePid (roll'', pitch'')
-                                                (dphi state, dtheta state)
+  let (roll''', pitch''') = runPitchRollAnglePid (roll'' , pitch'')
+                                                 (phi state, theta state)
+
+  let (roll'''', pitch'''') = runPitchRollRatePid (roll''', pitch''')
+                                                  (dphi state, dtheta state)
 
   let yaw' = runYawAnglePid (yaw demands) (psi state)
 
@@ -80,8 +85,8 @@ spec = do
 
   trigger "setDemands" true [
                        arg $ thrust'''',
-                       arg $ roll'''  * pitch_roll_scale, 
-                       arg $ pitch''' * pitch_roll_scale, 
+                       arg $ roll''''  * pitch_roll_scale, 
+                       arg $ pitch'''' * pitch_roll_scale, 
                        arg $ yaw'' * yaw_scale
                      ] 
 
