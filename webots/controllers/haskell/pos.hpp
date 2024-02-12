@@ -1,10 +1,5 @@
 #pragma once
 
-#include <math3d.h>
-
-#include <num.hpp>
-#include <lpf.hpp>
-
 static float runX(const float desired, const float measured)
 {
     static const float kp = 25;
@@ -36,6 +31,11 @@ static float runY(const float desired, const float measured)
     return -(kp * error + ki * _integ);
 }
 
+static float deg2rad(float degrees) 
+{ 
+    return (M_PI / 180.0f) * degrees; 
+}
+
 class PositionController {
 
     public:
@@ -64,10 +64,4 @@ class PositionController {
             demands.pitch = runX(demands.pitch, dxb);
         }
 
-    private:
-
-        static float deg2rad(float degrees) 
-        { 
-            return (M_PI / 180.0f) * degrees; 
-        }
 };

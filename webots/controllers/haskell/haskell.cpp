@@ -92,6 +92,11 @@ static WbDeviceTag makeMotor(const char * name, const float direction)
     return motor;
 }
 
+static float rad2deg(const float rad)
+{
+    return rad / M_PI * 180;
+}
+
 static void getVehicleState(
         WbDeviceTag & gyro, 
         WbDeviceTag & imu, 
