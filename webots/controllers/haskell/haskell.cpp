@@ -178,8 +178,6 @@ int main(int argc, char ** argv)
             demands.roll = 0;
             demands.pitch = 0;
             demands.yaw = 0;
-
-            _positionController.resetPids();
         }
 
         // Check where we're in hover mode (button press on game controller)

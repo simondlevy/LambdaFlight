@@ -12,8 +12,6 @@ class Pid {
         static constexpr float DEFAULT_PID_INTEGRATION_LIMIT = 5000;
         static constexpr float DEFAULT_PID_OUTPUT_LIMIT =  0;
 
-        float _desired;      // set point
-        float _error;        // error
         float _integ;        // integral
         float _kp;           // proportional gain
         float _ki;           // integral gain
@@ -31,57 +29,22 @@ class Pid {
 
         void init(const float kp, const float ki)
         {
-            _error         = 0;
-            _integ         = 0;
-            _desired       = 0;
-            _kp            = kp;
-            _ki            = ki;
-            _dt            = 0.01;
-        }
-
-        void setIntegralLimit(const float limit)
-        {
-            _iLimit = limit;
-        }
-
-        void reset(void)
-        {
-            _error     = 0;
-            _integ     = 0;
+            _kp = kp;
+            _ki = ki;
+            _dt = 0.01;
         }
 
         float run(const float desired, const float measured)
         {
-            _desired = desired;
+            auto error = desired - measured;
 
-            _error = _desired - measured;
+            static float _integ;
 
-            _outP = _kp * _error;
+            _integ += error * _dt;
 
-            auto output = _outP;
-
-            _integ += _error * _dt;
-
-            // Constrain the integral (unless the iLimit is zero)
-            if(_iLimit != 0) {
-                _integ = Num::fconstrain(_integ, -_iLimit, _iLimit);
-            }
-
-            _outI = _ki * _integ;
-            output += _outI;
-
-            // Constrain the total PID output (unless the outputLimit is zero)
-            if(_outputLimit != 0) {
-                output = Num::fconstrain(output, -_outputLimit, _outputLimit);
-            }
-
-            return output;
+            return _kp * error + _ki * _integ;
         }
 
-        void setOutputLimit(const float outputLimit)
-        {
-            _outputLimit = outputLimit;
-        }
 
 }; // class Pid
 
@@ -119,12 +82,6 @@ class PositionController {
             demands.pitch = runAxis(demands.pitch, dxb, _pidX);
         }
 
-        void resetPids(void)
-        {
-            _pidX.reset();
-            _pidY.reset();
-        }
-
     private:
 
         static constexpr float LIMIT = 20;
@@ -142,7 +99,6 @@ class PositionController {
         void initAxis(Pid & pid, const float kp, const float ki)
         {
             pid.init(kp, ki);
-            pid.setOutputLimit(LIMIT * LIMIT_OVERHEAD);
         }
 
         float runAxis(const float demand, const float measured, Pid & pid)
