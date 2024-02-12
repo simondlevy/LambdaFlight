@@ -63,14 +63,17 @@ spec = do
                              thrust_min
                              thrust_max
 
+  let (roll', pitch') = runPitchRollRatePid (roll demands, pitch demands)
+                                            (dphi state, dtheta state)
+
   let yaw' = runYawAnglePid (yaw demands) (psi state)
 
   let yaw'' = runYawRatePid yaw' (dpsi state)
 
   trigger "setDemands" true [
                        arg $ thrust'''',
-                       arg $ (roll demands) * pitch_roll_scale, 
-                       arg $ (pitch demands) * pitch_roll_scale, 
+                       arg $ roll' * pitch_roll_scale, 
+                       arg $ pitch'* pitch_roll_scale, 
                        arg $ yaw'' * yaw_scale
                      ] 
 

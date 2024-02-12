@@ -27,13 +27,11 @@
 #include <num.hpp>
 
 #include <closedloops/pitchroll_angle.hpp>
-#include <closedloops/pitchroll_rate.hpp>
 #include <closedloops/position.hpp>
 
 #include "sticks.hpp"
 
 static PitchRollAngleController _pitchRollAngleController;
-static PitchRollRateController _pitchRollRateController;
 static PositionController _positionController;
 
 static WbDeviceTag m1_motor;
@@ -49,14 +47,12 @@ static float m4;
 static void initClosedLoopControllers(const Clock::rate_t pidUpdateRate) 
 {
     _pitchRollAngleController.init(pidUpdateRate);
-    _pitchRollRateController.init(pidUpdateRate);
     _positionController.init(pidUpdateRate);
 }
 
 void resetControllers(void)
 {
     _pitchRollAngleController.resetPids();
-    _pitchRollRateController.resetPids();
     _positionController.resetPids();
 
     _positionController.resetFilters();
@@ -242,8 +238,6 @@ int main(int argc, char ** argv)
         }
 
         _pitchRollAngleController.run(state, demands);
-
-        _pitchRollRateController.run(state, demands);
 
         // Call Haskell Copilot
         step();
