@@ -8,7 +8,7 @@ import Copilot.Compile.C99
 
 import Utils
 
-cap :: Stream Float -> Stream Float
+cap :: SFloat -> SFloat
 
 cap angle = angle''
 
@@ -22,7 +22,7 @@ cap angle = angle''
 -- Demand is input as desired angle normalized to [-1,+1] and output
 -- as degrees per second, both nose-right positive.
 
-runYawAnglePid :: Stream Float -> Stream Float -> Stream Float
+runYawAnglePid :: SFloat -> SFloat -> SFloat
 
 runYawAnglePid yawDemand angle = -(kp * error + ki * integ + kd * deriv) 
   -- Return the result negated, so demand will still be nose-right positive

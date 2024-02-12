@@ -7,17 +7,17 @@ import Language.Copilot
 import Copilot.Compile.C99
 
 data Motors = QuadMotors { 
-                       qm1 :: Stream Float
-                     , qm2 :: Stream Float  
-                     , qm3 :: Stream Float  
-                     , qm4 :: Stream Float   
+                       qm1 :: SFloat
+                     , qm2 :: SFloat  
+                     , qm3 :: SFloat  
+                     , qm4 :: SFloat   
                } |
 
               HexMotors {
-                    hm1 :: Stream Float  
-                  , hm2 :: Stream Float  
-                  , hm3 :: Stream Float  
-                  , hm4 :: Stream Float  
-                  , hm5 :: Stream Float  
-                  , hm6 :: Stream Float  
+                    hm1 :: SFloat  
+                  , hm2 :: SFloat  
+                  , hm3 :: SFloat  
+                  , hm4 :: SFloat  
+                  , hm5 :: SFloat  
+                  , hm6 :: SFloat  
                } deriving (Show)

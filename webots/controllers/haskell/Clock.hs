@@ -16,10 +16,10 @@ data ClockRate =
             | RATE_500_HZ
             | RATE_1000_HZ
 
-rateToPeriod :: ClockRate -> Stream Float
+rateToPeriod :: ClockRate -> SFloat
 rateToPeriod rate = 1 / (rateToFloat rate)
 
-rateToFloat :: ClockRate -> Stream Float
+rateToFloat :: ClockRate -> SFloat
 rateToFloat RATE_25_HZ   = 25
 rateToFloat RATE_30_HZ   = 30
 rateToFloat RATE_33_HZ   = 33

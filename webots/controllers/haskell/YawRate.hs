@@ -16,7 +16,7 @@ import Utils
 -- negated demand and the angular velocity, and negate the result to get the
 -- correct yaw demand.
 
-runYawRatePid :: Stream Float -> Stream Float -> Stream Float
+runYawRatePid :: SFloat -> SFloat -> SFloat
 runYawRatePid desired measured = -(kp * error + ki * integ)
 
   where

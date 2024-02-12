@@ -8,7 +8,7 @@ import Copilot.Compile.C99
 
 import Utils
 
-runAltitudePid :: Stream Float -> Stream Float -> Stream Float
+runAltitudePid :: SFloat -> SFloat -> SFloat
 runAltitudePid thrust z = kp * error + ki * integ
 
   where

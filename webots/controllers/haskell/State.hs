@@ -6,6 +6,8 @@ module State where
 import Language.Copilot
 import Copilot.Compile.C99
 
+import Utils
+
 data StateStruct = StateStruct { 
     x'      :: Field "x" Float 
   , dx'     :: Field "dx" Float 
@@ -22,18 +24,18 @@ data StateStruct = StateStruct {
 }
 
 data State = State { 
-    x      :: Stream Float 
-  , dx     :: Stream Float 
-  , y      :: Stream Float 
-  , dy     :: Stream Float 
-  , z      :: Stream Float 
-  , dz     :: Stream Float 
-  , phi    :: Stream Float 
-  , dphi   :: Stream Float 
-  , theta  :: Stream Float 
-  , dtheta :: Stream Float 
-  , psi    :: Stream Float 
-  , dpsi   :: Stream Float 
+    x      :: SFloat 
+  , dx     :: SFloat 
+  , y      :: SFloat 
+  , dy     :: SFloat 
+  , z      :: SFloat 
+  , dz     :: SFloat 
+  , phi    :: SFloat 
+  , dphi   :: SFloat 
+  , theta  :: SFloat 
+  , dtheta :: SFloat 
+  , psi    :: SFloat 
+  , dpsi   :: SFloat 
 }
 
 instance Struct StateStruct where

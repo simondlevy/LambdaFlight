@@ -10,13 +10,13 @@ import Utils
 
 -------------------------------------------------------------------------------
 
-runRollAnglePid :: Stream Float -> 
-                   Stream Float -> 
-                   Stream Float -> 
-                   Stream Float -> 
-                   Stream Float -> 
-                   Stream Float -> 
-                   Stream Float
+runRollAnglePid :: SFloat -> 
+                   SFloat -> 
+                   SFloat -> 
+                   SFloat -> 
+                   SFloat -> 
+                   SFloat -> 
+                   SFloat
 
 runRollAnglePid kp ki dt integral_limit demand angle = kp * error + ki * integ
 
@@ -30,13 +30,13 @@ runRollAnglePid kp ki dt integral_limit demand angle = kp * error + ki * integ
 
 -------------------------------------------------------------------------------
 
-runPitchAnglePid :: Stream Float -> 
-                    Stream Float -> 
-                    Stream Float -> 
-                    Stream Float -> 
-                    Stream Float -> 
-                    Stream Float -> 
-                    Stream Float
+runPitchAnglePid :: SFloat -> 
+                    SFloat -> 
+                    SFloat -> 
+                    SFloat -> 
+                    SFloat -> 
+                    SFloat -> 
+                    SFloat
 
 runPitchAnglePid kp ki dt integral_limit demand angle = kp * error + ki * integ
 
@@ -50,8 +50,8 @@ runPitchAnglePid kp ki dt integral_limit demand angle = kp * error + ki * integ
 
 ------------------------------------------------------------------------------
 
-runPitchRollAnglePid :: (Stream Float, Stream Float) -> (Stream Float, Stream Float) ->
-  (Stream Float, Stream Float)
+runPitchRollAnglePid :: (SFloat, SFloat) -> (SFloat, SFloat) ->
+  (SFloat, SFloat)
 
 runPitchRollAnglePid (rollDemand, pitchDemand) (rollAngle, pitchAngle) =
   (rollDemand', pitchDemand') 

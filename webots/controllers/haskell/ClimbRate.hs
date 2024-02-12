@@ -8,7 +8,7 @@ import Copilot.Compile.C99
 
 import Utils
 
-runClimbRatePid :: Stream Float -> Stream Float -> Stream Float
+runClimbRatePid :: SFloat -> SFloat -> SFloat
 runClimbRatePid climbRate dz = kp * error + ki * integ
 
   where

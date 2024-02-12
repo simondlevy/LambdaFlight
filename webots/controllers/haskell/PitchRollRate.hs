@@ -10,14 +10,14 @@ import Utils
 
 -------------------------------------------------------------------------------
 
-runRollRatePid :: Stream Float -> 
-                   Stream Float -> 
-                   Stream Float -> 
-                   Stream Float -> 
-                   Stream Float -> 
-                   Stream Float -> 
-                   Stream Float -> 
-                   Stream Float
+runRollRatePid :: SFloat -> 
+                   SFloat -> 
+                   SFloat -> 
+                   SFloat -> 
+                   SFloat -> 
+                   SFloat -> 
+                   SFloat -> 
+                   SFloat
 
 runRollRatePid kp ki kd dt integral_limit demand rate =
   kp * error + ki * integ + kd * deriv
@@ -36,14 +36,14 @@ runRollRatePid kp ki kd dt integral_limit demand rate =
 
 -------------------------------------------------------------------------------
 
-runPitchRatePid :: Stream Float -> 
-                   Stream Float -> 
-                   Stream Float -> 
-                   Stream Float -> 
-                   Stream Float -> 
-                   Stream Float -> 
-                   Stream Float -> 
-                   Stream Float
+runPitchRatePid :: SFloat -> 
+                   SFloat -> 
+                   SFloat -> 
+                   SFloat -> 
+                   SFloat -> 
+                   SFloat -> 
+                   SFloat -> 
+                   SFloat
 
 runPitchRatePid kp ki kd dt integral_limit demand rate =
   kp * error + ki * integ + kd * deriv
@@ -62,8 +62,8 @@ runPitchRatePid kp ki kd dt integral_limit demand rate =
 
 ------------------------------------------------------------------------------
 
-runPitchRollRatePid :: (Stream Float, Stream Float) -> (Stream Float, Stream Float) ->
-  (Stream Float, Stream Float)
+runPitchRollRatePid :: (SFloat, SFloat) -> (SFloat, SFloat) ->
+  (SFloat, SFloat)
 
 runPitchRollRatePid (rollDemand, pitchDemand) (rollRate, pitchRate) =
   (rollDemand', pitchDemand') 

@@ -6,6 +6,8 @@ module Demands where
 import Language.Copilot
 import Copilot.Compile.C99
 
+import Utils
+
 data DemandsStruct = DemandsStruct { 
     thrust' :: Field "thrust" Float 
   , roll'   :: Field "roll" Float 
@@ -15,10 +17,10 @@ data DemandsStruct = DemandsStruct {
 
 data Demands = Demands {
 
-     thrust :: Stream Float
-   , roll   :: Stream Float
-   , pitch  :: Stream Float
-   , yaw    :: Stream Float
+     thrust :: SFloat
+   , roll   :: SFloat
+   , pitch  :: SFloat
+   , yaw    :: SFloat
 }
 
 liftDemands :: Stream DemandsStruct -> Demands
@@ -42,6 +44,6 @@ instance Typed DemandsStruct where
   typeOf = Struct (DemandsStruct (Field 0) (Field 0) (Field 0) (Field 0))
 
 getDemands :: Demands -> 
-                (Stream Float, Stream Float, Stream Float, Stream Float)
+                (SFloat, SFloat, SFloat, SFloat)
 
 getDemands demands = (thrust demands, roll demands, pitch demands, yaw demands)
