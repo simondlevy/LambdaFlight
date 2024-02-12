@@ -50,8 +50,6 @@ static void initClosedLoopControllers(const Clock::rate_t pidUpdateRate)
 void resetControllers(void)
 {
     _positionController.resetPids();
-
-    _positionController.resetFilters();
 }
 
 //////////////////////////////////////////////////////////////////////////////
