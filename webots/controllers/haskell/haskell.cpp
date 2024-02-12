@@ -30,8 +30,6 @@
 
 #include "sticks.hpp"
 
-static PositionController _positionController;
-
 static WbDeviceTag m1_motor;
 static WbDeviceTag m2_motor;
 static WbDeviceTag m3_motor;
@@ -209,7 +207,7 @@ int main(int argc, char ** argv)
 
             // Position controller converts meters per second to
             // degrees
-            _positionController.run(state, demands); 
+            runPositionPid(state, demands); 
         }
 
         else {
