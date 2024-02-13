@@ -72,13 +72,12 @@ spec = do
 
   let demands2 = Demands thrust2 roll2 pitch2 (yaw demands1)
 
-  let demands3 = runPitchRollAnglePid state demands2
+  let pids = [runPitchRollAnglePid, 
+              runPitchRollRatePid, 
+              runYawAnglePid, 
+              runYawRatePid]
 
-  let demands4 = runPitchRollRatePid state demands3
-
-  let demands5 = runYawAnglePid state demands4
-
-  let demands6 = runYawRatePid state demands5
+  let demands3 = foldl (\d f -> f state d) demands2 pids
 
   ----------------------------------------------------------------------------
 
@@ -89,9 +88,9 @@ spec = do
                              thrust_max
 
   let motors = quadCFMixer $ Demands thrust4 
-                                     ((roll demands6) * pitch_roll_scale)
-                                     ((pitch demands6) * pitch_roll_scale)
-                                     ((yaw demands6) * yaw_scale)
+                                     ((roll demands3) * pitch_roll_scale)
+                                     ((pitch demands3) * pitch_roll_scale)
+                                     ((yaw demands3) * yaw_scale)
   trigger "runMotors" true [
                        arg $ qm1 motors, 
                        arg $ qm2 motors, 
