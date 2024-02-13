@@ -70,6 +70,7 @@ runPitchRollAnglePid (rollDemand, pitchDemand) (rollAngle, pitchAngle) =
 ------------------------------------------------------------------------------
 ------------------------------------------------------------------------------
 
+
 newRunPitchRollAnglePid :: ClosedLoopController
 
 newRunPitchRollAnglePid inHoverMode state demands = demands'
@@ -79,7 +80,7 @@ newRunPitchRollAnglePid inHoverMode state demands = demands'
         dt = 0.01
         integral_limit = 20
 
-        demands' = Demands (thrust demands)
-                           (roll demands)
-                           (pitch demands)
-                           (yaw demands)
+        roll'  = runRollAnglePid  kp ki dt integral_limit (roll demands)  (phi state)
+        pitch' = runPitchAnglePid kp ki dt integral_limit (pitch demands) (theta state)
+
+        demands' = Demands (thrust demands) roll' pitch' (yaw demands)
