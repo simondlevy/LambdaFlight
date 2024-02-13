@@ -72,9 +72,9 @@ spec = do
 
   let demands'' = Demands thrust'' roll'' pitch'' (yaw demands')
 
-  let demands''' = newRunPitchRollAnglePid state demands''
+  let demands''' = runPitchRollAnglePid state demands''
 
-  let demands'''' = newRunPitchRollRatePid state demands'''
+  let demands'''' = runPitchRollRatePid state demands'''
 
   let demands''''' = newRunYawAnglePid state demands''''
 

@@ -53,27 +53,9 @@ runPitchAnglePid kp ki dt integral_limit demand angle = kp * error + ki * integ
 
 ------------------------------------------------------------------------------
 
-runPitchRollAnglePid :: (SFloat, SFloat) -> (SFloat, SFloat) ->
-  (SFloat, SFloat)
+runPitchRollAnglePid :: ClosedLoopController
 
-runPitchRollAnglePid (rollDemand, pitchDemand) (rollAngle, pitchAngle) =
-  (rollDemand', pitchDemand') 
-
-  where kp = 6
-        ki = 3
-        dt = 0.01
-        integral_limit = 20
-
-        rollDemand'  = runRollAnglePid  kp ki dt integral_limit rollDemand  rollAngle
-        pitchDemand' = runPitchAnglePid kp ki dt integral_limit pitchDemand pitchAngle
-
-------------------------------------------------------------------------------
-------------------------------------------------------------------------------
-
-
-newRunPitchRollAnglePid :: ClosedLoopController
-
-newRunPitchRollAnglePid state demands = demands'
+runPitchRollAnglePid state demands = demands'
 
   where kp = 6
         ki = 3
