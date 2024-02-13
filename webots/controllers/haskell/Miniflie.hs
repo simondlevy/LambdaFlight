@@ -59,9 +59,7 @@ spec = do
 
   let demands1 = runAltitudePid state demands
 
-  let thrust2 = if inHoverMode
-                 then runClimbRatePid (thrust demands1) (dz state)
-                 else thrust1
+  let thrust2 = runClimbRatePid (thrust demands1) (dz state)
 
   let (roll1, pitch1) = (roll demands, pitch demands)
 
@@ -81,7 +79,8 @@ spec = do
 
   ----------------------------------------------------------------------------
 
-  let thrust3 = thrust2 * (if inHoverMode then 1 else thrust_max)
+  let thrust3 = (if inHoverMode then thrust2 else thrust1) * 
+                (if inHoverMode then 1 else thrust_max)
 
   let thrust4 = constrain (thrust3 * thrust_scale + thrust_base)
                              thrust_min
