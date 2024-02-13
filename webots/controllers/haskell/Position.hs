@@ -70,9 +70,9 @@ runPositionPid inHoverMode psi (rollDemand, pitchDemand) (dx, dy) =
   where 
 
         -- Rotate world-coordinate velocities into body coordinates
-        dpsi = deg2rad psi
-        cospsi = cos dpsi
-        sinpsi = sin dpsi
+        psi' = deg2rad psi
+        cospsi = cos psi'
+        sinpsi = sin psi'
         dxb =  dx   * cospsi + dy * sinpsi
         dyb = (-dx) * sinpsi + dy * cospsi       
 
@@ -93,5 +93,16 @@ newRunPositionPid inHoverMode state demands = demands'  where
     kp = 25
     ki = 1
     dt = 0.01
+
+    -- Rotate world-coordinate velocities into body coordinates
+    psi' = deg2rad $ psi state
+    cospsi = cos psi'
+    sinpsi = sin psi'
+    dx' = dx state
+    dy' = dy state
+
+    dxb =  dx'   * cospsi + dy' * sinpsi
+    dyb = (-dx') * sinpsi + dy' * cospsi       
+
 
     demands' = demands
