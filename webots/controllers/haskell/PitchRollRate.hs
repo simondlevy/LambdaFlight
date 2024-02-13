@@ -6,6 +6,9 @@ module PitchRollRate where
 import Language.Copilot
 import Copilot.Compile.C99
 
+import ClosedLoop
+import Demands
+import State
 import Utils
 
 -------------------------------------------------------------------------------
@@ -76,3 +79,23 @@ runPitchRollRatePid (rollDemand, pitchDemand) (rollRate, pitchRate) =
 
         rollDemand'  = runRollRatePid  kp ki kd dt integral_limit rollDemand  rollRate
         pitchDemand' = runPitchRatePid kp ki kd dt integral_limit pitchDemand pitchRate
+
+------------------------------------------------------------------------------
+------------------------------------------------------------------------------
+
+newRunPitchRollRatePid :: ClosedLoopController
+
+newRunPitchRollRatePid inHoverMode state demands = demands' where
+
+  kp = 125
+  ki = 250
+  kd = 1.25
+  dt = 0.01
+  integral_limit = 33
+
+  roll'  = runRollRatePid  kp ki kd dt integral_limit (roll demands) (dphi state)
+  pitch' = runPitchRatePid kp ki kd dt integral_limit (pitch demands) (dtheta state)
+
+  demands' = Demands (thrust demands) roll' pitch' (yaw demands)
+
+
