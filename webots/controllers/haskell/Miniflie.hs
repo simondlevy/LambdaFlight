@@ -55,43 +55,43 @@ spec = do
 
   ----------------------------------------------------------------------------
 
-  let thrust' = thrust demands
+  let thrust1 = thrust demands
 
-  let demands' = runAltitudePid state demands
+  let demands1 = runAltitudePid state demands
 
-  let thrust'' = if inHoverMode
-                 then runClimbRatePid (thrust demands') (dz state)
-                 else thrust'
+  let thrust2 = if inHoverMode
+                 then runClimbRatePid (thrust demands1) (dz state)
+                 else thrust1
 
-  let (roll', pitch') = (roll demands, pitch demands)
+  let (roll1, pitch1) = (roll demands, pitch demands)
 
-  let (roll'', pitch'') = runPositionPid inHoverMode 
+  let (roll2, pitch2) = runPositionPid inHoverMode 
                                          (psi state) 
-                                         (roll', pitch')
+                                         (roll1, pitch1)
                                          (dx state, dy state)
 
-  let demands'' = Demands thrust'' roll'' pitch'' (yaw demands')
+  let demands2 = Demands thrust2 roll2 pitch2 (yaw demands1)
 
-  let demands''' = runPitchRollAnglePid state demands''
+  let demands3 = runPitchRollAnglePid state demands2
 
-  let demands'''' = runPitchRollRatePid state demands'''
+  let demands4 = runPitchRollRatePid state demands3
 
-  let demands''''' = runYawAnglePid state demands''''
+  let demands5 = runYawAnglePid state demands4
 
-  let demands'''''' = runYawRatePid state demands'''''
+  let demands6 = runYawRatePid state demands5
 
   ----------------------------------------------------------------------------
 
-  let thrust''' = thrust'' * (if inHoverMode then 1 else thrust_max)
+  let thrust3 = thrust2 * (if inHoverMode then 1 else thrust_max)
 
-  let thrust'''' = constrain (thrust''' * thrust_scale + thrust_base)
+  let thrust4 = constrain (thrust3 * thrust_scale + thrust_base)
                              thrust_min
                              thrust_max
 
-  let motors = quadCFMixer $ Demands thrust'''' 
-                                     ((roll demands'''''') * pitch_roll_scale)
-                                     ((pitch demands'''''') * pitch_roll_scale)
-                                     ((yaw demands'''''') * yaw_scale)
+  let motors = quadCFMixer $ Demands thrust4 
+                                     ((roll demands6) * pitch_roll_scale)
+                                     ((pitch demands6) * pitch_roll_scale)
+                                     ((yaw demands6) * yaw_scale)
   trigger "runMotors" true [
                        arg $ qm1 motors, 
                        arg $ qm2 motors, 
