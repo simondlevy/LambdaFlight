@@ -70,16 +70,15 @@ spec = do
                                          (roll', pitch')
                                          (dx state, dy state)
 
+  let demands'' = Demands thrust'' roll'' pitch'' (yaw demands')
 
-  let (roll''', pitch''') = runPitchRollAnglePid (roll'' , pitch'')
-                                                 (phi state, theta state)
+  let demands''' = newRunPitchRollAnglePid state demands''
 
-  let (roll'''', pitch'''') = runPitchRollRatePid (roll''', pitch''')
-                                                  (dphi state, dtheta state)
+  let demands'''' = newRunPitchRollRatePid state demands'''
 
-  let yaw' = runYawAnglePid (yaw demands) (psi state)
+  let demands''''' = newRunYawAnglePid state demands''''
 
-  let yaw'' = runYawRatePid yaw' (dpsi state)
+  let demands'''''' = newRunYawRatePid state demands'''''
 
   ----------------------------------------------------------------------------
 
@@ -90,9 +89,9 @@ spec = do
                              thrust_max
 
   let motors = quadCFMixer $ Demands thrust'''' 
-                                     (roll''''  * pitch_roll_scale)
-                                     (pitch''''  * pitch_roll_scale)
-                                     (yaw'' * yaw_scale)
+                                     ((roll demands'''''') * pitch_roll_scale)
+                                     ((pitch demands'''''') * pitch_roll_scale)
+                                     ((yaw demands'''''') * yaw_scale)
   trigger "runMotors" true [
                        arg $ qm1 motors, 
                        arg $ qm2 motors, 
