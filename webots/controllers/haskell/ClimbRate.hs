@@ -11,6 +11,7 @@ import Demands
 import State
 import Utils
 
+{--
 runClimbRatePid :: SFloat -> SFloat -> SFloat
 
 runClimbRatePid climbRate dz = thrust'' where
@@ -30,10 +31,11 @@ runClimbRatePid climbRate dz = thrust'' where
     integ' = [0] ++ integ
 
 ------------------------------------------------------------------------------
+--}
 
-newRunClimbRatePid :: ClosedLoopController
+runClimbRatePid :: ClosedLoopController
 
-newRunClimbRatePid state demands = demands'  where
+runClimbRatePid state demands = demands'  where
 
     kp = 25
     ki = 15
