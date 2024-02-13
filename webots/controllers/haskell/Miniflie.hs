@@ -63,24 +63,24 @@ spec = do
               runYawAnglePid, 
               runYawRatePid]
 
-  let demands3 = foldl (\d f -> f state d) demands pids
+  let demands' = foldl (\d f -> f state d) demands pids
 
   ----------------------------------------------------------------------------
 
-  let thrust3 = (if inHoverMode then (thrust demands3) else thrust demands) * 
+  let thrust' = (if inHoverMode then (thrust demands') else thrust demands) * 
                 (if inHoverMode then 1 else thrust_max)
 
-  let thrust4 = constrain (thrust3 * thrust_scale + thrust_base)
+  let thrust'' = constrain (thrust' * thrust_scale + thrust_base)
                              thrust_min
                              thrust_max
 
-  let roll2 = if inHoverMode then roll demands3 else (roll demands) * 30
-  let pitch2 = if inHoverMode then pitch demands3 else (pitch demands) * 30
+  let roll' = if inHoverMode then roll demands' else (roll demands) * 30
+  let pitch' = if inHoverMode then pitch demands' else (pitch demands) * 30
 
-  let motors = quadCFMixer $ Demands thrust4 
-                                     (roll2 * pitch_roll_scale)
-                                     (pitch2 * pitch_roll_scale)
-                                     ((yaw demands3) * yaw_scale)
+  let motors = quadCFMixer $ Demands thrust'' 
+                                     (roll' * pitch_roll_scale)
+                                     (pitch' * pitch_roll_scale)
+                                     ((yaw demands') * yaw_scale)
   trigger "runMotors" true [
                        arg $ qm1 motors, 
                        arg $ qm2 motors, 
