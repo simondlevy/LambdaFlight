@@ -55,18 +55,9 @@ spec = do
 
   ----------------------------------------------------------------------------
 
-{--
-  let (roll1, pitch1) = runPositionPid inHoverMode 
-                                         (psi state) 
-                                         (roll demands, pitch demands)
-                                         (dx state, dy state)
-
-  let demands2 = Demands (thrust demands) roll1 pitch1 (yaw demands)
---}
-
   let pids = [runAltitudePid,
               runClimbRatePid,
-              newRunPositionPid,
+              runPositionPid,
               runPitchRollAnglePid, 
               runPitchRollRatePid, 
               runYawAnglePid, 
