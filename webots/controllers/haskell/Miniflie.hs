@@ -61,12 +61,6 @@ spec = do
                  then runClimbRatePid climbRate (dz state)
                  else thrust'
 
-  let thrust''' = thrust'' * (if inHoverMode then 1 else thrust_max)
-
-  let thrust'''' = constrain (thrust''' * thrust_scale + thrust_base)
-                             thrust_min
-                             thrust_max
-
   let (roll', pitch') = (roll demands, pitch demands)
 
   let (roll'', pitch'') = runPositionPid inHoverMode 
@@ -85,6 +79,11 @@ spec = do
 
   let yaw'' = runYawRatePid yaw' (dpsi state)
 
+  let thrust''' = thrust'' * (if inHoverMode then 1 else thrust_max)
+
+  let thrust'''' = constrain (thrust''' * thrust_scale + thrust_base)
+                             thrust_min
+                             thrust_max
 
   let motors = quadCFMixer $ Demands thrust'''' 
                                      (roll''''  * pitch_roll_scale)
