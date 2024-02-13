@@ -55,11 +55,9 @@ spec = do
 
   ----------------------------------------------------------------------------
 
-  let (roll1, pitch1) = (roll demands, pitch demands)
-
   let (roll2, pitch2) = runPositionPid inHoverMode 
                                          (psi state) 
-                                         (roll1, pitch1)
+                                         (roll demands, pitch demands)
                                          (dx state, dy state)
 
   let demands2 = Demands (thrust demands) roll2 pitch2 (yaw demands)
