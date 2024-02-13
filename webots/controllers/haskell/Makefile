@@ -4,12 +4,13 @@ SRC = ../../../src
 
 INCLUDE = -I$(SRC)
 
-CXX_SOURCES = haskell.cpp copilot.c
+CXX_SOURCES = haskell.cpp copilot.cpp
 
 all: haskell
 
-copilot.c : *.hs
+copilot.cpp : *.hs
 	runhaskell Miniflie.hs
+	mv copilot.c copilot.cpp
 
 #Un-comment if you want to try OpenCV
 #ifeq ($(OS),Windows_NT)

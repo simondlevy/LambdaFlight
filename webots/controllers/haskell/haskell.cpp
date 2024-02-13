@@ -48,18 +48,15 @@ demands_t demands;
 
 bool in_hover_mode;
 
-extern "C" {
+void step(void);
 
-    void step(void);
-
-    void runMotors(float m1, float m2, float m3, float m4)
-    {
-        // Set simulated motor values
-        wb_motor_set_velocity(m1_motor, +m1);
-        wb_motor_set_velocity(m2_motor, -m2);
-        wb_motor_set_velocity(m3_motor, +m3);
-        wb_motor_set_velocity(m4_motor, -m4);
-    }
+void runMotors(float m1, float m2, float m3, float m4)
+{
+    // Set simulated motor values
+    wb_motor_set_velocity(m1_motor, +m1);
+    wb_motor_set_velocity(m2_motor, -m2);
+    wb_motor_set_velocity(m3_motor, +m3);
+    wb_motor_set_velocity(m4_motor, -m4);
 }
 
 //////////////////////////////////////////////////////////////////////////////
