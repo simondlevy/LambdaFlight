@@ -76,9 +76,9 @@ spec = do
 
   let demands'''' = runPitchRollRatePid state demands'''
 
-  let demands''''' = newRunYawAnglePid state demands''''
+  let demands''''' = runYawAnglePid state demands''''
 
-  let demands'''''' = newRunYawRatePid state demands'''''
+  let demands'''''' = runYawRatePid state demands'''''
 
   ----------------------------------------------------------------------------
 
