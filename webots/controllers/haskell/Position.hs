@@ -6,6 +6,9 @@ module Position where
 import Language.Copilot
 import Copilot.Compile.C99
 
+import ClosedLoop
+import Demands
+import State
 import Utils
 
 ------------------------------------------------------------------------------
@@ -80,3 +83,15 @@ runPositionPid inHoverMode psi (rollDemand, pitchDemand) (dx, dy) =
         rollDemand' = if inHoverMode then runYPid rollDemand dyb else 30 * rollDemand
         pitchDemand' = if inHoverMode then runXPid pitchDemand dxb else 30 * pitchDemand
 
+------------------------------------------------------------------------------
+------------------------------------------------------------------------------
+
+newRunPositionPid :: ClosedLoopController
+
+newRunPositionPid inHoverMode state demands = demands'  where
+
+    kp = 25
+    ki = 1
+    dt = 0.01
+
+    demands' = demands

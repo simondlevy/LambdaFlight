@@ -79,4 +79,7 @@ newRunPitchRollAnglePid inHoverMode state demands = demands'
         dt = 0.01
         integral_limit = 20
 
-        demands' = demands
+        demands' = Demands (thrust demands)
+                           (roll demands)
+                           (pitch demands)
+                           (yaw demands)
