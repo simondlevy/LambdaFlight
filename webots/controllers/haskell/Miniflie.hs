@@ -9,6 +9,8 @@ import Copilot.Compile.C99
 -- import Prelude hiding ((>), (<), div, (++))
 
 import Demands
+import Mixers
+import Motors
 import State
 import Utils
 
@@ -83,23 +85,17 @@ spec = do
 
   let yaw'' = runYawRatePid yaw' (dpsi state)
 
-  trigger "setDemands" true [
-                       arg $ thrust'''',
-                       arg $ roll''''  * pitch_roll_scale, 
-                       arg $ pitch'''' * pitch_roll_scale, 
-                       arg $ yaw'' * yaw_scale
-                     ] 
 
-{--
-  let motors = quadCFMixer demands''
-
+  let motors = quadCFMixer $ Demands thrust'''' 
+                                     (roll''''  * pitch_roll_scale)
+                                     (pitch''''  * pitch_roll_scale)
+                                     (yaw'' * yaw_scale)
   trigger "runMotors" true [
                        arg $ qm1 motors, 
                        arg $ qm2 motors, 
                        arg $ qm3 motors, 
                        arg $ qm4 motors
                      ] 
---}
 
 -- Compile the spec
 main = reify spec >>= compile "copilot"

@@ -6,6 +6,8 @@ module Motors where
 import Language.Copilot
 import Copilot.Compile.C99
 
+import Utils
+
 data Motors = QuadMotors { 
                        qm1 :: SFloat
                      , qm2 :: SFloat  

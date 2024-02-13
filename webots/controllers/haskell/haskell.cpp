@@ -60,14 +60,6 @@ extern "C" {
         wb_motor_set_velocity(m3_motor, +m3);
         wb_motor_set_velocity(m4_motor, -m4);
     }
-
-    void setDemands(const float t, const float r, const float p, const float y)
-    {
-        demands.thrust = t;
-        demands.roll = r;
-        demands.pitch = p;
-        demands.yaw = y;
-    }
 }
 
 //////////////////////////////////////////////////////////////////////////////
@@ -170,14 +162,6 @@ int main(int argc, char ** argv)
         // Get open-loop demands from input device (keyboard, joystick, etc.)
         sticksRead(demands);
 
-        // Reset closed-loop controllers on zero thrust
-        if (demands.thrust == 0) {
-
-            demands.roll = 0;
-            demands.pitch = 0;
-            demands.yaw = 0;
-        }
-
         // Check where we're in hover mode (button press on game controller)
         in_hover_mode = sticksInHoverMode();
 
@@ -200,20 +184,8 @@ int main(int argc, char ** argv)
             _altitudeTarget = 0;
         }
 
-        // Call Haskell Copilot
+        // Call Haskell Copilot, which will call runMotors()
         step();
-
-        auto t = demands.thrust;
-        auto r = demands.roll;
-        auto p = demands.pitch;
-        auto y = demands.yaw;
-
-        auto m1 = t - r + p  + y;
-        auto m2 = t - r - p  - y;
-        auto m3 = t + r - p  + y;
-        auto m4 = t + r + p  - y;
-
-        runMotors(m1, m2, m3, m4);
     }
 
     wb_robot_cleanup();
