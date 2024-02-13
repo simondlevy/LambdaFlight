@@ -12,6 +12,7 @@ import State
 import Utils
 
 runClimbRatePid :: SFloat -> SFloat -> SFloat
+
 runClimbRatePid climbRate dz = thrust'' where
 
     kp = 25
@@ -32,7 +33,7 @@ runClimbRatePid climbRate dz = thrust'' where
 
 newRunClimbRatePid :: ClosedLoopController
 
-newRunClimbRatePid inHoverMode state demands = demands'  where
+newRunClimbRatePid state demands = demands'  where
 
     kp = 25
     ki = 15
@@ -46,7 +47,7 @@ newRunClimbRatePid inHoverMode state demands = demands'  where
 
     integ = constrain (integ' + error * dt) (-integral_limit) integral_limit
 
-    thrust'' = if inHoverMode then kp * error + ki * integ else thrust'
+    thrust'' = kp * error + ki * integ
 
     demands' = Demands thrust''
                        (roll demands)

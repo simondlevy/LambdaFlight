@@ -57,7 +57,7 @@ spec = do
 
   let thrust' = thrust demands
 
-  let demands' = runAltitudePid inHoverMode state demands
+  let demands' = runAltitudePid state demands
 
   let thrust'' = if inHoverMode
                  then runClimbRatePid (thrust demands') (dz state)

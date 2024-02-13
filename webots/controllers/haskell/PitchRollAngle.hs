@@ -73,7 +73,7 @@ runPitchRollAnglePid (rollDemand, pitchDemand) (rollAngle, pitchAngle) =
 
 newRunPitchRollAnglePid :: ClosedLoopController
 
-newRunPitchRollAnglePid inHoverMode state demands = demands'
+newRunPitchRollAnglePid state demands = demands'
 
   where kp = 6
         ki = 3

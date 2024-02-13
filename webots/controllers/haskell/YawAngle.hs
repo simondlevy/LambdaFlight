@@ -64,7 +64,7 @@ runYawAnglePid yawDemand angle = -(kp * error + ki * integ + kd * deriv)
 
 newRunYawAnglePid :: ClosedLoopController
 
-newRunYawAnglePid _ state demands = demands'
+newRunYawAnglePid state demands = demands'
 
     where 
 

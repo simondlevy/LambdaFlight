@@ -45,7 +45,7 @@ runYawRatePid desired measured = -(kp * error + ki * integ)
 
 newRunYawRatePid :: ClosedLoopController
 
-newRunYawRatePid _ state demands = demands' where
+newRunYawRatePid state demands = demands' where
 
     kp = 120
     ki = 16.7

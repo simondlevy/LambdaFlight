@@ -116,7 +116,7 @@ newRunYPid kp ki dt roll' dy = -(kp * error + ki * integ) -- note negation
 
 newRunPositionPid :: ClosedLoopController
 
-newRunPositionPid inHoverMode state demands = demands'  where
+newRunPositionPid state demands = demands'  where
 
     kp = 25
     ki = 1
@@ -138,7 +138,7 @@ newRunPositionPid inHoverMode state demands = demands'  where
     -- In hover mode, pitch/roll demands comes in as meters/second, which we 
     -- convert to degrees for feeding to the angle controller.  In non-hover 
     -- mode, we convert the demands directly to angles in [-30,+30].
-    roll''  = if inHoverMode then newRunYPid kp ki dt roll'  dyb else 30 * roll'
-    pitch'' = if inHoverMode then newRunXPid kp ki dt pitch' dyb else 30 * pitch'
+    roll''  = newRunYPid kp ki dt roll'  dyb
+    pitch'' = newRunXPid kp ki dt pitch' dyb
  
     demands' = Demands (thrust demands) roll'' pitch'' (yaw demands)

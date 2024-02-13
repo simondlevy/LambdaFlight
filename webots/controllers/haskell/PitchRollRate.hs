@@ -85,7 +85,7 @@ runPitchRollRatePid (rollDemand, pitchDemand) (rollRate, pitchRate) =
 
 newRunPitchRollRatePid :: ClosedLoopController
 
-newRunPitchRollRatePid inHoverMode state demands = demands' where
+newRunPitchRollRatePid state demands = demands' where
 
   kp = 125
   ki = 250
