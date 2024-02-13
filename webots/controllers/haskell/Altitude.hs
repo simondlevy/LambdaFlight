@@ -6,6 +6,7 @@ module Altitude where
 import Language.Copilot
 import Copilot.Compile.C99
 
+import ClosedLoop
 import Utils
 
 runAltitudePid :: SFloat -> SFloat -> SFloat
