@@ -62,9 +62,7 @@ spec = do
                                          (roll1, pitch1)
                                          (dx state, dy state)
 
-  --let demands1 = runAltitudePid state demands
-  --let thrust2 = runClimbRatePid (thrust demands1) (dz state)
-  --let demands2 = Demands thrust2 roll2 pitch2 (yaw demands1)
+  let demands2 = Demands (thrust demands) roll2 pitch2 (yaw demands)
 
   let pids = [runAltitudePid,
               runClimbRatePid,
@@ -73,11 +71,11 @@ spec = do
               runYawAnglePid, 
               runYawRatePid]
 
-  let demands3 = foldl (\d f -> f state d) demands pids
+  let demands3 = foldl (\d f -> f state d) demands2 pids
 
   ----------------------------------------------------------------------------
 
-  let thrust3 = (if inHoverMode then (thrust demands2) else thrust demands) * 
+  let thrust3 = (if inHoverMode then (thrust demands3) else thrust demands) * 
                 (if inHoverMode then 1 else thrust_max)
 
   let thrust4 = constrain (thrust3 * thrust_scale + thrust_base)
