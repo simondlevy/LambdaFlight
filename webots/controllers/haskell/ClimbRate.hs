@@ -40,11 +40,15 @@ newRunClimbRatePid inHoverMode state demands = demands'  where
 
     integral_limit = 5000
 
-    error = (thrust demands) - (dz state)
+    thrust' = thrust demands
+
+    error = thrust' - (dz state)
 
     integ = constrain (integ' + error * dt) (-integral_limit) integral_limit
 
-    demands' = Demands (kp * error + ki * integ) 
+    thrust'' = if inHoverMode then kp * error + ki * integ else thrust'
+
+    demands' = Demands thrust''
                        (roll demands)
                        (pitch demands)
                        (yaw demands)

@@ -80,4 +80,3 @@ newRunPitchRollAnglePid inHoverMode state demands = demands'
         integral_limit = 20
 
         demands' = demands
-
