@@ -6,6 +6,7 @@ module YawRate where
 import Language.Copilot
 import Copilot.Compile.C99
 
+import ClosedLoop
 import Demands
 import State
 import Utils
@@ -42,15 +43,17 @@ runYawRatePid desired measured = -(kp * error + ki * integ)
 -- negated demand and the angular velocity, and negate the result to get the
 -- correct yaw demand.
 
-newRunYawRatePid :: SFloat -> SFloat -> SFloat
-newRunYawRatePid desired measured = yaw'
+newRunYawRatePid :: ClosedLoopController
 
-  where
+newRunYawRatePid _ state demands = demands' where
 
     kp = 120
     ki = 16.7
     dt = 0.01
     integral_limit = 166.7
+
+    desired = yaw demands
+    measured = dpsi state
 
     error = (-desired) - measured
 
@@ -58,5 +61,6 @@ newRunYawRatePid desired measured = yaw'
 
     yaw' = -(kp * error + ki * integ)
 
-    integ' = [0] ++ integ
+    demands' = Demands (thrust demands) (roll demands) (pitch demands) yaw'
 
+    integ' = [0] ++ integ
