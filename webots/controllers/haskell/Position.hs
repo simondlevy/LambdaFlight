@@ -86,6 +86,24 @@ runPositionPid inHoverMode psi (rollDemand, pitchDemand) (dx, dy) =
 ------------------------------------------------------------------------------
 ------------------------------------------------------------------------------
 
+newRunYPid :: SFloat -> SFloat -> SFloat
+
+newRunYPid roll' dy = -(kp * error + ki * integ) -- note negation
+
+  where 
+
+    kp = 25
+    ki = 1
+    dt = 0.01
+
+    error = roll' - dy
+
+    integ = integ' + error * dt
+
+    integ' = [0] ++ integ
+
+------------------------------------------------------------------------------
+
 newRunPositionPid :: ClosedLoopController
 
 newRunPositionPid inHoverMode state demands = demands'  where
@@ -104,5 +122,11 @@ newRunPositionPid inHoverMode state demands = demands'  where
     dxb =  dx'   * cospsi + dy' * sinpsi
     dyb = (-dx') * sinpsi + dy' * cospsi       
 
+    roll' = (roll demands)
 
+    -- In hover mode, pitch/roll demands comes in as meters/second, which we 
+    -- convert to degrees for feeding to the angle controller.  In non-hover 
+    -- mode, we convert the demands directly to angles in [-30,+30].
+    roll'' = if inHoverMode then newRunYPid roll' dyb else 30 * roll'
+ 
     demands' = demands
