@@ -53,9 +53,13 @@ spec = do
 
   let demands = liftDemands demandsStruct
 
+  ----------------------------------------------------------------------------
+
   let thrust' = thrust demands
 
-  let climbRate = runAltitudePid thrust' (z state)
+  let newDemands = newRunAltitudePid inHoverMode state demands
+
+  let climbRate = (thrust newDemands) -- runAltitudePid thrust' (z state)
 
   let thrust'' = if inHoverMode
                  then runClimbRatePid climbRate (dz state)
@@ -78,6 +82,8 @@ spec = do
   let yaw' = runYawAnglePid (yaw demands) (psi state)
 
   let yaw'' = runYawRatePid yaw' (dpsi state)
+
+  ----------------------------------------------------------------------------
 
   let thrust''' = thrust'' * (if inHoverMode then 1 else thrust_max)
 
