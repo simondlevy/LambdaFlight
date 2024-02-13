@@ -55,21 +55,24 @@ spec = do
 
   ----------------------------------------------------------------------------
 
-  let (roll2, pitch2) = runPositionPid inHoverMode 
+{--
+  let (roll1, pitch1) = runPositionPid inHoverMode 
                                          (psi state) 
                                          (roll demands, pitch demands)
                                          (dx state, dy state)
 
-  let demands2 = Demands (thrust demands) roll2 pitch2 (yaw demands)
+  let demands2 = Demands (thrust demands) roll1 pitch1 (yaw demands)
+--}
 
   let pids = [runAltitudePid,
               runClimbRatePid,
+              newRunPositionPid,
               runPitchRollAnglePid, 
               runPitchRollRatePid, 
               runYawAnglePid, 
               runYawRatePid]
 
-  let demands3 = foldl (\d f -> f state d) demands2 pids
+  let demands3 = foldl (\d f -> f state d) demands pids
 
   ----------------------------------------------------------------------------
 
@@ -80,9 +83,12 @@ spec = do
                              thrust_min
                              thrust_max
 
+  let roll2 = if inHoverMode then roll demands3 else (roll demands) * 30
+  let pitch2 = if inHoverMode then pitch demands3 else (pitch demands) * 30
+
   let motors = quadCFMixer $ Demands thrust4 
-                                     ((roll demands3) * pitch_roll_scale)
-                                     ((pitch demands3) * pitch_roll_scale)
+                                     (roll2 * pitch_roll_scale)
+                                     (pitch2 * pitch_roll_scale)
                                      ((yaw demands3) * yaw_scale)
   trigger "runMotors" true [
                        arg $ qm1 motors, 

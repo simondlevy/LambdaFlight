@@ -139,6 +139,6 @@ newRunPositionPid state demands = demands'  where
     -- convert to degrees for feeding to the angle controller.  In non-hover 
     -- mode, we convert the demands directly to angles in [-30,+30].
     roll''  = newRunYPid kp ki dt roll'  dyb
-    pitch'' = newRunXPid kp ki dt pitch' dyb
+    pitch'' = newRunXPid kp ki dt pitch' dxb
  
     demands' = Demands (thrust demands) roll'' pitch'' (yaw demands)
