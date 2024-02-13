@@ -36,7 +36,7 @@ runAltitudePid thrust z = kp * error + ki * integ
 
 newRunAltitudePid :: ClosedLoopController
 
-newRunAltitudePid inHoverMode state demands = demands'  where
+newRunAltitudePid _ state demands = demands'  where
 
     kp = 2
     ki = 0.5

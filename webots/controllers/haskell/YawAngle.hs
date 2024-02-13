@@ -62,9 +62,9 @@ runYawAnglePid yawDemand angle = -(kp * error + ki * integ + kd * deriv)
 -- Demand is input as desired angle normalized to [-1,+1] and output
 -- as degrees per second, both nose-right positive.
 
-newRunYawAnglePid :: SFloat -> SFloat -> SFloat
+newRunYawAnglePid :: ClosedLoopController
 
-newRunYawAnglePid yawDemand angle = yaw'
+newRunYawAnglePid _ state demands = demands'
 
     where 
 
@@ -74,6 +74,9 @@ newRunYawAnglePid yawDemand angle = yaw'
       dt = 0.01
       integral_limit = 360
       demand_angle_max = 200
+
+      yawDemand = (yaw demands)
+      angle = (psi state)
 
       -- Yaw angle psi is positive nose-left, whereas yaw demand is
       -- positive nose-right.  Hence we negate the yaw demand to
@@ -88,6 +91,8 @@ newRunYawAnglePid yawDemand angle = yaw'
 
       -- Return the result negated, so demand will still be nose-right positive
       yaw' = -(kp * error + ki * integ + kd * deriv) 
+
+      demands' = Demands (thrust demands) (roll demands) (pitch demands) yaw'
 
       integ' = [0] ++ integ
       target' = [0] ++ target
