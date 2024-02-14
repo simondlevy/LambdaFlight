@@ -11,9 +11,9 @@ import Demands
 import State
 import Utils
 
-climbRatePid :: ClosedLoopController
+climbRatePid :: SBool -> SFloat -> SFloat -> SFloat -> SFloat -> ClosedLoopController
 
-climbRatePid state demands = demands'  where
+climbRatePid inHoverMode base scale minval maxval state demands = demands'  where
 
     kp = 25
     ki = 15

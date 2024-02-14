@@ -57,8 +57,8 @@ spec = do
 
   ----------------------------------------------------------------------------
 
-  let pids = [altitudePid,
-              climbRatePid,
+  let pids = [altitudePid inHoverMode,
+              climbRatePid inHoverMode thrust_base thrust_scale thrust_min thrust_max,
               (positionPid inHoverMode pitch_roll_angle_max),
               pitchRollAnglePid, 
               pitchRollRatePid, 

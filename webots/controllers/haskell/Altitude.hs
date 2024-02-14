@@ -11,9 +11,10 @@ import Demands
 import State
 import Utils
 
-altitudePid :: ClosedLoopController
 
-altitudePid state demands = demands'  where
+run :: SFloat -> SFloat -> SFloat
+
+run thrust altitude = thrust'' where
 
     kp = 2
     ki = 0.5
@@ -23,15 +24,27 @@ altitudePid state demands = demands'  where
 
     -- In hover mode, thrust demand comes in as [-1,+1], so
     -- we convert it to a target altitude in meters
-    thrust' = rescale (thrust demands) (-1) 1 0.2 2.0
+    thrust' = rescale thrust (-1) 1 0.2 2.0
 
-    error = thrust' - (z state)
+    error = thrust' - altitude
     
     integ = constrain (integ' + error * dt) (-integral_limit) integral_limit
 
-    demands' = Demands (kp * error + ki * integ) 
+    thrust'' = kp * error + ki * integ
+         
+    integ' = [0] ++ integ
+
+
+
+altitudePid :: SBool -> ClosedLoopController
+
+altitudePid inHoverMode state demands = demands'  where
+
+    thrust' = thrust demands
+    
+    thrust'' = run thrust' (z state)
+
+    demands' = Demands thrust''
                        (roll demands)
                        (pitch demands)
                        (yaw demands)
-          
-    integ' = [0] ++ integ
