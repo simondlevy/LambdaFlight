@@ -6,11 +6,16 @@ INCLUDE = -I$(SRC)
 
 CXX_SOURCES = haskell.cpp copilot.cpp
 
+FILES_TO_REMOVE += copilot*
+
 all: haskell
 
 copilot.cpp : *.hs
 	runhaskell Miniflie.hs
 	mv copilot.c copilot.cpp
+
+clean:
+	rm -rf build/ copilot.*
 
 #Un-comment if you want to try OpenCV
 #ifeq ($(OS),Windows_NT)
