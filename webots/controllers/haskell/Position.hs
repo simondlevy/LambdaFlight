@@ -52,11 +52,10 @@ runYPid kp ki dt roll' dy = -(kp * error + ki * integ) -- note negation
 
 positionPid :: SBool -> SFloat -> ClosedLoopController
 
-positionPid inHoverMode angleMax state demands = demands'  where
+positionPid inHoverMode angleMax dt state demands = demands'  where
 
     kp = 25
     ki = 1
-    dt = 0.01
     
     angle = 30
 

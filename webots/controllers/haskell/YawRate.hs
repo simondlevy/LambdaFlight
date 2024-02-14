@@ -19,11 +19,10 @@ import Utils
 
 yawRatePid :: ClosedLoopController
 
-yawRatePid state demands = demands' where
+yawRatePid dt state demands = demands' where
 
     kp = 120
     ki = 16.7
-    dt = 0.01
     integral_limit = 166.7
 
     desired = yaw demands

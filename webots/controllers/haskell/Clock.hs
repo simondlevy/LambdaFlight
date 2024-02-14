@@ -6,6 +6,8 @@ module Clock where
 import Language.Copilot
 import Copilot.Compile.C99
 
+import Utils
+
 data ClockRate = 
               RATE_25_HZ
             | RATE_30_HZ

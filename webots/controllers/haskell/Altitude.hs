@@ -12,13 +12,12 @@ import State
 import Utils
 
 
-run :: SFloat -> SFloat -> SFloat
+run :: SFloat -> SFloat -> SFloat -> SFloat
 
-run thrust altitude = thrust'' where
+run dt thrust altitude = thrust'' where
 
     kp = 2
     ki = 0.5
-    dt = 0.01
 
     integral_limit = 5000
 
@@ -38,11 +37,11 @@ run thrust altitude = thrust'' where
 
 altitudePid :: SBool -> ClosedLoopController
 
-altitudePid inHoverMode state demands = demands'  where
+altitudePid inHoverMode dt state demands = demands'  where
 
     thrust' = thrust demands
     
-    thrust'' = if inHoverMode then run thrust' (z state) else thrust'
+    thrust'' = if inHoverMode then run dt thrust' (z state) else thrust'
 
     demands' = Demands thrust''
                        (roll demands)

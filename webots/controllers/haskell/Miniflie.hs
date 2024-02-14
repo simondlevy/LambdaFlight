@@ -6,8 +6,7 @@ module Main where
 import Language.Copilot
 import Copilot.Compile.C99
 
--- import Prelude hiding ((>), (<), div, (++))
-
+import Clock
 import Demands
 import Mixers
 import Motors
@@ -24,6 +23,8 @@ import YawAngle
 import YawRate
 
 -- Constants that will be different for sim vs. actual -----------------------
+
+clock_rate = RATE_100_HZ
 
 thrust_base  = 48.0
 thrust_scale = 0.25
@@ -55,21 +56,23 @@ spec = do
 
   let demands = liftDemands demandsStruct
 
-  let pids = [altitudePid inHoverMode,
-              climbRatePid inHoverMode thrust_base thrust_scale thrust_min thrust_max,
-              positionPid inHoverMode pitch_roll_angle_max,
-              pitchRollAnglePid, 
-              pitchRollRatePid, 
-              yawAnglePid, 
-              yawRatePid]
+  let dt = rateToPeriod clock_rate
+
+  let pids = [altitudePid inHoverMode dt,
+              climbRatePid inHoverMode thrust_base thrust_scale thrust_min thrust_max dt,
+              positionPid inHoverMode pitch_roll_angle_max dt,
+              pitchRollAnglePid dt, 
+              pitchRollRatePid dt, 
+              yawAnglePid dt, 
+              yawRatePid dt]
 
   let demands' = foldl (\d f -> f state d) demands pids
-
 
   let motors = quadCFMixer $ Demands (thrust demands') 
                                      ((roll demands') * pitch_roll_scale)
                                      ((pitch demands') * pitch_roll_scale)
                                      ((yaw demands') * yaw_scale)
+
   trigger "runMotors" true [
                        arg $ qm1 motors, 
                        arg $ qm2 motors, 

@@ -11,13 +11,12 @@ import Demands
 import State
 import Utils
 
-run :: SFloat -> SFloat -> SFloat -> SFloat -> SFloat -> SFloat -> SFloat
+run :: SFloat -> SFloat -> SFloat -> SFloat -> SFloat -> SFloat -> SFloat -> SFloat
 
-run thrust target base scale minval maxval = thrust'  where
+run dt thrust target base scale minval maxval = thrust'  where
 
     kp = 25
     ki = 15
-    dt = 0.01
 
     integral_limit = 5000
 
@@ -30,17 +29,16 @@ run thrust target base scale minval maxval = thrust'  where
     integ' = [0] ++ integ
 
 
-
 climbRatePid :: SBool -> SFloat -> SFloat -> SFloat -> SFloat -> ClosedLoopController
 
-climbRatePid inHoverMode base scale minval maxval state demands = demands' where
+climbRatePid inHoverMode base scale minval maxval dt state demands = demands' where
 
     thrust' = thrust demands
 
     -- In hover mode, we scale the thrust so as to keep the vehicle level; 
     -- otherwise, we just scale it by its maximum value
     thrust'' = if inHoverMode
-               then run thrust' (dz state) base scale minval maxval
+               then run dt thrust' (dz state) base scale minval maxval
                else thrust' * maxval
 
     demands' = Demands thrust'' (roll demands) (pitch demands) (yaw demands)

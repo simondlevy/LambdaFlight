@@ -55,11 +55,10 @@ pitchAnglePid kp ki dt integral_limit demand angle = kp * error + ki * integ
 
 pitchRollAnglePid :: ClosedLoopController
 
-pitchRollAnglePid state demands = demands'
+pitchRollAnglePid dt state demands = demands'
 
   where kp = 6
         ki = 3
-        dt = 0.01
         integral_limit = 20
 
         roll'  = runRollAnglePid  kp ki dt integral_limit (roll demands)  (phi state)

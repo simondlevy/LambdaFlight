@@ -26,14 +26,13 @@ cap angle = angle''
 
 yawAnglePid :: ClosedLoopController
 
-yawAnglePid state demands = demands'
+yawAnglePid dt state demands = demands'
 
     where 
 
       kp = 6
       ki = 1
       kd = 0.25
-      dt = 0.01
       integral_limit = 360
       demand_angle_max = 200
 

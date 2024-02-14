@@ -67,12 +67,11 @@ pitchRatePid kp ki kd dt integral_limit demand rate =
 
 pitchRollRatePid :: ClosedLoopController
 
-pitchRollRatePid state demands = demands' where
+pitchRollRatePid dt state demands = demands' where
 
   kp = 125
   ki = 250
   kd = 1.25
-  dt = 0.01
   integral_limit = 33
 
   roll'  = runRollRatePid  kp ki kd dt integral_limit (roll demands) (dphi state)
