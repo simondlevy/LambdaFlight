@@ -1,4 +1,4 @@
-# Running Hackflight in the Webots simulator
+# Running Miniflie in the Webots simulator
 
 1. Install [Webots](https://cyberbotics.com/)
 
