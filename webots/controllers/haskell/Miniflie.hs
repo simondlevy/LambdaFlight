@@ -67,13 +67,12 @@ spec = do
 
   ----------------------------------------------------------------------------
 
-  let thrust' = (if inHoverMode then (thrust demands') else thrust demands) * 
-                (if inHoverMode then 1 else thrust_max)
-
-  -- Scale thrust for platform (sim or real)
-  let thrust'' = constrain (thrust' * thrust_scale + thrust_base)
-                             thrust_min
-                             thrust_max
+  -- In hover mode, we scale the thrust so as to keep the vehicle level; 
+  -- otherwise, we just scale it by its maximum value
+  let thrust'' = if inHoverMode
+                 then constrain ((thrust demands') * thrust_scale + thrust_base)
+                                 thrust_min thrust_max
+                 else (thrust demands) * thrust_max
 
   let motors = quadCFMixer $ Demands thrust'' 
                                      ((roll demands') * pitch_roll_scale)
