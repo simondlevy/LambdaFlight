@@ -9,3 +9,11 @@ import Utils
 
 type ClosedLoopController = SFloat -> State -> Demands -> Demands
 
+piController kp ki dt ilimit target actual integ' = output where
+
+  error = target - actual
+
+  integ = constrain (integ' + error * dt) (-ilimit) ilimit
+
+  output = kp * error + ki * integ
+ 

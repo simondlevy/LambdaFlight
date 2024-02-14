@@ -11,8 +11,6 @@ import Demands
 import State
 import Utils
 
-cap :: SFloat -> SFloat
-
 cap angle = angle''
 
   where angle' = if angle > 180 then angle - 360 else angle

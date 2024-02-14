@@ -13,14 +13,6 @@ import Utils
 
 -------------------------------------------------------------------------------
 
-runRollAnglePid :: SFloat -> 
-                   SFloat -> 
-                   SFloat -> 
-                   SFloat -> 
-                   SFloat -> 
-                   SFloat -> 
-                   SFloat
-
 runRollAnglePid kp ki dt integral_limit demand angle = kp * error + ki * integ
 
   where 
@@ -33,13 +25,6 @@ runRollAnglePid kp ki dt integral_limit demand angle = kp * error + ki * integ
 
 -------------------------------------------------------------------------------
 
-pitchAnglePid :: SFloat -> 
-                    SFloat -> 
-                    SFloat -> 
-                    SFloat -> 
-                    SFloat -> 
-                    SFloat -> 
-                    SFloat
 
 pitchAnglePid kp ki dt integral_limit demand angle = kp * error + ki * integ
 

@@ -13,8 +13,6 @@ import Utils
 
 ------------------------------------------------------------------------------
 
-runXPid :: SFloat -> SFloat -> SFloat -> SFloat -> SFloat -> SFloat
-
 runXPid kp ki dt pitch' dy = -(kp * error + ki * integ) -- note negation
 
   where 
@@ -26,8 +24,6 @@ runXPid kp ki dt pitch' dy = -(kp * error + ki * integ) -- note negation
     integ' = [0] ++ integ
 
 ------------------------------------------------------------------------------
-
-runYPid :: SFloat -> SFloat -> SFloat -> SFloat -> SFloat -> SFloat
 
 runYPid kp ki dt roll' dy = -(kp * error + ki * integ) -- note negation
 

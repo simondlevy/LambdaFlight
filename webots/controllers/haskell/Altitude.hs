@@ -12,8 +12,6 @@ import State
 import Utils
 
 
-run :: SFloat -> SFloat -> SFloat -> SFloat
-
 run dt thrust altitude = thrust'' where
 
     kp = 2

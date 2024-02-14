@@ -11,8 +11,6 @@ import Demands
 import State
 import Utils
 
-run :: SFloat -> SFloat -> SFloat -> SFloat -> SFloat -> SFloat -> SFloat -> SFloat
-
 run dt thrust target base scale minval maxval = thrust'  where
 
     kp = 25

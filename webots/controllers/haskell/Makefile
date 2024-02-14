@@ -17,6 +17,9 @@ copilot.cpp : *.hs
 size: copilot.cpp
 	ls -l copilot.cpp
 
+cloc:
+	cloc *.hs
+
 #Un-comment if you want to try OpenCV
 #ifeq ($(OS),Windows_NT)
 #	OPENCV = "D:/opencv-mingw"
