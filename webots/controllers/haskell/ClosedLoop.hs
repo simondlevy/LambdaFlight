@@ -9,7 +9,7 @@ import Utils
 
 type ClosedLoopController = SFloat -> State -> Demands -> Demands
 
-piController kp ki dt ilimit target actual integ' = output where
+piController kp ki dt ilimit target actual integ' = (output, integ) where
 
   error = target - actual
 

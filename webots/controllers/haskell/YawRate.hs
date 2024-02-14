@@ -23,14 +23,16 @@ yawRatePid dt state demands = demands' where
 
     kp = 120
     ki = 16.7
-    integral_limit = 166.7
+    ilimit = 166.7
+
+    -- (yaw', integ) = piController kp ki dt ilimit (-(yaw demands)) (dpsi state) integ'
 
     desired = yaw demands
     measured = dpsi state
 
     error = (-desired) - measured
 
-    integ = constrain (integ' + error * dt) (-integral_limit) integral_limit
+    integ = constrain (integ' + error * dt) (-ilimit) ilimit
 
     yaw' = -(kp * error + ki * integ)
 
