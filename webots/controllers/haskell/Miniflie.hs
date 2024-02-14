@@ -57,13 +57,13 @@ spec = do
 
   let pids = [altitudePid,
               climbRatePid,
-              positionPid,
+              (positionPid inHoverMode),
               pitchRollAnglePid, 
               pitchRollRatePid, 
               yawAnglePid, 
               yawRatePid]
 
-  let demands' = foldl (\d f -> f inHoverMode state d) demands pids
+  let demands' = foldl (\d f -> f state d) demands pids
 
   ----------------------------------------------------------------------------
 

@@ -26,7 +26,7 @@ cap angle = angle''
 
 yawAnglePid :: ClosedLoopController
 
-yawAnglePid _ state demands = demands'
+yawAnglePid state demands = demands'
 
     where 
 

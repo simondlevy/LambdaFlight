@@ -50,7 +50,7 @@ runYPid kp ki dt roll' dy = -(kp * error + ki * integ) -- note negation
    pitch: input forward positive => output negative
 --}
 
-positionPid :: ClosedLoopController
+positionPid :: SBool -> ClosedLoopController
 
 positionPid inHoverMode state demands = demands'  where
 

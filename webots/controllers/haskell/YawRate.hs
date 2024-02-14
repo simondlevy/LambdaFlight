@@ -19,7 +19,7 @@ import Utils
 
 yawRatePid :: ClosedLoopController
 
-yawRatePid _ state demands = demands' where
+yawRatePid state demands = demands' where
 
     kp = 120
     ki = 16.7
