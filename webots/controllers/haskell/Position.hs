@@ -50,9 +50,9 @@ runYPid kp ki dt roll' dy = -(kp * error + ki * integ) -- note negation
    pitch: input forward positive => output negative
 --}
 
-runPositionPid :: ClosedLoopController
+positionPid :: ClosedLoopController
 
-runPositionPid state demands = demands'  where
+positionPid state demands = demands'  where
 
     kp = 25
     ki = 1

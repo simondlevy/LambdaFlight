@@ -55,13 +55,13 @@ spec = do
 
   ----------------------------------------------------------------------------
 
-  let pids = [runAltitudePid,
-              runClimbRatePid,
-              runPositionPid,
-              runPitchRollAnglePid, 
-              runPitchRollRatePid, 
-              runYawAnglePid, 
-              runYawRatePid]
+  let pids = [altitudePid,
+              climbRatePid,
+              positionPid,
+              pitchRollAnglePid, 
+              pitchRollRatePid, 
+              yawAnglePid, 
+              yawRatePid]
 
   let demands' = foldl (\d f -> f state d) demands pids
 

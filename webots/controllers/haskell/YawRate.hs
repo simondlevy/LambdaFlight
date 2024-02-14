@@ -17,9 +17,9 @@ import Utils
 -- negated demand and the angular velocity, and negate the result to get the
 -- correct yaw demand.
 
-runYawRatePid :: ClosedLoopController
+yawRatePid :: ClosedLoopController
 
-runYawRatePid state demands = demands' where
+yawRatePid state demands = demands' where
 
     kp = 120
     ki = 16.7

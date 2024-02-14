@@ -24,9 +24,9 @@ cap angle = angle''
 -- Demand is input as desired angle normalized to [-1,+1] and output
 -- as degrees per second, both nose-right positive.
 
-runYawAnglePid :: ClosedLoopController
+yawAnglePid :: ClosedLoopController
 
-runYawAnglePid state demands = demands'
+yawAnglePid state demands = demands'
 
     where 
 

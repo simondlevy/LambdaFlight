@@ -33,7 +33,7 @@ runRollAnglePid kp ki dt integral_limit demand angle = kp * error + ki * integ
 
 -------------------------------------------------------------------------------
 
-runPitchAnglePid :: SFloat -> 
+pitchAnglePid :: SFloat -> 
                     SFloat -> 
                     SFloat -> 
                     SFloat -> 
@@ -41,7 +41,7 @@ runPitchAnglePid :: SFloat ->
                     SFloat -> 
                     SFloat
 
-runPitchAnglePid kp ki dt integral_limit demand angle = kp * error + ki * integ
+pitchAnglePid kp ki dt integral_limit demand angle = kp * error + ki * integ
 
   where 
 
@@ -53,9 +53,9 @@ runPitchAnglePid kp ki dt integral_limit demand angle = kp * error + ki * integ
 
 ------------------------------------------------------------------------------
 
-runPitchRollAnglePid :: ClosedLoopController
+pitchRollAnglePid :: ClosedLoopController
 
-runPitchRollAnglePid state demands = demands'
+pitchRollAnglePid state demands = demands'
 
   where kp = 6
         ki = 3
@@ -63,6 +63,6 @@ runPitchRollAnglePid state demands = demands'
         integral_limit = 20
 
         roll'  = runRollAnglePid  kp ki dt integral_limit (roll demands)  (phi state)
-        pitch' = runPitchAnglePid kp ki dt integral_limit (pitch demands) (theta state)
+        pitch' = pitchAnglePid kp ki dt integral_limit (pitch demands) (theta state)
 
         demands' = Demands (thrust demands) roll' pitch' (yaw demands)

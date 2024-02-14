@@ -39,7 +39,7 @@ runRollRatePid kp ki kd dt integral_limit demand rate =
 
 -------------------------------------------------------------------------------
 
-runPitchRatePid :: SFloat -> 
+pitchRatePid :: SFloat -> 
                    SFloat -> 
                    SFloat -> 
                    SFloat -> 
@@ -48,7 +48,7 @@ runPitchRatePid :: SFloat ->
                    SFloat -> 
                    SFloat
 
-runPitchRatePid kp ki kd dt integral_limit demand rate =
+pitchRatePid kp ki kd dt integral_limit demand rate =
   kp * error + ki * integ + kd * deriv
 
   where 
@@ -65,9 +65,9 @@ runPitchRatePid kp ki kd dt integral_limit demand rate =
 
 ------------------------------------------------------------------------------
 
-runPitchRollRatePid :: ClosedLoopController
+pitchRollRatePid :: ClosedLoopController
 
-runPitchRollRatePid state demands = demands' where
+pitchRollRatePid state demands = demands' where
 
   kp = 125
   ki = 250
@@ -76,7 +76,7 @@ runPitchRollRatePid state demands = demands' where
   integral_limit = 33
 
   roll'  = runRollRatePid  kp ki kd dt integral_limit (roll demands) (dphi state)
-  pitch' = runPitchRatePid kp ki kd dt integral_limit (pitch demands) (dtheta state)
+  pitch' = pitchRatePid kp ki kd dt integral_limit (pitch demands) (dtheta state)
 
   demands' = Demands (thrust demands) roll' pitch' (yaw demands)
 
