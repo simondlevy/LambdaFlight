@@ -30,6 +30,8 @@ thrust_scale = 0.25
 thrust_min   = 0.0
 thrust_max   = 60
 
+pitch_roll_angle_max = 30
+
 yaw_scale = 4e-5
 
 pitch_roll_scale = 1e-4
@@ -57,7 +59,7 @@ spec = do
 
   let pids = [altitudePid,
               climbRatePid,
-              (positionPid inHoverMode),
+              (positionPid inHoverMode pitch_roll_angle_max),
               pitchRollAnglePid, 
               pitchRollRatePid, 
               yawAnglePid, 
