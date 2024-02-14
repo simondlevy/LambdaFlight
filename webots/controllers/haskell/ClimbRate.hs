@@ -37,6 +37,8 @@ climbRatePid inHoverMode base scale minval maxval state demands = demands' where
 
     thrust' = thrust demands
 
+    -- In hover mode, we scale the thrust so as to keep the vehicle level; 
+    -- otherwise, we just scale it by its maximum value
     thrust'' = if inHoverMode
                then run thrust' (dz state) base scale minval maxval
                else thrust' * maxval
