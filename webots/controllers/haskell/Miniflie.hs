@@ -63,23 +63,21 @@ spec = do
               yawAnglePid, 
               yawRatePid]
 
-  let demands' = foldl (\d f -> f state d) demands pids
+  let demands' = foldl (\d f -> f inHoverMode state d) demands pids
 
   ----------------------------------------------------------------------------
 
   let thrust' = (if inHoverMode then (thrust demands') else thrust demands) * 
                 (if inHoverMode then 1 else thrust_max)
 
+  -- Scale thrust for platform (sim or real)
   let thrust'' = constrain (thrust' * thrust_scale + thrust_base)
                              thrust_min
                              thrust_max
 
-  let roll' = if inHoverMode then roll demands' else (roll demands) * 30
-  let pitch' = if inHoverMode then pitch demands' else (pitch demands) * 30
-
   let motors = quadCFMixer $ Demands thrust'' 
-                                     (roll' * pitch_roll_scale)
-                                     (pitch' * pitch_roll_scale)
+                                     ((roll demands') * pitch_roll_scale)
+                                     ((pitch demands') * pitch_roll_scale)
                                      ((yaw demands') * yaw_scale)
   trigger "runMotors" true [
                        arg $ qm1 motors, 

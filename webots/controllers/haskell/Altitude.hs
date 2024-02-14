@@ -13,7 +13,7 @@ import Utils
 
 altitudePid :: ClosedLoopController
 
-altitudePid state demands = demands'  where
+altitudePid _ state demands = demands'  where
 
     kp = 2
     ki = 0.5

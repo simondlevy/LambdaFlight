@@ -7,5 +7,5 @@ import Demands
 import State
 import Utils
 
-type ClosedLoopController = State -> Demands -> Demands
+type ClosedLoopController = SBool -> State -> Demands -> Demands
 

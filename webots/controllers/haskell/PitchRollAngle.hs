@@ -55,7 +55,7 @@ pitchAnglePid kp ki dt integral_limit demand angle = kp * error + ki * integ
 
 pitchRollAnglePid :: ClosedLoopController
 
-pitchRollAnglePid state demands = demands'
+pitchRollAnglePid _ state demands = demands'
 
   where kp = 6
         ki = 3

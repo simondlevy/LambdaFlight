@@ -52,11 +52,13 @@ runYPid kp ki dt roll' dy = -(kp * error + ki * integ) -- note negation
 
 positionPid :: ClosedLoopController
 
-positionPid state demands = demands'  where
+positionPid inHoverMode state demands = demands'  where
 
     kp = 25
     ki = 1
     dt = 0.01
+    
+    angle = 30
 
     -- Rotate world-coordinate velocities into body coordinates
     psi' = deg2rad $ psi state
@@ -71,7 +73,9 @@ positionPid state demands = demands'  where
     roll' = (roll demands)
     pitch' = (pitch demands)
 
-    roll''  = runYPid kp ki dt roll'  dyb
-    pitch'' = runXPid kp ki dt pitch' dxb
+    -- Convert demand into angle, either by running a PI controller (hover mode)
+    -- or just multiplying by a constant (non-hover mode)
+    roll''   = if inHoverMode then runYPid kp ki dt roll'  dyb else -(roll' * angle)
+    pitch''  = if inHoverMode then runXPid kp ki dt pitch' dxb else -(pitch' * angle) 
  
     demands' = Demands (thrust demands) roll'' pitch'' (yaw demands)

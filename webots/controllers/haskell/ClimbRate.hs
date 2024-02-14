@@ -13,7 +13,7 @@ import Utils
 
 climbRatePid :: ClosedLoopController
 
-climbRatePid state demands = demands'  where
+climbRatePid _ state demands = demands'  where
 
     kp = 25
     ki = 15
