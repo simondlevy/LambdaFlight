@@ -11,9 +11,9 @@ import Demands
 import State
 import Utils
 
-climbRatePid :: SBool -> SFloat -> SFloat -> SFloat -> SFloat -> ClosedLoopController
+run :: SFloat -> SFloat -> SFloat -> SFloat -> SFloat -> SFloat -> SFloat
 
-climbRatePid inHoverMode base scale minval maxval state demands = demands'  where
+run thrust target base scale minval maxval = thrust'  where
 
     kp = 25
     ki = 15
@@ -21,17 +21,24 @@ climbRatePid inHoverMode base scale minval maxval state demands = demands'  wher
 
     integral_limit = 5000
 
-    thrust' = thrust demands
-
-    error = thrust' - (dz state)
+    error = thrust - target
 
     integ = constrain (integ' + error * dt) (-integral_limit) integral_limit
 
-    thrust'' = kp * error + ki * integ
+    thrust' = kp * error + ki * integ
 
-    demands' = Demands thrust''
-                       (roll demands)
-                       (pitch demands)
-                       (yaw demands)
-          
     integ' = [0] ++ integ
+
+
+
+climbRatePid :: SBool -> SFloat -> SFloat -> SFloat -> SFloat -> ClosedLoopController
+
+climbRatePid inHoverMode base scale minval maxval state demands = demands' where
+
+    thrust' = thrust demands
+
+    thrust'' = if inHoverMode
+               then run thrust' (dz state) base scale minval maxval
+               else thrust' * maxval
+
+    demands' = Demands thrust'' (roll demands) (pitch demands) (yaw demands)

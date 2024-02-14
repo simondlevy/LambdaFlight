@@ -71,12 +71,13 @@ spec = do
 
   -- In hover mode, we scale the thrust so as to keep the vehicle level; 
   -- otherwise, we just scale it by its maximum value
-  let thrust'' = if inHoverMode
-                 then constrain ((thrust demands') * thrust_scale + thrust_base)
-                                 thrust_min thrust_max
-                 else (thrust demands) * thrust_max
+  -- let thrust'' = if inHoverMode
+  --                then constrain ((thrust demands') * thrust_scale + thrust_base)
+  --                                thrust_min thrust_max
+  --                else (thrust demands) * thrust_max
 
-  let motors = quadCFMixer $ Demands thrust'' 
+
+  let motors = quadCFMixer $ Demands (thrust demands') 
                                      ((roll demands') * pitch_roll_scale)
                                      ((pitch demands') * pitch_roll_scale)
                                      ((yaw demands') * yaw_scale)

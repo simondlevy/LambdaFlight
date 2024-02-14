@@ -14,8 +14,8 @@ copilot.cpp : *.hs
 	runhaskell Miniflie.hs
 	mv copilot.c copilot.cpp
 
-clean:
-	rm -rf build/ copilot.*
+size: copilot.cpp
+	ls -l copilot.cpp
 
 #Un-comment if you want to try OpenCV
 #ifeq ($(OS),Windows_NT)

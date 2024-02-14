@@ -42,7 +42,7 @@ altitudePid inHoverMode state demands = demands'  where
 
     thrust' = thrust demands
     
-    thrust'' = run thrust' (z state)
+    thrust'' = if inHoverMode then run thrust' (z state) else thrust'
 
     demands' = Demands thrust''
                        (roll demands)
