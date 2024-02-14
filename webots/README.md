@@ -6,7 +6,7 @@
 
 3. From the File menu, chose <b>Open World</b>
 
-4. Use the file dialog to open <b>Hackflight/webots/words/simple.wbt</b>
+4. Use the file dialog to open <b>Hackflight/webots/words/cplusplus.wbt</b>
 
 5. Click on the little [file-folder icon](media/screenshot.png) in the upper right,
 and use the file dialog to open <b>controllers/simple/simple.cpp</b>
