@@ -13,26 +13,22 @@ import Utils
 
 -------------------------------------------------------------------------------
 
-runRollAnglePid kp ki dt integral_limit demand angle = kp * error + ki * integ
+runRollAnglePid kp ki dt ilimit demand angle = demand'
 
   where 
 
-    error = demand - angle
-
-    integ = constrain (integ' + error * dt) (-integral_limit) integral_limit
+    (demand', integ) = piController kp ki dt ilimit demand angle integ'
 
     integ' = [0] ++ integ
 
 -------------------------------------------------------------------------------
 
 
-pitchAnglePid kp ki dt integral_limit demand angle = kp * error + ki * integ
+pitchAnglePid kp ki dt ilimit demand angle = demand'
 
   where 
 
-    error = demand - angle
-
-    integ = constrain (integ' + error * dt) (-integral_limit) integral_limit
+    (demand', integ) = piController kp ki dt ilimit demand angle integ'
 
     integ' = [0] ++ integ
 
@@ -44,9 +40,9 @@ pitchRollAnglePid dt state demands = demands'
 
   where kp = 6
         ki = 3
-        integral_limit = 20
+        ilimit = 20
 
-        roll'  = runRollAnglePid  kp ki dt integral_limit (roll demands)  (phi state)
-        pitch' = pitchAnglePid kp ki dt integral_limit (pitch demands) (theta state)
+        roll'  = runRollAnglePid  kp ki dt ilimit (roll demands)  (phi state)
+        pitch' = pitchAnglePid kp ki dt ilimit (pitch demands) (theta state)
 
         demands' = Demands (thrust demands) roll' pitch' (yaw demands)

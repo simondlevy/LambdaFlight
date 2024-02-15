@@ -19,10 +19,6 @@ run dt thrust target base scale minval maxval = thrust'  where
 
     (thrust', integ) = piController kp ki dt ilimit thrust target integ'
 
-    --- error = thrust - target
-    --- integ = constrain (integ' + error * dt) (-ilimit) ilimit
-    --- thrust' = kp * error + ki * integ
-
     integ' = [0] ++ integ
 
 
