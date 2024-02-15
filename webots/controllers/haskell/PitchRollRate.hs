@@ -42,7 +42,7 @@ pitchRatePid kp ki kd dt ilimit demand rate = demand'
 
 pitchRollRatePid :: ClosedLoopController
 
-pitchRollRatePid dt state demands = demands' where
+pitchRollRatePid hover dt state demands = demands' where
 
   kp = 125
   ki = 250

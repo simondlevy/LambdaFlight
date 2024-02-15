@@ -27,13 +27,13 @@ run dt thrust altitude = thrust'' where
     integ' = [0] ++ integ
 
 
-altitudePid :: SBool -> ClosedLoopController
+altitudePid :: ClosedLoopController
 
-altitudePid inHoverMode dt state demands = demands'  where
+altitudePid hover dt state demands = demands'  where
 
     thrust' = thrust demands
     
-    thrust'' = if inHoverMode then run dt thrust' (z state) else thrust'
+    thrust'' = if hover then run dt thrust' (z state) else thrust'
 
     demands' = Demands thrust''
                        (roll demands)

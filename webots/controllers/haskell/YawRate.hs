@@ -19,7 +19,7 @@ import Utils
 
 yawRatePid :: ClosedLoopController
 
-yawRatePid dt state demands = demands' where
+yawRatePid hover dt state demands = demands' where
 
     kp = 120
     ki = 16.7

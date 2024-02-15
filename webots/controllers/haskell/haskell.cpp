@@ -46,7 +46,7 @@ vehicleState_t state;
 
 demands_t demands;
 
-bool in_hover_mode;
+bool hover;
 
 void step(void);
 
@@ -160,7 +160,7 @@ int main(int argc, char ** argv)
         sticksRead(demands);
 
         // Check where we're in hover mode (button press on game controller)
-        in_hover_mode = sticksInHoverMode();
+        hover = sticksInHoverMode();
 
         // Altitude target, normalized to [-1,+1]
         static float _altitudeTarget;
@@ -169,7 +169,7 @@ int main(int argc, char ** argv)
         getVehicleState(gyro, imu, gps);
 
         // Hover mode: integrate stick demand
-        if (in_hover_mode) {
+        if (hover) {
             const float DT = .01;
             _altitudeTarget = fconstrain(_altitudeTarget + demands.thrust * DT, -1, +1);
             demands.thrust = _altitudeTarget;

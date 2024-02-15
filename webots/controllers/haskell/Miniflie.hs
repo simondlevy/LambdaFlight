@@ -45,8 +45,8 @@ demandsStruct = extern "demands" Nothing
 stateStruct :: Stream StateStruct
 stateStruct = extern "state" Nothing
 
-inHoverMode :: SBool
-inHoverMode = extern "in_hover_mode" Nothing
+hover :: SBool
+hover = extern "hover" Nothing
 
 -- Main ----------------------------------------------------------------------
 
@@ -58,13 +58,13 @@ spec = do
 
   let dt = rateToPeriod clock_rate
 
-  let pids = [altitudePid inHoverMode dt,
-              climbRatePid inHoverMode thrust_base thrust_scale thrust_min thrust_max dt,
-              positionPid inHoverMode pitch_roll_angle_max dt,
-              pitchRollAnglePid dt, 
-              pitchRollRatePid dt, 
-              yawAnglePid dt, 
-              yawRatePid dt]
+  let pids = [altitudePid hover dt,
+              climbRatePid thrust_base thrust_scale thrust_min thrust_max hover dt,
+              positionPid pitch_roll_angle_max hover dt,
+              pitchRollAnglePid hover dt, 
+              pitchRollRatePid hover dt, 
+              yawAnglePid hover dt, 
+              yawRatePid hover dt]
 
   let demands' = foldl (\d f -> f state d) demands pids
 
