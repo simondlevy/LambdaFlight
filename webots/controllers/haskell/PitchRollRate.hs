@@ -6,6 +6,8 @@ module PitchRollRate where
 import Language.Copilot
 import Copilot.Compile.C99
 
+import Prelude hiding (id, (++))
+
 import ClosedLoop
 import Demands
 import State
@@ -17,7 +19,8 @@ runRollRatePid kp ki kd dt ilimit demand rate = demand'
 
   where 
 
-    (demand', error, integ) = pidController kp ki kd dt ilimit demand rate error' integ'
+    (demand', error, integ) = 
+      pidController kp ki kd dt ilimit demand rate id error' integ'
 
     integ' = [0] ++ integ
     error' = [0] ++ error
@@ -28,7 +31,8 @@ pitchRatePid kp ki kd dt ilimit demand rate = demand'
 
   where 
 
-    (demand', error, integ) = pidController kp ki kd dt ilimit demand rate error' integ'
+    (demand', error, integ) = 
+      pidController kp ki kd dt ilimit demand rate id error' integ'
 
 
     integ' = [0] ++ integ

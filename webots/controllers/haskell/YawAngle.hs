@@ -32,27 +32,20 @@ yawAnglePid dt state demands = demands'
       ki = 1
       kd = 0.25
       ilimit = 360
-      demand_angle_max = 200
-
-      yawDemand = (yaw demands)
-      angle = (psi state)
+      angle_max = 200
 
       -- Yaw angle psi is positive nose-left, whereas yaw demand is
       -- positive nose-right.  Hence we negate the yaw demand to
       -- accumulate the angle target.
-      target = cap $ target' - demand_angle_max * yawDemand * dt
+      target = cap $ target' - angle_max * (yaw demands) * dt
 
-      error = cap $ target - angle
-
-      integ = constrain (integ' + error * dt) (-ilimit) ilimit
-
-      deriv = (error - error') / dt
+      (yaw', error, integ) =
+        pidController kp ki kd dt ilimit target (psi state) cap error' integ'
 
       -- Return the result negated, so demand will still be nose-right positive
-      yaw' = -(kp * error + ki * integ + kd * deriv) 
+      --yaw' = -(kp * error + ki * integ + kd * deriv) 
+      demands' = Demands (thrust demands) (roll demands) (pitch demands) (-yaw')
 
-      demands' = Demands (thrust demands) (roll demands) (pitch demands) yaw'
-
-      integ' = [0] ++ integ
       target' = [0] ++ target
+      integ' = [0] ++ integ
       error' = [0] ++ error

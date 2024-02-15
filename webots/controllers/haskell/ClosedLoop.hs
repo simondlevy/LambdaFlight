@@ -18,10 +18,10 @@ piController kp ki dt ilimit target actual integ' = (output, integ) where
   output = kp * error + ki * integ
 
  
-pidController kp ki kd dt ilimit target actual error' integ' = 
+pidController kp ki kd dt ilimit target actual capfun error' integ' = 
   (output, error, integ) where
 
-  error = target - actual
+  error = capfun $ target - actual
 
   integ = constrain (integ' + error * dt) (-ilimit) ilimit
 
