@@ -59,6 +59,11 @@ void runMotors(float m1, float m2, float m3, float m4)
     wb_motor_set_velocity(m4_motor, -m4);
 }
 
+void report(float value)
+{
+    printf("%f\n", value);
+}
+
 //////////////////////////////////////////////////////////////////////////////
 
 static float fconstrain(const float val, const float lo, const float hi)
@@ -180,6 +185,8 @@ int main(int argc, char ** argv)
             demands.thrust = fconstrain(demands.thrust, 0, 1);
             _altitudeTarget = 0;
         }
+
+        printf("%f\n", _altitudeTarget);
 
         // Call Haskell Copilot, which will call runMotors()
         step();
