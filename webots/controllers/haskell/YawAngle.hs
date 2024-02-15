@@ -31,7 +31,7 @@ yawAnglePid dt state demands = demands'
       kp = 6
       ki = 1
       kd = 0.25
-      integral_limit = 360
+      ilimit = 360
       demand_angle_max = 200
 
       yawDemand = (yaw demands)
@@ -44,7 +44,7 @@ yawAnglePid dt state demands = demands'
 
       error = cap $ target - angle
 
-      integ = constrain (integ' + error * dt) (-integral_limit) integral_limit
+      integ = constrain (integ' + error * dt) (-ilimit) ilimit
 
       deriv = (error - error') / dt
 

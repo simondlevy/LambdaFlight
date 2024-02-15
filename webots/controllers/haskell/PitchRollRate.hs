@@ -13,54 +13,25 @@ import Utils
 
 -------------------------------------------------------------------------------
 
-runRollRatePid :: SFloat -> 
-                   SFloat -> 
-                   SFloat -> 
-                   SFloat -> 
-                   SFloat -> 
-                   SFloat -> 
-                   SFloat -> 
-                   SFloat
-
-runRollRatePid kp ki kd dt integral_limit demand rate =
-  kp * error + ki * integ + kd * deriv
+runRollRatePid kp ki kd dt ilimit demand rate = demand'
 
   where 
 
-    error = demand - rate
-
-    integ = constrain (integ' + error * dt) (-integral_limit) integral_limit
-
-    deriv = (error - error') / dt
+    (demand', error, integ) = pidController kp ki kd dt ilimit demand rate error' integ'
 
     integ' = [0] ++ integ
-
     error' = [0] ++ error
 
 -------------------------------------------------------------------------------
 
-pitchRatePid :: SFloat -> 
-                   SFloat -> 
-                   SFloat -> 
-                   SFloat -> 
-                   SFloat -> 
-                   SFloat -> 
-                   SFloat -> 
-                   SFloat
-
-pitchRatePid kp ki kd dt integral_limit demand rate =
-  kp * error + ki * integ + kd * deriv
+pitchRatePid kp ki kd dt ilimit demand rate = demand'
 
   where 
 
-    error = demand - rate
+    (demand', error, integ) = pidController kp ki kd dt ilimit demand rate error' integ'
 
-    integ = constrain (integ' + error * dt) (-integral_limit) integral_limit
-
-    deriv = (error - error') / dt
 
     integ' = [0] ++ integ
-
     error' = [0] ++ error
 
 ------------------------------------------------------------------------------
@@ -72,10 +43,10 @@ pitchRollRatePid dt state demands = demands' where
   kp = 125
   ki = 250
   kd = 1.25
-  integral_limit = 33
+  ilimit = 33
 
-  roll'  = runRollRatePid  kp ki kd dt integral_limit (roll demands) (dphi state)
-  pitch' = pitchRatePid kp ki kd dt integral_limit (pitch demands) (dtheta state)
+  roll'  = runRollRatePid  kp ki kd dt ilimit (roll demands) (dphi state)
+  pitch' = pitchRatePid kp ki kd dt ilimit (pitch demands) (dtheta state)
 
   demands' = Demands (thrust demands) roll' pitch' (yaw demands)
 
