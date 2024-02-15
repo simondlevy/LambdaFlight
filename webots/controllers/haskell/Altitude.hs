@@ -24,12 +24,7 @@ run dt thrust altitude = thrust'' where
 
     (thrust'', integ) = piController kp ki dt ilimit thrust' altitude integ'
 
-    -- error = thrust' - altitude
-    -- integ = constrain (integ' + error * dt) (-integral_limit) integral_limit
-    -- thrust'' = kp * error + ki * integ
-         
     integ' = [0] ++ integ
-
 
 
 altitudePid :: SBool -> ClosedLoopController
