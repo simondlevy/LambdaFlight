@@ -40,6 +40,13 @@ static const float THRUST_MAX   = 60;
 static const float PITCH_ROLL_SCALE = 1e-4;
 static const float YAW_SCALE = 4e-5;
 
+static const float DT = .01;
+
+// https://www.bitcraze.io/documentation/tutorials/getting-started-with-flow-deck/
+static const float ALTITUDE_TARGET_INITIAL = 0.4;
+static const float ALTITUDE_TARGET_MIN = 0.2;
+static const float ALTITUDE_TARGET_MAX = 3.0;
+
 static const Clock::rate_t PID_UPDATE_RATE = Clock::RATE_100_HZ;
 
 static WbDeviceTag makeMotor(const char * name, const float direction)
@@ -140,6 +147,11 @@ int main(int argc, char ** argv)
 
     sticksInit();
 
+    auto wasInHoverMode = false;
+
+    // Altitude target, normalized to [-1,+1]
+    float altitudeTarget = 0;
+
     while (wb_robot_step(timestep) != -1) {
 
         //Un-comment if you want to try OpenCV
@@ -151,30 +163,39 @@ int main(int argc, char ** argv)
         // Check where we're in hover mode (button press on game controller)
         auto inHoverMode = sticksInHoverMode();
 
-        // Altitude target, normalized to [-1,+1]
-        static float _altitudeTarget;
-
         // Get vehicle state from sensors
         getVehicleState(gyro, imu, gps);
 
         // Hover mode: integrate stick demand to get altitude target
         if (inHoverMode) {
-            const float DT = .01;
-            _altitudeTarget = Num::fconstrain(
-                    _altitudeTarget + demands.thrust * DT, -1, +1);
-            demands.thrust = _altitudeTarget;
+
+            if (!wasInHoverMode) {
+                altitudeTarget = ALTITUDE_TARGET_INITIAL;
+            }
+
+            altitudeTarget = Num::fconstrain(
+                    altitudeTarget + demands.thrust * DT, 
+                    ALTITUDE_TARGET_MIN, ALTITUDE_TARGET_MAX);
+
+            printf("Thrust= %f    Target = %f\n", demands.thrust, altitudeTarget);
+
+            demands.thrust = altitudeTarget;
         }
 
         // Non-hover mode: use raw stick value with min 0
         else {
+
             demands.thrust = Num::fconstrain(demands.thrust, 0, 1);
-            _altitudeTarget = 0;
+
+            altitudeTarget = 0;
         }
+
+        wasInHoverMode = inHoverMode;
 
         // Run miniflie algorithm on open-loop demands and vehicle state to 
         // get motor values
         float motorvals[4] = {};
-        miniflie.step(inHoverMode, state, demands, motorvals);
+        //miniflie.step(inHoverMode, state, demands, motorvals);
 
         // Set simulated motor values
         wb_motor_set_velocity(m1_motor, +motorvals[0]);

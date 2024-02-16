@@ -135,6 +135,9 @@ static void readJoystick(demands_t & demands)
     demands.roll = -readJoystickAxis(axes.roll);  // postive roll-leftward
     demands.pitch = readJoystickAxis(axes.pitch); 
     demands.yaw = readJoystickAxis(axes.yaw);
+
+    // Run thrust stick through deadband
+    demands.thrust = fabs(demands.thrust) < 0.05 ? 0 : demands.thrust;
 }
 
 static void readKeyboard(demands_t & demands)
