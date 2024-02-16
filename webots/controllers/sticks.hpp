@@ -34,7 +34,6 @@ typedef struct {
     int8_t roll;
     int8_t pitch;
     int8_t yaw;
-    int8_t hover;
 
 } joystickAxes_t;
 
@@ -48,22 +47,22 @@ typedef enum {
 
 static std::map<std::string, joystickAxes_t> JOYSTICK_AXIS_MAP = {
 
-    //                                                        T   R   P  Y   H
+    //                                                        T   R   P  Y 
     // Linux   
-    { "MY-POWER CO.,LTD. 2In1 USB Joystick", joystickAxes_t {-2,  3, -4, 1,  5 } }, 
-    { "SHANWAN Android Gamepad",             joystickAxes_t {-2,  3, -4, 1,  7 } },
-    { "Logitech Logitech Extreme 3D",        joystickAxes_t {-4,  1, -2, 3,  0 }  },
-    { "Logitech Gamepad F310",               joystickAxes_t {-2,  4, -5, 1,  5 } },
-    { "FrSky FrSky Simulator",               joystickAxes_t { 1,  2,  3, 4,  0 } },
-    { "Horizon Hobby SPEKTRUM RECEIVER",     joystickAxes_t { 2,  3,  4, 1,  0 } },
+    { "MY-POWER CO.,LTD. 2In1 USB Joystick", joystickAxes_t {-2,  3, -4, 1} }, 
+    { "SHANWAN Android Gamepad",             joystickAxes_t {-2,  3, -4, 1} },
+    { "Logitech Logitech Extreme 3D",        joystickAxes_t {-4,  1, -2, 3}  },
+    { "Logitech Gamepad F310",               joystickAxes_t {-2,  4, -5, 1} },
+    { "FrSky FrSky Simulator",               joystickAxes_t { 1,  2,  3, 4} },
+    { "Horizon Hobby SPEKTRUM RECEIVER",     joystickAxes_t { 2,  3,  4, 1} },
 
     // Windows
-    { "2In1 USB Joystick",                   joystickAxes_t {-1,  4, -3, 2, 5 } },
-    { "Controller (XBOX 360 For Windows)",   joystickAxes_t {-1,  4, -3, 2, 5 } },
-    { "Controller (Gamepad F310)",           joystickAxes_t {-1,  4, -3, 2, 5 } },
-    { "Logitech Extreme 3D",                 joystickAxes_t { 0,  2, -1, 3, 0 } },
-    { "FrSky Simulator",                     joystickAxes_t { 6,  5,  4, 3, 0 } },
-    { "SPEKTRUM RECEIVER",                   joystickAxes_t { 3,  2,  1, 4, 0 } },  
+    { "2In1 USB Joystick",                   joystickAxes_t {-1,  4, -3, 2} },
+    { "Controller (XBOX 360 For Windows)",   joystickAxes_t {-1,  4, -3, 2} },
+    { "Controller (Gamepad F310)",           joystickAxes_t {-1,  4, -3, 2} },
+    { "Logitech Extreme 3D",                 joystickAxes_t { 0,  2, -1, 3} },
+    { "FrSky Simulator",                     joystickAxes_t { 6,  5,  4, 3} },
+    { "SPEKTRUM RECEIVER",                   joystickAxes_t { 3,  2,  1, 4} },  
 };
 
 static float scaleJoystickAxis(const int32_t rawval)
@@ -222,29 +221,6 @@ static demands_t reportJoystick(void)
     printf(" Button pressed = %d\n", wb_joystick_get_pressed_button());
 
     return demands_t {0, 0, 0, 0};
-}
-
-static bool getHoverModeFromJoystick(void)
-{
-    auto joyname = wb_joystick_get_model();
-
-    auto axes = JOYSTICK_AXIS_MAP[joyname];
-
-    auto hover = axes.hover;
-
-    // For gamepad with shoulder buttons, allow use to enter/exit hover mode;
-    // for R/C/ transmitters and keyboard, always in hover mode
-    return 
-        hover > 0  ? 
-        wb_joystick_get_pressed_button() == abs(hover) :
-        true;         
-}
-
-static bool sticksInHoverMode(void)
-{
-    return 
-        haveJoystick() == JOYSTICK_RECOGNIZED ? getHoverModeFromJoystick() : 
-        true;
 }
 
 //////////////////////////////////////////////////////////////////////////////

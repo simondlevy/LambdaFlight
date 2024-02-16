@@ -147,8 +147,6 @@ int main(int argc, char ** argv)
 
     sticksInit();
 
-    auto wasInHoverMode = false;
-
     // Altitude target, normalized to [-1,+1]
     float altitudeTarget = 0;
 
@@ -160,42 +158,22 @@ int main(int argc, char ** argv)
         // Get open-loop demands from input device (keyboard, joystick, etc.)
         sticksRead(demands);
 
-        // Check where we're in hover mode (button press on game controller)
-        auto inHoverMode = true; //sticksInHoverMode();
-
         // Get vehicle state from sensors
         getVehicleState(gyro, imu, gps);
 
         // Hover mode: integrate stick demand to get altitude target
-        if (inHoverMode) {
+        altitudeTarget = Num::fconstrain(
+                altitudeTarget + demands.thrust * DT, 
+                ALTITUDE_TARGET_MIN, ALTITUDE_TARGET_MAX);
 
-            if (!wasInHoverMode) {
-                altitudeTarget = ALTITUDE_TARGET_INITIAL;
-            }
-
-            altitudeTarget = Num::fconstrain(
-                    altitudeTarget + demands.thrust * DT, 
-                    ALTITUDE_TARGET_MIN, ALTITUDE_TARGET_MAX);
-
-            // Rescale altitude to [-1,+1]
-            demands.thrust = 2 * ((altitudeTarget - ALTITUDE_TARGET_MIN) /
+        // Rescale altitude target to [-1,+1]
+        demands.thrust = 2 * ((altitudeTarget - ALTITUDE_TARGET_MIN) /
                 (ALTITUDE_TARGET_MAX - ALTITUDE_TARGET_MIN)) - 1;
-        }
-
-        // Non-hover mode: use raw stick value with min 0
-        else {
-
-            demands.thrust = Num::fconstrain(demands.thrust, 0, 1);
-
-            altitudeTarget = 0;
-        }
-
-        wasInHoverMode = inHoverMode;
 
         // Run miniflie algorithm on open-loop demands and vehicle state to 
         // get motor values
         float motorvals[4] = {};
-        miniflie.step(inHoverMode, state, demands, motorvals);
+        miniflie.step(true, state, demands, motorvals);
 
         // Set simulated motor values
         wb_motor_set_velocity(m1_motor, +motorvals[0]);
