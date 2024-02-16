@@ -29,7 +29,7 @@
 //Un-comment if you want to try OpenCV
 //#include "camera.hpp"
 
-#include "sticks.hpp"
+#include "../sticks.hpp"
 
 // These constants allow our PID constants to be in the same intervals as in
 // the actual vehicle

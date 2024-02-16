@@ -25,7 +25,7 @@
 
 #include <datatypes.h>
 
-#include "sticks.hpp"
+#include "../sticks.hpp"
 
 static WbDeviceTag m1_motor;
 static WbDeviceTag m2_motor;

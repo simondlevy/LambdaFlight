@@ -94,6 +94,8 @@ class Miniflie {
 
             if (inHoverMode) {
 
+                printf("%f\n", demands.thrust);
+
                 // In hover mode, thrust demand comes in as [-1,+1], so
                 // we convert it to a target altitude in meters
                 demands.thrust = Num::rescale(
