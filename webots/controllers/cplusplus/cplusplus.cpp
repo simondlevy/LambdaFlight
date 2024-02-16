@@ -147,7 +147,6 @@ int main(int argc, char ** argv)
 
     sticksInit();
 
-    // Altitude target, normalized to [-1,+1]
     float altitudeTarget = 0;
 
     while (wb_robot_step(timestep) != -1) {

@@ -27,6 +27,13 @@
 
 #include "../sticks.hpp"
 
+// https://www.bitcraze.io/documentation/tutorials/getting-started-with-flow-deck/
+static const float ALTITUDE_TARGET_INITIAL = 0.4;
+static const float ALTITUDE_TARGET_MIN = 0.2;
+static const float ALTITUDE_TARGET_MAX = 2.0;  // 3.0 in original
+
+static const float DT = .01;
+
 static WbDeviceTag m1_motor;
 static WbDeviceTag m2_motor;
 static WbDeviceTag m3_motor;
@@ -37,7 +44,6 @@ static float m2;
 static float m3;
 static float m4;
 
-
 //////////////////////////////////////////////////////////////////////////////
 
 // Shared with Haskell Copilot
@@ -46,7 +52,7 @@ vehicleState_t state;
 
 demands_t demands;
 
-bool hover;
+bool hover = true;
 
 void step(void);
 
@@ -159,34 +165,25 @@ int main(int argc, char ** argv)
 
     sticksInit();
 
+    float altitudeTarget = 0;
+
     while (wb_robot_step(timestep) != -1) {
 
         // Get open-loop demands from input device (keyboard, joystick, etc.)
         sticksRead(demands);
 
-        // Check where we're in hover mode (button press on game controller)
-        hover = sticksInHoverMode();
-
-        // Altitude target, normalized to [-1,+1]
-        static float _altitudeTarget;
-
         // Get vehicle state from sensors
         getVehicleState(gyro, imu, gps);
 
-        // Hover mode: integrate stick demand
-        if (hover) {
-            const float DT = .01;
-            _altitudeTarget = fconstrain(_altitudeTarget + demands.thrust * DT, -1, +1);
-            demands.thrust = _altitudeTarget;
-        }
+        // Hover mode: integrate stick demand to get altitude target
+        altitudeTarget = fconstrain(
+                altitudeTarget + demands.thrust * DT, 
+                ALTITUDE_TARGET_MIN, ALTITUDE_TARGET_MAX);
 
-        // Non-hover mode: use raw stick value with min 0
-        else {
-            demands.thrust = fconstrain(demands.thrust, 0, 1);
-            _altitudeTarget = 0;
-        }
+        // Rescale altitude target to [-1,+1]
+        demands.thrust = 2 * ((altitudeTarget - ALTITUDE_TARGET_MIN) /
+                (ALTITUDE_TARGET_MAX - ALTITUDE_TARGET_MIN)) - 1;
 
-        printf("%f\n", _altitudeTarget);
 
         // Call Haskell Copilot, which will call runMotors()
         step();
