@@ -43,10 +43,21 @@ static const float THRUST_MAX   = 60;
 static const float PITCH_ROLL_SCALE = 1e-4;
 static const float YAW_SCALE = 4e-5;
 
+static Miniflie miniflie;
+
+void step(void)
+{
+    // Run miniflie algorithm on open-loop demands and vehicle state to 
+    // get motor values
+    float motorvals[4] = {};
+    miniflie.step(true, state, demands, motorvals);
+
+    // Set simulated motor values
+    runMotors(motorvals[0], motorvals[1], motorvals[2], motorvals[3]);
+}
+
 int main(int argc, char ** argv)
 {
-    static Miniflie miniflie;
-
     miniflie.init(
             mixQuadrotor,
             PID_UPDATE_RATE,
@@ -62,10 +73,10 @@ int main(int argc, char ** argv)
     const int timestep = (int)wb_robot_get_basic_time_step();
 
     // Initialize motors
-    auto m1_motor = makeMotor("m1_motor", +1);
-    auto m2_motor = makeMotor("m2_motor", -1);
-    auto m3_motor = makeMotor("m3_motor", +1);
-    auto m4_motor = makeMotor("m4_motor", -1);
+    m1_motor = makeMotor("m1_motor", +1);
+    m2_motor = makeMotor("m2_motor", -1);
+    m3_motor = makeMotor("m3_motor", +1);
+    m4_motor = makeMotor("m4_motor", -1);
 
     // Initialize sensors
     auto imu = makeSensor("inertial_unit", timestep, wb_inertial_unit_enable);
@@ -89,7 +100,7 @@ int main(int argc, char ** argv)
         getVehicleState(gyro, imu, gps);
 
         // Hover mode: integrate stick demand to get altitude target
-        altitudeTarget = Num::fconstrain(
+        altitudeTarget = fconstrain(
                 altitudeTarget + demands.thrust * DT, 
                 ALTITUDE_TARGET_MIN, ALTITUDE_TARGET_MAX);
 
@@ -97,16 +108,7 @@ int main(int argc, char ** argv)
         demands.thrust = 2 * ((altitudeTarget - ALTITUDE_TARGET_MIN) /
                 (ALTITUDE_TARGET_MAX - ALTITUDE_TARGET_MIN)) - 1;
 
-        // Run miniflie algorithm on open-loop demands and vehicle state to 
-        // get motor values
-        float motorvals[4] = {};
-        miniflie.step(true, state, demands, motorvals);
-
-        // Set simulated motor values
-        wb_motor_set_velocity(m1_motor, +motorvals[0]);
-        wb_motor_set_velocity(m2_motor, -motorvals[1]);
-        wb_motor_set_velocity(m3_motor, +motorvals[2]);
-        wb_motor_set_velocity(m4_motor, -motorvals[3]);
+        step();
     }
 
     wb_robot_cleanup();

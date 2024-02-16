@@ -48,11 +48,6 @@ void report(float value)
 
 //////////////////////////////////////////////////////////////////////////////
 
-static float fconstrain(const float val, const float lo, const float hi)
-{
-    return val < lo ? lo : val > hi ? hi : val;
-}
-
 int main(int argc, char ** argv)
 {
     wb_robot_init();

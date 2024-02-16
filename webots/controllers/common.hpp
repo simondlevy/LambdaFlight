@@ -116,5 +116,7 @@ static WbDeviceTag makeSensor(
     return sensor;
 }
 
-
-
+static float fconstrain(const float val, const float lo, const float hi)
+{
+    return val < lo ? lo : val > hi ? hi : val;
+}
