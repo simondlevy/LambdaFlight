@@ -39,6 +39,8 @@ static WbDeviceTag m2_motor;
 static WbDeviceTag m3_motor;
 static WbDeviceTag m4_motor;
 
+// These are global so they can be shared with Haskell Copilot ---------------
+
 vehicleState_t state;
 
 demands_t demands;
@@ -53,6 +55,8 @@ void runMotors(float m1, float m2, float m3, float m4)
     wb_motor_set_velocity(m3_motor, +m3);
     wb_motor_set_velocity(m4_motor, -m4);
 }
+
+// ---------------------------------------------------------------------------
 
 static WbDeviceTag makeMotor(const char * name, const float direction)
 {
