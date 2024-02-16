@@ -36,7 +36,7 @@ pitchAnglePid kp ki dt ilimit demand angle = demand'
 
 pitchRollAnglePid :: ClosedLoopController
 
-pitchRollAnglePid dt state demands = demands'
+pitchRollAnglePid hover dt state demands = demands'
 
   where kp = 6
         ki = 3

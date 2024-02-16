@@ -24,7 +24,7 @@ cap angle = angle''
 
 yawAnglePid :: ClosedLoopController
 
-yawAnglePid dt state demands = demands'
+yawAnglePid hover dt state demands = demands'
 
     where 
 

@@ -7,7 +7,7 @@ import Demands
 import State
 import Utils
 
-type ClosedLoopController = SFloat -> State -> Demands -> Demands
+type ClosedLoopController = SBool -> SFloat -> State -> Demands -> Demands
 
 piController kp ki dt ilimit target actual integ' = (output, integ) where
 

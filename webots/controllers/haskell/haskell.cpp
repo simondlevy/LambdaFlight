@@ -46,7 +46,7 @@ vehicleState_t state;
 
 demands_t demands;
 
-bool in_hover_mode;
+bool hover;
 
 void step(void);
 
@@ -57,6 +57,11 @@ void runMotors(float m1, float m2, float m3, float m4)
     wb_motor_set_velocity(m2_motor, -m2);
     wb_motor_set_velocity(m3_motor, +m3);
     wb_motor_set_velocity(m4_motor, -m4);
+}
+
+void report(float value)
+{
+    printf("%f\n", value);
 }
 
 //////////////////////////////////////////////////////////////////////////////
@@ -160,7 +165,7 @@ int main(int argc, char ** argv)
         sticksRead(demands);
 
         // Check where we're in hover mode (button press on game controller)
-        in_hover_mode = sticksInHoverMode();
+        hover = sticksInHoverMode();
 
         // Altitude target, normalized to [-1,+1]
         static float _altitudeTarget;
@@ -169,7 +174,7 @@ int main(int argc, char ** argv)
         getVehicleState(gyro, imu, gps);
 
         // Hover mode: integrate stick demand
-        if (in_hover_mode) {
+        if (hover) {
             const float DT = .01;
             _altitudeTarget = fconstrain(_altitudeTarget + demands.thrust * DT, -1, +1);
             demands.thrust = _altitudeTarget;
@@ -180,6 +185,8 @@ int main(int argc, char ** argv)
             demands.thrust = fconstrain(demands.thrust, 0, 1);
             _altitudeTarget = 0;
         }
+
+        printf("%f\n", _altitudeTarget);
 
         // Call Haskell Copilot, which will call runMotors()
         step();

@@ -46,9 +46,9 @@ runYPid kp ki dt roll' dy = -(kp * error + ki * integ) -- note negation
    pitch: input forward positive => output negative
 --}
 
-positionPid :: SBool -> SFloat -> ClosedLoopController
+positionPid :: SFloat -> ClosedLoopController
 
-positionPid inHoverMode angleMax dt state demands = demands'  where
+positionPid angleMax hover dt state demands = demands'  where
 
     kp = 25
     ki = 1
@@ -70,10 +70,10 @@ positionPid inHoverMode angleMax dt state demands = demands'  where
 
     -- Convert demand into angle, either by running a PI controller (hover mode)
     -- or just multiplying by a constant (non-hover mode)
-    roll''   = if inHoverMode 
+    roll''   = if hover 
                then runYPid kp ki dt roll' dyb 
                else -(roll' * angleMax)
-    pitch''  = if inHoverMode 
+    pitch''  = if hover 
                then runXPid kp ki dt pitch' dxb 
                else -(pitch' * angleMax) 
  
