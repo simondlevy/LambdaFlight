@@ -1,4 +1,6 @@
 /**
+ * Haskell Copilot simulator support for Webots
+ *
  * Copyright (C) 2024 Simon D. Levy
  *
  * This program is free software: you can redistribute it and/or modify
@@ -13,17 +15,6 @@
  * You should have received a copy of the GNU General Public License
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
-
-#include <stdio.h>
-
-#include <webots/camera.h>
-#include <webots/gps.h>
-#include <webots/gyro.h>
-#include <webots/inertial_unit.h>
-#include <webots/motor.h>
-#include <webots/robot.h>
-
-#include <datatypes.h>
 
 #include "../common.hpp"
 

@@ -1,4 +1,6 @@
 /**
+ * Gamepad / joystick / keyboard support for Webots
+ *
  * Copyright (C) 2024 Simon D. Levy
  *
  * This program is free software: you can redistribute it and/or modify
@@ -23,6 +25,8 @@
 
 #include <map>
 #include <string>
+
+#include <datatypes.h>
 
 #include <webots/joystick.h>
 #include <webots/keyboard.h>
