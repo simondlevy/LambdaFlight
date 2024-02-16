@@ -23,6 +23,8 @@
 #include <webots/motor.h>
 #include <webots/robot.h>
 
+#include "sticks.hpp"
+
 // https://www.bitcraze.io/documentation/tutorials/getting-started-with-flow-deck/
 static const float ALTITUDE_TARGET_INITIAL = 0.4;
 static const float ALTITUDE_TARGET_MIN = 0.2;
@@ -38,6 +40,8 @@ static WbDeviceTag m4_motor;
 vehicleState_t state;
 
 demands_t demands;
+
+void step(void);
 
 void runMotors(float m1, float m2, float m3, float m4)
 {
@@ -119,4 +123,52 @@ static WbDeviceTag makeSensor(
 static float fconstrain(const float val, const float lo, const float hi)
 {
     return val < lo ? lo : val > hi ? hi : val;
+}
+
+static void run(void)
+{
+    wb_robot_init();
+
+    const int timestep = (int)wb_robot_get_basic_time_step();
+
+    // Initialize motors
+    m1_motor = makeMotor("m1_motor", +1);
+    m2_motor = makeMotor("m2_motor", -1);
+    m3_motor = makeMotor("m3_motor", +1);
+    m4_motor = makeMotor("m4_motor", -1);
+
+    // Initialize sensors
+    auto imu = makeSensor("inertial_unit", timestep, wb_inertial_unit_enable);
+    auto gyro = makeSensor("gyro", timestep, wb_gyro_enable);
+    auto gps = makeSensor("gps", timestep, wb_gps_enable);
+    auto camera = makeSensor("camera", timestep, wb_camera_enable);
+
+    sticksInit();
+
+    float altitudeTarget = 0;
+
+    while (wb_robot_step(timestep) != -1) {
+
+        //Un-comment if you want to try OpenCV
+        // runCamera(camera);
+
+        // Get open-loop demands from input device (keyboard, joystick, etc.)
+        sticksRead(demands);
+
+        // Get vehicle state from sensors
+        getVehicleState(gyro, imu, gps);
+
+        // Hover mode: integrate stick demand to get altitude target
+        altitudeTarget = fconstrain(
+                altitudeTarget + demands.thrust * DT, 
+                ALTITUDE_TARGET_MIN, ALTITUDE_TARGET_MAX);
+
+        // Rescale altitude target to [-1,+1]
+        demands.thrust = 2 * ((altitudeTarget - ALTITUDE_TARGET_MIN) /
+                (ALTITUDE_TARGET_MAX - ALTITUDE_TARGET_MIN)) - 1;
+
+        step();
+    }
+
+    wb_robot_cleanup();
 }
