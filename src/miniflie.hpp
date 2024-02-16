@@ -76,6 +76,7 @@ class Miniflie {
             _yawScale = yawScale;
 
             initClosedLoopControllers(pidUpdateRate);
+
         }
 
         void step(
@@ -93,8 +94,6 @@ class Miniflie {
             };
 
             if (inHoverMode) {
-
-                printf("%f\n", demands.thrust);
 
                 // In hover mode, thrust demand comes in as [-1,+1], so
                 // we convert it to a target altitude in meters
@@ -191,12 +190,12 @@ class Miniflie {
 
         void initClosedLoopControllers(const Clock::rate_t pidUpdateRate) 
         {
+            _altitudeController.init( pidUpdateRate);
             _pitchRollAngleController.init(pidUpdateRate);
             _pitchRollRateController.init(pidUpdateRate);
             _yawAngleController.init(pidUpdateRate);
             _yawRateController.init(pidUpdateRate);
             _positionController.init(pidUpdateRate);
-            _altitudeController.init(pidUpdateRate);
         }
 
         void runMixer(const demands_t & demands, float motorvals[])

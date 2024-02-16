@@ -19,7 +19,8 @@ class AltitudeController : public ClosedLoopController {
             _altitudePid.init(altitudeKp, altitueKi, 0, 0, _dt, _updateRate,
                     FILTER_CUTOFF, true);
 
-            _altitudePid.setOutputLimit(fmaxf(VEL_MAX, 0.5f)  * VEL_MAX_OVERHEAD);
+            // _altitudePid.setOutputLimit(fmaxf(VEL_MAX, 0.5f)  * VEL_MAX_OVERHEAD);
+            _altitudePid.setOutputLimit(100);
 
             _climbRatePid.init(climbRateKp, climbRateKi, 0, 0, _dt, _updateRate,
                     FILTER_CUTOFF, true); 

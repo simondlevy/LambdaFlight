@@ -45,7 +45,7 @@ static const float DT = .01;
 // https://www.bitcraze.io/documentation/tutorials/getting-started-with-flow-deck/
 static const float ALTITUDE_TARGET_INITIAL = 0.4;
 static const float ALTITUDE_TARGET_MIN = 0.2;
-static const float ALTITUDE_TARGET_MAX = 3.0;
+static const float ALTITUDE_TARGET_MAX = 2.0;  // 3.0 in original
 
 static const Clock::rate_t PID_UPDATE_RATE = Clock::RATE_100_HZ;
 
@@ -161,7 +161,7 @@ int main(int argc, char ** argv)
         sticksRead(demands);
 
         // Check where we're in hover mode (button press on game controller)
-        auto inHoverMode = sticksInHoverMode();
+        auto inHoverMode = true; //sticksInHoverMode();
 
         // Get vehicle state from sensors
         getVehicleState(gyro, imu, gps);
@@ -177,9 +177,9 @@ int main(int argc, char ** argv)
                     altitudeTarget + demands.thrust * DT, 
                     ALTITUDE_TARGET_MIN, ALTITUDE_TARGET_MAX);
 
-            printf("Thrust= %f    Target = %f\n", demands.thrust, altitudeTarget);
-
-            demands.thrust = altitudeTarget;
+            // Rescale altitude to [-1,+1]
+            demands.thrust = 2 * ((altitudeTarget - ALTITUDE_TARGET_MIN) /
+                (ALTITUDE_TARGET_MAX - ALTITUDE_TARGET_MIN)) - 1;
         }
 
         // Non-hover mode: use raw stick value with min 0
@@ -195,7 +195,7 @@ int main(int argc, char ** argv)
         // Run miniflie algorithm on open-loop demands and vehicle state to 
         // get motor values
         float motorvals[4] = {};
-        //miniflie.step(inHoverMode, state, demands, motorvals);
+        miniflie.step(inHoverMode, state, demands, motorvals);
 
         // Set simulated motor values
         wb_motor_set_velocity(m1_motor, +motorvals[0]);
