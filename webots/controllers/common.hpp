@@ -25,6 +25,8 @@
 #include <webots/motor.h>
 #include <webots/robot.h>
 
+#include <datatypes.h>
+
 #include "sticks.hpp"
 
 // https://www.bitcraze.io/documentation/tutorials/getting-started-with-flow-deck/
@@ -159,7 +161,7 @@ static void run(void)
         // runCamera(camera);
 
         // Get open-loop demands from input device (keyboard, joystick, etc.)
-        sticksRead(demands);
+        sticksRead(demands.thrust, demands.roll, demands.pitch, demands.yaw);
 
         // Get vehicle state from sensors
         _getVehicleState(gyro, imu, gps);
@@ -168,6 +170,8 @@ static void run(void)
         altitudeTarget = _constrain(
                 altitudeTarget + demands.thrust * DT, 
                 ALTITUDE_TARGET_MIN, ALTITUDE_TARGET_MAX);
+
+        printf("%f %f\n", demands.thrust, altitudeTarget);
 
         // Rescale altitude target to [-1,+1]
         demands.thrust = 2 * ((altitudeTarget - ALTITUDE_TARGET_MIN) /

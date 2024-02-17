@@ -26,8 +26,6 @@
 #include <map>
 #include <string>
 
-#include <datatypes.h>
-
 #include <webots/joystick.h>
 #include <webots/keyboard.h>
 #include <webots/robot.h>
@@ -128,55 +126,55 @@ static float readJoystickThrust(const char * name, const joystickAxes_t axes)
         readThrottleNormal(axes);
 }
 
-static void readJoystick(demands_t & demands)
+static void readJoystick(float & thrust, float & roll, float & pitch, float & yaw)
 {
     auto joyname = wb_joystick_get_model();
 
     auto axes = JOYSTICK_AXIS_MAP[joyname];
 
-    demands.thrust = readJoystickThrust(joyname, axes);
-    demands.roll = -readJoystickAxis(axes.roll);  // postive roll-leftward
-    demands.pitch = readJoystickAxis(axes.pitch); 
-    demands.yaw = readJoystickAxis(axes.yaw);
+    thrust = readJoystickThrust(joyname, axes);
+    roll = -readJoystickAxis(axes.roll);  // postive roll-leftward
+    pitch = readJoystickAxis(axes.pitch); 
+    yaw = readJoystickAxis(axes.yaw);
 
     // Run thrust stick through deadband
-    demands.thrust = fabs(demands.thrust) < 0.05 ? 0 : demands.thrust;
+    thrust = fabs(thrust) < 0.05 ? 0 : thrust;
 }
 
-static void readKeyboard(demands_t & demands)
+static void readKeyboard(float & thrust, float & roll, float & pitch, float & yaw)
 {
     switch (wb_keyboard_get_key()) {
 
         case WB_KEYBOARD_UP:
-            demands.pitch = +0.5;
+            pitch = +0.5;
             break;
 
         case WB_KEYBOARD_DOWN:
-            demands.pitch = -0.5;
+            pitch = -0.5;
             break;
 
         case WB_KEYBOARD_RIGHT:
-            demands.roll = -0.5;
+            roll = -0.5;
             break;
 
         case WB_KEYBOARD_LEFT:
-            demands.roll = +0.5;
+            roll = +0.5;
             break;
 
         case 'Q':
-            demands.yaw = -0.5;
+            yaw = -0.5;
             break;
 
         case 'E':
-            demands.yaw = +0.5;
+            yaw = +0.5;
             break;
 
         case 'W':
-            demands.thrust = +0.5;
+            thrust = +0.5;
             break;
 
         case 'S':
-            demands.thrust = -0.5;
+            thrust = -0.5;
             break;
     }
 }
@@ -213,7 +211,7 @@ static joystickStatus_e haveJoystick(void)
     return status;
 }
 
-static demands_t reportJoystick(void) 
+static void reportJoystick(float & thrust, float & roll, float & pitch, float & yaw)
 {
     printf("Unrecognized joystick '%s' with axes ", wb_joystick_get_model()); 
 
@@ -224,7 +222,10 @@ static demands_t reportJoystick(void)
 
     printf(" Button pressed = %d\n", wb_joystick_get_pressed_button());
 
-    return demands_t {0, 0, 0, 0};
+    thrust = 0;
+    roll = 0;
+    pitch = 0;
+    yaw = 0;
 }
 
 //////////////////////////////////////////////////////////////////////////////
@@ -237,19 +238,19 @@ static void sticksInit(void)
     wb_keyboard_enable(timestep);
 }
 
-static void sticksRead(demands_t & demands)
+static void sticksRead(float & thrust, float & roll, float & pitch, float & yaw)
 {
     auto joystickStatus = haveJoystick();
 
     if (joystickStatus == JOYSTICK_RECOGNIZED) {
-        readJoystick(demands);
+        readJoystick(thrust, roll, pitch, yaw);
     }
 
     else if (joystickStatus == JOYSTICK_UNRECOGNIZED) {
-        reportJoystick();
+        reportJoystick(thrust, roll, pitch, yaw);
     }
 
     else {
-        readKeyboard(demands);
+        readKeyboard(thrust, roll, pitch, yaw);
     }
 }
