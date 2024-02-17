@@ -138,10 +138,10 @@ static void run(void)
     const int timestep = (int)wb_robot_get_basic_time_step();
 
     // Initialize motors
-    _m1_motor = _makeMotor("_m1_motor", +1);
-    _m2_motor = _makeMotor("_m2_motor", -1);
-    _m3_motor = _makeMotor("_m3_motor", +1);
-    _m4_motor = _makeMotor("_m4_motor", -1);
+    _m1_motor = _makeMotor("m1_motor", +1);
+    _m2_motor = _makeMotor("m2_motor", -1);
+    _m3_motor = _makeMotor("m3_motor", +1);
+    _m4_motor = _makeMotor("m4_motor", -1);
 
     // Initialize sensors
     auto imu = _makeSensor("inertial_unit", timestep, wb_inertial_unit_enable);
