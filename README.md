@@ -1,4 +1,4 @@
-<img src="media/lambdaflight2png" align="center">
+<img src="media/lambdaflight.png" align="center">
 
 # Miniflie
 Miniflie is an experimental minimalist version of the 
