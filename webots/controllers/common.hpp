@@ -155,7 +155,7 @@ static void run(void)
 
     _sticks.init();
 
-    float altitudeTarget = 0;
+    float altitudeTarget = ALTITUDE_TARGET_INITIAL;
 
     while (wb_robot_step(timestep) != -1) {
 

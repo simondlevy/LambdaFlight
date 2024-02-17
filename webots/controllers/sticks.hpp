@@ -175,6 +175,13 @@ class Sticks {
 
             // Run thrust stick through deadband
             thrust = fabs(thrust) < 0.05 ? 0 : thrust;
+
+            // Handle bogus large thrust values on startup
+            if (!ready && thrust > -1.0) {
+                ready = true;
+            }
+
+            thrust = ready ? thrust : 0;
         }
 
         static void readKeyboard(float & thrust, float & roll, float & pitch, float & yaw)
