@@ -176,8 +176,6 @@ static void run(void)
                 altitudeTarget + demands.thrust * DT, 
                 ALTITUDE_TARGET_MIN, ALTITUDE_TARGET_MAX);
 
-        printf("%f %f\n", demands.thrust, altitudeTarget);
-
         // Rescale altitude target to [-1,+1]
         demands.thrust = 2 * ((altitudeTarget - ALTITUDE_TARGET_MIN) /
                 (ALTITUDE_TARGET_MAX - ALTITUDE_TARGET_MIN)) - 1;

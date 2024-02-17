@@ -231,5 +231,4 @@ class Miniflie {
         {
             return thrust < 0 ? 0 : thrust;
         }
-
 };

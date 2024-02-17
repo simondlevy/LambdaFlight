@@ -1,3 +1,5 @@
+<img src="media/lambdaflight.png">
+
 # Miniflie
 Miniflie is an experimental minimalist version of the 
 [Crazyflie firmware](https://github.com/bitcraze/crazyflie-firmware),
