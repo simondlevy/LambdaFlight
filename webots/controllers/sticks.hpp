@@ -32,6 +32,33 @@
 
 class Sticks {
 
+    public:
+
+        void init(void)
+        {
+            const auto timestep = wb_robot_get_basic_time_step();
+
+            wb_joystick_enable(timestep);
+            wb_keyboard_enable(timestep);
+        }
+
+        void read(float & thrust, float & roll, float & pitch, float & yaw)
+        {
+            auto joystickStatus = haveJoystick();
+
+            if (joystickStatus == JOYSTICK_RECOGNIZED) {
+                readJoystick(thrust, roll, pitch, yaw);
+            }
+
+            else if (joystickStatus == JOYSTICK_UNRECOGNIZED) {
+                reportJoystick(thrust, roll, pitch, yaw);
+            }
+
+            else {
+                readKeyboard(thrust, roll, pitch, yaw);
+            }
+        }
+
     private:
 
         typedef struct {
@@ -50,6 +77,9 @@ class Sticks {
             JOYSTICK_RECOGNIZED
 
         } joystickStatus_e;
+
+        // Handles bogus nonzero throttle stick values at startup
+        bool ready;
 
         std::map<std::string, joystickAxes_t> JOYSTICK_AXIS_MAP = {
 
@@ -118,7 +148,8 @@ class Sticks {
 
         // Special handling for throttle stick: 
         //
-        // 1. Check for Logitech Extreme Pro 3D on Windows; have to use buttons for throttle.
+        // 1. Check for Logitech Extreme Pro 3D on Windows; have to use buttons
+        // for throttle.
         //
         // 2. Starting at low throttle (as we should) produces an initial stick value
         // of zero.  So we check for this and adjust as needed.
@@ -137,7 +168,8 @@ class Sticks {
             auto axes = JOYSTICK_AXIS_MAP[joyname];
 
             thrust = readJoystickThrust(joyname, axes);
-            roll = -readJoystickAxis(axes.roll);  // postive roll-leftward
+
+            roll = readJoystickAxis(axes.roll);
             pitch = readJoystickAxis(axes.pitch); 
             yaw = readJoystickAxis(axes.yaw);
 
@@ -215,7 +247,8 @@ class Sticks {
             return status;
         }
 
-        static void reportJoystick(float & thrust, float & roll, float & pitch, float & yaw)
+        static void reportJoystick(
+                float & thrust, float & roll, float & pitch, float & yaw)
         {
             printf("Unrecognized joystick '%s' with axes ", wb_joystick_get_model()); 
 
@@ -231,34 +264,4 @@ class Sticks {
             pitch = 0;
             yaw = 0;
         }
-
-
-    public:
-
-        void init(void)
-        {
-            const auto timestep = wb_robot_get_basic_time_step();
-
-            wb_joystick_enable(timestep);
-            wb_keyboard_enable(timestep);
-        }
-
-        void read(float & thrust, float & roll, float & pitch, float & yaw)
-        {
-            auto joystickStatus = haveJoystick();
-
-            if (joystickStatus == JOYSTICK_RECOGNIZED) {
-                readJoystick(thrust, roll, pitch, yaw);
-            }
-
-            else if (joystickStatus == JOYSTICK_UNRECOGNIZED) {
-                reportJoystick(thrust, roll, pitch, yaw);
-            }
-
-            else {
-                readKeyboard(thrust, roll, pitch, yaw);
-            }
-        }
-
-
 };

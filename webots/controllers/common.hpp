@@ -165,6 +165,9 @@ static void run(void)
         // Get open-loop demands from input device (keyboard, joystick, etc.)
         _sticks.read(demands.thrust, demands.roll, demands.pitch, demands.yaw);
 
+        // Adjust roll for positive leftward
+        demands.roll = -demands.roll;
+
         // Get vehicle state from sensors
         _getVehicleState(gyro, imu, gps);
 
