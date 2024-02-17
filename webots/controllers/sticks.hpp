@@ -30,227 +30,235 @@
 #include <webots/keyboard.h>
 #include <webots/robot.h>
 
-typedef struct {
+class Sticks {
 
-    int8_t thrust;
-    int8_t roll;
-    int8_t pitch;
-    int8_t yaw;
+    private:
 
-} joystickAxes_t;
+        typedef struct {
 
-typedef enum {
+            int8_t thrust;
+            int8_t roll;
+            int8_t pitch;
+            int8_t yaw;
 
-    JOYSTICK_NONE,
-    JOYSTICK_UNRECOGNIZED,
-    JOYSTICK_RECOGNIZED
+        } joystickAxes_t;
 
-} joystickStatus_e;
+        typedef enum {
 
-static std::map<std::string, joystickAxes_t> JOYSTICK_AXIS_MAP = {
+            JOYSTICK_NONE,
+            JOYSTICK_UNRECOGNIZED,
+            JOYSTICK_RECOGNIZED
 
-    //                                                        T   R   P  Y 
-    // Linux   
-    { "MY-POWER CO.,LTD. 2In1 USB Joystick", joystickAxes_t {-2,  3, -4, 1} }, 
-    { "SHANWAN Android Gamepad",             joystickAxes_t {-2,  3, -4, 1} },
-    { "Logitech Logitech Extreme 3D",        joystickAxes_t {-4,  1, -2, 3}  },
-    { "Logitech Gamepad F310",               joystickAxes_t {-2,  4, -5, 1} },
-    { "FrSky FrSky Simulator",               joystickAxes_t { 1,  2,  3, 4} },
-    { "Horizon Hobby SPEKTRUM RECEIVER",     joystickAxes_t { 2,  3,  4, 1} },
+        } joystickStatus_e;
 
-    // Windows
-    { "2In1 USB Joystick",                   joystickAxes_t {-1,  4, -3, 2} },
-    { "Controller (XBOX 360 For Windows)",   joystickAxes_t {-1,  4, -3, 2} },
-    { "Controller (Gamepad F310)",           joystickAxes_t {-1,  4, -3, 2} },
-    { "Logitech Extreme 3D",                 joystickAxes_t { 0,  2, -1, 3} },
-    { "FrSky Simulator",                     joystickAxes_t { 6,  5,  4, 3} },
-    { "SPEKTRUM RECEIVER",                   joystickAxes_t { 3,  2,  1, 4} },  
-};
+        std::map<std::string, joystickAxes_t> JOYSTICK_AXIS_MAP = {
 
-static float scaleJoystickAxis(const int32_t rawval)
-{
-    return 2.0f * rawval / UINT16_MAX; 
-}
+            //                                                        T   R   P  Y 
+            // Linux   
+            { "MY-POWER CO.,LTD. 2In1 USB Joystick", joystickAxes_t {-2,  3, -4, 1} }, 
+            { "SHANWAN Android Gamepad",             joystickAxes_t {-2,  3, -4, 1} },
+            { "Logitech Logitech Extreme 3D",        joystickAxes_t {-4,  1, -2, 3}  },
+            { "Logitech Gamepad F310",               joystickAxes_t {-2,  4, -5, 1} },
+            { "FrSky FrSky Simulator",               joystickAxes_t { 1,  2,  3, 4} },
+            { "Horizon Hobby SPEKTRUM RECEIVER",     joystickAxes_t { 2,  3,  4, 1} },
 
-static int32_t readJoystickRaw(const int8_t index)
-{
-    const auto axis = abs(index) - 1;
-    const auto sign = index < 0 ? -1 : +1;
-    return sign * wb_joystick_get_axis_value(axis);
-}
+            // Windows
+            { "2In1 USB Joystick",                   joystickAxes_t {-1,  4, -3, 2} },
+            { "Controller (XBOX 360 For Windows)",   joystickAxes_t {-1,  4, -3, 2} },
+            { "Controller (Gamepad F310)",           joystickAxes_t {-1,  4, -3, 2} },
+            { "Logitech Extreme 3D",                 joystickAxes_t { 0,  2, -1, 3} },
+            { "FrSky Simulator",                     joystickAxes_t { 6,  5,  4, 3} },
+            { "SPEKTRUM RECEIVER",                   joystickAxes_t { 3,  2,  1, 4} },  
+        };
 
-static float readJoystickAxis(const int8_t index)
-{
-    return scaleJoystickAxis(readJoystickRaw(index));
-}
-
-static float readThrottleNormal(joystickAxes_t axes)
-{
-    static bool didMoveStick;
-
-    const auto raw = readJoystickRaw(axes.thrust);
-
-    if (raw != 0) {
-        didMoveStick = true;
-    }
-
-    return didMoveStick ? scaleJoystickAxis(raw) : -1;
-}
-
-static float readThrottleExtremeWindows(void)
-{
-    static bool didWarn;
-
-    if (!didWarn) {
-           printf("Use trigger to climb, side-button to descend\n");
-    }
-
-    didWarn = true;
-
-    auto button = wb_joystick_get_pressed_button();
-
-    return button == 0 ? + 0.5 : button == 1 ? -0.5 : 0;
-}
-
-// Special handling for throttle stick: 
-//
-// 1. Check for Logitech Extreme Pro 3D on Windows; have to use buttons for throttle.
-//
-// 2. Starting at low throttle (as we should) produces an initial stick value
-// of zero.  So we check for this and adjust as needed.
-//
-static float readJoystickThrust(const char * name, const joystickAxes_t axes)
-{
-    return !strcmp(name, "Logitech Extreme 3D") ? 
-        readThrottleExtremeWindows() : 
-        readThrottleNormal(axes);
-}
-
-static void readJoystick(float & thrust, float & roll, float & pitch, float & yaw)
-{
-    auto joyname = wb_joystick_get_model();
-
-    auto axes = JOYSTICK_AXIS_MAP[joyname];
-
-    thrust = readJoystickThrust(joyname, axes);
-    roll = -readJoystickAxis(axes.roll);  // postive roll-leftward
-    pitch = readJoystickAxis(axes.pitch); 
-    yaw = readJoystickAxis(axes.yaw);
-
-    // Run thrust stick through deadband
-    thrust = fabs(thrust) < 0.05 ? 0 : thrust;
-}
-
-static void readKeyboard(float & thrust, float & roll, float & pitch, float & yaw)
-{
-    switch (wb_keyboard_get_key()) {
-
-        case WB_KEYBOARD_UP:
-            pitch = +0.5;
-            break;
-
-        case WB_KEYBOARD_DOWN:
-            pitch = -0.5;
-            break;
-
-        case WB_KEYBOARD_RIGHT:
-            roll = -0.5;
-            break;
-
-        case WB_KEYBOARD_LEFT:
-            roll = +0.5;
-            break;
-
-        case 'Q':
-            yaw = -0.5;
-            break;
-
-        case 'E':
-            yaw = +0.5;
-            break;
-
-        case 'W':
-            thrust = +0.5;
-            break;
-
-        case 'S':
-            thrust = -0.5;
-            break;
-    }
-}
-
-static joystickStatus_e haveJoystick(void)
-{
-    auto status = JOYSTICK_RECOGNIZED;
-
-    auto joyname = wb_joystick_get_model();
-
-    // No joystick
-    if (joyname == NULL) {
-
-        static bool didWarn;
-
-        if (!didWarn) {
-            puts("Using keyboard instead:\n");
-            puts("- Use arrow keys to move in the horizontal plane\n");
-            puts("- Use Q and E to rotate around yaw\n");
-            puts("- Use W and S to go up and down\n");
+        static float scaleJoystickAxis(const int32_t rawval)
+        {
+            return 2.0f * rawval / UINT16_MAX; 
         }
 
-        didWarn = true;
+        static int32_t readJoystickRaw(const int8_t index)
+        {
+            const auto axis = abs(index) - 1;
+            const auto sign = index < 0 ? -1 : +1;
+            return sign * wb_joystick_get_axis_value(axis);
+        }
 
-        status = JOYSTICK_NONE;
-    }
+        static float readJoystickAxis(const int8_t index)
+        {
+            return scaleJoystickAxis(readJoystickRaw(index));
+        }
 
-    // Joystick unrecognized
-    else if (JOYSTICK_AXIS_MAP.count(joyname) == 0) {
+        static float readThrottleNormal(joystickAxes_t axes)
+        {
+            static bool didMoveStick;
 
-        status = JOYSTICK_UNRECOGNIZED;
-    }
+            const auto raw = readJoystickRaw(axes.thrust);
 
-    return status;
-}
+            if (raw != 0) {
+                didMoveStick = true;
+            }
 
-static void reportJoystick(float & thrust, float & roll, float & pitch, float & yaw)
-{
-    printf("Unrecognized joystick '%s' with axes ", wb_joystick_get_model()); 
+            return didMoveStick ? scaleJoystickAxis(raw) : -1;
+        }
 
-    for (uint8_t k=0; k<wb_joystick_get_number_of_axes(); ++k) {
+        static float readThrottleExtremeWindows(void)
+        {
+            static bool didWarn;
 
-        printf("%2d=%+6d |", k+1, wb_joystick_get_axis_value(k));
-    }
+            if (!didWarn) {
+                printf("Use trigger to climb, side-button to descend\n");
+            }
 
-    printf(" Button pressed = %d\n", wb_joystick_get_pressed_button());
+            didWarn = true;
 
-    thrust = 0;
-    roll = 0;
-    pitch = 0;
-    yaw = 0;
-}
+            auto button = wb_joystick_get_pressed_button();
 
-//////////////////////////////////////////////////////////////////////////////
+            return button == 0 ? + 0.5 : button == 1 ? -0.5 : 0;
+        }
 
-static void sticksInit(void)
-{
-    const auto timestep = wb_robot_get_basic_time_step();
+        // Special handling for throttle stick: 
+        //
+        // 1. Check for Logitech Extreme Pro 3D on Windows; have to use buttons for throttle.
+        //
+        // 2. Starting at low throttle (as we should) produces an initial stick value
+        // of zero.  So we check for this and adjust as needed.
+        //
+        static float readJoystickThrust(const char * name, const joystickAxes_t axes)
+        {
+            return !strcmp(name, "Logitech Extreme 3D") ? 
+                readThrottleExtremeWindows() : 
+                readThrottleNormal(axes);
+        }
 
-    wb_joystick_enable(timestep);
-    wb_keyboard_enable(timestep);
-}
+        void readJoystick(float & thrust, float & roll, float & pitch, float & yaw)
+        {
+            auto joyname = wb_joystick_get_model();
 
-static void sticksRead(float & thrust, float & roll, float & pitch, float & yaw)
-{
-    auto joystickStatus = haveJoystick();
+            auto axes = JOYSTICK_AXIS_MAP[joyname];
 
-    if (joystickStatus == JOYSTICK_RECOGNIZED) {
-        readJoystick(thrust, roll, pitch, yaw);
-    }
+            thrust = readJoystickThrust(joyname, axes);
+            roll = -readJoystickAxis(axes.roll);  // postive roll-leftward
+            pitch = readJoystickAxis(axes.pitch); 
+            yaw = readJoystickAxis(axes.yaw);
 
-    else if (joystickStatus == JOYSTICK_UNRECOGNIZED) {
-        reportJoystick(thrust, roll, pitch, yaw);
-    }
+            // Run thrust stick through deadband
+            thrust = fabs(thrust) < 0.05 ? 0 : thrust;
+        }
 
-    else {
-        readKeyboard(thrust, roll, pitch, yaw);
-    }
-}
+        static void readKeyboard(float & thrust, float & roll, float & pitch, float & yaw)
+        {
+            switch (wb_keyboard_get_key()) {
+
+                case WB_KEYBOARD_UP:
+                    pitch = +0.5;
+                    break;
+
+                case WB_KEYBOARD_DOWN:
+                    pitch = -0.5;
+                    break;
+
+                case WB_KEYBOARD_RIGHT:
+                    roll = -0.5;
+                    break;
+
+                case WB_KEYBOARD_LEFT:
+                    roll = +0.5;
+                    break;
+
+                case 'Q':
+                    yaw = -0.5;
+                    break;
+
+                case 'E':
+                    yaw = +0.5;
+                    break;
+
+                case 'W':
+                    thrust = +0.5;
+                    break;
+
+                case 'S':
+                    thrust = -0.5;
+                    break;
+            }
+        }
+
+        joystickStatus_e haveJoystick(void)
+        {
+            auto status = JOYSTICK_RECOGNIZED;
+
+            auto joyname = wb_joystick_get_model();
+
+            // No joystick
+            if (joyname == NULL) {
+
+                static bool didWarn;
+
+                if (!didWarn) {
+                    puts("Using keyboard instead:\n");
+                    puts("- Use arrow keys to move in the horizontal plane\n");
+                    puts("- Use Q and E to rotate around yaw\n");
+                    puts("- Use W and S to go up and down\n");
+                }
+
+                didWarn = true;
+
+                status = JOYSTICK_NONE;
+            }
+
+            // Joystick unrecognized
+            else if (JOYSTICK_AXIS_MAP.count(joyname) == 0) {
+
+                status = JOYSTICK_UNRECOGNIZED;
+            }
+
+            return status;
+        }
+
+        static void reportJoystick(float & thrust, float & roll, float & pitch, float & yaw)
+        {
+            printf("Unrecognized joystick '%s' with axes ", wb_joystick_get_model()); 
+
+            for (uint8_t k=0; k<wb_joystick_get_number_of_axes(); ++k) {
+
+                printf("%2d=%+6d |", k+1, wb_joystick_get_axis_value(k));
+            }
+
+            printf(" Button pressed = %d\n", wb_joystick_get_pressed_button());
+
+            thrust = 0;
+            roll = 0;
+            pitch = 0;
+            yaw = 0;
+        }
+
+
+    public:
+
+        void init(void)
+        {
+            const auto timestep = wb_robot_get_basic_time_step();
+
+            wb_joystick_enable(timestep);
+            wb_keyboard_enable(timestep);
+        }
+
+        void read(float & thrust, float & roll, float & pitch, float & yaw)
+        {
+            auto joystickStatus = haveJoystick();
+
+            if (joystickStatus == JOYSTICK_RECOGNIZED) {
+                readJoystick(thrust, roll, pitch, yaw);
+            }
+
+            else if (joystickStatus == JOYSTICK_UNRECOGNIZED) {
+                reportJoystick(thrust, roll, pitch, yaw);
+            }
+
+            else {
+                readKeyboard(thrust, roll, pitch, yaw);
+            }
+        }
+
+
+};

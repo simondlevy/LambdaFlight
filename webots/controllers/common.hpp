@@ -60,6 +60,8 @@ void runMotors(float m1, float m2, float m3, float m4)
 
 // ---------------------------------------------------------------------------
 
+static Sticks _sticks;
+
 static WbDeviceTag _makeMotor(const char * name, const float direction)
 {
     auto motor = wb_robot_get_device(name);
@@ -151,7 +153,7 @@ static void run(void)
     auto gps = _makeSensor("gps", timestep, wb_gps_enable);
     auto camera = _makeSensor("camera", timestep, wb_camera_enable);
 
-    sticksInit();
+    _sticks.init();
 
     float altitudeTarget = 0;
 
@@ -161,7 +163,7 @@ static void run(void)
         // runCamera(camera);
 
         // Get open-loop demands from input device (keyboard, joystick, etc.)
-        sticksRead(demands.thrust, demands.roll, demands.pitch, demands.yaw);
+        _sticks.read(demands.thrust, demands.roll, demands.pitch, demands.yaw);
 
         // Get vehicle state from sensors
         _getVehicleState(gyro, imu, gps);
