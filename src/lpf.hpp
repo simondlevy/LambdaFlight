@@ -99,7 +99,11 @@ class Lpf {
          * @param sample_time sampling period of the signal
          * @param value initial value of the filter
          */
-        static inline void init_second_order_low_pass(struct SecondOrderLowPass *filter, float tau, float Q, float sample_time,
+        static inline void init_second_order_low_pass(
+                struct SecondOrderLowPass *filter, 
+                float tau, 
+                float Q, 
+                float sample_time,
                 float value)
         {
             float K = tanf(sample_time / (2.0f * tau));
@@ -117,7 +121,9 @@ class Lpf {
          * @param value new input value of the filter
          * @return new filtered value
          */
-        static inline float update_second_order_low_pass(struct SecondOrderLowPass *filter, float value)
+        static inline float update_second_order_low_pass(
+                struct SecondOrderLowPass *filter, 
+                float value)
         {
             float out = filter->b[0] * value
                 + filter->b[1] * filter->i[0]
@@ -154,9 +160,17 @@ class Lpf {
          * @param sample_time sampling period of the signal
          * @param value initial value of the filter
          */
-        static inline void init_butterworth_2_low_pass(Butterworth2LowPass_t *filter, float tau, float sample_time, float value)
+        static inline void init_butterworth_2_low_pass(
+                Butterworth2LowPass_t *filter, 
+                float tau, 
+                float sample_time, 
+                float value)
         {
-            init_second_order_low_pass((struct SecondOrderLowPass *)filter, tau, 0.7071, sample_time, value);
+            init_second_order_low_pass(
+                    (struct SecondOrderLowPass *)filter, 
+                    tau, 0.7071, 
+                    sample_time, 
+                    value);
         }
 
         /** Update second order Butterworth low pass filter state with a new value.
@@ -165,7 +179,8 @@ class Lpf {
          * @param value new input value of the filter
          * @return new filtered value
          */
-        static inline float update_butterworth_2_low_pass(Butterworth2LowPass_t *filter, float value)
+        static inline float update_butterworth_2_low_pass(
+                Butterworth2LowPass_t *filter, float value)
         {
             return update_second_order_low_pass((struct SecondOrderLowPass *)filter, value);
         }
