@@ -1,6 +1,6 @@
 CFLAGS = -Wno-unused-variable
 
-SRC = ../../../cplusplus
+SRC = ../../../src
 
 INCLUDE = -I$(SRC)
 

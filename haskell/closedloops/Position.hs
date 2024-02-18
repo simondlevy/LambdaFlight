@@ -31,11 +31,11 @@ import Utils
 
 ------------------------------------------------------------------------------
 
-runXPid kp ki dt pitch' dy = -(kp * error + ki * integ) -- note negation
+runXPid kp ki dt pitch dy = -(kp * error + ki * integ) -- note negation
 
   where 
 
-    error = pitch' - dy
+    error = pitch - dy
 
     integ = integ' + error * dt
 
@@ -43,11 +43,11 @@ runXPid kp ki dt pitch' dy = -(kp * error + ki * integ) -- note negation
 
 ------------------------------------------------------------------------------
 
-runYPid kp ki dt roll' dy = -(kp * error + ki * integ) -- note negation
+runYPid kp ki dt roll dy = -(kp * error + ki * integ) -- note negation
 
   where 
 
-    error = roll' - dy
+    error = roll - dy
 
     integ = integ' + error * dt
 

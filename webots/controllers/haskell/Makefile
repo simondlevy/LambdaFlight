@@ -12,7 +12,7 @@ FILES_TO_REMOVE += copilot*
 
 all: haskell
 
-copilot.cpp : $(HASKDIR)/*.hs
+copilot.cpp : $(HASKDIR)/*.hs $(HASKDIR)/closedloops/*.hs
 	runhaskell -i$(HASKDIR) -i$(HASKDIR)/closedloops $(HASKDIR)/Main.hs 
 	mv copilot.c copilot.cpp
 
