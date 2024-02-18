@@ -31,27 +31,19 @@ import Utils
 
 ------------------------------------------------------------------------------
 
-runXPid kp ki dt pitch dy = -(kp * error + ki * integ) -- note negation
+runXPid kp ki dt ilimit pitch dx = (-pitch') where  -- note negation
 
-  where 
+  (pitch', integ) = piController kp ki dt ilimit pitch dx integ'
 
-    error = pitch - dy
-
-    integ = integ' + error * dt
-
-    integ' = [0] ++ integ
+  integ' = [0] ++ integ
 
 ------------------------------------------------------------------------------
 
-runYPid kp ki dt roll dy = -(kp * error + ki * integ) -- note negation
+runYPid kp ki dt ilimit roll dy = (-roll') where  -- note negation
 
-  where 
+  (roll', integ) = piController kp ki dt ilimit roll dy integ'
 
-    error = roll - dy
-
-    integ = integ' + error * dt
-
-    integ' = [0] ++ integ
+  integ' = [0] ++ integ
 
 ------------------------------------------------------------------------------
 
@@ -70,6 +62,7 @@ positionPid angleMax hover dt state demands = demands'  where
 
     kp = 25
     ki = 1
+    ilimit = 5000
     
     angle = 30
 
@@ -89,10 +82,10 @@ positionPid angleMax hover dt state demands = demands'  where
     -- Convert demand into angle, either by running a PI controller (hover mode)
     -- or just multiplying by a constant (non-hover mode)
     roll''   = if hover 
-               then runYPid kp ki dt roll' dyb 
+               then runYPid kp ki dt ilimit roll' dyb 
                else -(roll' * angleMax)
     pitch''  = if hover 
-               then runXPid kp ki dt pitch' dxb 
+               then runXPid kp ki dt ilimit pitch' dxb 
                else -(pitch' * angleMax) 
  
     demands' = Demands (thrust demands) roll'' pitch'' (yaw demands)
