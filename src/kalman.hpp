@@ -622,6 +622,11 @@ class KalmanFilter {
                         _kalmanData.q[1]*_kalmanData.q[1] -
                         _kalmanData.q[2]*_kalmanData.q[2] -
                         _kalmanData.q[3]*_kalmanData.q[3]);
+
+            // Get angular velocities directly from gyro
+            state.dphi =    _gyroLatest.x;     
+            state.dtheta = -_gyroLatest.y; // (negate for ENU)
+            state.dpsi =    _gyroLatest.z; 
         }
 
     private:
