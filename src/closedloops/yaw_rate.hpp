@@ -50,7 +50,9 @@ class YawRateController : public ClosedLoopController {
             // correct yaw demand.
             const auto raw = -_pid.run(-demands.yaw, state.dpsi); 
 
-            demands.yaw = Num::fconstrain(raw, -OUTPUT_LIMIT, +OUTPUT_LIMIT);
+            // Reset on zero thrust
+            demands.yaw = demands.thrust == 0 ? 0 : 
+                Num::fconstrain(raw, -OUTPUT_LIMIT, +OUTPUT_LIMIT);
         }
 
         void resetPids(void)

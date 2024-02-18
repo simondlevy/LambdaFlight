@@ -50,9 +50,11 @@ class PitchRollRateController : public ClosedLoopController {
          virtual void run(
                 const vehicleState_t & state, demands_t & demands) override
         {
-            demands.roll = _rollPid.run(demands.roll, state.dphi);
+            demands.roll = demands.thrust == 0 ? 0 :
+                _rollPid.run(demands.roll, state.dphi);
 
-            demands.pitch = _pitchPid.run(demands.pitch, state.dtheta);
+            demands.pitch = demands.thrust == 0 ? 0 :
+                _pitchPid.run(demands.pitch, state.dtheta);
 
         }
 

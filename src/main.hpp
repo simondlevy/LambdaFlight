@@ -1,5 +1,5 @@
 /**
- * Miniflie class for real and simulated flight controllers.
+ * Main C++ class for real and simulated flight controllers.
  *
  * Copyright (C) 2024 Simon D. Levy
  *
@@ -133,10 +133,6 @@ class Miniflie {
 
             // Reset closed-loop controllers on zero thrust
             if (demands.thrust == 0) {
-
-                demands.roll = 0;
-                demands.pitch = 0;
-                demands.yaw = 0;
 
                 resetControllers();
             }
