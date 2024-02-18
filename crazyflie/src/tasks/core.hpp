@@ -159,9 +159,6 @@ class CoreTask : public FreeRTOSTask {
                 // angles from estimator
                 _estimatorTask->getVehicleState(&vehicleState);
 
-                // Get state vector angular velocities directly from gyro
-                //Miniflie::gyroToVehicleState(sensorData.gyro, vehicleState);
-
                 const auto areMotorsAllowedToRun = _safety->areMotorsAllowedToRun();
 
                 static float _motorvals[4];
