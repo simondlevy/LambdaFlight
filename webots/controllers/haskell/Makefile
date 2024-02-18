@@ -1,8 +1,10 @@
 CFLAGS = -Wno-unused-variable
 
-SRC = ../../../src
+# Needed for datatypes.h
+CPPDIR = ../../../src
+INCLUDE = -I$(CPPDIR)
 
-INCLUDE = -I$(SRC)
+HASKDIR = ../../../haskell
 
 CXX_SOURCES = haskell.cpp copilot.cpp
 
@@ -10,8 +12,8 @@ FILES_TO_REMOVE += copilot*
 
 all: haskell
 
-copilot.cpp : *.hs
-	runhaskell Miniflie.hs
+copilot.cpp : $(HASKDIR)/*.hs
+	runhaskell -i$(HASKDIR) $(HASKDIR)/Miniflie.hs 
 	mv copilot.c copilot.cpp
 
 size: copilot.cpp
