@@ -34,28 +34,29 @@ import Utils
 
 -------------------------------------------------------------------------------
 
-runRollRatePid kp ki kd dt ilimit demand rate = demand'
+runRollRatePid kp ki kd dt ilimit demand rate thrust = demand'
 
   where 
 
     (demand', error, integ) = 
       pidController kp ki kd dt ilimit demand rate id error' integ'
 
-    integ' = [0] ++ integ
-    error' = [0] ++ error
+    -- Reset error integral and previous value on zero thrust
+    integ' = [0] ++ (if thrust == 0 then 0 else integ)
+    error' = [0] ++ (if thrust == 0 then 0 else error)
 
 -------------------------------------------------------------------------------
 
-pitchRatePid kp ki kd dt ilimit demand rate = demand'
+pitchRatePid kp ki kd dt ilimit demand rate thrust = demand'
 
   where 
 
     (demand', error, integ) = 
       pidController kp ki kd dt ilimit demand rate id error' integ'
 
-
-    integ' = [0] ++ integ
-    error' = [0] ++ error
+    -- Reset error integral and previous value on zero thrust
+    integ' = [0] ++ (if thrust == 0 then 0 else integ)
+    error' = [0] ++ (if thrust == 0 then 0 else error)
 
 ------------------------------------------------------------------------------
 
@@ -72,11 +73,11 @@ pitchRollRatePid hover dt state demands = demands' where
 
   roll'  = if thrust' == 0
            then 0
-           else runRollRatePid  kp ki kd dt ilimit (roll demands) (dphi state)
+           else runRollRatePid  kp ki kd dt ilimit (roll demands) (dphi state) thrust'
 
   pitch' = if thrust' == 0
            then 0
-           else pitchRatePid kp ki kd dt ilimit (pitch demands) (dtheta state)
+           else pitchRatePid kp ki kd dt ilimit (pitch demands) (dtheta state) thrust'
 
   demands' = Demands (thrust demands) roll' pitch' (yaw demands)
 

@@ -32,24 +32,26 @@ import Utils
 
 -------------------------------------------------------------------------------
 
-runRollAnglePid kp ki dt ilimit demand angle = demand'
+runRollAnglePid kp ki dt ilimit demand angle thrust = demand'
 
   where 
 
     (demand', integ) = piController kp ki dt ilimit demand angle integ'
 
-    integ' = [0] ++ integ
+    -- Reset error integral on zero thrust
+    integ' = [0] ++ (if thrust == 0 then 0 else integ)
 
 -------------------------------------------------------------------------------
 
 
-pitchAnglePid kp ki dt ilimit demand angle = demand'
+pitchAnglePid kp ki dt ilimit demand angle thrust = demand'
 
   where 
 
     (demand', integ) = piController kp ki dt ilimit demand angle integ'
 
-    integ' = [0] ++ integ
+    -- Reset error integral on zero thrust
+    integ' = [0] ++ (if thrust == 0 then 0 else integ)
 
 ------------------------------------------------------------------------------
 
@@ -61,7 +63,9 @@ pitchRollAnglePid hover dt state demands = demands'
         ki = 3
         ilimit = 20
 
-        roll'  = runRollAnglePid  kp ki dt ilimit (roll demands)  (phi state)
-        pitch' = pitchAnglePid kp ki dt ilimit (pitch demands) (theta state)
+        roll' = 
+          runRollAnglePid  kp ki dt ilimit (roll demands)  (phi state) (thrust demands)
+        pitch' = 
+           pitchAnglePid kp ki dt ilimit (pitch demands) (theta state) (thrust demands)
 
         demands' = Demands (thrust demands) roll' pitch' (yaw demands)
