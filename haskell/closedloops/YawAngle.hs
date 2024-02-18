@@ -64,7 +64,7 @@ yawAnglePid hover dt state demands = demands'
       demands' = Demands (thrust demands) (roll demands) (pitch demands) (-yaw')
 
       -- Reset target on zero thrust
-      target' = [0] ++ (if (thrust demands == 0) then 0 else target)
+      target' = [0] ++ (if (thrust demands == 0) then (psi state) else target)
 
       integ' = [0] ++ integ
       error' = [0] ++ error
