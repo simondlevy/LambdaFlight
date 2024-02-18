@@ -85,7 +85,7 @@ INCLUDES += -I$(VENDOR)/stm32/STM32_USB_Device_Library/Core/inc
 INCLUDES += -I$(VENDOR)/stm32/STM32_USB_OTG_Driver/inc
 
 INCLUDES += -I$(srctree)/src/
-INCLUDES += -I$(srctree)/../src/
+INCLUDES += -I$(srctree)/../cplusplus/
 
 INCLUDES += -I$(KBUILD_OUTPUT)/include/generated
 
