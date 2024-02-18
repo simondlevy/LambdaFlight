@@ -91,7 +91,7 @@ spec = do
                                      ((pitch demands') * pitch_roll_scale)
                                      ((yaw demands') * yaw_scale)
 
-  trigger "runMotors" true [
+  trigger "setMotors" true [
                        arg $ qm1 motors, 
                        arg $ qm2 motors, 
                        arg $ qm3 motors, 

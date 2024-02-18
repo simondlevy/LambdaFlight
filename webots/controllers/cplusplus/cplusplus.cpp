@@ -45,7 +45,7 @@ void step(void)
     miniflie.step(true, state, demands, motorvals);
 
     // Set simulated motor values
-    runMotors(motorvals[0], motorvals[1], motorvals[2], motorvals[3]);
+    setMotors(motorvals[0], motorvals[1], motorvals[2], motorvals[3]);
 }
 
 int main(int argc, char ** argv)

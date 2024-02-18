@@ -49,7 +49,7 @@ demands_t demands;
 
 void step(void);
 
-void runMotors(float m1, float m2, float m3, float m4)
+void setMotors(float m1, float m2, float m3, float m4)
 {
     // Set simulated motor values
     wb_motor_set_velocity(_m1_motor, +m1);

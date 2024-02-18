@@ -13,7 +13,7 @@ FILES_TO_REMOVE += copilot*
 all: haskell
 
 copilot.cpp : $(HASKDIR)/*.hs
-	runhaskell -i$(HASKDIR) $(HASKDIR)/Miniflie.hs 
+	runhaskell -i$(HASKDIR) $(HASKDIR)/Main.hs 
 	mv copilot.c copilot.cpp
 
 size: copilot.cpp
