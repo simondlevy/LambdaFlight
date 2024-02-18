@@ -21,7 +21,7 @@
 #include <tasks/imu.hpp>
 
 #include <crossplatform.h>
-#include <miniflie.hpp>
+#include <main.hpp>
 #include <kalman.hpp>
 #include <motors.h>
 #include <rateSupervisor.hpp>

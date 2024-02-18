@@ -16,7 +16,7 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <miniflie.hpp>
+#include <main.hpp>
 #include <mixers/quadrotor.hpp>
 
 //Un-comment if you want to try OpenCV
