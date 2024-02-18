@@ -179,9 +179,13 @@ class CoreTask : public FreeRTOSTask {
                     // and open-loop info
                     _safety->update(sensorData, step, timestamp, _demands);
 
-                    // Run miniflie core algorithm to get motor spins from open
+                    // Run miniflie core algorithm to get uncapped motor spins from open
                     // loop demands via closed-loop control and mixer
-                    _miniflie.step(inHoverMode, vehicleState, _demands, _motorvals);
+                    float uncapped[4] = {};
+                    _miniflie.step( inHoverMode, vehicleState, _demands, uncapped);
+
+                    // Scale motors spins for output
+                    scaleMotors(uncapped, _motorvals);
                 }
 
                 if (areMotorsAllowedToRun) {
@@ -201,5 +205,34 @@ class CoreTask : public FreeRTOSTask {
 
                 // motorsCheckDshot();
             }
+        }
+
+        void scaleMotors(const float uncapped[], float motorvals[])
+        {
+            float highestThrustFound = 0;
+            for (uint8_t k=0; k<4; k++) {
+
+                const auto thrust = uncapped[k];
+
+                if (thrust > highestThrustFound) {
+                    highestThrustFound = thrust;
+                }
+            }
+
+            float reduction = 0;
+            const float maxAllowedThrust = UINT16_MAX;
+            if (highestThrustFound > maxAllowedThrust) {
+                reduction = highestThrustFound - maxAllowedThrust;
+            }
+
+            for (uint8_t k = 0; k < 4; k++) {
+                float thrustCappedUpper = uncapped[k] - reduction;
+                motorvals[k] = capMinThrust(thrustCappedUpper);
+            }
+        }
+
+        static uint16_t capMinThrust(float thrust) 
+        {
+            return thrust < 0 ? 0 : thrust;
         }
 };

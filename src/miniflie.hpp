@@ -35,8 +35,6 @@ class Miniflie {
 
     public:
 
-        static const uint8_t MAX_MOTOR_COUNT = 20; // whatevs
-
         void init(
                 const mixFun_t mixFun,
                 const Clock::rate_t pidUpdateRate,
@@ -149,7 +147,8 @@ class Miniflie {
             demands.pitch *= _pitchRollScale;
 
             // Run mixer
-            runMixer(demands, motorvals);
+            uint8_t count = 0;
+            _mixFun(demands, motorvals, count);
         }
 
         void resetControllers(void)
@@ -198,37 +197,4 @@ class Miniflie {
             _positionController.init(pidUpdateRate);
         }
 
-        void runMixer(const demands_t & demands, float motorvals[])
-        {
-            const float maxAllowedThrust = UINT16_MAX;
-
-            float uncapped[MAX_MOTOR_COUNT] = {};
-            uint8_t count = 0;
-            _mixFun(demands, uncapped, count);
-
-            float highestThrustFound = 0;
-            for (uint8_t k=0; k<count; k++) {
-
-                const auto thrust = uncapped[k];
-
-                if (thrust > highestThrustFound) {
-                    highestThrustFound = thrust;
-                }
-            }
-
-            float reduction = 0;
-            if (highestThrustFound > maxAllowedThrust) {
-                reduction = highestThrustFound - maxAllowedThrust;
-            }
-
-            for (uint8_t k = 0; k < count; k++) {
-                float thrustCappedUpper = uncapped[k] - reduction;
-                motorvals[k] = capMinThrust(thrustCappedUpper);
-            }
-        }
-
-        static uint16_t capMinThrust(float thrust) 
-        {
-            return thrust < 0 ? 0 : thrust;
-        }
 };
