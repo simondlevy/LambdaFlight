@@ -31,7 +31,7 @@ class YawAngleController : public ClosedLoopController {
         {
             ClosedLoopController::init(updateRate);
 
-            _pid.init(kp,  ki,  kd, 0, _dt, _updateRate, CUTOFF_FREQ, false);
+            _pid.init(kp,  ki,  kd, 0, _dt, _updateRate);
 
             _pid.setIntegralLimit(INTEGRAL_LIMIT);
         }
@@ -74,7 +74,6 @@ class YawAngleController : public ClosedLoopController {
     private:
 
         static constexpr float DEMAND_ANGLE_MAX = 200;
-        static constexpr float CUTOFF_FREQ = 30;
         static constexpr float INTEGRAL_LIMIT = 360;
 
         static float cap(float angle) 

@@ -64,7 +64,6 @@ class PitchRollAngleController : public ClosedLoopController {
     private:
 
         static constexpr float INTEGRAL_LIMIT = 20;
-        static constexpr float FILTER_CUTOFF = 30;
 
         Pid _rollPid;
         Pid _pitchPid;
@@ -72,7 +71,7 @@ class PitchRollAngleController : public ClosedLoopController {
         void initAxis(
                 const float kp, const float ki, const  float kd, Pid & pid)
         {
-            pid.init(kp,  ki,  kd, 0, _dt, _updateRate, FILTER_CUTOFF, false);
+            pid.init(kp,  ki,  kd, 0, _dt, _updateRate);
 
             pid.setIntegralLimit(INTEGRAL_LIMIT);
         }

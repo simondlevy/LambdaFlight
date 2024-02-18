@@ -38,8 +38,7 @@ class Pid {
                 const float kff,
                 const float dt,
                 const float samplingRate,
-                const float cutoffFreq,
-                bool enableDFilter)
+                const float filterCutoffFreq=0)
         {
             _error         = 0;
             _prevError     = 0;
@@ -53,10 +52,10 @@ class Pid {
             _iLimit        = DEFAULT_PID_INTEGRATION_LIMIT;
             _outputLimit   = DEFAULT_PID_OUTPUT_LIMIT;
             _dt            = dt;
-            _enableDFilter = enableDFilter;
+            _enableDFilter = filterCutoffFreq > 0;
 
             if (_enableDFilter) {
-                _dFilter.init(samplingRate, cutoffFreq);
+                _dFilter.init(samplingRate, filterCutoffFreq);
             }
         }
 
@@ -141,14 +140,14 @@ class Pid {
             _outputLimit = outputLimit;
         }
 
-        void filterReset(const float samplingRate, const float cutoffFreq, 
+        void filterReset(const float samplingRate, const float filterCutoffFreq, 
                 bool enableDFilter) 
         {
             _enableDFilter = enableDFilter;
 
             if (_enableDFilter)
             {
-                _dFilter.init(samplingRate, cutoffFreq);
+                _dFilter.init(samplingRate, filterCutoffFreq);
             }
         }
 

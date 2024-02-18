@@ -77,7 +77,7 @@ class PositionController : public ClosedLoopController {
 
         void initAxis(Pid & pid, const float kp, const float ki)
         {
-            pid.init(kp, ki, 0, 0, _dt, _updateRate, FILTER_CUTOFF, true);
+            pid.init(kp, ki, 0, 0, _dt, _updateRate, FILTER_CUTOFF);
             pid.setOutputLimit(LIMIT * LIMIT_OVERHEAD);
         }
 

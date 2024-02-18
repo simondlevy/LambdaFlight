@@ -30,7 +30,7 @@ class YawRateController : public ClosedLoopController {
         {
             ClosedLoopController::init(updateRate);
 
-            _pid.init(kp,  ki,  0, 0, _dt, _updateRate, CUTOFF_FREQ, false);
+            _pid.init(kp,  ki,  0, 0, _dt, _updateRate);
 
             _pid.setIntegralLimit(INTEGRAL_LIMIT);
         }
@@ -62,7 +62,6 @@ class YawRateController : public ClosedLoopController {
 
     private:
 
-        static constexpr float CUTOFF_FREQ = 30;
         static constexpr float INTEGRAL_LIMIT = 166.7;
         static constexpr float OUTPUT_LIMIT = INT16_MAX;
 

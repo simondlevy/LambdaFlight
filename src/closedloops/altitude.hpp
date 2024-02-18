@@ -17,12 +17,12 @@ class AltitudeController : public ClosedLoopController {
             ClosedLoopController::init(updateRate);
 
             _altitudePid.init(altitudeKp, altitueKi, 0, 0, _dt, _updateRate,
-                    FILTER_CUTOFF, true);
+                    FILTER_CUTOFF);
 
             _altitudePid.setOutputLimit(100);
 
             _climbRatePid.init(climbRateKp, climbRateKi, 0, 0, _dt, _updateRate,
-                    FILTER_CUTOFF, true); 
+                    FILTER_CUTOFF); 
         }
 
         /**

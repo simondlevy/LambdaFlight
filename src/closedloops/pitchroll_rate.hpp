@@ -68,7 +68,6 @@ class PitchRollRateController : public ClosedLoopController {
     private:
 
         static constexpr float INTEGRAL_LIMIT = 33;
-        static constexpr float FILTER_CUTOFF = 30;
 
         Pid _rollPid;
         Pid _pitchPid;
@@ -79,7 +78,7 @@ class PitchRollRateController : public ClosedLoopController {
                 const float kd,
                 Pid  & pid) 
         {
-            pid.init(kp,  ki,  kd, 0, _dt, _updateRate, FILTER_CUTOFF, false);
+            pid.init(kp,  ki,  kd, 0, _dt, _updateRate);
 
             pid.setIntegralLimit(INTEGRAL_LIMIT);
         }

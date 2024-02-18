@@ -133,13 +133,7 @@ class Miniflie {
 
             // Reset closed-loop controllers on zero thrust
             if (demands.thrust == 0) {
-
-                _pitchRollAngleController.resetPids();
-                _pitchRollRateController.resetPids();
-                _positionController.resetPids();
-
-                _altitudeController.resetFilters();
-                _positionController.resetFilters();
+                resetControllers();
             }
 
             // Scale yaw, pitch and roll demands for mixer
@@ -150,6 +144,17 @@ class Miniflie {
             // Run mixer
             uint8_t count = 0;
             _mixFun(demands, motorvals, count);
+        }
+
+        void resetControllers(void)
+        {        
+            _pitchRollAngleController.resetPids();
+            _pitchRollRateController.resetPids();
+            _positionController.resetPids();
+
+            _altitudeController.resetFilters();
+            _positionController.resetFilters();
+
         }
 
     private:
