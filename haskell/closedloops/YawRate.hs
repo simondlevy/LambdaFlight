@@ -45,6 +45,9 @@ yawRatePid hover dt state demands = demands' where
 
     (yaw', integ) = piController kp ki dt ilimit (-(yaw demands)) (dpsi state) integ'
 
-    demands' = Demands (thrust demands) (roll demands) (pitch demands) (-yaw')
+    -- No yaw demand on zero thrust
+    yaw'' = if (thrust demands) == 0 then 0 else yaw'
+
+    demands' = Demands (thrust demands) (roll demands) (pitch demands) (-yaw'')
 
     integ' = [0] ++ integ

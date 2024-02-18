@@ -54,16 +54,17 @@ yawAnglePid hover dt state demands = demands'
 
       -- Yaw angle psi is positive nose-left, whereas yaw demand is
       -- positive nose-right.  Hence we negate the yaw demand to
-      -- accumulate the angle target.
+      -- accumulate the angle target.  
       target = cap $ target' - angle_max * (yaw demands) * dt
 
       (yaw', error, integ) =
         pidController kp ki kd dt ilimit target (psi state) cap error' integ'
 
       -- Return the result negated, so demand will still be nose-right positive
-      --yaw' = -(kp * error + ki * integ + kd * deriv) 
       demands' = Demands (thrust demands) (roll demands) (pitch demands) (-yaw')
 
-      target' = [0] ++ target
+      -- Reset target on zero thrust
+      target' = [0] ++ (if (thrust demands == 0) then 0 else target)
+
       integ' = [0] ++ integ
       error' = [0] ++ error

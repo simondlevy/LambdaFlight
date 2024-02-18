@@ -25,7 +25,7 @@ module PitchRollRate where
 import Language.Copilot
 import Copilot.Compile.C99
 
-import Prelude hiding (id, (++))
+import Prelude hiding (id, (++), (==))
 
 import ClosedLoop
 import Demands
@@ -68,8 +68,15 @@ pitchRollRatePid hover dt state demands = demands' where
   kd = 1.25
   ilimit = 33
 
-  roll'  = runRollRatePid  kp ki kd dt ilimit (roll demands) (dphi state)
-  pitch' = pitchRatePid kp ki kd dt ilimit (pitch demands) (dtheta state)
+  thrust' = thrust demands
+
+  roll'  = if thrust' == 0
+           then 0
+           else runRollRatePid  kp ki kd dt ilimit (roll demands) (dphi state)
+
+  pitch' = if thrust' == 0
+           then 0
+           else pitchRatePid kp ki kd dt ilimit (pitch demands) (dtheta state)
 
   demands' = Demands (thrust demands) roll' pitch' (yaw demands)
 
