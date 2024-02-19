@@ -26,6 +26,7 @@ import Copilot.Compile.C99
 
 import ClosedLoop
 import Demands
+import Lpf
 import State
 import Utils
 

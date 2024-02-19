@@ -26,4 +26,10 @@ import Copilot.Compile.C99
 
 import Utils
 
+lpf :: SFloat -> SFloat -> SFloat -> SFloat
+
+lpf sample_freq cutoff_freq sample = output where
+
+  output = sample
+
 
