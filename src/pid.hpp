@@ -1,7 +1,6 @@
 #pragma once
 
 #include "num.hpp"
-#include "lpf.hpp"
 
 class Pid {
 
@@ -26,8 +25,6 @@ class Pid {
         float _iLimit;       // integral limit, absolute value. '0' means no limit.
         float _outputLimit;  // total PID output limit, absolute value. '0' means no limit.
         float _dt;           // delta-time dt
-        Lpf _dFilter;        // filter for D term
-        bool _enableDFilter; // filter for D term enable flag
 
     public:
 
@@ -52,11 +49,6 @@ class Pid {
             _iLimit        = DEFAULT_PID_INTEGRATION_LIMIT;
             _outputLimit   = DEFAULT_PID_OUTPUT_LIMIT;
             _dt            = dt;
-            _enableDFilter = filterCutoffFreq > 0;
-
-            if (_enableDFilter) {
-                _dFilter.init(samplingRate, filterCutoffFreq);
-            }
         }
 
         void setIntegralLimit(const float limit)
@@ -87,13 +79,7 @@ class Pid {
 
             auto output = _outP;
 
-            float deriv = (_error - _prevError) / _dt;
-
-            if (_enableDFilter){
-                _deriv = _dFilter.apply(deriv);
-            } else {
-                _deriv = deriv;
-            }
+            _deriv = (_error - _prevError) / _dt;
 
             if (isnan(_deriv) || isinf(_deriv)) {
                 _deriv = 0;
@@ -138,17 +124,6 @@ class Pid {
         void setOutputLimit(const float outputLimit)
         {
             _outputLimit = outputLimit;
-        }
-
-        void filterReset(const float samplingRate, const float filterCutoffFreq, 
-                bool enableDFilter) 
-        {
-            _enableDFilter = enableDFilter;
-
-            if (_enableDFilter)
-            {
-                _dFilter.init(samplingRate, filterCutoffFreq);
-            }
         }
 
 }; // class Pid
