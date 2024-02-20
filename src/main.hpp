@@ -153,7 +153,6 @@ class Miniflie {
             _positionController.resetPids();
 
             _altitudeController.resetFilters();
-            _positionController.resetFilters();
         }
 
     private:

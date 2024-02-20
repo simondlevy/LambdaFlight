@@ -50,17 +50,10 @@ class PositionController : public ClosedLoopController {
             _pidY.reset();
         }
 
-        void resetFilters(void)
-        {
-            resetFilter(_pidX);
-            resetFilter(_pidY);
-        }
-
     private:
 
         static constexpr float LIMIT = 20;
         static constexpr float LIMIT_OVERHEAD = 1.10;
-        static constexpr float FILTER_CUTOFF = 20;
 
         static float deg2rad(float degrees) 
         { 
@@ -70,14 +63,9 @@ class PositionController : public ClosedLoopController {
         Pid _pidX;
         Pid _pidY;
 
-        void resetFilter(Pid & pid)
-        {
-            pid.filterReset(_updateRate, FILTER_CUTOFF, true);
-        }
-
         void initAxis(Pid & pid, const float kp, const float ki)
         {
-            pid.init(kp, ki, 0, 0, _dt, _updateRate, FILTER_CUTOFF);
+            pid.init(kp, ki, 0, 0, _dt, _updateRate);
             pid.setOutputLimit(LIMIT * LIMIT_OVERHEAD);
         }
 
