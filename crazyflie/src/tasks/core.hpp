@@ -179,7 +179,7 @@ class CoreTask : public FreeRTOSTask {
                     // Run miniflie core algorithm to get uncapped motor spins from open
                     // loop demands via closed-loop control and mixer
                     float uncapped[4] = {};
-                    _miniflie.step( inHoverMode, vehicleState, _demands, uncapped);
+                    _miniflie.step(inHoverMode, vehicleState, _demands, uncapped);
 
                     // Scale motors spins for output
                     scaleMotors(uncapped, _motorvals);

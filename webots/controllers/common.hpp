@@ -25,6 +25,8 @@
 #include <webots/motor.h>
 #include <webots/robot.h>
 
+#include <time.h>
+
 #include <datatypes.h>
 
 #include "sticks.hpp"
@@ -135,6 +137,22 @@ static float _constrain(const float val, const float lo, const float hi)
     return val < lo ? lo : val > hi ? hi : val;
 }
 
+static void report(void)
+{
+    static uint32_t count;
+    static uint32_t sec_prev;
+
+    struct timespec spec = {};
+    clock_gettime(CLOCK_REALTIME, &spec);
+    auto sec_curr = spec.tv_sec; 
+    if (sec_curr > sec_prev) {
+        printf("%d updates per second\n", count);
+        sec_prev = sec_curr;
+        count = 0;
+    }
+    count++;
+}
+
 static void run(void)
 {
     wb_robot_init();
@@ -181,6 +199,8 @@ static void run(void)
                 (ALTITUDE_TARGET_MAX - ALTITUDE_TARGET_MIN)) - 1;
 
         step();
+
+        report();
     }
 
     wb_robot_cleanup();
