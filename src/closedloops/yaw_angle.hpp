@@ -80,11 +80,11 @@ class YawAngleController : public ClosedLoopController {
         {
             float result = angle;
 
-            while (result > 180.0f) {
+            if (result > 180.0f) {
                 result -= 360.0f;
             }
 
-            while (result < -180.0f) {
+            if (result < -180.0f) {
                 result += 360.0f;
             }
 
