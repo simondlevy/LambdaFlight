@@ -151,8 +151,6 @@ class Miniflie {
             _pitchRollAngleController.resetPids();
             _pitchRollRateController.resetPids();
             _positionController.resetPids();
-
-            _altitudeController.resetFilters();
         }
 
     private:

@@ -16,13 +16,11 @@ class AltitudeController : public ClosedLoopController {
         {
             ClosedLoopController::init(updateRate);
 
-            _altitudePid.init(altitudeKp, altitueKi, 0, 0, _dt, _updateRate,
-                    FILTER_CUTOFF);
+            _altitudePid.init(altitudeKp, altitueKi, 0, 0, _dt, _updateRate);
 
             _altitudePid.setOutputLimit(100);
 
-            _climbRatePid.init(climbRateKp, climbRateKi, 0, 0, _dt, _updateRate,
-                    FILTER_CUTOFF); 
+            _climbRatePid.init(climbRateKp, climbRateKi, 0, 0, _dt, _updateRate);
         }
 
         /**
@@ -46,12 +44,6 @@ class AltitudeController : public ClosedLoopController {
             _climbRatePid.reset();
         }
 
-        void resetFilters(void)
-        {
-            _altitudePid.filterReset(_updateRate, FILTER_CUTOFF, true);
-            _climbRatePid.filterReset(_updateRate, FILTER_CUTOFF, true);
-        }
-
         void setOutputLimit(const float limit)
         {
             _altitudePid.setOutputLimit(limit);
@@ -61,7 +53,6 @@ class AltitudeController : public ClosedLoopController {
 
         static constexpr float VEL_MAX = 1;
         static constexpr float VEL_MAX_OVERHEAD = 1.10;
-        static constexpr float FILTER_CUTOFF = 20;
 
         Pid _altitudePid;
         Pid _climbRatePid;
