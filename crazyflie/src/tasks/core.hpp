@@ -81,8 +81,6 @@ class CoreTask : public FreeRTOSTask {
 
         Miniflie _miniflie;
 
-        demands_t _demands;
-
         openLoopFun_t _openLoopFun;
 
         EstimatorTask * _estimatorTask;
@@ -155,16 +153,17 @@ class CoreTask : public FreeRTOSTask {
 
                     // Get open-loop demands in [-1,+1], as well as timestamp
                     // when they received, and whether hover mode is indicated
-                    _openLoopFun(_demands, timestamp, inHoverMode);
+                    extern demands_t openLoopDemands;
+                    _openLoopFun(openLoopDemands, timestamp, inHoverMode);
 
                     // Use safety algorithm to modify demands based on sensor data
                     // and open-loop info
-                    _safety->update(sensorData, step, timestamp, _demands);
+                    _safety->update(sensorData, step, timestamp, openLoopDemands);
 
                     // Run miniflie core algorithm to get uncapped motor spins from open
                     // loop demands via closed-loop control and mixer
                     float uncapped[4] = {};
-                    _miniflie.step(inHoverMode, _reset, vehicleState, _demands, uncapped);
+                    _miniflie.step(inHoverMode, _reset, vehicleState, uncapped);
 
                     // Cancel PID resetting
                     _reset = false;

@@ -56,10 +56,10 @@ class Miniflie {
                 const bool inHoverMode,
                 const bool reset,
                 const vehicleState_t & vehicleState,
-                const demands_t & openLoopDemands,
                 float motorvals[])
         {
             // Start with open-loop demands
+            extern demands_t openLoopDemands;
             demands_t demands = {
                 openLoopDemands.thrust,
                 openLoopDemands.roll,

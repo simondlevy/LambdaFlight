@@ -74,6 +74,8 @@ UsbLinkTask usbLinkTask;
 
 PowerMonitorTask::syslinkInfo_t pmSyslinkInfo;
 
+demands_t openLoopDemands;
+
 // ---------------------------------------------------------------------------
 
 static ImuTask imuTask;

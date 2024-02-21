@@ -21,14 +21,12 @@ static Miniflie miniflie;
 
 extern vehicleState_t vehicleState;
 
-extern demands_t openLoopDemands;
-
 void step(void)
 {
     // Run miniflie algorithm on open-loop demands and vehicle state to 
     // get motor values
     float motorvals[4] = {};
-    miniflie.step(true, false, vehicleState, openLoopDemands, motorvals);
+    miniflie.step(true, false, vehicleState, motorvals);
 
     // Set simulated motor values
     void setMotors(float m1, float m2, float m3, float m4);
