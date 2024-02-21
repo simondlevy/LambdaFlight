@@ -40,20 +40,8 @@ import Position
 import YawAngle
 import YawRate
 
--- Constants that will be different for sim vs. actual -----------------------
-
-clock_rate = RATE_100_HZ
-
-thrust_base  = 48.0
-thrust_scale = 0.25
-thrust_min   = 0.0
-thrust_max   = 60
-
-pitch_roll_angle_max = 30
-
-yaw_scale = 4e-5
-
-pitch_roll_scale = 1e-4
+-- Constants that will be different for sim vs. actual
+import Constants
 
 -- Streams from C++ ----------------------------------------------------------
 
@@ -77,8 +65,13 @@ spec = do
   let dt = rateToPeriod clock_rate
 
   let pids = [altitudePid hover dt,
-              climbRatePid thrust_base thrust_scale thrust_min thrust_max hover dt,
-              positionPid pitch_roll_angle_max hover dt,
+              climbRatePid 
+                 (thrust_base constants)
+                 (thrust_scale constants)
+                 (thrust_min constants)
+                 (thrust_max constants)
+                 hover dt,
+              positionPid (pitch_roll_angle_max constants) hover dt,
               pitchRollAnglePid hover dt, 
               pitchRollRatePid hover dt, 
               yawAnglePid hover dt, 
@@ -87,9 +80,9 @@ spec = do
   let demands' = foldl (\d f -> f state d) demands pids
 
   let motors = quadCFMixer $ Demands (thrust demands') 
-                                     ((roll demands') * pitch_roll_scale)
-                                     ((pitch demands') * pitch_roll_scale)
-                                     ((yaw demands') * yaw_scale)
+                                     ((roll demands') * (pitch_roll_scale constants))
+                                     ((pitch demands') * (pitch_roll_scale constants))
+                                     ((yaw demands') * (yaw_scale constants))
 
   trigger "report" true [arg $ thrust demands']
 

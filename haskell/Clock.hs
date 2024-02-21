@@ -49,3 +49,13 @@ rateToFloat RATE_250_HZ  = 250
 rateToFloat RATE_500_HZ  = 500
 rateToFloat RATE_1000_HZ = 1000
 
+data ScalingConstants = ScalingConstants {
+
+    thrust_base :: SFloat
+  , thrust_scale :: SFloat
+  , thrust_min :: SFloat
+  , thrust_max :: SFloat
+  , pitch_roll_angle_max :: SFloat
+  , pitch_roll_scale :: SFloat
+  , yaw_scale :: SFloat
+}
