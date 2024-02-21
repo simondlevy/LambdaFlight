@@ -147,7 +147,7 @@ class CoreTask : public FreeRTOSTask {
                 if (Clock::rateDoExecute(PID_UPDATE_RATE, step)) {
 
                     uint32_t timestamp = 0;
-                    auto inHoverMode = false;
+                    extern bool inHoverMode;
 
                     // Get open-loop demands in [-1,+1], as well as timestamp
                     // when they received, and whether hover mode is indicated
@@ -161,7 +161,7 @@ class CoreTask : public FreeRTOSTask {
                     // Run miniflie core algorithm to get uncapped motor spins from open
                     // loop demands via closed-loop control and mixer
                     float uncapped[4] = {};
-                    _miniflie.step(inHoverMode, _reset, uncapped);
+                    _miniflie.step(_reset, uncapped);
 
                     // Cancel PID resetting
                     _reset = false;

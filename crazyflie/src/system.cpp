@@ -76,6 +76,7 @@ PowerMonitorTask::syslinkInfo_t pmSyslinkInfo;
 
 demands_t openLoopDemands;
 vehicleState_t vehicleState;
+bool inHoverMode;
 
 // ---------------------------------------------------------------------------
 
