@@ -47,10 +47,10 @@ import Constants
 -- Streams from C++ ----------------------------------------------------------
 
 demandsStruct :: Stream DemandsStruct
-demandsStruct = extern "demands" Nothing
+demandsStruct = extern "openLoopDemands" Nothing
 
 stateStruct :: Stream StateStruct
-stateStruct = extern "state" Nothing
+stateStruct = extern "vehicleState" Nothing
 
 hover :: SBool
 hover = extern "hover" Nothing
@@ -59,9 +59,9 @@ hover = extern "hover" Nothing
 
 spec = do
 
-  let state = liftState stateStruct
+  let vehicleState = liftState stateStruct
 
-  let demands = liftDemands demandsStruct
+  let openLoopDemands = liftDemands demandsStruct
 
   let dt = rateToPeriod clock_rate
 
@@ -78,12 +78,12 @@ spec = do
               yawAnglePid hover dt, 
               yawRatePid hover dt]
 
-  let demands' = foldl (\d f -> f state d) demands pids
+  let demands = foldl (\demand pid -> pid vehicleState demand) openLoopDemands pids
 
-  let motors = quadCFMixer $ Demands (thrust demands') 
-                                     ((roll demands') * (pitch_roll_scale constants))
-                                     ((pitch demands') * (pitch_roll_scale constants))
-                                     ((yaw demands') * (yaw_scale constants))
+  let motors = quadCFMixer $ Demands (thrust demands) 
+                                     ((roll demands) * (pitch_roll_scale constants))
+                                     ((pitch demands) * (pitch_roll_scale constants))
+                                     ((yaw demands) * (yaw_scale constants))
 
   trigger "setMotors" true [
                        arg $ qm1 motors, 

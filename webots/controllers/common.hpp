@@ -45,9 +45,9 @@ static WbDeviceTag _m4_motor;
 
 // These are global so they can be shared with Haskell Copilot ---------------
 
-vehicleState_t state;
+vehicleState_t vehicleState;
 
-demands_t demands;
+demands_t openLoopDemands;
 
 void step(void);
 
@@ -101,25 +101,25 @@ static void _getVehicleState(
     //   phi, dphi: positive roll right
     //   theta,dtheta: positive nose up (requires negating imu, gyro)
     //   psi,dpsi: positive nose left
-    state.x = wb_gps_get_values(gps)[0];
-    state.y = wb_gps_get_values(gps)[1];
-    state.z = wb_gps_get_values(gps)[2];
-    state.phi =     _rad2deg(wb_inertial_unit_get_roll_pitch_yaw(imu)[0]);
-    state.dphi =    _rad2deg(wb_gyro_get_values(gyro)[0]);
-    state.theta =  -_rad2deg(wb_inertial_unit_get_roll_pitch_yaw(imu)[1]);
-    state.dtheta = -_rad2deg(wb_gyro_get_values(gyro)[1]); 
-    state.psi =     _rad2deg(wb_inertial_unit_get_roll_pitch_yaw(imu)[2]);
-    state.dpsi =    _rad2deg(wb_gyro_get_values(gyro)[2]);
+    vehicleState.x = wb_gps_get_values(gps)[0];
+    vehicleState.y = wb_gps_get_values(gps)[1];
+    vehicleState.z = wb_gps_get_values(gps)[2];
+    vehicleState.phi =     _rad2deg(wb_inertial_unit_get_roll_pitch_yaw(imu)[0]);
+    vehicleState.dphi =    _rad2deg(wb_gyro_get_values(gyro)[0]);
+    vehicleState.theta =  -_rad2deg(wb_inertial_unit_get_roll_pitch_yaw(imu)[1]);
+    vehicleState.dtheta = -_rad2deg(wb_gyro_get_values(gyro)[1]); 
+    vehicleState.psi =     _rad2deg(wb_inertial_unit_get_roll_pitch_yaw(imu)[2]);
+    vehicleState.dpsi =    _rad2deg(wb_gyro_get_values(gyro)[2]);
 
     // Use temporal first difference to get world-cooredinate velocities
-    state.dx = (state.x - xprev) / dt;
-    state.dy = (state.y - yprev) / dt;
-    state.dz = (state.z - zprev) / dt;
+    vehicleState.dx = (vehicleState.x - xprev) / dt;
+    vehicleState.dy = (vehicleState.y - yprev) / dt;
+    vehicleState.dz = (vehicleState.z - zprev) / dt;
 
     // Save past time and position for next time step
-    xprev = state.x;
-    yprev = state.y;
-    zprev = state.z;
+    xprev = vehicleState.x;
+    yprev = vehicleState.y;
+    zprev = vehicleState.z;
 }
 
 static WbDeviceTag _makeSensor(
@@ -143,31 +143,6 @@ static uint32_t timesec(void)
     clock_gettime(CLOCK_REALTIME, &spec);
     return spec.tv_sec; 
 }
-
-/*
-static void report(const uint32_t sec_start)
-{
-    static uint32_t count;
-    static uint32_t sec_prev;
-    static bool airborne;
-
-    auto sec_curr = timesec();
-
-    if (sec_curr > sec_prev) {
-        printf("%d updates per second\n", count);
-        sec_prev = sec_curr;
-        count = 0;
-    }
-
-    if (state.z > 0.1) {
-        if (!airborne) {
-            printf("Airborne after %d seconds\n", sec_curr - sec_start);
-        }
-        airborne = true;
-    }
-
-    count++;
-}*/
 
 static void run(void)
 {
@@ -199,21 +174,25 @@ static void run(void)
         // runCamera(camera);
 
         // Get open-loop demands from input device (keyboard, joystick, etc.)
-        _sticks.read(demands.thrust, demands.roll, demands.pitch, demands.yaw);
+        _sticks.read(
+                openLoopDemands.thrust, 
+                openLoopDemands.roll, 
+                openLoopDemands.pitch, 
+                openLoopDemands.yaw);
 
         // Adjust roll for positive leftward
-        demands.roll = -demands.roll;
+        openLoopDemands.roll = -openLoopDemands.roll;
 
         // Get vehicle state from sensors
         _getVehicleState(gyro, imu, gps);
 
         // Hover mode: integrate stick demand to get altitude target
         altitudeTarget = _constrain(
-                altitudeTarget + demands.thrust * DT, 
+                altitudeTarget + openLoopDemands.thrust * DT, 
                 ALTITUDE_TARGET_MIN, ALTITUDE_TARGET_MAX);
 
         // Rescale altitude target to [-1,+1]
-        demands.thrust = 2 * ((altitudeTarget - ALTITUDE_TARGET_MIN) /
+        openLoopDemands.thrust = 2 * ((altitudeTarget - ALTITUDE_TARGET_MIN) /
                 (ALTITUDE_TARGET_MAX - ALTITUDE_TARGET_MIN)) - 1;
 
         step();
