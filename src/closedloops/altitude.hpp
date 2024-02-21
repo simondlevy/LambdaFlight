@@ -21,10 +21,15 @@ class AltitudeController : public ClosedLoopController {
          * Demand is input as altitude target in meters and output as 
          * climb rate in meters per second.
          */
-        void run(const vehicleState_t & state, demands_t & demands)
+        void run(
+                const bool hover, 
+                const vehicleState_t & state, 
+                demands_t & demands)
         {
-            // Set climb rate based on target altitude
-            demands.thrust = _pid.run(demands.thrust, state.z);
+
+            auto thrustraw = demands.thrust;
+
+            demands.thrust = hover ? run(thrustraw, state.z) : thrustraw;
         }
 
         void resetPids(void)
@@ -33,6 +38,15 @@ class AltitudeController : public ClosedLoopController {
         }
 
     private:
+
+        float run(const float thrustraw, const float z)
+        {
+            // In hover mode, thrust demand comes in as [-1,+1], so
+            // we convert it to a target altitude in meters
+            auto target = Num::rescale(thrustraw, -1, +1, 0.2, 2.0);
+
+            return _pid.run(target, z);
+        }
 
         Pid _pid;
 };
