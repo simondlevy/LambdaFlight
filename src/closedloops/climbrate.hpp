@@ -3,14 +3,14 @@
 #include <pid.hpp>
 #include <closedloop.hpp>
 
-class AltitudeController : public ClosedLoopController {
+class ClimbRateController : public ClosedLoopController {
 
     public:
 
         void init(
                 const Clock::rate_t updateRate,
-                const float kp=2,
-                const float ki=0.5)
+                const float kp=25,
+                const float ki=15)
         {
             ClosedLoopController::init(updateRate);
 
@@ -18,14 +18,14 @@ class AltitudeController : public ClosedLoopController {
         }
 
         /**
-         * Demand is input as altitude target in meters and output as 
-         * climb rate in meters per second.
+         * Demand is input as climb rate in meters per second and output as
+         * arbitrary positive value to be scaled according to motor
+         * characteristics.
          */
         virtual void run(const vehicleState_t & state, 
                 demands_t & demands) override 
         {
-            // Set climb rate based on target altitude
-            demands.thrust = _pid.run(demands.thrust, state.z);
+            demands.thrust = _pid.run(demands.thrust, state.dz);
         }
 
         void resetPids(void)

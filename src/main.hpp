@@ -25,6 +25,7 @@
 #include <num.hpp>
 
 #include <closedloops/altitude.hpp>
+#include <closedloops/climbrate.hpp>
 #include <closedloops/pitchroll_angle.hpp>
 #include <closedloops/pitchroll_rate.hpp>
 #include <closedloops/position.hpp>
@@ -73,7 +74,13 @@ class Miniflie {
             _pitchRollScale = pitchRollScale;
             _yawScale = yawScale;
 
-            initClosedLoopControllers(pidUpdateRate);
+            _altitudeController.init(pidUpdateRate);
+            _climbRateController.init(pidUpdateRate);
+            _pitchRollAngleController.init(pidUpdateRate);
+            _pitchRollRateController.init(pidUpdateRate);
+            _yawAngleController.init(pidUpdateRate);
+            _yawRateController.init(pidUpdateRate);
+            _positionController.init(pidUpdateRate);
 
         }
 
@@ -103,6 +110,8 @@ class Miniflie {
                 _positionController.run(vehicleState, demands); 
 
                 _altitudeController.run(vehicleState, demands); 
+
+                _climbRateController.run(vehicleState, demands); 
 
                 // Scale up thrust demand for motors
                 demands.thrust = Num::fconstrain(
@@ -167,20 +176,11 @@ class Miniflie {
 
         mixFun_t _mixFun;
 
+        AltitudeController _altitudeController;
+        ClimbRateController _climbRateController;
         PitchRollAngleController _pitchRollAngleController;
         PitchRollRateController _pitchRollRateController;
         PositionController _positionController;
-        AltitudeController _altitudeController;
         YawAngleController _yawAngleController;
         YawRateController _yawRateController;
-
-        void initClosedLoopControllers(const Clock::rate_t pidUpdateRate) 
-        {
-            _altitudeController.init( pidUpdateRate);
-            _pitchRollAngleController.init(pidUpdateRate);
-            _pitchRollRateController.init(pidUpdateRate);
-            _yawAngleController.init(pidUpdateRate);
-            _yawRateController.init(pidUpdateRate);
-            _positionController.init(pidUpdateRate);
-        }
 };
