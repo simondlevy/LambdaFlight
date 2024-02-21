@@ -22,9 +22,19 @@ class ClimbRateController : public ClosedLoopController {
          * arbitrary positive value to be scaled according to motor
          * characteristics.
          */
-        void run(const vehicleState_t & state, demands_t & demands)
+        void run(
+                const bool hover,
+                const float base,
+                const float scale,
+                const float minval,
+                const float maxval,
+                const vehicleState_t & state, 
+                demands_t & demands)
         {
-            demands.thrust = _pid.run(demands.thrust, state.dz);
+            demands.thrust = 
+                hover ? 
+                _run (demands.thrust, state.dz, base, scale, minval, maxval) : 
+                demands.thrust * maxval;
         }
 
         void resetPids(void)
@@ -35,4 +45,16 @@ class ClimbRateController : public ClosedLoopController {
     private:
 
         Pid _pid;
+
+        float _run(
+                const float thrust, 
+                const float dz,
+                const float base, 
+                const float scale, 
+                const float minval, 
+                const float maxval)
+        {
+            return Num::fconstrain(
+                    _pid.run(thrust, dz) * scale + base, minval, maxval);
+        }
 };

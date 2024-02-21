@@ -29,13 +29,15 @@ import Demands
 import State
 import Utils
 
-run dt thrust target base scale minval maxval = thrust'  where
+run dt thrust dz base scale minval maxval = thrust''  where
 
     kp = 25
     ki = 15
     ilimit = 5000
 
-    (thrust', integ) = piController kp ki dt ilimit thrust target integ'
+    (thrust', integ) = piController kp ki dt ilimit thrust dz integ'
+
+    thrust'' = constrain (thrust' * scale + base) minval maxval
 
     integ' = [0] ++ integ
 

@@ -56,14 +56,7 @@ class CoreTask : public FreeRTOSTask {
 
             _openLoopFun = openLoopFun;
 
-            _miniflie.init(
-                    mixFun,
-                    PID_UPDATE_RATE,
-                    THRUST_SCALE,
-                    THRUST_BASE,
-                    THRUST_MIN,
-                    THRUST_MAX
-                    );
+            _miniflie.init(mixFun);
 
             motorsInit();
 
@@ -85,16 +78,6 @@ class CoreTask : public FreeRTOSTask {
         }
 
     private:
-
-        // Approximate thrust needed when in perfect hover. More weight/older
-        // battery can use a higher value
-        static constexpr float THRUST_BASE  = 36000;
-        static constexpr float THRUST_MIN   = 20000;
-        static constexpr float THRUST_SCALE = 1000;
-
-        static constexpr float THRUST_MAX = UINT16_MAX;
-
-        static const auto PID_UPDATE_RATE = Clock::RATE_500_HZ;
 
         Miniflie _miniflie;
 

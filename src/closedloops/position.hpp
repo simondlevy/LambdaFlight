@@ -20,6 +20,8 @@ class PositionController : public ClosedLoopController {
         }
 
         /**
+          *  Position controller converts meters per second to  degrees.
+          *
           * Demands are input as normalized interval [-1,+1] and output as
           * angles in degrees.
           *
@@ -27,7 +29,7 @@ class PositionController : public ClosedLoopController {
           *
           * pitch: input forward positive => output negative
           */
-         void run(const vehicleState_t & state, demands_t & demands)
+         void run(const bool hover, const vehicleState_t & state, demands_t & demands)
         {
             // Rotate world-coordinate velocities into body coordinates
             const auto dxw = state.dx;
@@ -39,8 +41,8 @@ class PositionController : public ClosedLoopController {
             const auto dyb = -dxw * sinpsi + dyw * cospsi;       
 
             // Run PID closedloops on body-coordinate velocities
-            demands.roll = runAxis(demands.roll, dyb, _pidY);
-            demands.pitch = runAxis(demands.pitch, dxb, _pidX);
+            demands.roll = runAxis(hover, demands.roll, dyb, _pidY);
+            demands.pitch = runAxis(hover, demands.pitch, dxb, _pidX);
         }
 
         void resetPids(void)
@@ -68,10 +70,18 @@ class PositionController : public ClosedLoopController {
             pid.setOutputLimit(LIMIT * LIMIT_OVERHEAD);
         }
 
-        float runAxis(const float demand, const float measured, Pid & pid)
+        float runAxis(
+                const bool hover, const float demand, const float measured, Pid & pid)
         {
-            // note negation
-            return Num::fconstrain(-pid.run(demand, measured), -LIMIT, +LIMIT);
+            return hover ?
+
+                // note negation
+                Num::fconstrain(-pid.run(demand, measured), -LIMIT, +LIMIT) :
+
+                    // In non-hover mode, pitch/roll demands come in as
+                    // [-1,+1], which we convert to degrees for input to
+                    // pitch/roll controller
+                    demand * 30;
         }
 
 };
