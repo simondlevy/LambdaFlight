@@ -29,8 +29,17 @@ class PositionController : public ClosedLoopController {
           *
           * pitch: input forward positive => output negative
           */
-         void run(const bool hover, const vehicleState_t & state, demands_t & demands)
+         void run(
+                 const bool hover, 
+                 const bool reset,
+                 const vehicleState_t & state, 
+                 demands_t & demands)
         {
+            if (reset) {
+                _pidX.reset();
+                _pidY.reset();
+            }
+
             // Rotate world-coordinate velocities into body coordinates
             const auto dxw = state.dx;
             const auto dyw = state.dy;
@@ -43,12 +52,6 @@ class PositionController : public ClosedLoopController {
             // Run PID closedloops on body-coordinate velocities
             demands.roll = runAxis(hover, demands.roll, dyb, _pidY);
             demands.pitch = runAxis(hover, demands.pitch, dxb, _pidX);
-        }
-
-        void resetPids(void)
-        {
-            _pidX.reset();
-            _pidY.reset();
         }
 
     private:

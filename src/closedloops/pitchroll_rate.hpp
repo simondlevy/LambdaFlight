@@ -47,21 +47,18 @@ class PitchRollRateController : public ClosedLoopController {
           *
           * pitch: input nose-up positive => output positive
           */
-         void run( const vehicleState_t & state, demands_t & demands)
+         void run(const bool reset, const vehicleState_t & state, demands_t & demands)
         {
+            if (reset) {
+                _rollPid.reset();
+                _pitchPid.reset();
+            }
+
             demands.roll = demands.thrust == 0 ? 0 :
                 _rollPid.run(demands.roll, state.dphi);
 
             demands.pitch = demands.thrust == 0 ? 0 :
                 _pitchPid.run(demands.pitch, state.dtheta);
-
-        }
-
-        void resetPids(void)
-        {
-            _rollPid.reset();
-
-            _pitchPid.reset();
         }
 
     private:

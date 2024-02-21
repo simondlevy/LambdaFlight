@@ -54,6 +54,7 @@ class Miniflie {
 
         void step(
                 const bool inHoverMode,
+                const bool reset,
                 const vehicleState_t & vehicleState,
                 const demands_t & openLoopDemands,
                 float motorvals[])
@@ -77,20 +78,18 @@ class Miniflie {
                     vehicleState, 
                     demands);
 
-            _positionController.run(inHoverMode, vehicleState, demands); 
+            // Reset closed-loop controllers on zero thrust
+            const auto do_reset = reset | (demands.thrust == 0);
 
-            _pitchRollAngleController.run(vehicleState, demands);
+            _positionController.run(inHoverMode, do_reset, vehicleState, demands); 
 
-            _pitchRollRateController.run(vehicleState, demands);
+            _pitchRollAngleController.run(do_reset, vehicleState, demands);
+
+            _pitchRollRateController.run(do_reset, vehicleState, demands);
 
             _yawAngleController.run(vehicleState, demands);
 
             _yawRateController.run(vehicleState, demands);
-
-            // Reset closed-loop controllers on zero thrust
-            if (demands.thrust == 0) {
-                resetControllers();
-            }
 
             // Scale yaw, pitch and roll demands for mixer
             demands.yaw *= YAW_SCALE;
@@ -103,13 +102,6 @@ class Miniflie {
 
             //void report(const float thrust);
             //report(demands.thrust);
-        }
-
-        void resetControllers(void)
-        {        
-            _pitchRollAngleController.resetPids();
-            _pitchRollRateController.resetPids();
-            _positionController.resetPids();
         }
 
     private:

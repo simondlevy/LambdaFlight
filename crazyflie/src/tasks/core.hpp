@@ -74,7 +74,7 @@ class CoreTask : public FreeRTOSTask {
         // Called from crtp_commander_openloop
         void resetControllers(void)
         {
-            _miniflie.resetControllers();
+            _reset = true;
         }
 
     private:
@@ -90,6 +90,8 @@ class CoreTask : public FreeRTOSTask {
         ImuTask * _imuTask;
 
         Safety * _safety;
+
+        bool _reset;
 
         void runMotors(const float motorvals[4]) 
         {
@@ -162,7 +164,10 @@ class CoreTask : public FreeRTOSTask {
                     // Run miniflie core algorithm to get uncapped motor spins from open
                     // loop demands via closed-loop control and mixer
                     float uncapped[4] = {};
-                    _miniflie.step(inHoverMode, vehicleState, _demands, uncapped);
+                    _miniflie.step(inHoverMode, _reset, vehicleState, _demands, uncapped);
+
+                    // Cancel PID resetting
+                    _reset = false;
 
                     // Scale motors spins for output
                     scaleMotors(uncapped, _motorvals);

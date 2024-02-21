@@ -46,18 +46,15 @@ class PitchRollAngleController : public ClosedLoopController {
           *
           * pitch: nose-up positive
           */
-         void run(const vehicleState_t & state, demands_t & demands)
+         void run(const bool reset, const vehicleState_t & state, demands_t & demands)
         {
+            if (reset) {
+                _rollPid.reset();
+                _pitchPid.reset();
+            }
+
             demands.roll = _rollPid.run(demands.roll, state.phi);
-
             demands.pitch = _pitchPid.run(demands.pitch, state.theta);
-        }
-
-        void resetPids(void)
-        {
-            _rollPid.reset();
-
-            _pitchPid.reset();
         }
 
     private:
