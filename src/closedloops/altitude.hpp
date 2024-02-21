@@ -18,8 +18,6 @@ class AltitudeController : public ClosedLoopController {
 
             _altitudePid.init(altitudeKp, altitueKi, 0, 0, _dt, _updateRate);
 
-            _altitudePid.setOutputLimit(100);
-
             _climbRatePid.init(climbRateKp, climbRateKi, 0, 0, _dt, _updateRate);
         }
 
@@ -42,11 +40,6 @@ class AltitudeController : public ClosedLoopController {
         {
             _altitudePid.reset();
             _climbRatePid.reset();
-        }
-
-        void setOutputLimit(const float limit)
-        {
-            _altitudePid.setOutputLimit(limit);
         }
 
     private:

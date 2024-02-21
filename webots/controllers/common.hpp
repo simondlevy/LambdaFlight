@@ -137,21 +137,37 @@ static float _constrain(const float val, const float lo, const float hi)
     return val < lo ? lo : val > hi ? hi : val;
 }
 
-static void report(void)
+static uint32_t timesec(void)
+{
+    struct timespec spec = {};
+    clock_gettime(CLOCK_REALTIME, &spec);
+    return spec.tv_sec; 
+}
+
+/*
+static void report(const uint32_t sec_start)
 {
     static uint32_t count;
     static uint32_t sec_prev;
+    static bool airborne;
 
-    struct timespec spec = {};
-    clock_gettime(CLOCK_REALTIME, &spec);
-    auto sec_curr = spec.tv_sec; 
+    auto sec_curr = timesec();
+
     if (sec_curr > sec_prev) {
         printf("%d updates per second\n", count);
         sec_prev = sec_curr;
         count = 0;
     }
+
+    if (state.z > 0.1) {
+        if (!airborne) {
+            printf("Airborne after %d seconds\n", sec_curr - sec_start);
+        }
+        airborne = true;
+    }
+
     count++;
-}
+}*/
 
 static void run(void)
 {
@@ -174,6 +190,8 @@ static void run(void)
     _sticks.init();
 
     float altitudeTarget = ALTITUDE_TARGET_INITIAL;
+
+    auto sec_start = timesec();
 
     while (wb_robot_step(timestep) != -1) {
 
@@ -200,7 +218,7 @@ static void run(void)
 
         step();
 
-        report();
+        //report(sec_start);
     }
 
     wb_robot_cleanup();

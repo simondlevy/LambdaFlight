@@ -144,6 +144,9 @@ class Miniflie {
             // Run mixer
             uint8_t count = 0;
             _mixFun(demands, motorvals, count);
+
+            //void report(const float thrust);
+            //report(demands.thrust);
         }
 
         void resetControllers(void)

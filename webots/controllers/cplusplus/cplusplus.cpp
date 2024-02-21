@@ -48,6 +48,11 @@ void step(void)
     setMotors(motorvals[0], motorvals[1], motorvals[2], motorvals[3]);
 }
 
+void report(const float value)
+{
+    printf("%f\n", value);
+}
+
 int main(int argc, char ** argv)
 {
     miniflie.init(
