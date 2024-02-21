@@ -77,21 +77,7 @@ class Miniflie {
                     vehicleState, 
                     demands);
 
-            if (inHoverMode) {
-
-                // Position controller converts meters per second to
-                // degrees
-                _positionController.run(vehicleState, demands); 
-            }
-
-            else {
-
-                // In non-hover mode, pitch/roll demands come in as
-                // [-1,+1], which we convert to degrees for input to
-                // pitch/roll controller
-                demands.roll *= 30;
-                demands.pitch *= 30;
-            }
+            _positionController.run(inHoverMode, vehicleState, demands); 
 
             _pitchRollAngleController.run(vehicleState, demands);
 
