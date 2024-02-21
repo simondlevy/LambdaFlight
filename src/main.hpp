@@ -68,25 +68,23 @@ class Miniflie {
 
             _altitudeController.run(inHoverMode, vehicleState, demands); 
 
-            if (inHoverMode) {
+            _climbRateController.run(
+                    inHoverMode,
+                    THRUST_BASE,
+                    THRUST_SCALE,
+                    THRUST_MIN, 
+                    THRUST_MAX,
+                    vehicleState, 
+                    demands);
 
-                _climbRateController.run(vehicleState, demands); 
+            if (inHoverMode) {
 
                 // Position controller converts meters per second to
                 // degrees
                 _positionController.run(vehicleState, demands); 
-
-                // Scale up thrust demand for motors
-                demands.thrust = Num::fconstrain(
-                        demands.thrust * THRUST_SCALE + THRUST_BASE,
-                        THRUST_MIN, THRUST_MAX);
             }
 
             else {
-
-                // In non-hover mode, thrust demand comes in as [0,1], so we
-                // scale it up for motors
-                demands.thrust *= THRUST_MAX;
 
                 // In non-hover mode, pitch/roll demands come in as
                 // [-1,+1], which we convert to degrees for input to
