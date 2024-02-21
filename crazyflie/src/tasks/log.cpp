@@ -1044,7 +1044,7 @@ static float unused;
 //////////////////////////////////////////////////////////////////////////////
 
 extern Safety safety;
-extern CoreTask coreTask;
+extern vehicleState_t vehicleState;
 extern bool didResetEstimation;
 
 extern RadioLink radioLink;
@@ -1130,15 +1130,15 @@ LOG_GROUP_STOP(stabilizer)
 LOG_GROUP_STOP(controller)
 
     LOG_GROUP_START(stateEstimate)
-    LOG_ADD_CORE(LOG_FLOAT, x, &coreTask.vehicleState.x)
-    LOG_ADD_CORE(LOG_FLOAT, y, &coreTask.vehicleState.y)
-    LOG_ADD_CORE(LOG_FLOAT, z, &coreTask.vehicleState.z)
-    LOG_ADD_CORE(LOG_FLOAT, vx, &coreTask.vehicleState.dx)
-    LOG_ADD_CORE(LOG_FLOAT, vy, &coreTask.vehicleState.dy)
-    LOG_ADD_CORE(LOG_FLOAT, vz, &coreTask.vehicleState.dz)
-    LOG_ADD_CORE(LOG_FLOAT, roll, &coreTask.vehicleState.phi)
-    LOG_ADD_CORE(LOG_FLOAT, pitch, &coreTask.vehicleState.theta)
-    LOG_ADD_CORE(LOG_FLOAT, yaw, &coreTask.vehicleState.psi)
+    LOG_ADD_CORE(LOG_FLOAT, x, &vehicleState.x)
+    LOG_ADD_CORE(LOG_FLOAT, y, &vehicleState.y)
+    LOG_ADD_CORE(LOG_FLOAT, z, &vehicleState.z)
+    LOG_ADD_CORE(LOG_FLOAT, vx, &vehicleState.dx)
+    LOG_ADD_CORE(LOG_FLOAT, vy, &vehicleState.dy)
+    LOG_ADD_CORE(LOG_FLOAT, vz, &vehicleState.dz)
+    LOG_ADD_CORE(LOG_FLOAT, roll, &vehicleState.phi)
+    LOG_ADD_CORE(LOG_FLOAT, pitch, &vehicleState.theta)
+    LOG_ADD_CORE(LOG_FLOAT, yaw, &vehicleState.psi)
 LOG_GROUP_STOP(stateEstimate)
 
     ///////////////////////////////////////////////////////////////////////////////

@@ -31,9 +31,6 @@ class CoreTask : public FreeRTOSTask {
 
     public:
 
-        // Shared with logger or params
-        vehicleState_t vehicleState;
-
         // Called from main program; returns true on success, false on failure
         bool begin(
                 Safety * safety,
@@ -140,6 +137,7 @@ class CoreTask : public FreeRTOSTask {
 
                 // Get state vector linear positions and velocities and
                 // angles from estimator
+                extern vehicleState_t vehicleState;
                 _estimatorTask->getVehicleState(&vehicleState);
 
                 const auto areMotorsAllowedToRun = _safety->areMotorsAllowedToRun();
@@ -163,7 +161,7 @@ class CoreTask : public FreeRTOSTask {
                     // Run miniflie core algorithm to get uncapped motor spins from open
                     // loop demands via closed-loop control and mixer
                     float uncapped[4] = {};
-                    _miniflie.step(inHoverMode, _reset, vehicleState, uncapped);
+                    _miniflie.step(inHoverMode, _reset, uncapped);
 
                     // Cancel PID resetting
                     _reset = false;

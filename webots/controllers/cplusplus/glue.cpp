@@ -26,7 +26,7 @@ void step(void)
     // Run miniflie algorithm on open-loop demands and vehicle state to 
     // get motor values
     float motorvals[4] = {};
-    miniflie.step(true, false, vehicleState, motorvals);
+    miniflie.step(true, false, motorvals);
 
     // Set simulated motor values
     void setMotors(float m1, float m2, float m3, float m4);

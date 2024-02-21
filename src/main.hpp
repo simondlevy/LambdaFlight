@@ -52,11 +52,7 @@ class Miniflie {
 
         }
 
-        void step(
-                const bool inHoverMode,
-                const bool reset,
-                const vehicleState_t & vehicleState,
-                float motorvals[])
+        void step(const bool inHoverMode, const bool reset, float motorvals[])
         {
             // Start with open-loop demands
             extern demands_t openLoopDemands;
@@ -66,6 +62,10 @@ class Miniflie {
                 openLoopDemands.pitch,
                 openLoopDemands.yaw,
             };
+
+            // Run PID controllers
+
+            extern vehicleState_t vehicleState;
 
             _altitudeController.run(inHoverMode, vehicleState, demands); 
 
