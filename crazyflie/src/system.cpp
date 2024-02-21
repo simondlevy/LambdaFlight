@@ -74,9 +74,11 @@ UsbLinkTask usbLinkTask;
 
 PowerMonitorTask::syslinkInfo_t pmSyslinkInfo;
 
+// Streams shared with Haskell Copilot
 demands_t openLoopDemands;
 vehicleState_t vehicleState;
 bool inHoverMode;
+bool resetPids;
 
 // ---------------------------------------------------------------------------
 

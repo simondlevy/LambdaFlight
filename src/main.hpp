@@ -52,7 +52,7 @@ class Miniflie {
 
         }
 
-        void step(const bool reset, float motorvals[])
+        void step(float motorvals[])
         {
             // Start with open-loop demands
             extern demands_t openLoopDemands;
@@ -69,6 +69,8 @@ class Miniflie {
 
             extern vehicleState_t vehicleState;
 
+            extern bool resetPids;
+
             _altitudeController.run(inHoverMode, vehicleState, demands); 
 
             _climbRateController.run(
@@ -81,13 +83,13 @@ class Miniflie {
                     demands);
 
             // Reset closed-loop controllers on zero thrust
-            const auto do_reset = reset | (demands.thrust == 0);
+            const auto reset = resetPids | (demands.thrust == 0);
 
-            _positionController.run(inHoverMode, do_reset, vehicleState, demands); 
+            _positionController.run(inHoverMode, reset, vehicleState, demands); 
 
-            _pitchRollAngleController.run(do_reset, vehicleState, demands);
+            _pitchRollAngleController.run(reset, vehicleState, demands);
 
-            _pitchRollRateController.run(do_reset, vehicleState, demands);
+            _pitchRollRateController.run(reset, vehicleState, demands);
 
             _yawAngleController.run(vehicleState, demands);
 

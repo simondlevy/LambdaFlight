@@ -23,12 +23,14 @@ extern vehicleState_t vehicleState;
 
 bool inHoverMode;
 
+bool resetPids;
+
 void step(void)
 {
     // Run miniflie algorithm on open-loop demands and vehicle state to 
     // get motor values
     float motorvals[4] = {};
-    miniflie.step(false, motorvals);
+    miniflie.step(motorvals);
 
     // Set simulated motor values
     void setMotors(float m1, float m2, float m3, float m4);
@@ -38,6 +40,8 @@ void step(void)
 void init(void)
 {
     inHoverMode = true;
+
+    resetPids = false;
 
     miniflie.init(mixQuadrotor);
 }
