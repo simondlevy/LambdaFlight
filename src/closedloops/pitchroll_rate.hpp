@@ -47,8 +47,7 @@ class PitchRollRateController : public ClosedLoopController {
           *
           * pitch: input nose-up positive => output positive
           */
-         virtual void run(
-                const vehicleState_t & state, demands_t & demands) override
+         void run( const vehicleState_t & state, demands_t & demands)
         {
             demands.roll = demands.thrust == 0 ? 0 :
                 _rollPid.run(demands.roll, state.dphi);

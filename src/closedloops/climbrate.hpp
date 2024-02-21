@@ -22,8 +22,7 @@ class ClimbRateController : public ClosedLoopController {
          * arbitrary positive value to be scaled according to motor
          * characteristics.
          */
-        virtual void run(const vehicleState_t & state, 
-                demands_t & demands) override 
+        void run(const vehicleState_t & state, demands_t & demands)
         {
             demands.thrust = _pid.run(demands.thrust, state.dz);
         }

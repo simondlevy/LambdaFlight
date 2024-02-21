@@ -27,8 +27,7 @@ class PositionController : public ClosedLoopController {
           *
           * pitch: input forward positive => output negative
           */
-         virtual void run(const vehicleState_t & state,
-                demands_t & demands) override 
+         void run(const vehicleState_t & state, demands_t & demands)
         {
             // Rotate world-coordinate velocities into body coordinates
             const auto dxw = state.dx;

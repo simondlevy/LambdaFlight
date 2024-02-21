@@ -21,8 +21,7 @@ class AltitudeController : public ClosedLoopController {
          * Demand is input as altitude target in meters and output as 
          * climb rate in meters per second.
          */
-        virtual void run(const vehicleState_t & state, 
-                demands_t & demands) override 
+        void run(const vehicleState_t & state, demands_t & demands)
         {
             // Set climb rate based on target altitude
             demands.thrust = _pid.run(demands.thrust, state.z);

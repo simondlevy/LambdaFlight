@@ -21,15 +21,6 @@
 
 class ClosedLoopController {
 
-    public:
-
-        /**
-          * A closed-loop controller accepts a state vector and a set of
-          * demands and modifies the demands.
-          */
-        virtual void run(
-                const vehicleState_t & state, demands_t & demands) = 0;
-
     protected:
 
         Clock::rate_t _updateRate;
