@@ -31,10 +31,9 @@ import Utils
 clock_rate = RATE_100_HZ
 
 constants = ScalingConstants 48   -- thrust base 
-                             0    -- thrust scale 
-                             60   -- thrust min 
-                             0.25 -- thrust max
-                             30   -- pitch roll angle max
+                             0.25 -- thrust scale
+                             0    -- thrust min 
+                             60   -- thrust max 
                              1e-4 -- pitch roll scale
                              4e-5 -- yaw scale
 

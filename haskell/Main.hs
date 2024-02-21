@@ -72,7 +72,7 @@ spec = do
                  (thrust_min constants)
                  (thrust_max constants)
                  hover dt,
-              positionPid (pitch_roll_angle_max constants) hover dt,
+              positionPid hover dt,
               pitchRollAnglePid hover dt, 
               pitchRollRatePid hover dt, 
               yawAnglePid hover dt, 
@@ -84,8 +84,6 @@ spec = do
                                      ((roll demands') * (pitch_roll_scale constants))
                                      ((pitch demands') * (pitch_roll_scale constants))
                                      ((yaw demands') * (yaw_scale constants))
-
-  trigger "report" true [arg $ thrust demands']
 
   trigger "setMotors" true [
                        arg $ qm1 motors, 

@@ -32,7 +32,6 @@ data ScalingConstants = ScalingConstants {
   , thrust_scale :: SFloat
   , thrust_min :: SFloat
   , thrust_max :: SFloat
-  , pitch_roll_angle_max :: SFloat
   , pitch_roll_scale :: SFloat
   , yaw_scale :: SFloat
 }

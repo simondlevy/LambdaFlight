@@ -58,9 +58,9 @@ runYPid kp ki dt ilimit roll dy thrust = roll' where
    pitch: input forward positive => output negative
 --}
 
-positionPid :: SFloat -> ClosedLoopController
+positionPid :: ClosedLoopController
 
-positionPid angleMax hover dt state demands = demands'  where
+positionPid hover dt state demands = demands'  where
 
     kp = 25
     ki = 1
@@ -86,11 +86,11 @@ positionPid angleMax hover dt state demands = demands'  where
     -- or just multiplying by a constant (non-hover mode)
     roll''   = if hover 
                then runYPid kp ki dt ilimit roll' dyb thrust'
-               else roll' * angleMax
+               else roll' * 30
 
     pitch''  = if hover 
                then runXPid kp ki dt ilimit pitch' dxb  thrust'
-               else pitch' * angleMax
+               else pitch' * 30
  
     -- Negate roll, pitch demands on output
     demands' = Demands (thrust demands) (-roll'') (-pitch'') (yaw demands)
