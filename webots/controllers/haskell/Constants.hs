@@ -25,6 +25,7 @@ import Language.Copilot
 import Copilot.Compile.C99
 
 import Clock
+import Scaling
 import Utils
 
 clock_rate = RATE_100_HZ

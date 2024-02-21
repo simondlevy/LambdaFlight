@@ -19,32 +19,20 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE RebindableSyntax #-}
 
-module Clock where
+module Scaling where
 
 import Language.Copilot
 import Copilot.Compile.C99
 
 import Utils
 
-data ClockRate = 
-              RATE_25_HZ
-            | RATE_30_HZ
-            | RATE_33_HZ
-            | RATE_50_HZ
-            | RATE_100_HZ
-            | RATE_250_HZ
-            | RATE_500_HZ
-            | RATE_1000_HZ
+data ScalingConstants = ScalingConstants {
 
-rateToPeriod :: ClockRate -> SFloat
-rateToPeriod rate = 1 / (rateToFloat rate)
-
-rateToFloat :: ClockRate -> SFloat
-rateToFloat RATE_25_HZ   = 25
-rateToFloat RATE_30_HZ   = 30
-rateToFloat RATE_33_HZ   = 33
-rateToFloat RATE_50_HZ   = 50
-rateToFloat RATE_100_HZ  = 100
-rateToFloat RATE_250_HZ  = 250
-rateToFloat RATE_500_HZ  = 500
-rateToFloat RATE_1000_HZ = 1000
+    thrust_base :: SFloat
+  , thrust_scale :: SFloat
+  , thrust_min :: SFloat
+  , thrust_max :: SFloat
+  , pitch_roll_angle_max :: SFloat
+  , pitch_roll_scale :: SFloat
+  , yaw_scale :: SFloat
+}
