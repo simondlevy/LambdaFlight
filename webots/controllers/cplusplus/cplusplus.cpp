@@ -24,17 +24,6 @@
 
 #include "../common.hpp"
 
-static const Clock::rate_t PID_UPDATE_RATE = Clock::RATE_100_HZ;
-
-// These constants allow our PID constants to be in the same intervals as in
-// the actual vehicle
-static const float THRUST_BASE = 48;
-static const float THRUST_SCALE = 0.25;
-static const float THRUST_MIN = 0;
-static const float THRUST_MAX   = 60;
-static const float PITCH_ROLL_SCALE = 1e-4;
-static const float YAW_SCALE = 4e-5;
-
 static Miniflie miniflie;
 
 void step(void)
@@ -55,15 +44,7 @@ void report(const float value)
 
 int main(int argc, char ** argv)
 {
-    miniflie.init(
-            mixQuadrotor,
-            PID_UPDATE_RATE,
-            THRUST_SCALE,
-            THRUST_BASE,
-            THRUST_MIN,
-            THRUST_MAX,
-            PITCH_ROLL_SCALE,
-            YAW_SCALE);
+    miniflie.init(mixQuadrotor);
 
     run();
 

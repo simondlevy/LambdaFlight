@@ -32,55 +32,23 @@
 #include <closedloops/yaw_angle.hpp>
 #include <closedloops/yaw_rate.hpp>
 
+#include <constants.h>
+
 class Miniflie {
 
     public:
 
-        void init(
-                const mixFun_t mixFun,
-                const Clock::rate_t pidUpdateRate,
-                const float thrustScale,
-                const float thrustBase,
-                const float thrustMin,
-                const float thrustMax)
-        {
-            init(
-                    mixFun,
-                    pidUpdateRate, 
-                    thrustScale, 
-                    thrustBase, 
-                    thrustMin, 
-                    thrustMax, 
-                    1, 
-                    1);
-         }
-
-        void init(
-                const mixFun_t mixFun,
-                const Clock::rate_t pidUpdateRate,
-                const float thrustScale,
-                const float thrustBase,
-                const float thrustMin,
-                const float thrustMax,
-                const float pitchRollScale,
-                const float yawScale)
+        void init(const mixFun_t mixFun)
         {
             _mixFun = mixFun;
 
-            _thrustScale = thrustScale;
-            _thrustBase = thrustBase;
-            _thrustMin = thrustMin;
-            _thrustMax = thrustMax;
-            _pitchRollScale = pitchRollScale;
-            _yawScale = yawScale;
-
-            _altitudeController.init(pidUpdateRate);
-            _climbRateController.init(pidUpdateRate);
-            _pitchRollAngleController.init(pidUpdateRate);
-            _pitchRollRateController.init(pidUpdateRate);
-            _yawAngleController.init(pidUpdateRate);
-            _yawRateController.init(pidUpdateRate);
-            _positionController.init(pidUpdateRate);
+            _altitudeController.init(PID_UPDATE_RATE);
+            _climbRateController.init(PID_UPDATE_RATE);
+            _pitchRollAngleController.init(PID_UPDATE_RATE);
+            _pitchRollRateController.init(PID_UPDATE_RATE);
+            _yawAngleController.init(PID_UPDATE_RATE);
+            _yawRateController.init(PID_UPDATE_RATE);
+            _positionController.init(PID_UPDATE_RATE);
 
         }
 
@@ -110,15 +78,15 @@ class Miniflie {
 
                 // Scale up thrust demand for motors
                 demands.thrust = Num::fconstrain(
-                        demands.thrust * _thrustScale + _thrustBase,
-                        _thrustMin, _thrustMax);
+                        demands.thrust * THRUST_SCALE + THRUST_BASE,
+                        THRUST_MIN, THRUST_MAX);
             }
 
             else {
 
                 // In non-hover mode, thrust demand comes in as [0,1], so we
                 // scale it up for motors
-                demands.thrust *= _thrustMax;
+                demands.thrust *= THRUST_MAX;
 
                 // In non-hover mode, pitch/roll demands come in as
                 // [-1,+1], which we convert to degrees for input to
@@ -141,9 +109,9 @@ class Miniflie {
             }
 
             // Scale yaw, pitch and roll demands for mixer
-            demands.yaw *= _yawScale;
-            demands.roll *= _pitchRollScale;
-            demands.pitch *= _pitchRollScale;
+            demands.yaw *= YAW_SCALE;
+            demands.roll *= PITCH_ROLL_SCALE;
+            demands.pitch *= PITCH_ROLL_SCALE;
 
             // Run mixer
             uint8_t count = 0;
@@ -161,13 +129,6 @@ class Miniflie {
         }
 
     private:
-
-        float _thrustScale;
-        float _thrustBase;
-        float _thrustMin;
-        float _thrustMax;
-        float _pitchRollScale;
-        float _yawScale;
 
         mixFun_t _mixFun;
 
