@@ -30,7 +30,6 @@
 #include <closedloops/pitchroll_rate.hpp>
 #include <closedloops/position.hpp>
 #include <closedloops/yaw_angle.hpp>
-#include <closedloops/yaw_rate.hpp>
 
 #include <constants.h>
 
@@ -47,7 +46,6 @@ class Miniflie {
             _pitchRollAngleController.init(PID_UPDATE_RATE);
             _pitchRollRateController.init(PID_UPDATE_RATE);
             _yawAngleController.init(PID_UPDATE_RATE);
-            _yawRateController.init(PID_UPDATE_RATE);
             _positionController.init(PID_UPDATE_RATE);
 
         }
@@ -86,9 +84,7 @@ class Miniflie {
 
             _pitchRollRateController.run(reset, vehicleState, demands);
 
-            _yawAngleController.run(vehicleState, demands);
-
-            //_yawRateController.run(vehicleState, demands);
+            //_yawAngleController.run(vehicleState, demands);
         }
 
     private:
@@ -101,5 +97,4 @@ class Miniflie {
         PitchRollRateController _pitchRollRateController;
         PositionController _positionController;
         YawAngleController _yawAngleController;
-        YawRateController _yawRateController;
 };

@@ -33,8 +33,8 @@ import State
 import Utils
 
 -- PID controllers
+import YawAngle
 import YawRate
-
 
 -- Constants -----------------------------------------------------------------
 
@@ -68,7 +68,10 @@ spec = do
 
   let dt = rateToPeriod clock_rate
 
-  let demands' = yawRatePid inHoverMode dt vehicleState demands
+  let pids = [yawAnglePid inHoverMode dt, 
+              yawRatePid inHoverMode dt]
+
+  let demands' = foldl (\demand pid -> pid vehicleState demand) demands pids
 
   let motors = quadCFMixer $ Demands (thrust demands') 
                                      ((roll demands') * (pitch_roll_scale constants))
