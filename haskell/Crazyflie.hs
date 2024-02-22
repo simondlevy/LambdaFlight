@@ -24,13 +24,20 @@ module Main where
 import Language.Copilot
 import Copilot.Compile.C99
 
+import Clock
 import Demands
 import Mixers
 import Motors
 import Scaling
 import Utils
 
+-- PID controllers
+import YawRate
+
+
 -- Constants -----------------------------------------------------------------
+
+clock_rate = RATE_500_HZ
 
 constants = ScalingConstants 36000 -- thrust base 
                              1000  -- thrust scale

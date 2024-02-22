@@ -54,7 +54,7 @@ installed STM32Duino
 
 5. <tt>cd LambdaFlight/crazyflie</tt>
 
-6. <tt>make start && make cf2_defconfig</tt> 
+6. <tt>make copilot && make cf2_defconfig</tt> 
 
 7. <tt>make -j 32 && make cload</tt>
 

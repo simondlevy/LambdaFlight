@@ -270,10 +270,10 @@ clean:
 	find . -name "*.o" -type f -delete
 	find . -name ".*.o*" -type f -delete
 
-start:
+copilot:
 	rm -f $(VENDOR)/STMicroelectronics || rm -rf $(VENDOR)/STMicroelectronics # removes whether or not it has contents
 	ln -s $(STM32DUINO) $(VENDOR)
-	runhaskell -i$(HASKDIR) $(HASKDIR)/Crazyflie.hs
+	runhaskell -i$(HASKDIR) -i$(HASKDIR)/closedloops $(HASKDIR)/Crazyflie.hs
 	cp copilot.c $(PWD)/src/copilot.cpp
 	cp copilot.h $(PWD)/src
 
