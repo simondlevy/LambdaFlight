@@ -21,7 +21,7 @@ quadcopter in Webots or an actual Crazyflie, following the instructions below:
 2. Launch Webots and use <b>File / Open World</b> to open <b>Minifile/webots/worlds/simple.wbt</b>.
 
 3. In the upper-right of the Webots app you will see a label <b>Text Editor</b> with a little file-folder
-icon below it.  Use that icon to open <b>Controllers/cplusplus/cplusplus.cpp</b>.
+icon below it.  Use that icon to open <b>Controllers/simple/simple.cpp</b>.
 
 4.  Build and run the code.  If you have a game controller or R/C transmitter with
 adapter dongle, you can use that to fly;  otherwise, the simulator will tell you 
