@@ -31,6 +31,14 @@ class CoreTask : public FreeRTOSTask {
 
     public:
 
+        void setMotors(float m1, float m2, float m3, float m4)
+        {
+            _uncapped[0] = m1;
+            _uncapped[1] = m2;
+            _uncapped[2] = m3;
+            _uncapped[3] = m4;
+        }
+
         // Called from main program; returns true on success, false on failure
         bool begin(
                 Safety * safety,
@@ -86,6 +94,8 @@ class CoreTask : public FreeRTOSTask {
         ImuTask * _imuTask;
 
         Safety * _safety;
+
+        float _uncapped[4];
 
         void runMotors(const float motorvals[4]) 
         {
@@ -158,16 +168,16 @@ class CoreTask : public FreeRTOSTask {
                     _safety->update(sensorData, step, timestamp, openLoopDemands);
 
                     // Run miniflie core algorithm to get uncapped motor spins from open
-                    // loop demands via closed-loop control and mixer
-                    float uncapped[4] = {};
-                    _miniflie.step(uncapped);
+                    // loop demands via closed-loop control and mixer.   This will
+                    // cause setMotors() to be called
+                    _miniflie.step();
 
                     // Cancel PID resetting
                     extern bool resetPids;
                     resetPids = false;
 
                     // Scale motors spins for output
-                    scaleMotors(uncapped, _motorvals);
+                    scaleMotors(_uncapped, _motorvals);
                 }
 
                 if (areMotorsAllowedToRun) {
@@ -189,7 +199,7 @@ class CoreTask : public FreeRTOSTask {
             }
         }
 
-        void scaleMotors(const float uncapped[], float motorvals[])
+        static void scaleMotors(const float uncapped[], float motorvals[])
         {
             float highestThrustFound = 0;
             for (uint8_t k=0; k<4; k++) {

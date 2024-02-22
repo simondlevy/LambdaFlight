@@ -52,7 +52,7 @@ class Miniflie {
 
         }
 
-        void step(float motorvals[])
+        void step(void)
         {
             // Start with open-loop demands
             extern demands_t openLoopDemands;
@@ -102,7 +102,11 @@ class Miniflie {
 
             // Run mixer
             uint8_t count = 0;
+            float motorvals[4] = {};
             _mixFun(demands, motorvals, count);
+
+            void setMotors(float m1, float m2, float m3, float m4);
+            setMotors(motorvals[0], motorvals[1], motorvals[2], motorvals[3]);
         }
 
     private:
