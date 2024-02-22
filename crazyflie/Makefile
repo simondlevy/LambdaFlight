@@ -265,10 +265,12 @@ HASKDIR = $(PWD)/../haskell
 
 clean:
 	rm -f $(VENDOR)/STMicroelectronics || rm -rf $(VENDOR)/STMicroelectronics # removes whether or not it has contents
-	ln -s $(STM32DUINO) $(VENDOR)
 	rm -rf copilot.* build *.bin rm -f *.elf rm -f *.hex rm -f *.map *.dfu src/copilot.*
 	find . -name "*.o" -type f -delete
 	find . -name ".*.o*" -type f -delete
+
+links:
+	ln -s $(STM32DUINO) $(VENDOR)
 
 copilot:
 	rm -f $(VENDOR)/STMicroelectronics || rm -rf $(VENDOR)/STMicroelectronics # removes whether or not it has contents
