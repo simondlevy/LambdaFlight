@@ -33,6 +33,7 @@ import State
 import Utils
 
 -- PID controllers
+import ClimbRate
 import YawAngle
 import YawRate
 
@@ -68,8 +69,16 @@ spec = do
 
   let dt = rateToPeriod clock_rate
 
-  let pids = [yawAnglePid inHoverMode dt, 
-              yawRatePid inHoverMode dt]
+  let pids = [yawAnglePid inHoverMode dt
+             ,yawRatePid inHoverMode dt 
+             ,climbRatePid 
+                 (thrust_base constants)
+                 (thrust_scale constants)
+                 (thrust_min constants)
+                 (thrust_max constants)
+                 inHoverMode dt
+              ]
+ 
 
   let demands' = foldl (\demand pid -> pid vehicleState demand) demands pids
 

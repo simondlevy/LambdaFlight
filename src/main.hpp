@@ -73,6 +73,7 @@ class Miniflie {
 
             _altitudeController.run(inHoverMode, vehicleState, demands); 
 
+            /*
             _climbRateController.run(
                     inHoverMode,
                     THRUST_BASE,
@@ -80,7 +81,7 @@ class Miniflie {
                     THRUST_MIN, 
                     THRUST_MAX,
                     vehicleState, 
-                    demands);
+                    demands);*/
         }
 
     private:
