@@ -35,7 +35,7 @@ LambdaFlight takes a minimalist approach, not
 supporting Crayzyflie's awesome Loco positioning or swarms, and requiriing you
 to have a Crazyflie Flowdeck v2, so for running your Crazyflie you'll probably
 want to use the official Crazyflie firmware. If you want to try LambdaFlight
-and your Crazyflie, here's how:
+on your Crazyflie, here's how:
 
 1. Attach the
 [Crazyflie Flowdeck v2](https://www.bitcraze.io/products/flow-deck-v2/)
