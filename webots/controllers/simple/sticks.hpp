@@ -46,6 +46,11 @@ class Sticks {
         {
             auto joystickStatus = haveJoystick();
 
+            thrust = 0;
+            roll = 0;
+            pitch = 0;
+            yaw = 0;
+
             if (joystickStatus == JOYSTICK_RECOGNIZED) {
                 readJoystick(thrust, roll, pitch, yaw);
             }
@@ -197,11 +202,11 @@ class Sticks {
                     break;
 
                 case WB_KEYBOARD_RIGHT:
-                    roll = -0.5;
+                    roll = +0.5;
                     break;
 
                 case WB_KEYBOARD_LEFT:
-                    roll = +0.5;
+                    roll = -0.5;
                     break;
 
                 case 'Q':
