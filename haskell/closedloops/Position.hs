@@ -31,25 +31,19 @@ import Utils
 
 ------------------------------------------------------------------------------
 
-runXPid kp ki reset dt ilimit pitch dx thrust = pitch' where
+runXPid kp ki reset dt ilimit pitch dx = pitch' where
 
   (pitch', integ) = piController kp ki dt ilimit pitch dx integ'
 
-  zero = (thrust == 0) Language.Copilot.|| reset
-
-  -- Reset error integral on zero thrust
-  integ' = [0] ++ (if zero then 0 else integ)
+  integ' = [0] ++ (if reset then 0 else integ)
 
 ------------------------------------------------------------------------------
 
-runYPid kp ki reset dt ilimit roll dy thrust = roll' where
+runYPid kp ki reset dt ilimit roll dy = roll' where
 
   (roll', integ) = piController kp ki dt ilimit roll dy integ'
 
-  zero = (thrust == 0) Language.Copilot.|| reset
-
-  -- Reset error integral on zero thrust
-  integ' = [0] ++ (if zero then 0 else integ)
+  integ' = [0] ++ (if reset then 0 else integ)
 
 ------------------------------------------------------------------------------
 
@@ -82,18 +76,17 @@ positionPid reset hover dt state demands = demands'  where
     dxb =  dx'   * cospsi + dy' * sinpsi
     dyb = (-dx') * sinpsi + dy' * cospsi       
 
-    thrust' = (thrust demands)
     roll' = (roll demands)
     pitch' = (pitch demands)
 
     -- Convert demand into angle, either by running a PI controller (hover mode)
     -- or just multiplying by a constant (non-hover mode)
     roll''   = if hover 
-               then runYPid kp ki reset dt ilimit roll' dyb thrust'
+               then runYPid kp ki reset dt ilimit roll' dyb
                else roll' * 30
 
     pitch''  = if hover 
-               then runXPid kp ki reset dt ilimit pitch' dxb  thrust'
+               then runXPid kp ki reset dt ilimit pitch' dxb
                else pitch' * 30
  
     -- Negate roll, pitch demands on output

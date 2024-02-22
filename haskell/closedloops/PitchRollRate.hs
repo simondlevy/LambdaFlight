@@ -33,33 +33,28 @@ import Utils
 
 -------------------------------------------------------------------------------
 
-runRollRatePid kp ki kd reset dt ilimit demand rate thrust = demand'
+runRollRatePid kp ki kd reset dt ilimit demand rate = demand'
 
   where 
 
     (demand', error, integ) = 
       pidController kp ki kd dt ilimit demand rate id error' integ'
 
-    zero = (thrust == 0) Language.Copilot.|| reset
-
-    -- Reset error integral and previous value on zero thrust
-    integ' = [0] ++ (if zero then 0 else integ)
-    error' = [0] ++ (if zero then 0 else error)
+    integ' = [0] ++ (if reset then 0 else integ)
+    error' = [0] ++ (if reset then 0 else error)
 
 -------------------------------------------------------------------------------
 
-pitchRatePid kp ki kd reset dt ilimit demand rate thrust = demand'
+pitchRatePid kp ki kd reset dt ilimit demand rate = demand'
 
   where 
 
     (demand', error, integ) = 
       pidController kp ki kd dt ilimit demand rate id error' integ'
 
-    zero = (thrust == 0) Language.Copilot.|| reset
-
-    -- Reset error integral and previous value on zero thrust
-    integ' = [0] ++ (if zero then 0 else integ)
-    error' = [0] ++ (if zero then 0 else error)
+    -- Reset error integral and previous value on reset thrust
+    integ' = [0] ++ (if reset then 0 else integ)
+    error' = [0] ++ (if reset then 0 else error)
 
 ------------------------------------------------------------------------------
 
@@ -73,19 +68,19 @@ pitchRollRatePid reset hover dt state demands = demands' where
   ilimit = 33
 
   thrust' = thrust demands
-  roll' = roll demands
-  pitch' = pitch demands
-  dphi' = dphi state
+  roll'   = roll demands
+  pitch'  = pitch demands
+  dphi'   = dphi state
   dtheta' = dtheta state
 
   roll''  = if thrust' == 0
            then 0
-           else runRollRatePid kp ki kd reset dt ilimit roll' dphi' thrust'
+           else runRollRatePid kp ki kd reset dt ilimit roll' dphi'
 
   pitch'' = if thrust' == 0
            then 0
-           else pitchRatePid kp ki kd reset dt ilimit pitch' dtheta' thrust'
+           else pitchRatePid kp ki kd reset dt ilimit pitch' dtheta'
 
-  demands' = Demands (thrust demands) roll'' pitch'' (yaw demands)
+  demands' = Demands thrust' roll'' pitch'' (yaw demands)
 
 

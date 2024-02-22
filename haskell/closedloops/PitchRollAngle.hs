@@ -32,26 +32,20 @@ import Utils
 
 -------------------------------------------------------------------------------
 
-runRollAnglePid kp ki reset dt ilimit demand angle thrust = demand' where
+runRollAnglePid kp ki reset dt ilimit demand angle = demand' where
 
   (demand', integ) = piController kp ki dt ilimit demand angle integ'
 
-  zero = (thrust == 0) Language.Copilot.|| reset
-
-  -- Reset error integral on zero thrust
-  integ' = [0] ++ (if zero then 0 else integ)
+  integ' = [0] ++ (if reset then 0 else integ)
 
 -------------------------------------------------------------------------------
 
 
-pitchAnglePid kp ki reset dt ilimit demand angle thrust = demand' where 
+pitchAnglePid kp ki reset dt ilimit demand angle = demand' where 
 
   (demand', integ) = piController kp ki dt ilimit demand angle integ'
 
-  zero = (thrust == 0) Language.Copilot.|| reset
-
-  -- Reset error integral on zero thrust
-  integ' = [0] ++ (if zero then 0 else integ)
+  integ' = [0] ++ (if reset then 0 else integ)
 
 ------------------------------------------------------------------------------
 
@@ -63,13 +57,12 @@ pitchRollAnglePid reset hover dt state demands = demands' where
   ki = 3
   ilimit = 20
 
-  thrust' = thrust demands
   roll' = roll demands
   pitch' = pitch demands
   phi' = phi state
   theta' = theta state
 
-  roll''  = runRollAnglePid kp ki reset dt ilimit roll'  phi'  thrust'
-  pitch'' = pitchAnglePid   kp ki reset dt ilimit pitch' theta' thrust'
+  roll''  = runRollAnglePid kp ki reset dt ilimit roll'  phi'
+  pitch'' = pitchAnglePid   kp ki reset dt ilimit pitch' theta'
 
   demands' = Demands (thrust demands) roll'' pitch'' (yaw demands)
