@@ -89,11 +89,6 @@ class Miniflie {
             _yawAngleController.run(vehicleState, demands);
 
             _yawRateController.run(vehicleState, demands);
-
-            // Scale yaw, pitch and roll demands for mixer
-            //demands.yaw *= YAW_SCALE;
-            //demands.roll *= PITCH_ROLL_SCALE;
-            //demands.pitch *= PITCH_ROLL_SCALE;
         }
 
     private:
