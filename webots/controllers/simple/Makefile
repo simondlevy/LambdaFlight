@@ -6,11 +6,11 @@ INCLUDE = -I$(CPPDIR)
 
 HASKDIR = ../../../haskell
 
-CXX_SOURCES = haskell.cpp copilot.cpp
+CXX_SOURCES = simple.cpp copilot.cpp
 
 FILES_TO_REMOVE += copilot*
 
-all: haskell
+all: simple
 
 copilot.cpp : $(HASKDIR)/*.hs $(HASKDIR)/closedloops/*.hs
 	runhaskell -i$(HASKDIR) -i$(HASKDIR)/closedloops $(HASKDIR)/Sim.hs 

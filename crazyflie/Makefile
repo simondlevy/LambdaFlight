@@ -266,7 +266,7 @@ HASKDIR = $(PWD)/../haskell
 clean:
 	rm -f $(VENDOR)/STMicroelectronics || rm -rf $(VENDOR)/STMicroelectronics # removes whether or not it has contents
 	ln -s $(STM32DUINO) $(VENDOR)
-	rm -rf build *.bin rm -f *.elf rm -f *.hex rm -f *.map *.dfu
+	rm -rf copilot.* build *.bin rm -f *.elf rm -f *.hex rm -f *.map *.dfu
 	find . -name "*.o" -type f -delete
 	find . -name ".*.o*" -type f -delete
 	runhaskell -i$(HASKDIR) $(HASKDIR)/Crazyflie.hs
