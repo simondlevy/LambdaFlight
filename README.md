@@ -11,7 +11,7 @@ has support for Software-In-The-Loop (SITL) simulation using
 To try out LambdaFlight, you'll first need to install
 [Haskell](https://www.haskell.org/)
 and
-[NASA Copilot](https://copilot-language.github.io) (the ``secret sauce'' that
+[NASA Copilot](https://copilot-language.github.io) (the &ldquo;secret sauce&rdquo; that
 allows you to compile Haskell code to a form suitable for running on a flight 
 controller.)  Then you can run a simulated
 quadcopter in Webots or an actual Crazyflie, following the instructions below:
