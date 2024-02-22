@@ -88,7 +88,7 @@ class Miniflie {
 
             _yawAngleController.run(vehicleState, demands);
 
-            _yawRateController.run(vehicleState, demands);
+            //_yawRateController.run(vehicleState, demands);
         }
 
     private:

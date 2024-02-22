@@ -29,6 +29,7 @@ import Demands
 import Mixers
 import Motors
 import Scaling
+import State
 import Utils
 
 -- PID controllers
@@ -51,14 +52,28 @@ constants = ScalingConstants 36000 -- thrust base
 demandsStruct :: Stream DemandsStruct
 demandsStruct = extern "finalDemands" Nothing
 
+inHoverMode :: SBool
+inHoverMode = extern "inHoverMode" Nothing
+
+stateStruct :: Stream StateStruct
+stateStruct = extern "vehicleState" Nothing
+
+-- Main ----------------------------------------------------------------------
+
 spec = do
+
+  let vehicleState = liftState stateStruct
 
   let demands = liftDemands demandsStruct
 
-  let motors = quadCFMixer $ Demands (thrust demands) 
-                                     ((roll demands) * (pitch_roll_scale constants))
-                                     ((pitch demands) * (pitch_roll_scale constants))
-                                     ((yaw demands) * (yaw_scale constants))
+  let dt = rateToPeriod clock_rate
+
+  let demands' = yawRatePid inHoverMode dt vehicleState demands
+
+  let motors = quadCFMixer $ Demands (thrust demands') 
+                                     ((roll demands') * (pitch_roll_scale constants))
+                                     ((pitch demands') * (pitch_roll_scale constants))
+                                     ((yaw demands') * (yaw_scale constants))
 
   trigger "setMotors" true [
                        arg $ qm1 motors, 
