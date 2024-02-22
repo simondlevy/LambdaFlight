@@ -25,7 +25,6 @@ module PitchRollRate where
 import Language.Copilot
 import Copilot.Compile.C99
 
-import Prelude hiding (id, (++), (==))
 
 import ClosedLoop
 import Demands
@@ -34,35 +33,39 @@ import Utils
 
 -------------------------------------------------------------------------------
 
-runRollRatePid kp ki kd dt ilimit demand rate thrust = demand'
+runRollRatePid kp ki kd reset dt ilimit demand rate thrust = demand'
 
   where 
 
     (demand', error, integ) = 
       pidController kp ki kd dt ilimit demand rate id error' integ'
 
+    zero = (thrust == 0) Language.Copilot.|| reset
+
     -- Reset error integral and previous value on zero thrust
-    integ' = [0] ++ (if thrust == 0 then 0 else integ)
-    error' = [0] ++ (if thrust == 0 then 0 else error)
+    integ' = [0] ++ (if zero then 0 else integ)
+    error' = [0] ++ (if zero then 0 else error)
 
 -------------------------------------------------------------------------------
 
-pitchRatePid kp ki kd dt ilimit demand rate thrust = demand'
+pitchRatePid kp ki kd reset dt ilimit demand rate thrust = demand'
 
   where 
 
     (demand', error, integ) = 
       pidController kp ki kd dt ilimit demand rate id error' integ'
 
+    zero = (thrust == 0) Language.Copilot.|| reset
+
     -- Reset error integral and previous value on zero thrust
-    integ' = [0] ++ (if thrust == 0 then 0 else integ)
-    error' = [0] ++ (if thrust == 0 then 0 else error)
+    integ' = [0] ++ (if zero then 0 else integ)
+    error' = [0] ++ (if zero then 0 else error)
 
 ------------------------------------------------------------------------------
 
-pitchRollRatePid :: ClosedLoopController
+pitchRollRatePid :: SBool -> ClosedLoopController
 
-pitchRollRatePid hover dt state demands = demands' where
+pitchRollRatePid reset hover dt state demands = demands' where
 
   kp = 125
   ki = 250
@@ -70,15 +73,19 @@ pitchRollRatePid hover dt state demands = demands' where
   ilimit = 33
 
   thrust' = thrust demands
+  roll' = roll demands
+  pitch' = pitch demands
+  dphi' = dphi state
+  dtheta' = dtheta state
 
-  roll'  = if thrust' == 0
+  roll''  = if thrust' == 0
            then 0
-           else runRollRatePid  kp ki kd dt ilimit (roll demands) (dphi state) thrust'
+           else runRollRatePid kp ki kd reset dt ilimit roll' dphi' thrust'
 
-  pitch' = if thrust' == 0
+  pitch'' = if thrust' == 0
            then 0
-           else pitchRatePid kp ki kd dt ilimit (pitch demands) (dtheta state) thrust'
+           else pitchRatePid kp ki kd reset dt ilimit pitch' dtheta' thrust'
 
-  demands' = Demands (thrust demands) roll' pitch' (yaw demands)
+  demands' = Demands (thrust demands) roll'' pitch'' (yaw demands)
 
 

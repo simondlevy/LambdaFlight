@@ -31,21 +31,25 @@ import Utils
 
 ------------------------------------------------------------------------------
 
-runXPid kp ki dt ilimit pitch dx thrust = pitch' where
+runXPid kp ki reset dt ilimit pitch dx thrust = pitch' where
 
   (pitch', integ) = piController kp ki dt ilimit pitch dx integ'
 
+  zero = (thrust == 0) Language.Copilot.|| reset
+
   -- Reset error integral on zero thrust
-  integ' = [0] ++ (if thrust == 0 then 0 else integ)
+  integ' = [0] ++ (if zero then 0 else integ)
 
 ------------------------------------------------------------------------------
 
-runYPid kp ki dt ilimit roll dy thrust = roll' where
+runYPid kp ki reset dt ilimit roll dy thrust = roll' where
 
   (roll', integ) = piController kp ki dt ilimit roll dy integ'
 
+  zero = (thrust == 0) Language.Copilot.|| reset
+
   -- Reset error integral on zero thrust
-  integ' = [0] ++ (if thrust == 0 then 0 else integ)
+  integ' = [0] ++ (if zero then 0 else integ)
 
 ------------------------------------------------------------------------------
 
@@ -58,9 +62,9 @@ runYPid kp ki dt ilimit roll dy thrust = roll' where
    pitch: input forward positive => output negative
 --}
 
-positionPid :: ClosedLoopController
+positionPid :: SBool -> ClosedLoopController
 
-positionPid hover dt state demands = demands'  where
+positionPid reset hover dt state demands = demands'  where
 
     kp = 25
     ki = 1
@@ -85,11 +89,11 @@ positionPid hover dt state demands = demands'  where
     -- Convert demand into angle, either by running a PI controller (hover mode)
     -- or just multiplying by a constant (non-hover mode)
     roll''   = if hover 
-               then runYPid kp ki dt ilimit roll' dyb thrust'
+               then runYPid kp ki reset dt ilimit roll' dyb thrust'
                else roll' * 30
 
     pitch''  = if hover 
-               then runXPid kp ki dt ilimit pitch' dxb  thrust'
+               then runXPid kp ki reset dt ilimit pitch' dxb  thrust'
                else pitch' * 30
  
     -- Negate roll, pitch demands on output

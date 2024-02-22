@@ -32,40 +32,44 @@ import Utils
 
 -------------------------------------------------------------------------------
 
-runRollAnglePid kp ki dt ilimit demand angle thrust = demand'
+runRollAnglePid kp ki reset dt ilimit demand angle thrust = demand' where
 
-  where 
+  (demand', integ) = piController kp ki dt ilimit demand angle integ'
 
-    (demand', integ) = piController kp ki dt ilimit demand angle integ'
+  zero = (thrust == 0) Language.Copilot.|| reset
 
-    -- Reset error integral on zero thrust
-    integ' = [0] ++ (if thrust == 0 then 0 else integ)
+  -- Reset error integral on zero thrust
+  integ' = [0] ++ (if zero then 0 else integ)
 
 -------------------------------------------------------------------------------
 
 
-pitchAnglePid kp ki dt ilimit demand angle thrust = demand'
+pitchAnglePid kp ki reset dt ilimit demand angle thrust = demand' where 
 
-  where 
+  (demand', integ) = piController kp ki dt ilimit demand angle integ'
 
-    (demand', integ) = piController kp ki dt ilimit demand angle integ'
+  zero = (thrust == 0) Language.Copilot.|| reset
 
-    -- Reset error integral on zero thrust
-    integ' = [0] ++ (if thrust == 0 then 0 else integ)
+  -- Reset error integral on zero thrust
+  integ' = [0] ++ (if zero then 0 else integ)
 
 ------------------------------------------------------------------------------
 
-pitchRollAnglePid :: ClosedLoopController
+pitchRollAnglePid :: SBool -> ClosedLoopController
 
-pitchRollAnglePid hover dt state demands = demands'
+pitchRollAnglePid reset hover dt state demands = demands' where 
 
-  where kp = 6
-        ki = 3
-        ilimit = 20
+  kp = 6
+  ki = 3
+  ilimit = 20
 
-        roll' = 
-          runRollAnglePid  kp ki dt ilimit (roll demands)  (phi state) (thrust demands)
-        pitch' = 
-           pitchAnglePid kp ki dt ilimit (pitch demands) (theta state) (thrust demands)
+  thrust' = thrust demands
+  roll' = roll demands
+  pitch' = pitch demands
+  phi' = phi state
+  theta' = theta state
 
-        demands' = Demands (thrust demands) roll' pitch' (yaw demands)
+  roll''  = runRollAnglePid kp ki reset dt ilimit roll'  phi'  thrust'
+  pitch'' = pitchAnglePid   kp ki reset dt ilimit pitch' theta' thrust'
+
+  demands' = Demands (thrust demands) roll'' pitch'' (yaw demands)

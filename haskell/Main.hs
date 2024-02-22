@@ -52,8 +52,12 @@ demandsStruct = extern "openLoopDemands" Nothing
 stateStruct :: Stream StateStruct
 stateStruct = extern "vehicleState" Nothing
 
-hover :: SBool
-hover = extern "hover" Nothing
+inHoverMode :: SBool
+inHoverMode = extern "inHoverMode" Nothing
+
+resetPids :: SBool
+resetPids = extern "resetPids" Nothing
+
 
 -- Main ----------------------------------------------------------------------
 
@@ -65,18 +69,18 @@ spec = do
 
   let dt = rateToPeriod clock_rate
 
-  let pids = [altitudePid hover dt,
+  let pids = [altitudePid inHoverMode dt,
               climbRatePid 
                  (thrust_base constants)
                  (thrust_scale constants)
                  (thrust_min constants)
                  (thrust_max constants)
-                 hover dt,
-              positionPid hover dt,
-              pitchRollAnglePid hover dt, 
-              pitchRollRatePid hover dt, 
-              yawAnglePid hover dt, 
-              yawRatePid hover dt]
+                 inHoverMode dt,
+              positionPid resetPids inHoverMode dt,
+              pitchRollAnglePid resetPids inHoverMode dt, 
+              pitchRollRatePid resetPids inHoverMode dt, 
+              yawAnglePid inHoverMode dt, 
+              yawRatePid inHoverMode dt]
 
   let demands = foldl (\demand pid -> pid vehicleState demand) openLoopDemands pids
 

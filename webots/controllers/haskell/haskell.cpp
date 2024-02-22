@@ -18,7 +18,9 @@
 
 #include "../common.hpp"
 
-bool hover = true;
+bool inHoverMode = true;
+
+bool resetPids = false;
 
 void report(float value)
 {
