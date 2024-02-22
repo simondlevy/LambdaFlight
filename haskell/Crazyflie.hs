@@ -24,9 +24,41 @@ module Main where
 import Language.Copilot
 import Copilot.Compile.C99
 
+import Demands
+import Mixers
+import Motors
+import Scaling
+import Utils
+
+-- Constants -----------------------------------------------------------------
+
+constants = ScalingConstants 36000 -- thrust base 
+                             1000  -- thrust scale
+                             20000 -- thrust min 
+                             65535 -- thrust max 
+                             1     -- pitch roll scale
+                             1     -- yaw scale
+
+-- Streams from C++ ----------------------------------------------------------
+
+demandsStruct :: Stream DemandsStruct
+demandsStruct = extern "finalDemands" Nothing
+
 spec = do
 
-  trigger "test" true []
+  let demands = liftDemands demandsStruct
+
+  let motors = quadCFMixer $ Demands (thrust demands) 
+                                     ((roll demands) * (pitch_roll_scale constants))
+                                     ((pitch demands) * (pitch_roll_scale constants))
+                                     ((yaw demands) * (yaw_scale constants))
+
+  trigger "setMotors" true [
+                       arg $ qm1 motors, 
+                       arg $ qm2 motors, 
+                       arg $ qm3 motors, 
+                       arg $ qm4 motors
+                     ] 
 
 -- Compile the spec
 main = reify spec >>= compile "copilot"

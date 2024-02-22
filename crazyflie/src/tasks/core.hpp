@@ -172,10 +172,15 @@ class CoreTask : public FreeRTOSTask {
                     // cause setMotors() to be called
                     //_miniflie.step();
 
-                    demands_t demands = {};
-                    _miniflie.getDemands(demands);
+                    extern demands_t finalDemands;
 
-                    _miniflie.runMixer(demands);
+                    _miniflie.getDemands(finalDemands);
+
+                    //_miniflie.runMixer(finalDemands);
+
+                    // Run Haskell Copilot
+                    extern void step(void);
+                    step();
 
                     // Cancel PID resetting
                     extern bool resetPids;

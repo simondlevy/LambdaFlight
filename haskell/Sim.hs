@@ -41,8 +41,17 @@ import Position
 import YawAngle
 import YawRate
 
--- Constants that will be different for sim vs. actual
-import Constants
+-- Constants -----------------------------------------------------------------
+
+clock_rate = RATE_100_HZ
+
+constants = ScalingConstants 48   -- thrust base 
+                             0.25 -- thrust scale
+                             0    -- thrust min 
+                             60   -- thrust max 
+                             1e-4 -- pitch roll scale
+                             4e-5 -- yaw scale
+
 
 -- Streams from C++ ----------------------------------------------------------
 

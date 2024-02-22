@@ -261,6 +261,7 @@ endif
 
 .PHONY: all clean build compile unit prep erase flash check_submodules trace openocd gdb halt reset flash_dfu flash_dfu_manual flash_verify cload size print_version clean_version bindings_python test_python python_wheel
 
+HASKDIR = $(PWD)/../haskell
 
 clean:
 	rm -f $(VENDOR)/STMicroelectronics || rm -rf $(VENDOR)/STMicroelectronics # removes whether or not it has contents
@@ -268,7 +269,7 @@ clean:
 	rm -rf build *.bin rm -f *.elf rm -f *.hex rm -f *.map *.dfu
 	find . -name "*.o" -type f -delete
 	find . -name ".*.o*" -type f -delete
-	runhaskell $(PWD)/../haskell/Crazyflie.hs
+	runhaskell -i$(HASKDIR) $(HASKDIR)/Crazyflie.hs
 	cp $(PWD)/copilot.c $(PWD)/src/copilot.cpp
 	cp $(PWD)/copilot.h $(PWD)/src
 
