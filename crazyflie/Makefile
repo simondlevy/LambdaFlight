@@ -268,6 +268,9 @@ clean:
 	rm -rf build *.bin rm -f *.elf rm -f *.hex rm -f *.map *.dfu
 	find . -name "*.o" -type f -delete
 	find . -name ".*.o*" -type f -delete
+	runhaskell $(PWD)/../haskell/Crazyflie.hs
+	cp $(PWD)/copilot.c $(PWD)/src/copilot.cpp
+	cp $(PWD)/copilot.h $(PWD)/src
 
 unbrick:
 	dfu-util -d 0483:df11 -a 0 -s 0x08000000 -D cf2loader-1.0.bin
