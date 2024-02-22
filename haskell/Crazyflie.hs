@@ -1,5 +1,5 @@
 {--
-  Miniflie algorithm for real and simulated flight controllers
+  LambdaFlight core algorithm for Crazyflie
  
   Copyright (C) 2024 Simon D. Levy
  

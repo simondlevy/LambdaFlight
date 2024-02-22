@@ -176,8 +176,6 @@ class CoreTask : public FreeRTOSTask {
 
                     _miniflie.getDemands(finalDemands);
 
-                    //_miniflie.runMixer(finalDemands);
-
                     // Run Haskell Copilot
                     extern void step(void);
                     step();
