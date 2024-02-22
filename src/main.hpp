@@ -60,7 +60,16 @@ class Miniflie {
 
             extern vehicleState_t vehicleState;
 
+            // Reset closed-loop controllers on zero thrust
             extern bool resetPids;
+
+            const auto reset = resetPids || (demands.thrust == 0);
+
+            _positionController.run(inHoverMode, reset, vehicleState, demands); 
+
+            _pitchRollAngleController.run(reset, vehicleState, demands);
+
+            _pitchRollRateController.run(reset, vehicleState, demands);
 
             _altitudeController.run(inHoverMode, vehicleState, demands); 
 
@@ -72,15 +81,6 @@ class Miniflie {
                     THRUST_MAX,
                     vehicleState, 
                     demands);
-
-            // Reset closed-loop controllers on zero thrust
-            const auto reset = resetPids || (demands.thrust == 0);
-
-            _positionController.run(inHoverMode, reset, vehicleState, demands); 
-
-            _pitchRollAngleController.run(reset, vehicleState, demands);
-
-            _pitchRollRateController.run(reset, vehicleState, demands);
         }
 
     private:
