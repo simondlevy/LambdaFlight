@@ -1,4 +1,4 @@
-<img src="media/lambdaflight2.png" align="center">
+<a href="https://koerbitz.me/posts/Why-I-love-Haskell.html"><img src="media/lambdaflight2.png" align="center"></a>
 
 # LambdaFlight
 LambdaFlight is a Haskell-based flight-control package for miniature aerial
