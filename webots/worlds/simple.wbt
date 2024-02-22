@@ -3,14 +3,14 @@
 EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2023a/projects/objects/backgrounds/protos/TexturedBackground.proto"
 EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2023a/projects/objects/backgrounds/protos/TexturedBackgroundLight.proto"
 EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2023a/projects/objects/floors/protos/Floor.proto"
-EXTERNPROTO "../protos/Cplusplus.proto"
+EXTERNPROTO "../protos/Simple.proto"
 
 WorldInfo {
 }
 Viewpoint {
   orientation 0 1 -1.0656348786755114e-16 0.749999999999997
-  position -4.365613998123442 -0.07692169759352509 4.110415997474789
-  follow "Cplusplus"
+  position -5.129344761029833 -0.07692169759352502 4.821904872548762
+  follow "Simple"
 }
 TexturedBackground {
 }
@@ -18,9 +18,9 @@ TexturedBackgroundLight {
 }
 Floor {
 }
-Cplusplus {
-  hidden linearVelocity_0 3.1876679477369265e-17 -1.5590551705237556e-17 3.586166205543784e-17
-  hidden angularVelocity_0 1.3897500605373714e-15 1.2153907906454827e-15 5.045812647002355e-18
-  translation 1.096398372601306e-18 2.0944392393235154e-17 0.014980380000000001
-  rotation 0.2946134590648529 0.24221894899461358 0.9244094820401763 1.156706675263552e-16
+Simple {
+  hidden linearVelocity_0 -6.905356268324994e-18 2.2825528855016513e-17 9.26743005356915e-05
+  hidden angularVelocity_0 -8.865942540680414e-16 -2.1892172293883196e-16 -6.029367314820606e-17
+  translation 1.2027081025800077e-18 4.810127333931685e-18 0.014968525537744188
+  rotation -0.6369765699919562 0.618401735667187 0.4602609505542405 3.00608494339167e-17
 }

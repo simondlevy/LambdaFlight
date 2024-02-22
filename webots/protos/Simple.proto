@@ -4,11 +4,11 @@
 # documentation url: https://www.cyberbotics.com/doc/guide/crazyflie
 # The "Crazyflie" is a robot developed by "Bitcraze": https://bitcraze.io
 
-PROTO Haskell [
+PROTO Simple [
   field SFVec3f    translation     0 0 0.015   # Is `Pose.translation`.
   field SFRotation rotation        0 0 1 0     # Is `Pose.rotation`.
   field SFString   name            "Crazyflie" # Is `Solid.name`.
-  field SFString   controller      "haskell"   # Is `Robot.controller`.
+  field SFString   controller      "simple"    # Is `Robot.controller`.
   field MFString   controllerArgs  []          # Is `Robot.controllerArgs`.
   field SFString   window          "<generic>" # Is `Robot.window`.
   field SFString   customData      ""          # Is `Robot.customData`.
