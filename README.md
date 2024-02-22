@@ -5,13 +5,13 @@ LambdaFlight is a Haskell-based flight-control package for miniature aerial
 vehicles (MAVs), a.k.a.drones.  It currently works with the 
 [Crazyflie](https://www.bitcraze.io/products/crazyflie-2-1/)
 quadcopter and
-has support for SITL simulation in
+has support for Software-In-The-Loop (SITL) simulation using
 [Webots](https://cyberbotics.com/).  
 
 To try out LambdaFlight, you'll first need to install
 [Haskell](https://www.haskell.org/)
 and
-[NASA Copilot]()https://copilot-language.github.io/.  Then you can run a simulated
+[NASA Copilot](https://copilot-language.github.io).  Then you can run a simulated
 quadcopter in Webots or an actual Crazyflie, following the instructions below:
 
 ## Webots
