@@ -170,7 +170,12 @@ class CoreTask : public FreeRTOSTask {
                     // Run miniflie core algorithm to get uncapped motor spins from open
                     // loop demands via closed-loop control and mixer.   This will
                     // cause setMotors() to be called
-                    _miniflie.step();
+                    //_miniflie.step();
+
+                    demands_t demands = {};
+                    _miniflie.getDemands(demands);
+
+                    _miniflie.runMixer(demands);
 
                     // Cancel PID resetting
                     extern bool resetPids;
