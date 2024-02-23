@@ -1,4 +1,4 @@
-copilot.*
+copilot*.*
 *.wbproj
 *.o.*
 *.swp

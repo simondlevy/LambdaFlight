@@ -25,7 +25,6 @@
 #include <num.hpp>
 
 #include <closedloops/altitude.hpp>
-#include <closedloops/climbrate.hpp>
 #include <closedloops/pitchroll_angle.hpp>
 #include <closedloops/pitchroll_rate.hpp>
 #include <closedloops/position.hpp>
@@ -41,7 +40,6 @@ class Miniflie {
             _mixFun = mixFun;
 
             _altitudeController.init(PID_UPDATE_RATE);
-            _climbRateController.init(PID_UPDATE_RATE);
             _pitchRollAngleController.init(PID_UPDATE_RATE);
             _pitchRollRateController.init(PID_UPDATE_RATE);
             _positionController.init(PID_UPDATE_RATE);
@@ -72,16 +70,6 @@ class Miniflie {
             _pitchRollRateController.run(reset, vehicleState, demands);
 
             _altitudeController.run(inHoverMode, vehicleState, demands); 
-
-            /*
-            _climbRateController.run(
-                    inHoverMode,
-                    THRUST_BASE,
-                    THRUST_SCALE,
-                    THRUST_MIN, 
-                    THRUST_MAX,
-                    vehicleState, 
-                    demands);*/
         }
 
     private:
@@ -89,7 +77,6 @@ class Miniflie {
         mixFun_t _mixFun;
 
         AltitudeController _altitudeController;
-        ClimbRateController _climbRateController;
         PitchRollAngleController _pitchRollAngleController;
         PitchRollRateController _pitchRollRateController;
         PositionController _positionController;

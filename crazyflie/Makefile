@@ -277,7 +277,7 @@ copilot:
 	ln -s $(STM32DUINO) $(VENDOR)
 	runhaskell -i$(HASKDIR) -i$(HASKDIR)/closedloops $(HASKDIR)/Crazyflie.hs
 	cp copilot.c $(PWD)/src/copilot.cpp
-	cp copilot.h $(PWD)/src
+	cp copilot*.h $(PWD)/src
 
 unbrick:
 	dfu-util -d 0483:df11 -a 0 -s 0x08000000 -D cf2loader-1.0.bin
