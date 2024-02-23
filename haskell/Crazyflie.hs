@@ -33,7 +33,6 @@ import State
 import Utils
 
 -- PID controllers
-import Altitude2
 import ClimbRate
 import YawAngle
 import YawRate
@@ -73,9 +72,8 @@ spec = do
 
   let dt = rateToPeriod clock_rate
 
-  let pids = [yawAnglePid inHoverMode dt
-             ,yawRatePid inHoverMode dt 
-             ,altitudePid inHoverMode dt 
+  let pids = [yawAnglePid dt
+             ,yawRatePid dt 
              ,climbRatePid 
                  (thrust_base constants)
                  (thrust_scale constants)

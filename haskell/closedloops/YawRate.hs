@@ -35,9 +35,7 @@ import Utils
 -- negated demand and the angular velocity, and negate the result to get the
 -- correct yaw demand.
 
-yawRatePid :: ClosedLoopController
-
-yawRatePid hover dt state demands = demands' where
+yawRatePid dt state demands = demands' where
 
     kp = 120
     ki = 16.7

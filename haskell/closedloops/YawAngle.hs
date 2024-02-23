@@ -40,9 +40,7 @@ cap angle = angle''
 -- Demand is input as desired angle normalized to [-1,+1] and output
 -- as degrees per second, both nose-right positive.
 
-yawAnglePid :: ClosedLoopController
-
-yawAnglePid hover dt state demands = demands'
+yawAnglePid dt state demands = demands'
 
     where 
 

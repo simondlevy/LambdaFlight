@@ -25,8 +25,28 @@ import Language.Copilot
 import Copilot.Compile.C99
 
 import ClosedLoop
+import Demands
+import State
+import Utils
 
+altitudePid :: SBool -> SFloat -> State -> Demands -> Demands
 
-altitudePid :: ClosedLoopController
+altitudePid hover dt state demands = demands' where
 
-altitudePid hover dt state demands = demands
+    kp = 2
+    ki = 0.5
+    ilimit = 5000
+
+    thrustraw = thrust demands
+
+    -- In hover mode, thrust demand comes in as [-1,+1], so we convert it to 
+    -- a target altitude in meters
+    target = rescale thrustraw  (-1) 1 0.2 2.0
+
+    demands' = Demands thrustraw (roll demands) (pitch demands) (yaw demands)
+
+    (foo,bar) = if hover then (target,target) else (target,target)
+
+    integ = target
+    
+    integ' = [0] ++ integ
