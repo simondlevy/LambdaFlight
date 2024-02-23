@@ -26,8 +26,8 @@ quadcopter in Webots or an actual Crazyflie, following the instructions below:
 icon below it.  Use that icon to open <b>Controllers/simple/simple.cpp</b>.
 
 4.  Build and run the code.  If you have a game controller or R/C transmitter with
-adapter dongle, you can use that to fly;  otherwise, the simulator will tell you 
-how to fly using the keyboard.
+adapter dongle, you can use that to fly;  otherwise, the simulator will advise you
+that no such device was found and will tell you how to fly using the keyboard.
 
 ## Crazyflie
 
