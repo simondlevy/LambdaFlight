@@ -31,11 +31,6 @@ class AltitudeController : public ClosedLoopController {
             demands.thrust = hover ? run(thrustraw, state.z) : thrustraw;
         }
 
-        void resetPids(void)
-        {
-            _pid.reset();
-        }
-
     private:
 
         float run(const float thrustraw, const float z)
