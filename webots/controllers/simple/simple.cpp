@@ -185,11 +185,13 @@ int main(int argc, char ** argv)
         // runCamera(camera);
 
         // Get open-loop demands from input device (keyboard, joystick, etc.)
+        bool button = false;
         _sticks.read(
                 openLoopDemands.thrust, 
                 openLoopDemands.roll, 
                 openLoopDemands.pitch, 
-                openLoopDemands.yaw);
+                openLoopDemands.yaw,
+                button);
 
         // Adjust roll for positive leftward
         openLoopDemands.roll = -openLoopDemands.roll;

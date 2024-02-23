@@ -42,7 +42,12 @@ class Sticks {
             wb_keyboard_enable(timestep);
         }
 
-        void read(float & thrust, float & roll, float & pitch, float & yaw)
+        void read(
+                float & thrust, 
+                float & roll, 
+                float & pitch, 
+                float & yaw,
+                bool & button)
         {
             auto joystickStatus = haveJoystick();
 
@@ -50,9 +55,10 @@ class Sticks {
             roll = 0;
             pitch = 0;
             yaw = 0;
+            button = false;
 
             if (joystickStatus == JOYSTICK_RECOGNIZED) {
-                readJoystick(thrust, roll, pitch, yaw);
+                readJoystick(thrust, roll, pitch, yaw, button);
             }
 
             else if (joystickStatus == JOYSTICK_UNRECOGNIZED) {
@@ -60,6 +66,7 @@ class Sticks {
             }
 
             else {
+                button = true;
                 readKeyboard(thrust, roll, pitch, yaw);
             }
         }
@@ -72,6 +79,7 @@ class Sticks {
             int8_t roll;
             int8_t pitch;
             int8_t yaw;
+            int8_t button;
 
         } joystickAxes_t;
 
@@ -88,22 +96,22 @@ class Sticks {
 
         std::map<std::string, joystickAxes_t> JOYSTICK_AXIS_MAP = {
 
-            //                                                        T   R   P  Y 
-            // Linux   
-            { "MY-POWER CO.,LTD. 2In1 USB Joystick", joystickAxes_t {-2,  3, -4, 1} }, 
-            { "SHANWAN Android Gamepad",             joystickAxes_t {-2,  3, -4, 1} },
-            { "Logitech Logitech Extreme 3D",        joystickAxes_t {-4,  1, -2, 3}  },
-            { "Logitech Gamepad F310",               joystickAxes_t {-2,  4, -5, 1} },
-            { "FrSky FrSky Simulator",               joystickAxes_t { 1,  2,  3, 4} },
-            { "Horizon Hobby SPEKTRUM RECEIVER",     joystickAxes_t { 2,  3,  4, 1} },
+            //                                                        T   R   P  Y   B
+            // Linux
+            { "MY-POWER CO.,LTD. 2In1 USB Joystick", joystickAxes_t {-2,  3, -4, 1,  5 } },
+            { "SHANWAN Android Gamepad",             joystickAxes_t {-2,  3, -4, 1,  7 } },
+            { "Logitech Logitech Extreme 3D",        joystickAxes_t {-4,  1, -2, 3,  0 }  },
+            { "Logitech Gamepad F310",               joystickAxes_t {-2,  4, -5, 1,  5 } },
+            { "FrSky FrSky Simulator",               joystickAxes_t { 1,  2,  3, 4,  0 } },
+            { "Horizon Hobby SPEKTRUM RECEIVER",     joystickAxes_t { 2,  3,  4, 1,  0 } },
 
             // Windows
-            { "2In1 USB Joystick",                   joystickAxes_t {-1,  4, -3, 2} },
-            { "Controller (XBOX 360 For Windows)",   joystickAxes_t {-1,  4, -3, 2} },
-            { "Controller (Gamepad F310)",           joystickAxes_t {-1,  4, -3, 2} },
-            { "Logitech Extreme 3D",                 joystickAxes_t { 0,  2, -1, 3} },
-            { "FrSky Simulator",                     joystickAxes_t { 6,  5,  4, 3} },
-            { "SPEKTRUM RECEIVER",                   joystickAxes_t { 3,  2,  1, 4} },  
+            { "2In1 USB Joystick",                   joystickAxes_t {-1,  4, -3, 2, 5 } },
+            { "Controller (XBOX 360 For Windows)",   joystickAxes_t {-1,  4, -3, 2, 5 } },
+            { "Controller (Gamepad F310)",           joystickAxes_t {-1,  4, -3, 2, 5 } },
+            { "Logitech Extreme 3D",                 joystickAxes_t { 0,  2, -1, 3, 0 } },
+            { "FrSky Simulator",                     joystickAxes_t { 6,  5,  4, 3, 0 } },
+            { "SPEKTRUM RECEIVER",                   joystickAxes_t { 3,  2,  1, 4, 0 } },
         };
 
         static float scaleJoystickAxis(const int32_t rawval)
@@ -166,7 +174,12 @@ class Sticks {
                 readThrottleNormal(axes);
         }
 
-        void readJoystick(float & thrust, float & roll, float & pitch, float & yaw)
+        void readJoystick(
+                float & thrust, 
+                float & roll, 
+                float & pitch, 
+                float & yaw,
+                bool & button)
         {
             auto joyname = wb_joystick_get_model();
 
@@ -187,6 +200,8 @@ class Sticks {
             }
 
             thrust = ready ? thrust : 0;
+
+            button = wb_joystick_get_pressed_button() == axes.button;
         }
 
         static void readKeyboard(float & thrust, float & roll, float & pitch, float & yaw)
