@@ -56,7 +56,7 @@ class Sticks {
             }
 
             else if (joystickStatus == JOYSTICK_UNRECOGNIZED) {
-                reportJoystick(thrust, roll, pitch, yaw);
+                reportJoystick();
             }
 
             else {
@@ -259,8 +259,7 @@ class Sticks {
             return status;
         }
 
-        static void reportJoystick(
-                float & thrust, float & roll, float & pitch, float & yaw)
+        static void reportJoystick(void)
         {
             printf("Unrecognized joystick '%s' with axes ", wb_joystick_get_model()); 
 
@@ -270,10 +269,5 @@ class Sticks {
             }
 
             printf(" Button pressed = %d\n", wb_joystick_get_pressed_button());
-
-            thrust = 0;
-            roll = 0;
-            pitch = 0;
-            yaw = 0;
         }
 };
