@@ -146,7 +146,15 @@ static float _constrain(const float val, const float lo, const float hi)
     return val < lo ? lo : val > hi ? hi : val;
 }
 
-static uint32_t timesec(void)
+static float _crazyflieThrust(const bool inHoverMode, const float throttle)
+{
+    static float target;
+
+    return inHoverMode ? 0 : 
+        _constrain(throttle, 0, 0.8);
+}
+
+static uint32_t _timesec(void)
 {
     struct timespec spec = {};
     clock_gettime(CLOCK_REALTIME, &spec);
@@ -177,7 +185,7 @@ int main(int argc, char ** argv)
 
     float altitudeTarget = ALTITUDE_TARGET_INITIAL;
 
-    auto sec_start = timesec();
+    auto sec_start = _timesec();
 
     while (wb_robot_step(timestep) != -1) {
 
@@ -185,13 +193,24 @@ int main(int argc, char ** argv)
         // runCamera(camera);
 
         // Get open-loop demands from input device (keyboard, joystick, etc.)
-        bool button = false;
+        float throttle = 0;
         _sticks.read(
-                openLoopDemands.thrust, 
+                throttle,
                 openLoopDemands.roll, 
                 openLoopDemands.pitch, 
                 openLoopDemands.yaw,
-                button);
+                inHoverMode);
+
+        // Mimic the Crazyflie client convention by which thrust demand
+        // comes in as [0,0.8] in non-hover mode, and [-1,+1] in hover mode,
+        // with the latter representing a scaled target altitude
+        //openLoopDemands.thrust = _crazyflieThrust(inHoverMode, throttle);
+        //printf("%f\n", openLoopDemands.thrust);
+
+        // XXX Stick with always-on hover for now
+        (void)_crazyflieThrust;
+        inHoverMode = true;
+        openLoopDemands.thrust = throttle;
 
         // Adjust roll for positive leftward
         openLoopDemands.roll = -openLoopDemands.roll;

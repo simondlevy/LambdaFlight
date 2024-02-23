@@ -26,8 +26,10 @@ class AltitudeController : public ClosedLoopController {
                 const vehicleState_t & state, 
                 demands_t & demands)
         {
-
             auto thrustraw = demands.thrust;
+
+            void report(float);
+            report(thrustraw);
 
             demands.thrust = hover ? run(thrustraw, state.z) : thrustraw;
         }
