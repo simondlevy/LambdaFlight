@@ -28,19 +28,14 @@ class AltitudeController : public ClosedLoopController {
         {
             auto thrustraw = demands.thrust;
 
-            demands.thrust = hover ? run(thrustraw, state.z) : thrustraw;
-        }
-
-    private:
-
-        float run(const float thrustraw, const float z)
-        {
             // In hover mode, thrust demand comes in as [-1,+1], so
             // we convert it to a target altitude in meters
             auto target = Num::rescale(thrustraw, -1, +1, 0.2, 2.0);
 
-            return _pid.run(target, z);
+            demands.thrust = hover ? _pid.run(target, state.z) : thrustraw;
         }
+
+    private:
 
         Pid _pid;
 };

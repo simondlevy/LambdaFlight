@@ -63,6 +63,8 @@ class Miniflie {
 
             const auto reset = resetPids || (demands.thrust == 0);
 
+            //void reportCpp(bool); reportCpp(inHoverMode);
+
             _positionController.run(inHoverMode, reset, vehicleState, demands); 
 
             _pitchRollAngleController.run(reset, vehicleState, demands);

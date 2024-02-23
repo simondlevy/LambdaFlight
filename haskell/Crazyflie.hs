@@ -93,7 +93,7 @@ spec = do
                                      ((pitch demands') * (pitch_roll_scale constants))
                                      ((yaw demands') * (yaw_scale constants))
 
-  -- trigger "reportHaskell" true [arg reset]
+  -- trigger "reportHaskell" true [arg inHoverMode]
 
   trigger "setMotors" true [
                        arg $ qm1 motors, 
