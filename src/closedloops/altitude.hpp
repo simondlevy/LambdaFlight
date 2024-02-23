@@ -28,9 +28,6 @@ class AltitudeController : public ClosedLoopController {
         {
             auto thrustraw = demands.thrust;
 
-            void report(float);
-            report(thrustraw);
-
             demands.thrust = hover ? run(thrustraw, state.z) : thrustraw;
         }
 

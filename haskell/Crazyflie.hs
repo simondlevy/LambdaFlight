@@ -33,6 +33,7 @@ import State
 import Utils
 
 -- PID controllers
+import Altitude2
 import ClimbRate
 import YawAngle
 import YawRate
@@ -56,6 +57,9 @@ demandsStruct = extern "finalDemands" Nothing
 inHoverMode :: SBool
 inHoverMode = extern "inHoverMode" Nothing
 
+resetPids :: SBool
+resetPids = extern "resetPids" Nothing
+
 stateStruct :: Stream StateStruct
 stateStruct = extern "vehicleState" Nothing
 
@@ -71,6 +75,7 @@ spec = do
 
   let pids = [yawAnglePid inHoverMode dt
              ,yawRatePid inHoverMode dt 
+             ,altitudePid inHoverMode dt 
              ,climbRatePid 
                  (thrust_base constants)
                  (thrust_scale constants)
@@ -78,7 +83,8 @@ spec = do
                  (thrust_max constants)
                  inHoverMode dt
               ]
- 
+
+  let reset = resetPids || (thrust demands) == 0
 
   let demands' = foldl (\demand pid -> pid vehicleState demand) demands pids
 
@@ -86,6 +92,8 @@ spec = do
                                      ((roll demands') * (pitch_roll_scale constants))
                                      ((pitch demands') * (pitch_roll_scale constants))
                                      ((yaw demands') * (yaw_scale constants))
+
+  -- trigger "reportHaskell" true [arg reset]
 
   trigger "setMotors" true [
                        arg $ qm1 motors, 
