@@ -14,7 +14,7 @@ runTmp hover dt state demands = demands'  where
 
   reset = not hover
 
-  cnt = if reset then 0 else if true then z + 1 else z 
+  cnt = if reset then 0 else z + 1
 
   z = [0] ++ cnt
 
