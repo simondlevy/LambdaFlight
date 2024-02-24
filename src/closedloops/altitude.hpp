@@ -1,21 +1,10 @@
 #pragma once
 
-#include <pid.hpp>
-#include <closedloop.hpp>
+#include <num.hpp>
 
-class AltitudeController : public ClosedLoopController {
+class AltitudeController {
 
     public:
-
-        void init(
-                const Clock::rate_t updateRate,
-                const float kp=2,
-                const float ki=0.5)
-        {
-            ClosedLoopController::init(updateRate);
-
-            _pid.init(kp, ki, 0, 0, _dt, _updateRate);
-        }
 
         /**
          * Demand is input as altitude target in meters and output as 
@@ -23,6 +12,7 @@ class AltitudeController : public ClosedLoopController {
          */
         void run(
                 const bool hover, 
+                const float dt,
                 const vehicleState_t & state, 
                 demands_t & demands)
         {
@@ -32,10 +22,28 @@ class AltitudeController : public ClosedLoopController {
             // we convert it to a target altitude in meters
             auto target = Num::rescale(thrustraw, -1, +1, 0.2, 2.0);
 
-            demands.thrust = hover ? _pid.run(target, state.z) : thrustraw;
+            demands.thrust = hover ? run(dt, target, state.z) : thrustraw;
         }
 
     private:
 
-        Pid _pid;
+        static float run(
+                const float dt, 
+                const float target, 
+                const float z)
+        {
+            const float kp = 2;
+            const float ki = 0.5;
+            const float ilimit = 5000;
+
+            static float _integ;
+
+            auto error = target - z;
+
+            _integ += error * dt;
+
+            _integ = Num::fconstrain(_integ, -ilimit, +ilimit);
+
+            return kp * error + ki * _integ;
+        }
 };

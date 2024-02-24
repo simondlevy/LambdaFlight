@@ -39,7 +39,6 @@ class Miniflie {
         {
             _mixFun = mixFun;
 
-            _altitudeController.init(PID_UPDATE_RATE);
             _pitchRollAngleController.init(PID_UPDATE_RATE);
             _pitchRollRateController.init(PID_UPDATE_RATE);
             _positionController.init(PID_UPDATE_RATE);
@@ -65,13 +64,15 @@ class Miniflie {
 
             //void reportCpp(bool); reportCpp(inHoverMode);
 
+            const auto dt = 1. / PID_UPDATE_RATE;
+
             _positionController.run(inHoverMode, reset, vehicleState, demands); 
 
             _pitchRollAngleController.run(reset, vehicleState, demands);
 
             _pitchRollRateController.run(reset, vehicleState, demands);
 
-            _altitudeController.run(inHoverMode, vehicleState, demands); 
+            _altitudeController.run(inHoverMode, dt, vehicleState, demands); 
         }
 
     private:

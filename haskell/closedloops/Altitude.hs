@@ -31,32 +31,25 @@ import State
 import Utils
 
 
-run kp ki dt ilimit thrustraw z = thrustpid where
-
-    -- In hover mode, thrust demand comes in as [-1,+1], so
-    -- we convert it to a target altitude in meters
-    target = rescale thrustraw (-1) 1 0.2 2.0
-
-    (thrustpid, integ) = piController kp ki dt ilimit target z integ'
-
-    integ' = [0] ++ integ
-
- 
-altitudePid :: ClosedLoopController
-
-altitudePid hover dt state demands = demands'  where
+run dt target z = thrust where
 
     kp = 2
     ki = 0.5
     ilimit = 5000
 
+    (thrust, integ) = piController kp ki dt ilimit target z integ'
+
+    integ' = [0] ++ integ
+
+ 
+altitudePid hover dt state demands = demands'  where
+
     thrustraw = thrust demands
 
-    thrustout = if hover 
-                then run kp ki dt ilimit thrustraw (z state)
-                else thrustraw
+    -- In hover mode, thrust demand comes in as [-1,+1], so
+    -- we convert it to a target altitude in meters
+    target = rescale thrustraw (-1) 1 0.2 2.0
 
-    demands' = Demands thrustout
-                       (roll demands)
-                       (pitch demands)
-                       (yaw demands)
+    thrustout = if hover then run dt target (z state) else thrustraw
+
+    demands' = Demands thrustout (roll demands) (pitch demands) (yaw demands)
