@@ -6,6 +6,7 @@ static void runTmp(
         const vehicleState_t & state, 
         demands_t & demands)
 {
+    static const float ki = 0.5;
     static const float ilimit = 5000;
 
     static float _integ;
@@ -20,7 +21,7 @@ static void runTmp(
         Num::fconstrain(_integ + error, -ilimit, ilimit) : 
         0;
 
-    auto thrustout = hover ? _integ : thrustraw;
+    auto thrustout = hover ? ki * _integ : thrustraw;
 
     demands.thrust = thrustout;
 

@@ -12,6 +12,7 @@ import Utils
 
 runTmp hover dt state demands = demands'  where
 
+  ki = 0.5
   ilimit = 5000
 
   thrustraw = thrust demands
@@ -26,6 +27,6 @@ runTmp hover dt state demands = demands'  where
 
   integ' = [0] ++ integ
 
-  thrustout = if hover then integ else thrustraw
+  thrustout = if hover then ki * integ else thrustraw
 
   demands' = Demands thrustout 0 0 0
