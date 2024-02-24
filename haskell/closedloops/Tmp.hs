@@ -12,8 +12,8 @@ import Utils
 
 runTmp hover dt state demands = demands'  where
 
-  cnt = if hover then z + 1 else 0
+  integ = if hover then integ' + 1 else 0
 
-  z = [0] ++ cnt
+  integ' = [0] ++ integ
 
-  demands' = Demands cnt 0 0 0
+  demands' = Demands integ 0 0 0
