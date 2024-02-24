@@ -25,12 +25,11 @@
 #include <num.hpp>
 
 #include <closedloops/altitude.hpp>
-#include <closedloops/tmp.hpp>
 #include <closedloops/pitchroll_angle.hpp>
 #include <closedloops/pitchroll_rate.hpp>
 #include <closedloops/position.hpp>
 
-#include <closedloops/tmp.hpp>
+# include <closedloops/tmp.hpp>
 
 #include <constants.h>
 
@@ -73,13 +72,15 @@ class Miniflie {
 
             _pitchRollRateController.run(reset, vehicleState, demands);
 
-            _altitudeController.run(inHoverMode, dt, vehicleState, demands); 
+            runTmp(inHoverMode, dt, vehicleState, demands);
 
-            demands_t tmp = {};
-            runTmp(inHoverMode, dt, vehicleState, tmp);
-            void reportCpp(float value), report(void);
-            reportCpp(tmp.thrust);
-            report();
+            //_altitudeController.run(inHoverMode, dt, vehicleState, demands); 
+
+            //demands_t tmp = {};
+            //runTmp(inHoverMode, dt, vehicleState, tmp);
+            //void reportCpp(float value), report(void);
+            //reportCpp(tmp.thrust);
+            //report();
         }
 
     private:

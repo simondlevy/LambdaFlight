@@ -23,11 +23,11 @@ runTmp hover dt state demands = demands'  where
   error = target - (z state)
 
   integ = if hover 
-          then constrain (integ' + error) (-ilimit) ilimit
+          then constrain (integ' + error * dt) (-ilimit) ilimit
           else 0
 
   integ' = [0] ++ integ
 
   thrustout = if hover then kp * error + ki * integ else thrustraw
 
-  demands' = Demands thrustout 0 0 0
+  demands' = Demands thrustout (roll demands) (pitch demands) (yaw demands)

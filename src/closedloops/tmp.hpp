@@ -19,14 +19,10 @@ static void runTmp(
     auto error = target - state.z;
 
     _integ = hover ? 
-        Num::fconstrain(_integ + error, -ilimit, ilimit) : 
+        Num::fconstrain(_integ + error * dt, -ilimit, ilimit) : 
         0;
 
     auto thrustout = hover ? kp * error + ki * _integ : thrustraw;
 
     demands.thrust = thrustout;
-
-    demands.roll = 0;
-    demands.pitch = 0;
-    demands.yaw = 0;
 }

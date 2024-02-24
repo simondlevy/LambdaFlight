@@ -70,9 +70,9 @@ spec = do
              ,yawAnglePid dt
              ,yawRatePid dt]
 
-  let tmp = Demands 0 0 0 0
-  let tmp' = runTmp inHoverMode dt vehicleState tmp
-  trigger "reportHaskell" true [arg $ thrust tmp']
+  -- let tmp = Demands 0 0 0 0
+  -- let tmp' = runTmp inHoverMode dt vehicleState tmp
+  -- trigger "reportHaskell" true [arg $ thrust tmp']
 
   let demands' = foldl (\demand pid -> pid vehicleState demand) demands pids
 
@@ -82,8 +82,6 @@ spec = do
                                      ((roll demands') * prscale )
                                      ((pitch demands') * prscale )
                                      ((yaw demands') * yscale )
-
-  -- trigger "reportHaskell" true [arg inHoverMode]
 
   trigger "setMotors" true [
                        arg $ qm1 motors, 
