@@ -16,7 +16,9 @@ static void runTmp(
 
     _integ = hover ? _integ + error : 0;
 
-    demands.thrust = _integ; 
+    auto thrustout = _integ;
+
+    demands.thrust = thrustout;
 
     demands.roll = 0;
     demands.pitch = 0;

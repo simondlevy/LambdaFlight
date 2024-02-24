@@ -22,4 +22,6 @@ runTmp hover dt state demands = demands'  where
 
   integ' = [0] ++ integ
 
-  demands' = Demands integ 0 0 0
+  thrustout = integ
+
+  demands' = Demands thrustout 0 0 0
