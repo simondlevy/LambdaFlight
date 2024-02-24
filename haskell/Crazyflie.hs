@@ -65,10 +65,9 @@ spec = do
 
   let dt = rateToPeriod clock_rate
 
-  let pids = [yawAnglePid dt
-             ,yawRatePid dt 
-             ,climbRatePid inHoverMode dt
-              ]
+  let pids = [climbRatePid inHoverMode dt
+             ,yawAnglePid dt
+             ,yawRatePid dt]
 
   let demands' = foldl (\demand pid -> pid vehicleState demand) demands pids
 
