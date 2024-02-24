@@ -28,7 +28,6 @@ import Clock
 import Demands
 import Mixers
 import Motors
-import Scaling
 import State
 import Utils
 
@@ -45,13 +44,12 @@ import YawRate
 
 clock_rate = RATE_100_HZ
 
-constants = ScalingConstants 48   -- thrust base 
-                             0.25 -- thrust scale
-                             0    -- thrust min 
-                             60   -- thrust max 
-                             1e-4 -- pitch roll scale
-                             4e-5 -- yaw scale
-
+thrust_base = 48   
+thrust_scale = 0.25
+thrust_min =   0   
+thrust_max =   60   
+pitch_roll_scale = 1e-4 
+yaw_scale = 4e-5
 
 -- Streams from C++ ----------------------------------------------------------
 
@@ -79,24 +77,25 @@ spec = do
   let dt = rateToPeriod clock_rate
 
   let pids = [altitudePid inHoverMode dt,
-              climbRatePid 
-                 (thrust_base constants)
-                 (thrust_scale constants)
-                 (thrust_min constants)
-                 (thrust_max constants)
-                 inHoverMode dt,
+              climbRatePid inHoverMode dt,
               positionPid resetPids inHoverMode dt,
               pitchRollAnglePid resetPids inHoverMode dt, 
               pitchRollRatePid resetPids inHoverMode dt, 
-              yawAnglePid inHoverMode dt, 
-              yawRatePid inHoverMode dt]
+              yawAnglePid dt, 
+              yawRatePid dt]
 
   let demands = foldl (\demand pid -> pid vehicleState demand) openLoopDemands pids
 
-  let motors = quadCFMixer $ Demands (thrust demands) 
-                                     ((roll demands) * (pitch_roll_scale constants))
-                                     ((pitch demands) * (pitch_roll_scale constants))
-                                     ((yaw demands) * (yaw_scale constants))
+  let thrust' = if inHoverMode 
+                 then constrain ((thrust demands) * thrust_scale + thrust_base) 
+                      thrust_min 
+                      thrust_max
+                 else (thrust openLoopDemands) * thrust_max
+
+  let motors = quadCFMixer $ Demands thrust'
+                                     ((roll demands) * pitch_roll_scale)
+                                     ((pitch demands) * pitch_roll_scale)
+                                     ((yaw demands) * yaw_scale)
 
   trigger "setMotors" true [
                        arg $ qm1 motors, 

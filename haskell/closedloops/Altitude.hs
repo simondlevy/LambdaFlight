@@ -24,7 +24,6 @@ module Altitude where
 import Language.Copilot
 import Copilot.Compile.C99
 
-import ClosedLoop
 import Demands
 import Lpf
 import State
@@ -37,7 +36,11 @@ run dt target z = thrust where
     ki = 0.5
     ilimit = 5000
 
-    (thrust, integ) = piController kp ki dt ilimit target z integ'
+    error = target - z
+
+    integ = constrain (integ' + error *dt) (-ilimit) ilimit
+
+    thrust = kp * error + ki * integ
 
     integ' = [0] ++ integ
 

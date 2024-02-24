@@ -56,9 +56,6 @@ demandsStruct = extern "finalDemands" Nothing
 inHoverMode :: SBool
 inHoverMode = extern "inHoverMode" Nothing
 
-resetPids :: SBool
-resetPids = extern "resetPids" Nothing
-
 stateStruct :: Stream StateStruct
 stateStruct = extern "vehicleState" Nothing
 
@@ -76,8 +73,6 @@ spec = do
              ,yawRatePid dt 
              ,climbRatePid inHoverMode dt
               ]
-
-  let reset = resetPids || (thrust demands) == 0
 
   let demands' = foldl (\demand pid -> pid vehicleState demand) demands pids
 
