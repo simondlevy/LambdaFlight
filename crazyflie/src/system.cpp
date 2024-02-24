@@ -88,14 +88,26 @@ void setMotors(float m1, float m2, float m3, float m4)
     coreTask.setMotors(m1, m2, m3, m4);
 }
 
-void reportHaskell(bool value)
+static float cpp;
+static float haskell;
+
+void reportHaskell(float value)
 {
-    consolePrintf("Haskell: %d\n", value);
+    haskell = value;
 }
 
-void reportCpp(bool value)
+void reportCpp(float value)
 {
-    consolePrintf("Cpp:    %d\n", value);
+    cpp = value;
+}
+
+void report(void)
+{
+    static uint32_t count;
+    if ((count++ % 200) == 0) {
+        consolePrintf("%04d: Cpp=%f   Haskell=%f\n", 
+                count, (double)cpp, (double)haskell);
+    }
 }
 
 // ---------------------------------------------------------------------------

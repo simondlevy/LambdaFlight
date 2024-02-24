@@ -33,6 +33,7 @@ import Utils
 
 -- PID controllers
 import ClimbRate
+import Tmp
 import YawAngle
 import YawRate
 
@@ -68,6 +69,10 @@ spec = do
   let pids = [climbRatePid inHoverMode dt
              ,yawAnglePid dt
              ,yawRatePid dt]
+
+  let tmp = Demands 0 0 0 0
+  let tmp' = runTmp inHoverMode dt vehicleState tmp
+  trigger "reportHaskell" true [arg $ thrust tmp']
 
   let demands' = foldl (\demand pid -> pid vehicleState demand) demands pids
 
