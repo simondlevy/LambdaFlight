@@ -20,7 +20,7 @@ static void runTmp(
         Num::fconstrain(_integ + error, -ilimit, ilimit) : 
         0;
 
-    auto thrustout = _integ;
+    auto thrustout = hover ? _integ : thrustraw;
 
     demands.thrust = thrustout;
 
