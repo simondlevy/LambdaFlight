@@ -40,17 +40,6 @@ import Position
 import YawAngle
 import YawRate
 
--- Constants -----------------------------------------------------------------
-
-clock_rate = RATE_100_HZ
-
-thrust_base = 48   
-thrust_scale = 0.25
-thrust_min =   0   
-thrust_max =   60   
-pitch_roll_scale = 1e-4 
-yaw_scale = 4e-5
-
 -- Streams from C++ ----------------------------------------------------------
 
 demandsStruct :: Stream DemandsStruct
@@ -70,6 +59,14 @@ resetPids = extern "resetPids" Nothing
 
 spec = do
 
+  -- Constants
+  let clock_rate = RATE_100_HZ
+  let tbase = 48   
+  let tscale = 0.25
+  let tmin =   0   
+  let prscale = 1e-4 
+  let yscale = 4e-5
+
   let vehicleState = liftState stateStruct
 
   let openLoopDemands = liftDemands demandsStruct
@@ -84,18 +81,14 @@ spec = do
               yawAnglePid dt, 
               yawRatePid dt]
 
-  let demands = foldl (\demand pid -> pid vehicleState demand) openLoopDemands pids
+  let demands' = foldl (\demand pid -> pid vehicleState demand) openLoopDemands pids
 
-  let thrust' = if inHoverMode 
-                 then constrain ((thrust demands) * thrust_scale + thrust_base) 
-                      thrust_min 
-                      thrust_max
-                 else (thrust openLoopDemands) * thrust_max
+  let thrust'' = if inHoverMode then ((thrust demands') * tscale + tbase) else tmin
 
-  let motors = quadCFMixer $ Demands thrust'
-                                     ((roll demands) * pitch_roll_scale)
-                                     ((pitch demands) * pitch_roll_scale)
-                                     ((yaw demands) * yaw_scale)
+  let motors = quadCFMixer $ Demands thrust''
+                                     ((roll demands') * prscale)
+                                     ((pitch demands') * prscale)
+                                     ((yaw demands') * yscale)
 
   trigger "setMotors" true [
                        arg $ qm1 motors, 

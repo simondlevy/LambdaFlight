@@ -49,9 +49,9 @@ demands_t openLoopDemands;
 
 vehicleState_t vehicleState;
 
-bool inHoverMode = true;
+bool inHoverMode;
 
-bool resetPids = false;
+bool resetPids;
 
 void report(float value)
 {
@@ -146,14 +146,6 @@ static float _constrain(const float val, const float lo, const float hi)
     return val < lo ? lo : val > hi ? hi : val;
 }
 
-static float _crazyflieThrust(const bool inHoverMode, const float throttle)
-{
-    static float target;
-
-    return inHoverMode ? 0 : 
-        _constrain(throttle, 0, 0.8);
-}
-
 static uint32_t _timesec(void)
 {
     struct timespec spec = {};
@@ -187,6 +179,9 @@ int main(int argc, char ** argv)
 
     auto sec_start = _timesec();
 
+    inHoverMode = false;
+    resetPids = false;
+
     while (wb_robot_step(timestep) != -1) {
 
         //Un-comment if you want to try OpenCV
@@ -201,15 +196,6 @@ int main(int argc, char ** argv)
                 openLoopDemands.yaw,
                 inHoverMode);
 
-        // Mimic the Crazyflie client convention by which thrust demand
-        // comes in as [0,0.8] in non-hover mode, and [-1,+1] in hover mode,
-        // with the latter representing a scaled target altitude
-        //openLoopDemands.thrust = _crazyflieThrust(inHoverMode, throttle);
-        //printf("%f\n", openLoopDemands.thrust);
-
-        // XXX Stick with always-on hover for now
-        (void)_crazyflieThrust;
-        inHoverMode = true;
         openLoopDemands.thrust = throttle;
 
         // Adjust roll for positive leftward
@@ -218,7 +204,7 @@ int main(int argc, char ** argv)
         // Get vehicle state from sensors
         _getVehicleState(gyro, imu, gps);
 
-        // Hover mode: integrate stick demand to get altitude target
+        // Integrate stick demand to get altitude target
         altitudeTarget = _constrain(
                 altitudeTarget + openLoopDemands.thrust * DT, 
                 ALTITUDE_TARGET_MIN, ALTITUDE_TARGET_MAX);
