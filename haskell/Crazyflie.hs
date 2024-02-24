@@ -55,7 +55,7 @@ spec = do
   let clock_rate = RATE_500_HZ
   let tbase = 36000
   let tscale = 1000
-  let tmin = 20000
+  let tmin = 2000
   let prscale = 1
   let yscale = 1
 
