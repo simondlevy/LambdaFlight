@@ -8,7 +8,13 @@ static void runTmp(
 {
     static float _integ;
 
-    _integ = hover ? _integ + 1 : 0;
+    auto thrustraw = demands.thrust;
+
+    auto target = Num::rescale(thrustraw, -1, +1, 0.2, 2.0);
+
+    auto error = target - state.z;
+
+    _integ = hover ? _integ + error : 0;
 
     demands.thrust = _integ; 
 

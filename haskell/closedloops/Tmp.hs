@@ -12,7 +12,13 @@ import Utils
 
 runTmp hover dt state demands = demands'  where
 
-  integ = if hover then integ' + 1 else 0
+  thrustraw = thrust demands
+
+  target = rescale thrustraw (-1) 1 0.2 2.0
+
+  error = target - (z state)
+
+  integ = if hover then integ' + error else 0
 
   integ' = [0] ++ integ
 
