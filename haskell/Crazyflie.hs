@@ -28,7 +28,6 @@ import Clock
 import Demands
 import Mixers
 import Motors
-import Scaling
 import State
 import Utils
 
@@ -36,17 +35,6 @@ import Utils
 import ClimbRate
 import YawAngle
 import YawRate
-
--- Constants -----------------------------------------------------------------
-
-clock_rate = RATE_500_HZ
-
-constants = ScalingConstants 36000 -- thrust base 
-                             1000  -- thrust scale
-                             20000 -- thrust min 
-                             65535 -- thrust max 
-                             1     -- pitch roll scale
-                             1     -- yaw scale
 
 -- Streams from C++ ----------------------------------------------------------
 
@@ -63,6 +51,14 @@ stateStruct = extern "vehicleState" Nothing
 
 spec = do
 
+  -- Constants 
+  let clock_rate = RATE_500_HZ
+  let tbase = 36000
+  let tscale = 1000
+  let tmin = 20000
+  let prscale = 1
+  let yscale = 1
+
   let vehicleState = liftState stateStruct
 
   let demands = liftDemands demandsStruct
@@ -76,19 +72,12 @@ spec = do
 
   let demands' = foldl (\demand pid -> pid vehicleState demand) demands pids
 
-  let tbase = thrust_base constants
-  let tscale = thrust_scale constants
-  let tmin = thrust_min constants
-  let tmax = thrust_max constants
-
-  let thrust'' = if inHoverMode 
-                 then constrain ((thrust demands') * tscale + tbase) tmin tmax
-                 else (thrust demands) * tmax
+  let thrust'' = if inHoverMode then ((thrust demands') * tscale + tbase) else tmin
 
   let motors = quadCFMixer $ Demands thrust''
-                                     ((roll demands') * (pitch_roll_scale constants))
-                                     ((pitch demands') * (pitch_roll_scale constants))
-                                     ((yaw demands') * (yaw_scale constants))
+                                     ((roll demands') * prscale )
+                                     ((pitch demands') * prscale )
+                                     ((yaw demands') * yscale )
 
   -- trigger "reportHaskell" true [arg inHoverMode]
 
