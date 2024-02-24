@@ -29,7 +29,7 @@ import Demands
 import State
 import Utils
 
-run dt thrust dz base scale minval maxval = thrust''  where
+run dt thrust dz = thrust'  where
 
     kp = 25
     ki = 15
@@ -37,21 +37,13 @@ run dt thrust dz base scale minval maxval = thrust''  where
 
     (thrust', integ) = piController kp ki dt ilimit thrust dz integ'
 
-    thrust'' = constrain (thrust' * scale + base) minval maxval
-
     integ' = [0] ++ integ
 
 
-climbRatePid :: SFloat -> SFloat -> SFloat -> SFloat -> ClosedLoopController
-
-climbRatePid base scale minval maxval hover dt state demands = demands' where
+climbRatePid hover dt state demands = demands' where
 
     thrust' = thrust demands
 
-    -- In hover mode, we scale the thrust so as to keep the vehicle level; 
-    -- otherwise, we just scale it by its maximum value
-    thrust'' = if hover
-               then run dt thrust' (dz state) base scale minval maxval
-               else thrust' * maxval
+    thrust'' = if hover then run dt thrust' (dz state) else thrust'
 
     demands' = Demands thrust'' (roll demands) (pitch demands) (yaw demands)

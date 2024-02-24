@@ -74,19 +74,23 @@ spec = do
 
   let pids = [yawAnglePid dt
              ,yawRatePid dt 
-             ,climbRatePid 
-                 (thrust_base constants)
-                 (thrust_scale constants)
-                 (thrust_min constants)
-                 (thrust_max constants)
-                 inHoverMode dt
+             ,climbRatePid inHoverMode dt
               ]
 
   let reset = resetPids || (thrust demands) == 0
 
   let demands' = foldl (\demand pid -> pid vehicleState demand) demands pids
 
-  let motors = quadCFMixer $ Demands (thrust demands') 
+  let tbase = thrust_base constants
+  let tscale = thrust_scale constants
+  let tmin = thrust_min constants
+  let tmax = thrust_max constants
+
+  let thrust'' = if inHoverMode 
+                 then constrain ((thrust demands') * tscale + tbase) tmin tmax
+                 else (thrust demands) * tmax
+
+  let motors = quadCFMixer $ Demands thrust''
                                      ((roll demands') * (pitch_roll_scale constants))
                                      ((pitch demands') * (pitch_roll_scale constants))
                                      ((yaw demands') * (yaw_scale constants))
