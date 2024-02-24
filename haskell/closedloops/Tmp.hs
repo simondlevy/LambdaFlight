@@ -12,9 +12,7 @@ import Utils
 
 runTmp hover dt state demands = demands'  where
 
-  reset = not hover
-
-  cnt = if reset then 0 else z + 1
+  cnt = if hover then z + 1 else 0
 
   z = [0] ++ cnt
 
