@@ -63,6 +63,28 @@ class NewPid {
 
 /////////////////////////////////////////////////////////////////////////////
 
+static float runpid(
+        const float kp,
+        const float ki,
+        const float kd,
+        const float ilimit,
+        const float dt,
+        const float desired, 
+        const float measured,
+        float &errorPrevious,
+        float &errorIntegral)
+{
+    auto error = desired - measured;
+
+    auto deriv = (error - errorPrevious) / dt;
+
+    errorIntegral = Num::fconstrain(errorIntegral + error * dt, -ilimit, ilimit);
+
+    errorPrevious = error;
+
+    return kp * error + ki * errorIntegral + kd * deriv;
+}
+
 class PitchRollRateController {
 
     public:
@@ -84,13 +106,22 @@ class PitchRollRateController {
             const float kd = 1.25;
             const float ilimit = 33;
 
+            static float _rollErrorIntegral;
+            static float _rollErrorPrevious;
+
+            (void)runpid;
+
             if (reset) {
                 _rollPid.reset();
+                _rollErrorIntegral = 0;
+                _rollErrorPrevious = 0;
                 _pitchPid.reset();
             }
 
             demands.roll = demands.thrust == 0 ? 0 :
-                _rollPid.run(kp, ki, kd, ilimit, dt, demands.roll, state.dphi);
+                runpid(kp, ki, kd, ilimit, dt, demands.roll, state.dphi, 
+                        _rollErrorPrevious, _rollErrorIntegral);
+                //_rollPid.run(kp, ki, kd, ilimit, dt, demands.roll, state.dphi);
 
             demands.pitch = demands.thrust == 0 ? 0 :
                 _pitchPid.run(kp, ki, kd, ilimit, dt, demands.pitch, state.dtheta);
