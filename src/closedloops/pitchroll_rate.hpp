@@ -26,14 +26,12 @@ static float runpid(
         const float ilimit,
         const float dt,
         const float error,
-        float &errorPrev,
+        float errorPrev,
         float &errorInteg)
 {
     auto deriv = (error - errorPrev) / dt;
 
     errorInteg = Num::fconstrain(errorInteg + error * dt, -ilimit, ilimit);
-
-    errorPrev = error;
 
     return kp * error + ki * errorInteg + kd * deriv;
 }
@@ -57,7 +55,6 @@ static void runPitchRollRate(
     static float _rollErrorPrev;
 
     _rollErrorInteg = reset ? 0 : _rollErrorInteg;
-    _rollErrorPrev = reset ? 0 : _rollErrorPrev;
 
     auto rollError = demands.roll - state.dphi;
 
@@ -65,13 +62,16 @@ static void runPitchRollRate(
         runpid(kp, ki, kd, ilimit, dt, rollError,
                 _rollErrorPrev, _rollErrorInteg);
 
+    _rollErrorPrev = reset ? 0 : 
+        isThrustZero ? _rollErrorPrev : 
+        rollError;
+
     // --------------------------------------------------------
 
     static float _pitchErrorInteg;
     static float _pitchErrorPrev;
 
     _pitchErrorInteg = reset ? 0 : _pitchErrorInteg;
-    _pitchErrorPrev = reset ? 0 : _pitchErrorPrev;
 
     auto pitchError = demands.pitch - state.dtheta;
 
@@ -79,4 +79,8 @@ static void runPitchRollRate(
         runpid(kp, ki, kd, ilimit, dt, pitchError,
                 _pitchErrorPrev, _pitchErrorInteg);
 
+    _pitchErrorPrev = 
+        reset ? 0 : 
+        isThrustZero ? _pitchErrorPrev : 
+        pitchError;
 }
