@@ -30,6 +30,13 @@ import Demands
 import State
 import Utils
 
+runPid kp ki kd ilimit dt error errorPrev errorInteg = output where
+
+    deriv = (error - errorPrev) / dt
+
+    output = kp * error + ki * errorInteg + kd * deriv
+
+
 pitchRollRatePid reset hover dt state demands = demands' where
 
   kp = 125
@@ -37,4 +44,47 @@ pitchRollRatePid reset hover dt state demands = demands' where
   kd = 1.25
   ilimit = 33
 
-  demands' = demands
+  isThrustZero = (thrust demands) == 0
+
+  -------------------------------------------------------------------
+
+  rollError = (roll demands) - (dphi state)
+
+  rollDemand = if isThrustZero then 0
+               else runPid kp ki kd ilimit dt rollError rollPrev rollInteg
+
+  rollPrev = if reset then 0 
+             else if isThrustZero then rollPrev'
+             else rollError
+
+  rollInteg = if reset  then 0
+              else if isThrustZero then rollInteg'
+              else constrain (rollInteg' + rollError * dt) (-ilimit) ilimit
+
+  rollInteg' = [0] ++ rollInteg
+
+  rollPrev' = [0] ++ rollPrev
+
+  -------------------------------------------------------------------
+
+  pitchError = (pitch demands) - (dtheta state)
+
+  pitchDemand = if isThrustZero then 0
+               else runPid kp ki kd ilimit dt pitchError pitchPrev pitchInteg
+
+  pitchPrev = if reset then 0 
+              else if isThrustZero then pitchPrev'
+              else pitchError
+
+  pitchInteg = if reset  then 0
+               else if isThrustZero then pitchInteg'
+               else constrain (pitchInteg' + pitchError * dt) (-ilimit) ilimit
+
+  pitchInteg' = [0] ++ pitchInteg
+
+  pitchPrev' = [0] ++ pitchPrev
+
+
+  -------------------------------------------------------------------
+
+  demands' = Demands (thrust demands) rollDemand pitchDemand (yaw demands)
