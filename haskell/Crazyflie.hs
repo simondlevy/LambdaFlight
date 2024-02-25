@@ -34,6 +34,7 @@ import Utils
 -- PID controllers
 import Altitude
 import ClimbRate
+import NewPitchRollRate
 import YawAngle
 import YawRate
 
