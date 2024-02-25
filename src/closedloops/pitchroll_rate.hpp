@@ -52,25 +52,30 @@ static void runPitchRollRate(
     const float kd = 1.25;
     const float ilimit = 33;
 
+    const auto isThrustZero = demands.thrust == 0;
+
+    // --------------------------------------------------------
+
     static float _rollErrorIntegral;
     static float _rollErrorPrevious;
+
+    _rollErrorIntegral = reset ? 0 : _rollErrorIntegral;
+    _rollErrorPrevious = reset ? 0 : _rollErrorPrevious;
+
+    demands.roll = isThrustZero ? 0 :
+        runpid(kp, ki, kd, ilimit, dt, demands.roll, state.dphi, 
+                _rollErrorPrevious, _rollErrorIntegral);
+
+    // --------------------------------------------------------
 
     static float _pitchErrorIntegral;
     static float _pitchErrorPrevious;
 
-    if (reset) {
+    _pitchErrorIntegral = reset ? 0 : _pitchErrorIntegral;
+    _pitchErrorPrevious = reset ? 0 : _pitchErrorPrevious;
 
-        _rollErrorIntegral = 0;
-        _rollErrorPrevious = 0;
-        _pitchErrorIntegral = 0;
-        _pitchErrorPrevious = 0;
-    }
-
-    demands.roll = demands.thrust == 0 ? 0 :
-        runpid(kp, ki, kd, ilimit, dt, demands.roll, state.dphi, 
-                _rollErrorPrevious, _rollErrorIntegral);
-
-    demands.pitch = demands.thrust == 0 ? 0 :
+    demands.pitch = isThrustZero ? 0 :
         runpid(kp, ki, kd, ilimit, dt, demands.pitch, state.dtheta,
                 _pitchErrorPrevious, _pitchErrorIntegral);
+
 }
