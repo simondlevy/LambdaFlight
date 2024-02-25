@@ -61,21 +61,13 @@ class NewPid {
         {
             auto error = desired - measured;
 
-            auto output = _kp * error;
-
             auto deriv = (error - _prevError) / _dt;
 
-            output += _kd * deriv;
-
-            _integ += error * _dt;
-
-            _integ = Num::fconstrain(_integ, -_iLimit, _iLimit);
-
-            output += _ki * _integ;
+            _integ = Num::fconstrain(_integ + error * _dt, -_iLimit, _iLimit);
 
             _prevError = error;
 
-            return output;
+            return _kp * error + _ki * _integ + _kd * deriv;
         }
 }; 
 
