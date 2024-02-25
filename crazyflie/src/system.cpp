@@ -110,6 +110,16 @@ void report(void)
     }
 }
 
+void report(const float orig, const float tmp)
+{
+    static uint32_t count;
+    if ((count++ % 200) == 0) {
+        consolePrintf("%04d: orig=%f   new=%f\n", 
+                count, (double)orig, (double)tmp);
+    }
+}
+
+
 // ---------------------------------------------------------------------------
 
 static ImuTask imuTask;

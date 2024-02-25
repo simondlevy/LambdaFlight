@@ -38,16 +38,11 @@ class PitchRollRateController : public ClosedLoopController {
             initPid(kp, ki, kd, _pitchPid);
         }
 
-        /**
-          * Demands are input as angular velocities in degrees per second and
-          * output as as arbitrary values to be scaled according to motor
-          * characteristics:
-          *
-          * roll:  input roll-right positive => output positive
-          *
-          * pitch: input nose-up positive => output positive
-          */
-         void run(const bool reset, const vehicleState_t & state, demands_t & demands)
+        void run(
+                const bool reset, 
+                const float dt,
+                const vehicleState_t & state, 
+                demands_t & demands)
         {
             if (reset) {
                 _rollPid.reset();
