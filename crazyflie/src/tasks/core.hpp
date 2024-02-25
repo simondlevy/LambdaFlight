@@ -167,13 +167,9 @@ class CoreTask : public FreeRTOSTask {
                     // and open-loop info
                     _safety->update(sensorData, step, timestamp, openLoopDemands);
 
-                    // Run miniflie core algorithm to get uncapped motor spins from open
-                    // loop demands via closed-loop control and mixer.   This will
-                    // cause setMotors() to be called
-                    //_miniflie.step();
-
+                    // Get axis demands by passing open-loop demands through PID
+                    // controllers
                     extern demands_t finalDemands;
-
                     _miniflie.getDemands(finalDemands);
 
                     // Run Haskell Copilot

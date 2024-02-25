@@ -33,6 +33,7 @@ import Utils
 
 -- PID controllers
 import ClimbRate
+import Tmp
 import YawAngle
 import YawRate
 
@@ -69,6 +70,10 @@ spec = do
              ,yawAnglePid dt
              ,yawRatePid dt]
 
+  -- let tmp = Demands 0 0 0 0
+  -- let tmp' = runTmp inHoverMode dt vehicleState tmp
+  -- trigger "reportHaskell" true [arg $ thrust tmp']
+
   let demands' = foldl (\demand pid -> pid vehicleState demand) demands pids
 
   let thrust'' = if inHoverMode then ((thrust demands') * tscale + tbase) else tmin
@@ -77,8 +82,6 @@ spec = do
                                      ((roll demands') * prscale )
                                      ((pitch demands') * prscale )
                                      ((yaw demands') * yscale )
-
-  -- trigger "reportHaskell" true [arg inHoverMode]
 
   trigger "setMotors" true [
                        arg $ qm1 motors, 
