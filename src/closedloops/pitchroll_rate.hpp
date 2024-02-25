@@ -25,20 +25,17 @@ static float runpid(
         const float kd,
         const float ilimit,
         const float dt,
-        const float desired, 
-        const float measured,
-        float &errorPrevious,
-        float &errorIntegral)
+        const float error,
+        float &errorPrev,
+        float &errorInteg)
 {
-    auto error = desired - measured;
+    auto deriv = (error - errorPrev) / dt;
 
-    auto deriv = (error - errorPrevious) / dt;
+    errorInteg = Num::fconstrain(errorInteg + error * dt, -ilimit, ilimit);
 
-    errorIntegral = Num::fconstrain(errorIntegral + error * dt, -ilimit, ilimit);
+    errorPrev = error;
 
-    errorPrevious = error;
-
-    return kp * error + ki * errorIntegral + kd * deriv;
+    return kp * error + ki * errorInteg + kd * deriv;
 }
 
 static void runPitchRollRate(
@@ -56,26 +53,30 @@ static void runPitchRollRate(
 
     // --------------------------------------------------------
 
-    static float _rollErrorIntegral;
-    static float _rollErrorPrevious;
+    static float _rollErrorInteg;
+    static float _rollErrorPrev;
 
-    _rollErrorIntegral = reset ? 0 : _rollErrorIntegral;
-    _rollErrorPrevious = reset ? 0 : _rollErrorPrevious;
+    _rollErrorInteg = reset ? 0 : _rollErrorInteg;
+    _rollErrorPrev = reset ? 0 : _rollErrorPrev;
+
+    auto rollError = demands.roll - state.dphi;
 
     demands.roll = isThrustZero ? 0 :
-        runpid(kp, ki, kd, ilimit, dt, demands.roll, state.dphi, 
-                _rollErrorPrevious, _rollErrorIntegral);
+        runpid(kp, ki, kd, ilimit, dt, rollError,
+                _rollErrorPrev, _rollErrorInteg);
 
     // --------------------------------------------------------
 
-    static float _pitchErrorIntegral;
-    static float _pitchErrorPrevious;
+    static float _pitchErrorInteg;
+    static float _pitchErrorPrev;
 
-    _pitchErrorIntegral = reset ? 0 : _pitchErrorIntegral;
-    _pitchErrorPrevious = reset ? 0 : _pitchErrorPrevious;
+    _pitchErrorInteg = reset ? 0 : _pitchErrorInteg;
+    _pitchErrorPrev = reset ? 0 : _pitchErrorPrev;
+
+    auto pitchError = demands.pitch - state.dtheta;
 
     demands.pitch = isThrustZero ? 0 :
-        runpid(kp, ki, kd, ilimit, dt, demands.pitch, state.dtheta,
-                _pitchErrorPrevious, _pitchErrorIntegral);
+        runpid(kp, ki, kd, ilimit, dt, pitchError,
+                _pitchErrorPrev, _pitchErrorInteg);
 
 }
