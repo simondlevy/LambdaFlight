@@ -19,7 +19,71 @@
 
 #include <closedloop.hpp>
 #include <num.hpp>
-#include <pid.hpp>
+
+class NewPid {
+
+    private:
+
+        float _prevError;    // previous error
+        float _integ;        // integral
+        float _kp;           // proportional gain
+        float _ki;           // integral gain
+        float _kd;           // derivative gain
+        float _iLimit;       // integral limit, absolute value. '0' means no limit.
+        float _dt;           // delta-time dt
+
+    public:
+
+        void init(
+                const float kp, 
+                const float ki, 
+                const float kd, 
+                const float ilimit,
+                const float dt)
+        {
+            _kp            = kp;
+            _ki            = ki;
+            _kd            = kd;
+            _iLimit        = ilimit;
+            _dt            = dt;
+
+            _prevError     = 0;
+            _integ         = 0;
+        }
+
+        void reset(void)
+        {
+            _prevError = 0;
+            _integ     = 0;
+        }
+
+        float run(const float desired, const float measured)
+        {
+            auto error = desired - measured;
+
+            auto output = _kp * error;
+
+            auto deriv = (error - _prevError) / _dt;
+
+            if (isnan(deriv) || isinf(deriv)) {
+                deriv = 0;
+            }
+
+            output += _kd * deriv;
+
+            _integ += error * _dt;
+
+            _integ = Num::fconstrain(_integ, -_iLimit, _iLimit);
+
+            output += _ki * _integ;
+
+            _prevError = error;
+
+            return output;
+        }
+}; 
+
+/////////////////////////////////////////////////////////////////////////////
 
 class PitchRollRateController : public ClosedLoopController {
 
@@ -60,17 +124,11 @@ class PitchRollRateController : public ClosedLoopController {
 
         static constexpr float INTEGRAL_LIMIT = 33;
 
-        Pid _rollPid;
-        Pid _pitchPid;
+        NewPid _rollPid;
+        NewPid _pitchPid;
 
-        void initPid(
-                const float kp,
-                const float ki,
-                const float kd,
-                Pid  & pid) 
+        void initPid(const float kp, const float ki, const float kd, NewPid  & pid) 
         {
-            pid.init(kp,  ki,  kd, 0, _dt, _updateRate);
-
-            pid.setIntegralLimit(INTEGRAL_LIMIT);
+            pid.init(kp,  ki,  kd, INTEGRAL_LIMIT, _dt);
         }
 };
