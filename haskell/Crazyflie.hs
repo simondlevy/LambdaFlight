@@ -66,7 +66,8 @@ spec = do
 
   let dt = rateToPeriod clock_rate
 
-  let pids = [climbRatePid inHoverMode dt
+  let pids = [runTmp inHoverMode dt 
+             ,climbRatePid inHoverMode dt
              ,yawAnglePid dt
              ,yawRatePid dt]
 

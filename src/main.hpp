@@ -29,7 +29,7 @@
 #include <closedloops/pitchroll_rate.hpp>
 #include <closedloops/position.hpp>
 
-# include <closedloops/tmp.hpp>
+//#include <closedloops/tmp.hpp>
 
 #include <constants.h>
 
@@ -64,7 +64,7 @@ class Miniflie {
 
             const auto reset = resetPids || (demands.thrust == 0);
 
-            const auto dt = 1. / PID_UPDATE_RATE;
+            //const auto dt = 1. / PID_UPDATE_RATE;
 
             _positionController.run(inHoverMode, reset, vehicleState, demands); 
 
@@ -72,10 +72,8 @@ class Miniflie {
 
             _pitchRollRateController.run(reset, vehicleState, demands);
 
-            runTmp(inHoverMode, dt, vehicleState, demands);
-
+            //runTmp(inHoverMode, dt, vehicleState, demands);
             //_altitudeController.run(inHoverMode, dt, vehicleState, demands); 
-
             //demands_t tmp = {};
             //runTmp(inHoverMode, dt, vehicleState, tmp);
             //void reportCpp(float value), report(void);
