@@ -40,8 +40,6 @@ class Miniflie {
 
             _pitchRollAngleController.init(PID_UPDATE_RATE);
             _positionController.init(PID_UPDATE_RATE);
-
-            _pitchRollRateController.init();
         }
 
         void getDemands(demands_t & demands)
@@ -67,7 +65,7 @@ class Miniflie {
 
             _pitchRollAngleController.run(reset, vehicleState, demands);
 
-            _pitchRollRateController.run(reset, dt, vehicleState, demands);
+            runPitchRollRate(reset, dt, vehicleState, demands);
 
             //runTmp(inHoverMode, dt, vehicleState, tmp);
             //void reportCpp(float value), report(void);
@@ -81,6 +79,5 @@ class Miniflie {
         mixFun_t _mixFun;
 
         PitchRollAngleController _pitchRollAngleController;
-        PitchRollRateController _pitchRollRateController;
         PositionController _positionController;
 };

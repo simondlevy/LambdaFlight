@@ -19,50 +19,6 @@
 
 #include <num.hpp>
 
-class NewPid {
-
-    private:
-
-        float _prevError;    // previous error
-        float _integ;        // integral
-
-    public:
-
-        void init(void)
-        {
-            _prevError = 0;
-            _integ     = 0;
-        }
-
-        void reset(void)
-        {
-            _prevError = 0;
-            _integ     = 0;
-        }
-
-        float run(
-                const float kp,
-                const float ki,
-                const float kd,
-                const float ilimit,
-                const float dt,
-                const float desired, 
-                const float measured)
-        {
-            auto error = desired - measured;
-
-            auto deriv = (error - _prevError) / dt;
-
-            _integ = Num::fconstrain(_integ + error * dt, -ilimit, ilimit);
-
-            _prevError = error;
-
-            return kp * error + ki * _integ + kd * deriv;
-        }
-}; 
-
-/////////////////////////////////////////////////////////////////////////////
-
 static float runpid(
         const float kp,
         const float ki,
@@ -85,53 +41,36 @@ static float runpid(
     return kp * error + ki * errorIntegral + kd * deriv;
 }
 
-class PitchRollRateController {
+static void runPitchRollRate(
+        const bool reset, 
+        const float dt,
+        const vehicleState_t & state, 
+        demands_t & demands)
+{
+    const float kp = 125;
+    const float ki = 250;
+    const float kd = 1.25;
+    const float ilimit = 33;
 
-    public:
+    static float _rollErrorIntegral;
+    static float _rollErrorPrevious;
 
-        void init(void)
-        {
-            _rollPid.init();
-            _pitchPid.init();
-        }
+    static float _pitchErrorIntegral;
+    static float _pitchErrorPrevious;
 
-        void run(
-                const bool reset, 
-                const float dt,
-                const vehicleState_t & state, 
-                demands_t & demands)
-        {
-            const float kp = 125;
-            const float ki = 250;
-            const float kd = 1.25;
-            const float ilimit = 33;
+    if (reset) {
 
-            static float _rollErrorIntegral;
-            static float _rollErrorPrevious;
+        _rollErrorIntegral = 0;
+        _rollErrorPrevious = 0;
+        _pitchErrorIntegral = 0;
+        _pitchErrorPrevious = 0;
+    }
 
-            (void)runpid;
+    demands.roll = demands.thrust == 0 ? 0 :
+        runpid(kp, ki, kd, ilimit, dt, demands.roll, state.dphi, 
+                _rollErrorPrevious, _rollErrorIntegral);
 
-            if (reset) {
-                _rollPid.reset();
-                _rollErrorIntegral = 0;
-                _rollErrorPrevious = 0;
-                _pitchPid.reset();
-            }
-
-            demands.roll = demands.thrust == 0 ? 0 :
-                runpid(kp, ki, kd, ilimit, dt, demands.roll, state.dphi, 
-                        _rollErrorPrevious, _rollErrorIntegral);
-                //_rollPid.run(kp, ki, kd, ilimit, dt, demands.roll, state.dphi);
-
-            demands.pitch = demands.thrust == 0 ? 0 :
-                _pitchPid.run(kp, ki, kd, ilimit, dt, demands.pitch, state.dtheta);
-        }
-
-    private:
-
-        static constexpr float INTEGRAL_LIMIT = 33;
-
-        NewPid _rollPid;
-        NewPid _pitchPid;
-
-};
+    demands.pitch = demands.thrust == 0 ? 0 :
+        runpid(kp, ki, kd, ilimit, dt, demands.pitch, state.dtheta,
+                _pitchErrorPrevious, _pitchErrorIntegral);
+}
