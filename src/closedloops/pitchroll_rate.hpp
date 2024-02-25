@@ -17,7 +17,6 @@
 
 #pragma once
 
-#include <closedloop.hpp>
 #include <num.hpp>
 
 class NewPid {
@@ -26,29 +25,13 @@ class NewPid {
 
         float _prevError;    // previous error
         float _integ;        // integral
-        float _kp;           // proportional gain
-        float _ki;           // integral gain
-        float _kd;           // derivative gain
-        float _iLimit;       // integral limit, absolute value. '0' means no limit.
-        float _dt;           // delta-time dt
 
     public:
 
-        void init(
-                const float kp, 
-                const float ki, 
-                const float kd, 
-                const float ilimit,
-                const float dt)
+        void init(void)
         {
-            _kp            = kp;
-            _ki            = ki;
-            _kd            = kd;
-            _iLimit        = ilimit;
-            _dt            = dt;
-
-            _prevError     = 0;
-            _integ         = 0;
+            _prevError = 0;
+            _integ     = 0;
         }
 
         void reset(void)
@@ -57,37 +40,37 @@ class NewPid {
             _integ     = 0;
         }
 
-        float run(const float desired, const float measured)
+        float run(
+                const float kp,
+                const float ki,
+                const float kd,
+                const float ilimit,
+                const float dt,
+                const float desired, 
+                const float measured)
         {
             auto error = desired - measured;
 
-            auto deriv = (error - _prevError) / _dt;
+            auto deriv = (error - _prevError) / dt;
 
-            _integ = Num::fconstrain(_integ + error * _dt, -_iLimit, _iLimit);
+            _integ = Num::fconstrain(_integ + error * dt, -ilimit, ilimit);
 
             _prevError = error;
 
-            return _kp * error + _ki * _integ + _kd * deriv;
+            return kp * error + ki * _integ + kd * deriv;
         }
 }; 
 
 /////////////////////////////////////////////////////////////////////////////
 
-class PitchRollRateController : public ClosedLoopController {
+class PitchRollRateController {
 
     public:
 
-        void init(
-                const Clock::rate_t updateRate, 
-                const float kp=125,
-                const float ki=250,
-                const float kd=1.25)
+        void init(void)
         {
-            ClosedLoopController::init(updateRate);
-
-            initPid(kp, ki, kd, _rollPid);
-
-            initPid(kp, ki, kd, _pitchPid);
+            _rollPid.init();
+            _pitchPid.init();
         }
 
         void run(
@@ -96,16 +79,21 @@ class PitchRollRateController : public ClosedLoopController {
                 const vehicleState_t & state, 
                 demands_t & demands)
         {
+            const float kp = 125;
+            const float ki = 250;
+            const float kd = 1.25;
+            const float ilimit = 33;
+
             if (reset) {
                 _rollPid.reset();
                 _pitchPid.reset();
             }
 
             demands.roll = demands.thrust == 0 ? 0 :
-                _rollPid.run(demands.roll, state.dphi);
+                _rollPid.run(kp, ki, kd, ilimit, dt, demands.roll, state.dphi);
 
             demands.pitch = demands.thrust == 0 ? 0 :
-                _pitchPid.run(demands.pitch, state.dtheta);
+                _pitchPid.run(kp, ki, kd, ilimit, dt, demands.pitch, state.dtheta);
         }
 
     private:
@@ -115,8 +103,4 @@ class PitchRollRateController : public ClosedLoopController {
         NewPid _rollPid;
         NewPid _pitchPid;
 
-        void initPid(const float kp, const float ki, const float kd, NewPid  & pid) 
-        {
-            pid.init(kp,  ki,  kd, INTEGRAL_LIMIT, _dt);
-        }
 };

@@ -39,9 +39,9 @@ class Miniflie {
             _mixFun = mixFun;
 
             _pitchRollAngleController.init(PID_UPDATE_RATE);
-            _pitchRollRateController.init(PID_UPDATE_RATE);
             _positionController.init(PID_UPDATE_RATE);
 
+            _pitchRollRateController.init();
         }
 
         void getDemands(demands_t & demands)
