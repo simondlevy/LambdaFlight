@@ -24,7 +24,6 @@
 #include <datatypes.h>
 #include <num.hpp>
 
-#include <closedloops/altitude.hpp>
 #include <closedloops/pitchroll_angle.hpp>
 #include <closedloops/pitchroll_rate.hpp>
 #include <closedloops/position.hpp>
@@ -85,7 +84,6 @@ class Miniflie {
 
         mixFun_t _mixFun;
 
-        AltitudeController _altitudeController;
         PitchRollAngleController _pitchRollAngleController;
         PitchRollRateController _pitchRollRateController;
         PositionController _positionController;

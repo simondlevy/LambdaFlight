@@ -32,8 +32,8 @@ import State
 import Utils
 
 -- PID controllers
+import Altitude
 import ClimbRate
-import Tmp
 import YawAngle
 import YawRate
 
@@ -66,7 +66,7 @@ spec = do
 
   let dt = rateToPeriod clock_rate
 
-  let pids = [runTmp inHoverMode dt 
+  let pids = [altitudePid inHoverMode dt 
              ,climbRatePid inHoverMode dt
              ,yawAnglePid dt
              ,yawRatePid dt]
