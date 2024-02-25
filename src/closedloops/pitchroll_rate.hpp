@@ -65,10 +65,6 @@ class NewPid {
 
             auto deriv = (error - _prevError) / _dt;
 
-            if (isnan(deriv) || isinf(deriv)) {
-                deriv = 0;
-            }
-
             output += _kd * deriv;
 
             _integ += error * _dt;
