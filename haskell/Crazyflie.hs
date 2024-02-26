@@ -78,7 +78,8 @@ spec = do
   -- trigger "reportHaskell" true [arg $ pitch tmpDemands']
   -- trigger "report" true []
 
-  let pids = [altitudePid inHoverMode dt 
+  let pids = [pitchRollRatePid resetPids inHoverMode dt
+             ,altitudePid inHoverMode dt 
              ,climbRatePid inHoverMode dt
              ,yawAnglePid dt
              ,yawRatePid dt]
