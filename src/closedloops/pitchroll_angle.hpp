@@ -28,8 +28,7 @@ class PitchRollAngleController : public ClosedLoopController {
         void init(
                 const Clock::rate_t updateRate,
                 const float kp=6,
-                const float ki=3,
-                const float kd=0)
+                const float ki=3)
         {
             ClosedLoopController::init(updateRate);
 
