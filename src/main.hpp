@@ -25,7 +25,6 @@
 #include <num.hpp>
 
 #include <closedloops/pitchroll_angle.hpp>
-//#include <closedloops/pitchroll_rate.hpp>
 #include <closedloops/position.hpp>
 
 #include <constants.h>
