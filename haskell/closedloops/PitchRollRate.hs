@@ -25,16 +25,15 @@ module PitchRollRate where
 import Language.Copilot
 import Copilot.Compile.C99
 
-
 import Demands
 import State
 import Utils
 
-runPid kp ki kd ilimit dt error errorPrev errorInteg = output where
+runPid kp ki kd ilimit dt error errorErrorPrev errorErrorInteg = output where
 
-    deriv = (error - errorPrev) / dt
+    deriv = (error - errorErrorPrev) / dt
 
-    output = kp * error + ki * errorInteg + kd * deriv
+    output = kp * error + ki * errorErrorInteg + kd * deriv
 
 
 pitchRollRatePid reset hover dt state demands = demands' where
@@ -51,38 +50,38 @@ pitchRollRatePid reset hover dt state demands = demands' where
   rollError = (roll demands) - (dphi state)
 
   rollDemand = if isThrustZero then 0
-               else runPid kp ki kd ilimit dt rollError rollPrev rollInteg
+               else runPid kp ki kd ilimit dt rollError rollErrorPrev' rollErrorInteg'
 
-  rollPrev = if reset then 0 
-             else if isThrustZero then rollPrev'
-             else rollError
+  rollErrorPrev = if reset then 0 
+                  else if isThrustZero then rollErrorPrev'
+                  else rollError
 
-  rollInteg = if reset  then 0
-              else if isThrustZero then rollInteg'
-              else constrain (rollInteg' + rollError * dt) (-ilimit) ilimit
+  rollErrorInteg = if reset  then 0
+                   else if isThrustZero then rollErrorInteg'
+                   else constrain (rollErrorInteg' + rollError * dt) (-ilimit) ilimit
 
-  rollInteg' = [0] ++ rollInteg
+  rollErrorInteg' = [0] ++ rollErrorInteg
 
-  rollPrev' = [0] ++ rollPrev
+  rollErrorPrev' = [0] ++ rollErrorPrev
 
   -------------------------------------------------------------------
 
   pitchError = (pitch demands) - (dtheta state)
 
   pitchDemand = if isThrustZero then 0
-               else runPid kp ki kd ilimit dt pitchError pitchPrev pitchInteg
+               else runPid kp ki kd ilimit dt pitchError pitchErrorPrev' pitchErrorInteg'
 
-  pitchPrev = if reset then 0 
-              else if isThrustZero then pitchPrev'
+  pitchErrorPrev = if reset then 0 
+              else if isThrustZero then pitchErrorPrev'
               else pitchError
 
-  pitchInteg = if reset  then 0
-               else if isThrustZero then pitchInteg'
-               else constrain (pitchInteg' + pitchError * dt) (-ilimit) ilimit
+  pitchErrorInteg = if reset  then 0
+               else if isThrustZero then pitchErrorInteg'
+               else constrain (pitchErrorInteg' + pitchError * dt) (-ilimit) ilimit
 
-  pitchInteg' = [0] ++ pitchInteg
+  pitchErrorInteg' = [0] ++ pitchErrorInteg
 
-  pitchPrev' = [0] ++ pitchPrev
+  pitchErrorPrev' = [0] ++ pitchErrorPrev
 
 
   -------------------------------------------------------------------

@@ -79,6 +79,7 @@ PowerMonitorTask::syslinkInfo_t pmSyslinkInfo;
 // Streams shared with Haskell Copilot
 demands_t openLoopDemands;
 demands_t finalDemands;
+demands_t tmpDemands;
 vehicleState_t vehicleState;
 bool inHoverMode;
 bool resetPids;
@@ -105,20 +106,10 @@ void report(void)
 {
     static uint32_t count;
     if ((count++ % 200) == 0) {
-        consolePrintf("%04d: Cpp=%f   Haskell=%f\n", 
-                count, (double)cpp, (double)haskell);
+        consolePrintf("%d\n", cpp == haskell);
+        //consolePrintf("%04d: Cpp=%f   Haskell=%f\n", count, (double)cpp, (double)haskell);
     }
 }
-
-void report(const float orig, const float tmp)
-{
-    static uint32_t count;
-    if ((count++ % 200) == 0) {
-        consolePrintf("%04d: orig=%f   new=%f\n", 
-                count, (double)orig, (double)tmp);
-    }
-}
-
 
 // ---------------------------------------------------------------------------
 

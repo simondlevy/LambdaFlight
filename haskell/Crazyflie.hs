@@ -43,6 +43,12 @@ import YawRate
 demandsStruct :: Stream DemandsStruct
 demandsStruct = extern "finalDemands" Nothing
 
+tmpDemandsStruct :: Stream DemandsStruct
+tmpDemandsStruct = extern "tmpDemands" Nothing
+
+resetPids :: SBool
+resetPids = extern "resetPids" Nothing
+
 inHoverMode :: SBool
 inHoverMode = extern "inHoverMode" Nothing
 
@@ -67,14 +73,15 @@ spec = do
 
   let dt = rateToPeriod clock_rate
 
+  -- let tmpDemands = liftDemands tmpDemandsStruct
+  -- let tmpDemands' = pitchRollRatePid resetPids inHoverMode dt vehicleState tmpDemands
+  -- trigger "reportHaskell" true [arg $ pitch tmpDemands']
+  -- trigger "report" true []
+
   let pids = [altitudePid inHoverMode dt 
              ,climbRatePid inHoverMode dt
              ,yawAnglePid dt
              ,yawRatePid dt]
-
-  -- let tmp = Demands 0 0 0 0
-  -- let tmp' = runTmp inHoverMode dt vehicleState tmp
-  -- trigger "reportHaskell" true [arg $ thrust tmp']
 
   let demands' = foldl (\demand pid -> pid vehicleState demand) demands pids
 

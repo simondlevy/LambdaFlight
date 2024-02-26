@@ -65,13 +65,13 @@ class Miniflie {
 
             _pitchRollAngleController.run(reset, vehicleState, demands);
 
+            //extern demands_t tmpDemands;
+            //memcpy(&tmpDemands, &demands, sizeof(demands_t));
+
             runPitchRollRate(resetPids, dt, vehicleState, demands);
 
-            //runTmp(inHoverMode, dt, vehicleState, tmp);
-            //void reportCpp(float value), report(void);
-            //void report(const float orig, const float tmp);
-            //report(demands.pitch, tmpdemands.pitch);
-            //report();
+            //void reportCpp(float value);
+            //reportCpp(demands.pitch);
         }
 
     private:
