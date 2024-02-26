@@ -61,12 +61,12 @@ step clock_rate tbase tscale tmin prscale yscale = motors where
 
   dt = rateToPeriod clock_rate
 
-  pids = [altitudePid inHoverMode dt,
+  pids = [positionPid resetPids inHoverMode dt,
+          pitchRollAnglePid resetPids inHoverMode dt,
+          pitchRollRatePid resetPids inHoverMode dt,
+          altitudePid inHoverMode dt,
           climbRatePid inHoverMode dt,
-          positionPid resetPids inHoverMode dt,
-          pitchRollAnglePid resetPids inHoverMode dt, 
-          pitchRollRatePid resetPids inHoverMode dt, 
-          yawAnglePid dt, 
+          yawAnglePid dt,
           yawRatePid dt]
 
   demands' = foldl (\demand pid -> pid vehicleState demand) openLoopDemands pids

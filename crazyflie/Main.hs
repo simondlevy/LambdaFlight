@@ -25,79 +25,26 @@ import Language.Copilot
 import Copilot.Compile.C99
 
 import Clock
-import Demands
-import Mixers
+import Core
 import Motors
-import State
-import Utils
 
--- PID controllers
-import Altitude
-import ClimbRate
-import PitchRollAngle
-import PitchRollRate
-import Position
-import YawAngle
-import YawRate
-
--- Streams from C++ ----------------------------------------------------------
-
--- demandsStruct :: Stream DemandsStruct
--- demandsStruct = extern "finalDemands" Nothing
-
-stateStruct :: Stream StateStruct
-stateStruct = extern "vehicleState" Nothing
-
-demandsStruct :: Stream DemandsStruct
-demandsStruct = extern "openLoopDemands" Nothing
-
-resetPids :: SBool
-resetPids = extern "resetPids" Nothing
-
-inHoverMode :: SBool
-inHoverMode = extern "inHoverMode" Nothing
-
--- Main ----------------------------------------------------------------------
+-- Scaling constants
+clock_rate = RATE_500_HZ
+tbase = 36000
+tscale = 1000
+tmin = 2000
+prscale = 1
+yscale = 1
 
 spec = do
 
-  -- Constants 
-  let clock_rate = RATE_500_HZ
-  let tbase = 36000
-  let tscale = 1000
-  let tmin = 2000
-  let prscale = 1
-  let yscale = 1
+    let motors = step clock_rate tbase tscale tmin prscale yscale
 
-  let vehicleState = liftState stateStruct
-
-  let openLoopDemands = liftDemands demandsStruct
-
-  let dt = rateToPeriod clock_rate
-
-  let pids = [positionPid resetPids inHoverMode dt
-             ,pitchRollAnglePid resetPids inHoverMode dt
-             ,pitchRollRatePid resetPids inHoverMode dt
-             ,altitudePid inHoverMode dt 
-             ,climbRatePid inHoverMode dt
-             ,yawAnglePid dt
-             ,yawRatePid dt]
-
-  let demands = foldl (\demand pid -> pid vehicleState demand) openLoopDemands pids
-
-  let thrust' = if inHoverMode then ((thrust demands) * tscale + tbase) else tmin
-
-  let motors = quadCFMixer $ Demands thrust'
-                                     ((roll demands) * prscale )
-                                     ((pitch demands) * prscale )
-                                     ((yaw demands) * yscale )
-
-  trigger "setMotors" true [
-                       arg $ qm1 motors, 
-                       arg $ qm2 motors, 
-                       arg $ qm3 motors, 
-                       arg $ qm4 motors
-                     ] 
+    trigger "setMotors" true [
+        arg $ Motors.qm1 motors, 
+        arg $ Motors.qm2 motors, 
+        arg $ Motors.qm3 motors, 
+        arg $ Motors.qm4 motors] 
 
 -- Compile the spec
 main = reify spec >>= compile "copilot"
