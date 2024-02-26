@@ -27,6 +27,7 @@ import Copilot.Compile.C99
 import Clock
 import Demands
 import Mixers
+import Motors
 import State
 import Utils
 
@@ -52,6 +53,9 @@ inHoverMode = extern "inHoverMode" Nothing
 
 resetPids :: SBool
 resetPids = extern "resetPids" Nothing
+
+
+step :: ClockRate -> SFloat -> SFloat -> SFloat -> SFloat -> SFloat -> Motors
 
 step clock_rate tbase tscale tmin prscale yscale = motors where
 
