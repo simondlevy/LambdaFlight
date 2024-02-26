@@ -33,9 +33,9 @@ class PitchRollAngleController : public ClosedLoopController {
         {
             ClosedLoopController::init(updateRate);
 
-            initAxis(kp, ki, kd, _rollPid);
+            initAxis(kp, ki, _rollPid);
 
-            initAxis(kp, ki, kd, _pitchPid);
+            initAxis(kp, ki, _pitchPid);
         }
 
         /**
@@ -64,10 +64,9 @@ class PitchRollAngleController : public ClosedLoopController {
         Pid _rollPid;
         Pid _pitchPid;
 
-        void initAxis(
-                const float kp, const float ki, const  float kd, Pid & pid)
+        void initAxis(const float kp, const float ki, Pid & pid)
         {
-            pid.init(kp,  ki,  kd, 0, _dt, _updateRate);
+            pid.init(kp,  ki,  0, 0, _dt, _updateRate);
 
             pid.setIntegralLimit(INTEGRAL_LIMIT);
         }
