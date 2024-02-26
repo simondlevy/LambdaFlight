@@ -34,6 +34,7 @@ import Utils
 -- PID controllers
 import Altitude
 import ClimbRate
+import PitchRollAngle
 import PitchRollRate
 import YawAngle
 import YawRate
@@ -78,7 +79,8 @@ spec = do
   -- trigger "reportHaskell" true [arg $ pitch tmpDemands']
   -- trigger "report" true []
 
-  let pids = [pitchRollRatePid resetPids inHoverMode dt
+  let pids = [pitchRollAnglePid resetPids inHoverMode dt
+             ,pitchRollRatePid resetPids inHoverMode dt
              ,altitudePid inHoverMode dt 
              ,climbRatePid inHoverMode dt
              ,yawAnglePid dt

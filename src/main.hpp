@@ -24,7 +24,6 @@
 #include <datatypes.h>
 #include <num.hpp>
 
-#include <closedloops/pitchroll_angle.hpp>
 #include <closedloops/position.hpp>
 
 #include <constants.h>
@@ -37,7 +36,6 @@ class Miniflie {
         {
             _mixFun = mixFun;
 
-            _pitchRollAngleController.init(PID_UPDATE_RATE);
             _positionController.init(PID_UPDATE_RATE);
         }
 
@@ -62,12 +60,8 @@ class Miniflie {
 
             _positionController.run(inHoverMode, reset, vehicleState, demands); 
 
-            _pitchRollAngleController.run(reset, vehicleState, demands);
-
             //extern demands_t tmpDemands;
             //memcpy(&tmpDemands, &demands, sizeof(demands_t));
-
-            // runPitchRollRate(resetPids, dt, vehicleState, demands);
 
             //void reportCpp(float value);
             //reportCpp(demands.pitch);
@@ -77,6 +71,5 @@ class Miniflie {
 
         mixFun_t _mixFun;
 
-        PitchRollAngleController _pitchRollAngleController;
         PositionController _positionController;
 };
