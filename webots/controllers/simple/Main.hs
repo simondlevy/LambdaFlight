@@ -30,7 +30,7 @@ import Motors
 
 -- Scaling constants
 clock_rate = RATE_100_HZ
-tbase = 48   
+tbase = 56
 tscale = 0.25
 tmin =   0   
 prscale = 1e-4 
@@ -39,6 +39,8 @@ yscale = 4e-5
 spec = do
 
     let motors = step clock_rate tbase tscale tmin prscale yscale
+
+    --trigger "setMotors" true [arg tbase, arg tbase, arg tbase, arg tbase]
 
     trigger "setMotors" true [
         arg $ Motors.qm1 motors, 
