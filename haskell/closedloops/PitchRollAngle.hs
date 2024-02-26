@@ -30,39 +30,40 @@ import Demands
 import State
 import Utils
 
--------------------------------------------------------------------------------
+runPid kp ki ilimit dt error errorErrorInteg = output where
 
-runRollAnglePid kp ki reset dt ilimit demand angle = demand' where
-
-  (demand', integ) = piController kp ki dt ilimit demand angle integ'
-
-  integ' = [0] ++ (if reset then 0 else integ)
-
--------------------------------------------------------------------------------
+    output = kp * error + ki * errorErrorInteg
 
 
-pitchAnglePid kp ki reset dt ilimit demand angle = demand' where 
-
-  (demand', integ) = piController kp ki dt ilimit demand angle integ'
-
-  integ' = [0] ++ (if reset then 0 else integ)
-
-------------------------------------------------------------------------------
-
-pitchRollAnglePid :: SBool -> ClosedLoopController
-
-pitchRollAnglePid reset hover dt state demands = demands' where 
+pitchRollAnglePid reset hover dt state demands = demands' where
 
   kp = 6
   ki = 3
   ilimit = 20
 
-  roll' = roll demands
-  pitch' = pitch demands
-  phi' = phi state
-  theta' = theta state
+  -------------------------------------------------------------------
 
-  roll''  = runRollAnglePid kp ki reset dt ilimit roll'  phi'
-  pitch'' = pitchAnglePid   kp ki reset dt ilimit pitch' theta'
+  rollError = (roll demands) - (phi state)
 
-  demands' = Demands (thrust demands) roll'' pitch'' (yaw demands)
+  rollDemand = runPid kp ki ilimit dt rollError rollErrorInteg'
+
+  rollErrorInteg = if reset  then 0
+                   else constrain (rollErrorInteg' + rollError * dt) (-ilimit) ilimit
+
+  rollErrorInteg' = [0] ++ rollErrorInteg
+
+  -------------------------------------------------------------------
+
+  pitchError = (pitch demands) - (theta state)
+
+  pitchDemand = runPid kp ki ilimit dt pitchError pitchErrorInteg'
+
+  pitchErrorInteg = if reset  then 0
+                    else constrain (pitchErrorInteg' + pitchError * dt) (-ilimit) ilimit
+
+  pitchErrorInteg' = [0] ++ pitchErrorInteg
+
+  -------------------------------------------------------------------
+
+  demands' = Demands (thrust demands) rollDemand pitchDemand (yaw demands)
+
