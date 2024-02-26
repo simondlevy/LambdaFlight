@@ -35,6 +35,17 @@ runPid kp ki ilimit dt error errorErrorInteg = output where
     output = kp * error + ki * errorErrorInteg
 
 
+{--
+
+  Demand is input as angles in degrees and output as angular velocities in
+  degrees per second:
+
+  roll: right-down positive
+
+  pitch: nose-up positive
+
+--}
+
 pitchRollAnglePid reset hover dt state demands = demands' where
 
   kp = 6

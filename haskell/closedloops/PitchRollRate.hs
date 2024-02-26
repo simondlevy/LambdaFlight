@@ -36,6 +36,17 @@ runPid kp ki kd ilimit dt error errorErrorPrev errorErrorInteg = output where
     output = kp * error + ki * errorErrorInteg + kd * deriv
 
 
+{--
+
+  Demands are input as angular velocities in degrees per second and output as
+  as arbitrary values to be scaled according to motor characteristics:
+
+  roll:  input roll-right positive => output positive
+
+  pitch: input nose-up positive => output positive
+
+--}
+
 pitchRollRatePid reset hover dt state demands = demands' where
 
   kp = 125
