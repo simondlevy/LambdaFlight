@@ -48,6 +48,8 @@ runYPid kp ki reset dt ilimit roll dy = roll' where
 ------------------------------------------------------------------------------
 
 {--
+  Position controller converts meters per second to  degrees.
+
   Demands are input as normalized interval [-1,+1] and output as angles in 
   degrees:
 

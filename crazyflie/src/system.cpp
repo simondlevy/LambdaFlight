@@ -78,8 +78,7 @@ PowerMonitorTask::syslinkInfo_t pmSyslinkInfo;
 
 // Streams shared with Haskell Copilot
 demands_t openLoopDemands;
-demands_t finalDemands;
-demands_t tmpDemands;
+//demands_t finalDemands;
 vehicleState_t vehicleState;
 bool inHoverMode;
 bool resetPids;

@@ -36,25 +36,26 @@ import Altitude
 import ClimbRate
 import PitchRollAngle
 import PitchRollRate
+import Position
 import YawAngle
 import YawRate
 
 -- Streams from C++ ----------------------------------------------------------
 
-demandsStruct :: Stream DemandsStruct
-demandsStruct = extern "finalDemands" Nothing
+-- demandsStruct :: Stream DemandsStruct
+-- demandsStruct = extern "finalDemands" Nothing
 
-tmpDemandsStruct :: Stream DemandsStruct
-tmpDemandsStruct = extern "tmpDemands" Nothing
+stateStruct :: Stream StateStruct
+stateStruct = extern "vehicleState" Nothing
+
+demandsStruct :: Stream DemandsStruct
+demandsStruct = extern "openLoopDemands" Nothing
 
 resetPids :: SBool
 resetPids = extern "resetPids" Nothing
 
 inHoverMode :: SBool
 inHoverMode = extern "inHoverMode" Nothing
-
-stateStruct :: Stream StateStruct
-stateStruct = extern "vehicleState" Nothing
 
 -- Main ----------------------------------------------------------------------
 
@@ -70,7 +71,7 @@ spec = do
 
   let vehicleState = liftState stateStruct
 
-  let demands = liftDemands demandsStruct
+  let openLoopDemands = liftDemands demandsStruct
 
   let dt = rateToPeriod clock_rate
 
@@ -79,21 +80,22 @@ spec = do
   -- trigger "reportHaskell" true [arg $ pitch tmpDemands']
   -- trigger "report" true []
 
-  let pids = [pitchRollAnglePid resetPids inHoverMode dt
+  let pids = [positionPid resetPids inHoverMode dt
+             ,pitchRollAnglePid resetPids inHoverMode dt
              ,pitchRollRatePid resetPids inHoverMode dt
              ,altitudePid inHoverMode dt 
              ,climbRatePid inHoverMode dt
              ,yawAnglePid dt
              ,yawRatePid dt]
 
-  let demands' = foldl (\demand pid -> pid vehicleState demand) demands pids
+  let demands = foldl (\demand pid -> pid vehicleState demand) openLoopDemands pids
 
-  let thrust'' = if inHoverMode then ((thrust demands') * tscale + tbase) else tmin
+  let thrust' = if inHoverMode then ((thrust demands) * tscale + tbase) else tmin
 
-  let motors = quadCFMixer $ Demands thrust''
-                                     ((roll demands') * prscale )
-                                     ((pitch demands') * prscale )
-                                     ((yaw demands') * yscale )
+  let motors = quadCFMixer $ Demands thrust'
+                                     ((roll demands) * prscale )
+                                     ((pitch demands) * prscale )
+                                     ((yaw demands) * yscale )
 
   trigger "setMotors" true [
                        arg $ qm1 motors, 

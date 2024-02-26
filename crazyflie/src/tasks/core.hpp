@@ -20,8 +20,9 @@
 #include <tasks/estimator.hpp>
 #include <tasks/imu.hpp>
 
+#include <constants.h>
 #include <crossplatform.h>
-#include <main.hpp>
+//#include <main.hpp>
 #include <kalman.hpp>
 #include <motors.h>
 #include <rateSupervisor.hpp>
@@ -61,7 +62,7 @@ class CoreTask : public FreeRTOSTask {
 
             _openLoopFun = openLoopFun;
 
-            _miniflie.init(mixFun);
+            //_miniflie.init(mixFun);
 
             motorsInit();
 
@@ -85,7 +86,7 @@ class CoreTask : public FreeRTOSTask {
 
     private:
 
-        Miniflie _miniflie;
+        //Miniflie _miniflie;
 
         openLoopFun_t _openLoopFun;
 
@@ -169,8 +170,8 @@ class CoreTask : public FreeRTOSTask {
 
                     // Get axis demands by passing open-loop demands through PID
                     // controllers
-                    extern demands_t finalDemands;
-                    _miniflie.getDemands(finalDemands);
+                    //extern demands_t finalDemands;
+                    //_miniflie.getDemands(finalDemands);
 
                     // Run Haskell Copilot
                     extern void step(void);
