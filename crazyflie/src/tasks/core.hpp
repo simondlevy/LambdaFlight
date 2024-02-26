@@ -22,7 +22,6 @@
 
 #include <constants.h>
 #include <crossplatform.h>
-//#include <main.hpp>
 #include <kalman.hpp>
 #include <motors.h>
 #include <rateSupervisor.hpp>
@@ -62,8 +61,6 @@ class CoreTask : public FreeRTOSTask {
 
             _openLoopFun = openLoopFun;
 
-            //_miniflie.init(mixFun);
-
             motorsInit();
 
             FreeRTOSTask::begin(runCoreTask, "core", this, 5);
@@ -85,8 +82,6 @@ class CoreTask : public FreeRTOSTask {
         }
 
     private:
-
-        //Miniflie _miniflie;
 
         openLoopFun_t _openLoopFun;
 
@@ -167,11 +162,6 @@ class CoreTask : public FreeRTOSTask {
                     // Use safety algorithm to modify demands based on sensor data
                     // and open-loop info
                     _safety->update(sensorData, step, timestamp, openLoopDemands);
-
-                    // Get axis demands by passing open-loop demands through PID
-                    // controllers
-                    //extern demands_t finalDemands;
-                    //_miniflie.getDemands(finalDemands);
 
                     // Run Haskell Copilot
                     extern void step(void);
