@@ -75,11 +75,6 @@ spec = do
 
   let dt = rateToPeriod clock_rate
 
-  -- let tmpDemands = liftDemands tmpDemandsStruct
-  -- let tmpDemands' = pitchRollRatePid resetPids inHoverMode dt vehicleState tmpDemands
-  -- trigger "reportHaskell" true [arg $ pitch tmpDemands']
-  -- trigger "report" true []
-
   let pids = [positionPid resetPids inHoverMode dt
              ,pitchRollAnglePid resetPids inHoverMode dt
              ,pitchRollRatePid resetPids inHoverMode dt

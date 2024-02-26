@@ -19,7 +19,7 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE RebindableSyntax #-}
 
-module Main where
+module Core where
 
 import Language.Copilot
 import Copilot.Compile.C99
@@ -27,7 +27,6 @@ import Copilot.Compile.C99
 import Clock
 import Demands
 import Mixers
-import Motors
 import State
 import Utils
 
@@ -54,48 +53,27 @@ inHoverMode = extern "inHoverMode" Nothing
 resetPids :: SBool
 resetPids = extern "resetPids" Nothing
 
+step clock_rate tbase tscale tmin prscale yscale = motors where
 
--- Main ----------------------------------------------------------------------
+  vehicleState = liftState stateStruct
 
-spec = do
+  openLoopDemands = liftDemands demandsStruct
 
-  -- Constants
-  let clock_rate = RATE_100_HZ
-  let tbase = 48   
-  let tscale = 0.25
-  let tmin =   0   
-  let prscale = 1e-4 
-  let yscale = 4e-5
+  dt = rateToPeriod clock_rate
 
-  let vehicleState = liftState stateStruct
+  pids = [altitudePid inHoverMode dt,
+          climbRatePid inHoverMode dt,
+          positionPid resetPids inHoverMode dt,
+          pitchRollAnglePid resetPids inHoverMode dt, 
+          pitchRollRatePid resetPids inHoverMode dt, 
+          yawAnglePid dt, 
+          yawRatePid dt]
 
-  let openLoopDemands = liftDemands demandsStruct
+  demands' = foldl (\demand pid -> pid vehicleState demand) openLoopDemands pids
 
-  let dt = rateToPeriod clock_rate
+  thrust'' = if inHoverMode then ((thrust demands') * tscale + tbase) else tmin
 
-  let pids = [altitudePid inHoverMode dt,
-              climbRatePid inHoverMode dt,
-              positionPid resetPids inHoverMode dt,
-              pitchRollAnglePid resetPids inHoverMode dt, 
-              pitchRollRatePid resetPids inHoverMode dt, 
-              yawAnglePid dt, 
-              yawRatePid dt]
-
-  let demands' = foldl (\demand pid -> pid vehicleState demand) openLoopDemands pids
-
-  let thrust'' = if inHoverMode then ((thrust demands') * tscale + tbase) else tmin
-
-  let motors = quadCFMixer $ Demands thrust''
-                                     ((roll demands') * prscale)
-                                     ((pitch demands') * prscale)
-                                     ((yaw demands') * yscale)
-
-  trigger "setMotors" true [
-                       arg $ qm1 motors, 
-                       arg $ qm2 motors, 
-                       arg $ qm3 motors, 
-                       arg $ qm4 motors
-                     ] 
-
--- Compile the spec
-main = reify spec >>= compile "copilot"
+  motors = quadCFMixer $ Demands thrust''
+                                 ((roll demands') * prscale)
+                                 ((pitch demands') * prscale)
+                                 ((yaw demands') * yscale)
