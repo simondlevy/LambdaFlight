@@ -28,6 +28,13 @@ import Demands
 import State
 import Utils
 
+{-- 
+
+  Demand is input as normalized altitude target in meters and output as 
+  climb rate in meters-per-second
+
+--}
+
 altitudePid hover dt state demands = demands'  where
 
   kp = 2.0
@@ -42,6 +49,7 @@ altitudePid hover dt state demands = demands'  where
 
   error = target - (z state)
 
+  -- Reset integral when not in hover mode (flying)
   integ = if hover 
           then constrain (integ' + error * dt) (-ilimit) ilimit
           else 0

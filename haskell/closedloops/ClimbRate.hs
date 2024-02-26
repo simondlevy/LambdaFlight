@@ -29,8 +29,6 @@ import Demands
 import State
 import Utils
 
--- Demand is input as climb rate in meters per second and output as arbitrary
--- positive value to be scaled according to motor characteristics.
 run dt thrust dz = thrust'  where
 
     kp = 25
@@ -41,6 +39,13 @@ run dt thrust dz = thrust'  where
 
     integ' = [0] ++ integ
 
+
+{-- 
+
+  Demand is input as climb rate in meters per second and output as arbitrary
+  positive value to be scaled according to motor characteristics.
+
+--}
 
 climbRatePid hover dt state demands = demands' where
 

@@ -30,10 +30,13 @@ import Demands
 import State
 import Utils
 
-runPid kp ki ilimit dt error errorErrorInteg = output where
+run reset kp ki ilimit dt target actual integ = (output, integ') where
 
-    output = kp * error + ki * errorErrorInteg
+    error = target - actual
 
+    output = kp * error + ki * integ
+
+    integ' = if reset then 0 else constrain (integ + error * dt) (-ilimit) ilimit
 
 {--
 
@@ -52,29 +55,15 @@ pitchRollAnglePid reset hover dt state demands = demands' where
   ki = 3
   ilimit = 20
 
-  -------------------------------------------------------------------
+  (rollDemand, rollInteg) = 
+    run reset kp ki ilimit dt (roll demands) (phi state) rollInteg'
 
-  rollError = (roll demands) - (phi state)
+  (pitchDemand, pitchInteg) = 
+    run reset kp ki ilimit dt (pitch demands) (theta state) pitchInteg'
 
-  rollDemand = runPid kp ki ilimit dt rollError rollErrorInteg'
+  rollInteg' = [0] ++ rollInteg
 
-  rollErrorInteg = if reset  then 0
-                   else constrain (rollErrorInteg' + rollError * dt) (-ilimit) ilimit
-
-  rollErrorInteg' = [0] ++ rollErrorInteg
-
-  -------------------------------------------------------------------
-
-  pitchError = (pitch demands) - (theta state)
-
-  pitchDemand = runPid kp ki ilimit dt pitchError pitchErrorInteg'
-
-  pitchErrorInteg = if reset  then 0
-                    else constrain (pitchErrorInteg' + pitchError * dt) (-ilimit) ilimit
-
-  pitchErrorInteg' = [0] ++ pitchErrorInteg
-
-  -------------------------------------------------------------------
+  pitchInteg' = [0] ++ pitchInteg
 
   demands' = Demands (thrust demands) rollDemand pitchDemand (yaw demands)
 
