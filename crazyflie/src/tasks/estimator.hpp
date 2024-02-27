@@ -99,11 +99,11 @@ class EstimatorTask : public FreeRTOSTask {
             enqueue(&m, isInInterrupt);
         }
 
-        void enqueueRange(const tofMeasurement_t * tof, const bool isInInterrupt)
+        void enqueueRange(const rangeMeasurement_t * range, const bool isInInterrupt)
         {
             KalmanFilter::measurement_t m = {};
             m.type = KalmanFilter::MeasurementTypeRange;
-            m.data.tof = *tof;
+            m.data.range = *range;
             enqueue(&m, isInInterrupt);
         }
 

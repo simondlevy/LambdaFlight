@@ -98,12 +98,12 @@ class ZRangerTask : public FreeRTOSTask {
                     float stdDev =
                         EXP_STD_A * (1 + expf(_expCoeff * (distance - EXP_POINT_A)));
 
-                    tofMeasurement_t tofData;
-                    tofData.timestamp = xTaskGetTickCount();
-                    tofData.distance = distance;
-                    tofData.stdDev = stdDev;
+                    rangeMeasurement_t rangeData;
+                    rangeData.timestamp = xTaskGetTickCount();
+                    rangeData.distance = distance;
+                    rangeData.stdDev = stdDev;
 
-                    _estimatorTask->enqueueRange(&tofData, hal_isInInterrupt());
+                    _estimatorTask->enqueueRange(&rangeData, hal_isInInterrupt());
                 }
             }
         }

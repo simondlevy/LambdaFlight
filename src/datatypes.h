@@ -223,11 +223,11 @@ typedef struct flowMeasurement_s {
 
 
 /** TOF measurement**/
-typedef struct tofMeasurement_s {
+typedef struct rangeMeasurement_s {
   uint32_t timestamp;
   float distance;
   float stdDev;
-} tofMeasurement_t;
+} rangeMeasurement_t;
 
 /** Absolute height measurement */
 typedef struct heightMeasurement_s {

@@ -85,18 +85,10 @@ class KalmanFilter {
 
             union {
 
-                tdoaMeasurement_t tdoa;
-                positionMeasurement_t position;
-                poseMeasurement_t pose;
-                distanceMeasurement_t distance;
-                tofMeasurement_t tof;
-                heightMeasurement_t height;
+                rangeMeasurement_t range;
                 flowMeasurement_t flow;
-                yawErrorMeasurement_t yawError;
-                sweepAngleMeasurement_t sweepAngle;
                 gyroscopeMeasurement_t gyroscope;
                 accelerationMeasurement_t acceleration;
-                barometerMeasurement_t barometer;
             } data;
 
         } measurement_t;
@@ -1281,7 +1273,7 @@ class KalmanFilter {
                     &Hy, (_measuredNY-_predictedNY), flow->stdDevY*FLOW_RESOLUTION);
         }
 
-        void updateWithRange(tofMeasurement_t *tof)
+        void updateWithRange(rangeMeasurement_t *range)
         {
             // Updates the filter with a measured distance in the zb direction using the
             float h[KC_STATE_DIM] = {};
@@ -1297,7 +1289,7 @@ class KalmanFilter {
                     angle = 0.0f;
                 }
                 float predictedDistance = _S[KC_STATE_Z] / cosf(angle);
-                float measuredDistance = tof->distance; // [m]
+                float measuredDistance = range->distance; // [m]
 
 
                 // The sensor model (Pg.95-96,
@@ -1321,7 +1313,7 @@ class KalmanFilter {
 
                 // Scalar update
                 scalarUpdate(
-                        &H, measuredDistance-predictedDistance, tof->stdDev);
+                        &H, measuredDistance-predictedDistance, range->stdDev);
             }
         }
 
@@ -1584,7 +1576,7 @@ class KalmanFilter {
             switch (m.type) {
 
                 case MeasurementTypeRange:
-                    updateWithRange(&m.data.tof);
+                    updateWithRange(&m.data.range);
                     break;
 
                 case MeasurementTypeFlow:
