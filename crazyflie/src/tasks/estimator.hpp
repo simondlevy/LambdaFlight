@@ -174,10 +174,13 @@ class EstimatorTask : public FreeRTOSTask {
                 didResetEstimation = false;
             }
 
-            // Run the system dynamics to predict the state forward.
             if (nowMs >= nextPredictionMs) {
 
                 _kalmanFilter.predict(nowMs, _safety->isFlying()); 
+            }
+
+            // Run the system dynamics to predict the state forward.
+            if (nowMs >= nextPredictionMs) {
 
                 nextPredictionMs = nowMs + PREDICTION_UPDATE_INTERVAL_MS;
 
