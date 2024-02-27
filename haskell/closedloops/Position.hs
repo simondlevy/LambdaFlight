@@ -29,23 +29,17 @@ import Demands
 import State
 import Utils
 
-------------------------------------------------------------------------------
+run kp ki hover reset dt ilimit target actual integ = (demand, integ') where
 
-runXPid kp ki reset dt ilimit pitch dx = pitch' where
+  error = target - actual
 
-  (pitch', integ) = piController kp ki dt ilimit pitch dx integ'
+  demand = (-(if hover then kp * error + ki * integ else actual * 30))
 
-  integ' = [0] ++ (if reset then 0 else integ)
-
-------------------------------------------------------------------------------
-
-runYPid kp ki reset dt ilimit roll dy = roll' where
-
-  (roll', integ) = piController kp ki dt ilimit roll dy integ'
-
-  integ' = [0] ++ (if reset then 0 else integ)
-
-------------------------------------------------------------------------------
+  integ' = if reset 
+           then 0
+           else if hover 
+           then constrain (integ + error * dt) (-ilimit) (ilimit)
+           else integ
 
 {--
   Position controller converts meters per second to  degrees.
@@ -62,34 +56,27 @@ positionPid :: SBool -> ClosedLoopController
 
 positionPid reset hover dt state demands = demands'  where
 
-    kp = 25
-    ki = 1
-    ilimit = 5000
+  kp = 25
+  ki = 1
+  ilimit = 5000
     
-    angle = 30
+  -- Rotate world-coordinate velocities into body coordinates
+  psi' = deg2rad $ psi state
+  cospsi = cos psi'
+  sinpsi = sin psi'
+  dx' = dx state
+  dy' = dy state
+  dxb =  dx'   * cospsi + dy' * sinpsi
+  dyb = (-dx') * sinpsi + dy' * cospsi       
 
-    -- Rotate world-coordinate velocities into body coordinates
-    psi' = deg2rad $ psi state
-    cospsi = cos psi'
-    sinpsi = sin psi'
-    dx' = dx state
-    dy' = dy state
+  (rollDemand, rollInteg) = 
+    run kp ki hover reset dt ilimit (roll demands) dyb rollInteg'
 
-    dxb =  dx'   * cospsi + dy' * sinpsi
-    dyb = (-dx') * sinpsi + dy' * cospsi       
+  rollInteg' = [0] ++ rollInteg
 
-    roll' = (roll demands)
-    pitch' = (pitch demands)
+  (pitchDemand, pitchInteg) = 
+    run kp ki hover reset dt ilimit (pitch demands) dxb pitchInteg'
 
-    -- Convert demand into angle, either by running a PI controller (hover mode)
-    -- or just multiplying by a constant (non-hover mode)
-    roll''   = if hover 
-               then runYPid kp ki reset dt ilimit roll' dyb
-               else roll' * 30
+  pitchInteg' = [0] ++ pitchInteg
 
-    pitch''  = if hover 
-               then runXPid kp ki reset dt ilimit pitch' dxb
-               else pitch' * 30
- 
-    -- Negate roll, pitch demands on output
-    demands' = Demands (thrust demands) (-roll'') (-pitch'') (yaw demands)
+  demands' = Demands (thrust demands) rollDemand pitchDemand (yaw demands)
