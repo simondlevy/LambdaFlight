@@ -24,7 +24,7 @@
 #include <console.h>
 #include <crossplatform.h>
 #include <lpf.hpp>
-#include <physicalConstants.h>
+#include <m_pi.h>
 #include <datatypes.h>
 
 class ImuTask : public FreeRTOSTask {

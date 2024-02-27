@@ -26,7 +26,7 @@
 #include <stdint.h>
 #include <string.h>
 
-#include <physicalConstants.h>
+#include <m_pi.h>
 #include <quatcompress.h>
 
 #include <commander.hpp>
