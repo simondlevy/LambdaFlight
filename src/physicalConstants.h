@@ -17,7 +17,6 @@
 
 #pragma once
 
-static const float GRAVITY_MAGNITUDE = 9.81;
 
 #ifndef M_PI
 static const float M_PI = 3.14159265358979323846;

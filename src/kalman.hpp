@@ -631,6 +631,8 @@ class KalmanFilter {
 
     private:
 
+        static constexpr float GRAVITY_MAGNITUDE = 9.81;
+
         static constexpr float DEGREES_TO_RADIANS = PI / 180.0f;
         static constexpr float RADIANS_TO_DEGREES = 180.0f / PI;
 
