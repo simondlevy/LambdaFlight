@@ -124,47 +124,40 @@ class KalmanFilter {
 
         } kalmanCoreStateIdx_t;
 
+        /**
+         * Vehicle State
+         *
+         * The internally-estimated state is:
+         * - X, Y, Z: the quad's position in the global frame
+         * - PX, PY, PZ: the quad's velocity in its body frame
+         * - D0, D1, D2: attitude error
+         *
+         * For more information, refer to the paper
+         */
+        float _S[KC_STATE_DIM];
 
-        // The data used by the kalman algo implementation.
-        typedef struct {
-            /**
-             * Vehicle State
-             *
-             * The internally-estimated state is:
-             * - X, Y, Z: the quad's position in the global frame
-             * - PX, PY, PZ: the quad's velocity in its body frame
-             * - D0, D1, D2: attitude error
-             *
-             * For more information, refer to the paper
-             */
-            float S[KC_STATE_DIM];
+        // The quad's attitude as a quaternion (w,x,y,z) We store as a quaternion
+        // to allow easy normalization (in comparison to a rotation matrix),
+        // while also being robust against singularities (in comparison to euler angles)
+        float _q[4];
 
-            // The quad's attitude as a quaternion (w,x,y,z) We store as a quaternion
-            // to allow easy normalization (in comparison to a rotation matrix),
-            // while also being robust against singularities (in comparison to euler angles)
-            float q[4];
+        // The quad's attitude as a rotation matrix (used by the prediction,
+        // updated by the finalization)
+        float _R[3][3];
 
-            // The quad's attitude as a rotation matrix (used by the prediction,
-            // updated by the finalization)
-            float R[3][3];
+        // The covariance matrix
+        __attribute__((aligned(4))) float _P[KC_STATE_DIM][KC_STATE_DIM];
+        arm_matrix_instance_f32 _Pm;
 
-            // The covariance matrix
-            __attribute__((aligned(4))) float P[KC_STATE_DIM][KC_STATE_DIM];
-            arm_matrix_instance_f32 Pm;
+        // Quaternion used for initial orientation [w,x,y,z]
+        float _initialQuaternion[4];
 
-            float baroReferenceHeight;
+        // Tracks whether an update to the state has been made, and the state
+        // therefore requires finalization
+        bool _isUpdated;
 
-            // Quaternion used for initial orientation [w,x,y,z]
-            float initialQuaternion[4];
-
-            // Tracks whether an update to the state has been made, and the state
-            // therefore requires finalization
-            bool isUpdated;
-
-            uint32_t lastPredictionMs;
-            uint32_t lastProcessNoiseUpdateMs;
-
-        } kalmanCoreData_t;
+        uint32_t _lastPredictionMs;
+        uint32_t _lastProcessNoiseUpdateMs;
 
         bool didInit(void)
         {
@@ -212,20 +205,27 @@ class KalmanFilter {
             _outlierFilterTdoa.reset();
 
             // Reset all data to 0 (like upon system reset)
-            memset(&_kalmanData, 0, sizeof(kalmanCoreData_t));
+            memset(&_S, 0, sizeof(_S));
+            memset(&_R, 0, sizeof(_R));
+            memset(&_P, 0, sizeof(_P));
+            memset(&_Pm, 0, sizeof(_Pm));
+            memset(&_initialQuaternion, 0, sizeof(_initialQuaternion));
+            _isUpdated = false;
+            _lastPredictionMs = 0;
+            _lastProcessNoiseUpdateMs = 0;
 
-            _kalmanData.S[KC_STATE_X] = _params.initialX;
-            _kalmanData.S[KC_STATE_Y] = _params.initialY;
-            _kalmanData.S[KC_STATE_Z] = _params.initialZ;
+            _S[KC_STATE_X] = _params.initialX;
+            _S[KC_STATE_Y] = _params.initialY;
+            _S[KC_STATE_Z] = _params.initialZ;
 
             // reset the attitude quaternion
-            _kalmanData.initialQuaternion[0] = arm_cos_f32(_params.initialYaw / 2);
-            _kalmanData.initialQuaternion[1] = 0.0;
-            _kalmanData.initialQuaternion[2] = 0.0;
-            _kalmanData.initialQuaternion[3] = arm_sin_f32(_params.initialYaw / 2);
+            _initialQuaternion[0] = arm_cos_f32(_params.initialYaw / 2);
+            _initialQuaternion[1] = 0.0;
+            _initialQuaternion[2] = 0.0;
+            _initialQuaternion[3] = arm_sin_f32(_params.initialYaw / 2);
 
             for (int i = 0; i < 4; i++) { 
-                _kalmanData.q[i] = _kalmanData.initialQuaternion[i]; 
+                _q[i] = _initialQuaternion[i]; 
             }
 
             // then set the initial rotation matrix to the identity. This only affects
@@ -233,7 +233,7 @@ class KalmanFilter {
             // attitude errors into the attitude state, the rotation matrix is updated.
             for(int i=0; i<3; i++) { 
                 for(int j=0; j<3; j++) { 
-                    _kalmanData.R[i][j] = i==j ? 1 : 0; 
+                    _R[i][j] = i==j ? 1 : 0; 
                 }
             }
 
@@ -243,41 +243,39 @@ class KalmanFilter {
 
                     // set covariances to zero (diagonals will be changed from
                     // zero in the next section)
-                    _kalmanData.P[i][j] = 0; 
+                    _P[i][j] = 0; 
                 }
             }
 
             // initialize state variances
-            _kalmanData.P[KC_STATE_X][KC_STATE_X] = 
+            _P[KC_STATE_X][KC_STATE_X] = 
                 powf(_params.stdDevInitialPosition_xy, 2);
-            _kalmanData.P[KC_STATE_Y][KC_STATE_Y] = 
+            _P[KC_STATE_Y][KC_STATE_Y] = 
                 powf(_params.stdDevInitialPosition_xy, 2);
-            _kalmanData.P[KC_STATE_Z][KC_STATE_Z] = 
+            _P[KC_STATE_Z][KC_STATE_Z] = 
                 powf(_params.stdDevInitialPosition_z, 2);
 
-            _kalmanData.P[KC_STATE_PX][KC_STATE_PX] = 
+            _P[KC_STATE_PX][KC_STATE_PX] = 
                 powf(_params.stdDevInitialVelocity, 2);
-            _kalmanData.P[KC_STATE_PY][KC_STATE_PY] = 
+            _P[KC_STATE_PY][KC_STATE_PY] = 
                 powf(_params.stdDevInitialVelocity, 2);
-            _kalmanData.P[KC_STATE_PZ][KC_STATE_PZ] = 
+            _P[KC_STATE_PZ][KC_STATE_PZ] = 
                 powf(_params.stdDevInitialVelocity, 2);
 
-            _kalmanData.P[KC_STATE_D0][KC_STATE_D0] = 
+            _P[KC_STATE_D0][KC_STATE_D0] = 
                 powf(_params.stdDevInitialAttitude_rollpitch, 2);
-            _kalmanData.P[KC_STATE_D1][KC_STATE_D1] = 
+            _P[KC_STATE_D1][KC_STATE_D1] = 
                 powf(_params.stdDevInitialAttitude_rollpitch, 2);
-            _kalmanData.P[KC_STATE_D2][KC_STATE_D2] = 
+            _P[KC_STATE_D2][KC_STATE_D2] = 
                 powf(_params.stdDevInitialAttitude_yaw, 2);
 
-            _kalmanData.Pm.numRows = KC_STATE_DIM;
-            _kalmanData.Pm.numCols = KC_STATE_DIM;
-            _kalmanData.Pm.pData = (float*)_kalmanData.P;
+            _Pm.numRows = KC_STATE_DIM;
+            _Pm.numCols = KC_STATE_DIM;
+            _Pm.pData = (float*)_P;
 
-            _kalmanData.baroReferenceHeight = 0.0;
-
-            _kalmanData.isUpdated = false;
-            _kalmanData.lastPredictionMs = nowMs;
-            _kalmanData.lastProcessNoiseUpdateMs = nowMs;
+            _isUpdated = false;
+            _lastPredictionMs = nowMs;
+            _lastProcessNoiseUpdateMs = nowMs;
         }
 
         void predictDt(Axis3f *acc, Axis3f *gyro, float dt, bool quadIsFlying)
@@ -309,14 +307,14 @@ class KalmanFilter {
                 arm_matrix_instance_f32 * tmpNN2m)
         {
             // Only finalize if data is updated
-            if (! _kalmanData.isUpdated) {
+            if (! _isUpdated) {
                 return;
             }
 
             // Incorporate the attitude error (Kalman filter state) with the attitude
-            float v0 = _kalmanData.S[KC_STATE_D0];
-            float v1 = _kalmanData.S[KC_STATE_D1];
-            float v2 = _kalmanData.S[KC_STATE_D2];
+            float v0 = _S[KC_STATE_D0];
+            float v1 = _S[KC_STATE_D1];
+            float v2 = _S[KC_STATE_D2];
 
             // Move attitude error into attitude if any of the angle errors are
             // large enough
@@ -330,22 +328,23 @@ class KalmanFilter {
 
                 // Rotate the quad's attitude by the delta quaternion vector
                 // computed above
-                float tmpq0 = dq[0] * _kalmanData.q[0] - dq[1] * _kalmanData.q[1] - 
-                    dq[2] * _kalmanData.q[2] - dq[3] * _kalmanData.q[3];
-                float tmpq1 = dq[1] * _kalmanData.q[0] + dq[0] * _kalmanData.q[1] + 
-                    dq[3] * _kalmanData.q[2] - dq[2] * _kalmanData.q[3];
-                float tmpq2 = dq[2] * _kalmanData.q[0] - dq[3] * _kalmanData.q[1] + 
-                    dq[0] * _kalmanData.q[2] + dq[1] * _kalmanData.q[3];
-                float tmpq3 = dq[3] * _kalmanData.q[0] + dq[2] * _kalmanData.q[1] - 
-                    dq[1] * _kalmanData.q[2] + dq[0] * _kalmanData.q[3];
+                float tmpq0 = dq[0] * _q[0] - dq[1] * _q[1] - 
+                    dq[2] * _q[2] - dq[3] * _q[3];
+                float tmpq1 = dq[1] * _q[0] + dq[0] * _q[1] + 
+                    dq[3] * _q[2] - dq[2] * _q[3];
+                float tmpq2 = dq[2] * _q[0] - dq[3] * _q[1] + 
+                    dq[0] * _q[2] + dq[1] * _q[3];
+                float tmpq3 = dq[3] * _q[0] + dq[2] * _q[1] - 
+                    dq[1] * _q[2] + dq[0] * _q[3];
 
                 // normalize and store the result
                 float norm = fast_sqrt(tmpq0 * tmpq0 + tmpq1 * tmpq1 + tmpq2 * tmpq2 + 
                         tmpq3 * tmpq3) + EPS;
-                _kalmanData.q[0] = tmpq0 / norm;
-                _kalmanData.q[1] = tmpq1 / norm;
-                _kalmanData.q[2] = tmpq2 / norm;
-                _kalmanData.q[3] = tmpq3 / norm;
+
+                _q[0] = tmpq0 / norm;
+                _q[1] = tmpq1 / norm;
+                _q[2] = tmpq2 / norm;
+                _q[3] = tmpq3 / norm;
 
                 /** Rotate the covariance, since we've rotated the body
                  *
@@ -388,64 +387,64 @@ class KalmanFilter {
                 A[KC_STATE_D2][KC_STATE_D2] = 1 - d0*d0/2 - d1*d1/2;
 
                 mat_trans(Am, tmpNN1m); // A'
-                mat_mult(Am, &_kalmanData.Pm, tmpNN2m); // AP
-                mat_mult(tmpNN2m, tmpNN1m, &_kalmanData.Pm); //APA'
+                mat_mult(Am, &_Pm, tmpNN2m); // AP
+                mat_mult(tmpNN2m, tmpNN1m, &_Pm); //APA'
             }
 
             // Convert the new attitude to a rotation matrix, such that we can
             // rotate body-frame velocity and acc
 
-            _kalmanData.R[0][0] = _kalmanData.q[0] * _kalmanData.q[0] + 
-                _kalmanData.q[1] * _kalmanData.q[1] - _kalmanData.q[2] * 
-                _kalmanData.q[2] - _kalmanData.q[3] * _kalmanData.q[3];
+            _R[0][0] = _q[0] * _q[0] + 
+                _q[1] * _q[1] - _q[2] * 
+                _q[2] - _q[3] * _q[3];
 
-            _kalmanData.R[0][1] = 2 * _kalmanData.q[1] * _kalmanData.q[2] - 
-                2 * _kalmanData.q[0] * _kalmanData.q[3];
+            _R[0][1] = 2 * _q[1] * _q[2] - 
+                2 * _q[0] * _q[3];
 
-            _kalmanData.R[0][2] = 2 * _kalmanData.q[1] * _kalmanData.q[3] + 
-                2 * _kalmanData.q[0] * _kalmanData.q[2];
+            _R[0][2] = 2 * _q[1] * _q[3] + 
+                2 * _q[0] * _q[2];
 
-            _kalmanData.R[1][0] = 2 * _kalmanData.q[1] * _kalmanData.q[2] + 
-                2 * _kalmanData.q[0] * _kalmanData.q[3];
+            _R[1][0] = 2 * _q[1] * _q[2] + 
+                2 * _q[0] * _q[3];
 
-            _kalmanData.R[1][1] = _kalmanData.q[0] * _kalmanData.q[0] - 
-                _kalmanData.q[1] * _kalmanData.q[1] + _kalmanData.q[2] * 
-                _kalmanData.q[2] - _kalmanData.q[3] * _kalmanData.q[3];
+            _R[1][1] = _q[0] * _q[0] - 
+                _q[1] * _q[1] + _q[2] * 
+                _q[2] - _q[3] * _q[3];
 
-            _kalmanData.R[1][2] = 2 * _kalmanData.q[2] * _kalmanData.q[3] - 
-                2 * _kalmanData.q[0] * _kalmanData.q[1];
+            _R[1][2] = 2 * _q[2] * _q[3] - 
+                2 * _q[0] * _q[1];
 
-            _kalmanData.R[2][0] = 2 * _kalmanData.q[1] * _kalmanData.q[3] - 
-                2 * _kalmanData.q[0] * _kalmanData.q[2];
+            _R[2][0] = 2 * _q[1] * _q[3] - 
+                2 * _q[0] * _q[2];
 
-            _kalmanData.R[2][1] = 2 * _kalmanData.q[2] * _kalmanData.q[3] + 
-                2 * _kalmanData.q[0] * _kalmanData.q[1];
+            _R[2][1] = 2 * _q[2] * _q[3] + 
+                2 * _q[0] * _q[1];
 
-            _kalmanData.R[2][2] = _kalmanData.q[0] * _kalmanData.q[0] - 
-                _kalmanData.q[1] * _kalmanData.q[1] - _kalmanData.q[2] * 
-                _kalmanData.q[2] + _kalmanData.q[3] * _kalmanData.q[3];
+            _R[2][2] = _q[0] * _q[0] - 
+                _q[1] * _q[1] - _q[2] * 
+                _q[2] + _q[3] * _q[3];
 
             // reset the attitude error
-            _kalmanData.S[KC_STATE_D0] = 0;
-            _kalmanData.S[KC_STATE_D1] = 0;
-            _kalmanData.S[KC_STATE_D2] = 0;
+            _S[KC_STATE_D0] = 0;
+            _S[KC_STATE_D1] = 0;
+            _S[KC_STATE_D2] = 0;
 
             // enforce symmetry of the covariance matrix, and ensure the values
             // stay bounded
             for (int i=0; i<KC_STATE_DIM; i++) {
                 for (int j=i; j<KC_STATE_DIM; j++) {
-                    float p = 0.5f*_kalmanData.P[i][j] + 0.5f*_kalmanData.P[j][i];
+                    float p = 0.5f*_P[i][j] + 0.5f*_P[j][i];
                     if (isnan(p) || p > MAX_COVARIANCE) {
-                        _kalmanData.P[i][j] = _kalmanData.P[j][i] = MAX_COVARIANCE;
+                        _P[i][j] = _P[j][i] = MAX_COVARIANCE;
                     } else if ( i==j && p < MIN_COVARIANCE ) {
-                        _kalmanData.P[i][j] = _kalmanData.P[j][i] = MIN_COVARIANCE;
+                        _P[i][j] = _P[j][i] = MIN_COVARIANCE;
                     } else {
-                        _kalmanData.P[i][j] = _kalmanData.P[j][i] = p;
+                        _P[i][j] = _P[j][i] = p;
                     }
                 }
             }
 
-            _kalmanData.isUpdated = false;
+            _isUpdated = false;
         }
 
         void predict(const uint32_t nowMs, bool quadIsFlying) 
@@ -453,21 +452,21 @@ class KalmanFilter {
             axis3fSubSamplerFinalize(&_accSubSampler);
             axis3fSubSamplerFinalize(&_gyroSubSampler);
 
-            float dt = (nowMs - _kalmanData.lastPredictionMs) / 1000.0f;
+            float dt = (nowMs - _lastPredictionMs) / 1000.0f;
 
             predictDt(&_accSubSampler.subSample, &_gyroSubSampler.subSample, dt,
                     quadIsFlying);
 
-            _kalmanData.lastPredictionMs = nowMs;
+            _lastPredictionMs = nowMs;
         }
 
         void addProcessNoise(const uint32_t nowMs) 
         {
-            float dt = (nowMs - _kalmanData.lastProcessNoiseUpdateMs) / 1000.0f;
+            float dt = (nowMs - _lastProcessNoiseUpdateMs) / 1000.0f;
 
             if (dt > 0.0f) {
                 addProcessNoiseDt(dt);
-                _kalmanData.lastProcessNoiseUpdateMs = nowMs;
+                _lastProcessNoiseUpdateMs = nowMs;
             }
         }
 
@@ -551,17 +550,17 @@ class KalmanFilter {
 
                 if (MAX_POSITITON > 0.0f) {
 
-                    if (_kalmanData.S[KC_STATE_X + i] > MAX_POSITITON) {
+                    if (_S[KC_STATE_X + i] > MAX_POSITITON) {
                         return false;
-                    } else if (_kalmanData.S[KC_STATE_X + i] < -MAX_POSITITON) {
+                    } else if (_S[KC_STATE_X + i] < -MAX_POSITITON) {
                         return false;
                     }
                 }
 
                 if (MAX_VELOCITY > 0.0f) {
-                    if (_kalmanData.S[KC_STATE_PX + i] > MAX_VELOCITY) {
+                    if (_S[KC_STATE_PX + i] > MAX_VELOCITY) {
                         return false;
-                    } else if (_kalmanData.S[KC_STATE_PX + i] < -MAX_VELOCITY) {
+                    } else if (_S[KC_STATE_PX + i] < -MAX_VELOCITY) {
                         return false;
                     }
                 }
@@ -572,51 +571,51 @@ class KalmanFilter {
 
         void updateWithQuaternion(const quaternion_t & quat)
         {
-            _kalmanData.q[0] = quat.w;
-            _kalmanData.q[1] = quat.x;
-            _kalmanData.q[2] = quat.y;
-            _kalmanData.q[3] = quat.z;
+            _q[0] = quat.w;
+            _q[1] = quat.x;
+            _q[2] = quat.y;
+            _q[3] = quat.z;
         }
 
         void getVehicleState(vehicleState_t & state)
         {
-            state.x = _kalmanData.S[KC_STATE_X];
+            state.x = _S[KC_STATE_X];
 
-            state.dx = _kalmanData.R[0][0]*_kalmanData.S[KC_STATE_PX] + 
-                    _kalmanData.R[0][1]*_kalmanData.S[KC_STATE_PY] + 
-                    _kalmanData.R[0][2]*_kalmanData.S[KC_STATE_PZ];
+            state.dx = _R[0][0]*_S[KC_STATE_PX] + 
+                    _R[0][1]*_S[KC_STATE_PY] + 
+                    _R[0][2]*_S[KC_STATE_PZ];
 
-            state.y = _kalmanData.S[KC_STATE_Y];
+            state.y = _S[KC_STATE_Y];
 
-            state.dy = _kalmanData.R[1][0]*_kalmanData.S[KC_STATE_PX] + 
-                        _kalmanData.R[1][1]*_kalmanData.S[KC_STATE_PY] + 
-                        _kalmanData.R[1][2]*_kalmanData.S[KC_STATE_PZ];
+            state.dy = _R[1][0]*_S[KC_STATE_PX] + 
+                        _R[1][1]*_S[KC_STATE_PY] + 
+                        _R[1][2]*_S[KC_STATE_PZ];
 
-            state.z = _kalmanData.S[KC_STATE_Z];
+            state.z = _S[KC_STATE_Z];
 
-            state.dz = _kalmanData.R[2][0]*_kalmanData.S[KC_STATE_PX] + 
-                _kalmanData.R[2][1]*_kalmanData.S[KC_STATE_PY] + 
-                _kalmanData.R[2][2]*_kalmanData.S[KC_STATE_PZ];
+            state.dz = _R[2][0]*_S[KC_STATE_PX] + 
+                _R[2][1]*_S[KC_STATE_PY] + 
+                _R[2][2]*_S[KC_STATE_PZ];
 
             state.phi = RADIANS_TO_DEGREES *
-                atan2f(2*(_kalmanData.q[2]*_kalmanData.q[3]+_kalmanData.q[0]*
-                            _kalmanData.q[1]) ,
-                        _kalmanData.q[0]*_kalmanData.q[0] -
-                        _kalmanData.q[1]*_kalmanData.q[1] -
-                        _kalmanData.q[2]*_kalmanData.q[2] +
-                        _kalmanData.q[3]*_kalmanData.q[3]);
+                atan2f(2*(_q[2]*_q[3]+_q[0]*
+                            _q[1]) ,
+                        _q[0]*_q[0] -
+                        _q[1]*_q[1] -
+                        _q[2]*_q[2] +
+                        _q[3]*_q[3]);
 
             state.theta = -RADIANS_TO_DEGREES * // note negation
-                asinf(-2*(_kalmanData.q[1]*_kalmanData.q[3] -
-                        _kalmanData.q[0]*_kalmanData.q[2]));
+                asinf(-2*(_q[1]*_q[3] -
+                        _q[0]*_q[2]));
 
             state.psi = RADIANS_TO_DEGREES *
-                atan2f(2*(_kalmanData.q[1]*_kalmanData.q[2]+_kalmanData.q[0]*
-                            _kalmanData.q[3])
-                        , _kalmanData.q[0]*_kalmanData.q[0] +
-                        _kalmanData.q[1]*_kalmanData.q[1] -
-                        _kalmanData.q[2]*_kalmanData.q[2] -
-                        _kalmanData.q[3]*_kalmanData.q[3]);
+                atan2f(2*(_q[1]*_q[2]+_q[0]*
+                            _q[3])
+                        , _q[0]*_q[0] +
+                        _q[1]*_q[1] -
+                        _q[2]*_q[2] -
+                        _q[3]*_q[3]);
 
             // Get angular velocities directly from gyro
             state.dphi =    _gyroLatest.x;     
@@ -703,8 +702,6 @@ class KalmanFilter {
 
         params_t _params;
 
-        kalmanCoreData_t _kalmanData;
-
         Axis3f _accLatest;
         Axis3f _gyroLatest;
 
@@ -770,46 +767,46 @@ class KalmanFilter {
 
         void addProcessNoiseDt(float dt)
         {
-            _kalmanData.P[KC_STATE_X][KC_STATE_X] += 
+            _P[KC_STATE_X][KC_STATE_X] += 
                 powf(_params.procNoiseAcc_xy*dt*dt + _params.procNoiseVel*dt + 
                         _params.procNoisePos, 2);  // add process noise on position
 
-            _kalmanData.P[KC_STATE_Y][KC_STATE_Y] += 
+            _P[KC_STATE_Y][KC_STATE_Y] += 
                 powf(_params.procNoiseAcc_xy*dt*dt + _params.procNoiseVel*dt + 
                         _params.procNoisePos, 2);  // add process noise on position
 
-            _kalmanData.P[KC_STATE_Z][KC_STATE_Z] += 
+            _P[KC_STATE_Z][KC_STATE_Z] += 
                 powf(_params.procNoiseAcc_z*dt*dt + _params.procNoiseVel*dt + 
                         _params.procNoisePos, 2);  // add process noise on position
 
-            _kalmanData.P[KC_STATE_PX][KC_STATE_PX] += 
+            _P[KC_STATE_PX][KC_STATE_PX] += 
                 powf(_params.procNoiseAcc_xy*dt + 
                         _params.procNoiseVel, 2); // add process noise on velocity
 
-            _kalmanData.P[KC_STATE_PY][KC_STATE_PY] += 
+            _P[KC_STATE_PY][KC_STATE_PY] += 
                 powf(_params.procNoiseAcc_xy*dt + 
                         _params.procNoiseVel, 2); // add process noise on velocity
 
-            _kalmanData.P[KC_STATE_PZ][KC_STATE_PZ] += 
+            _P[KC_STATE_PZ][KC_STATE_PZ] += 
                 powf(_params.procNoiseAcc_z*dt + 
                         _params.procNoiseVel, 2); // add process noise on velocity
 
-            _kalmanData.P[KC_STATE_D0][KC_STATE_D0] += 
+            _P[KC_STATE_D0][KC_STATE_D0] += 
                 powf(_params.measNoiseGyro_rollpitch * dt + _params.procNoiseAtt, 2);
-            _kalmanData.P[KC_STATE_D1][KC_STATE_D1] += 
+            _P[KC_STATE_D1][KC_STATE_D1] += 
                 powf(_params.measNoiseGyro_rollpitch * dt + _params.procNoiseAtt, 2);
-            _kalmanData.P[KC_STATE_D2][KC_STATE_D2] += 
+            _P[KC_STATE_D2][KC_STATE_D2] += 
                 powf(_params.measNoiseGyro_yaw * dt + _params.procNoiseAtt, 2);
 
             for (int i=0; i<KC_STATE_DIM; i++) {
                 for (int j=i; j<KC_STATE_DIM; j++) {
-                    float p = 0.5f*_kalmanData.P[i][j] + 0.5f*_kalmanData.P[j][i];
+                    float p = 0.5f*_P[i][j] + 0.5f*_P[j][i];
                     if (isnan(p) || p > MAX_COVARIANCE) {
-                        _kalmanData.P[i][j] = _kalmanData.P[j][i] = MAX_COVARIANCE;
+                        _P[i][j] = _P[j][i] = MAX_COVARIANCE;
                     } else if ( i==j && p < MIN_COVARIANCE ) {
-                        _kalmanData.P[i][j] = _kalmanData.P[j][i] = MIN_COVARIANCE;
+                        _P[i][j] = _P[j][i] = MIN_COVARIANCE;
                     } else {
-                        _kalmanData.P[i][j] = _kalmanData.P[j][i] = p;
+                        _P[i][j] = _P[j][i] = p;
                     }
                 }
             }
@@ -829,7 +826,7 @@ class KalmanFilter {
                 KC_STATE_DIM, KC_STATE_DIM, (float *)tmpNN1d
             };
             for (int i=0; i<KC_STATE_DIM; i++){
-                _kalmanData.S[i] = _kalmanData.S[i] + Km->pData[i] * error;
+                _S[i] = _S[i] + Km->pData[i] * error;
             }
 
             // ====== COVARIANCE UPDATE ====== //
@@ -841,23 +838,23 @@ class KalmanFilter {
             float Ppo[KC_STATE_DIM][KC_STATE_DIM]={};
             arm_matrix_instance_f32 Ppom = {KC_STATE_DIM, KC_STATE_DIM, (float *)Ppo};
             mat_mult(&tmpNN1m, P_w_m, &Ppom);          // Pm = (I-KH)*P_w_m
-            memcpy(_kalmanData.P, Ppo, sizeof(_kalmanData.P));
+            memcpy(_P, Ppo, sizeof(_P));
 
             for (int i=0; i<KC_STATE_DIM; i++) {
                 for (int j=i; j<KC_STATE_DIM; j++) {
-                    float p = 0.5f*_kalmanData.P[i][j] + 0.5f*_kalmanData.P[j][i];
+                    float p = 0.5f*_P[i][j] + 0.5f*_P[j][i];
                     if (isnan(p) || p > MAX_COVARIANCE) {
-                        _kalmanData.P[i][j] = _kalmanData.P[j][i] = MAX_COVARIANCE;
+                        _P[i][j] = _P[j][i] = MAX_COVARIANCE;
                     } else if ( i==j && p < MIN_COVARIANCE ) {
-                        _kalmanData.P[i][j] = _kalmanData.P[j][i] = MIN_COVARIANCE;
+                        _P[i][j] = _P[j][i] = MIN_COVARIANCE;
                     } else {
-                        _kalmanData.P[i][j] = _kalmanData.P[j][i] = p;
+                        _P[i][j] = _P[j][i] = p;
                     }
                 }
             }
 
 
-            _kalmanData.isUpdated = true;
+            _isUpdated = true;
         }
 
         // Cholesky Decomposition for a nxn psd input (from scratch)
@@ -932,39 +929,39 @@ class KalmanFilter {
             A[KC_STATE_D2][KC_STATE_D2] = 1;
 
             // position from body-frame velocity
-            A[KC_STATE_X][KC_STATE_PX] = _kalmanData.R[0][0]*dt;
-            A[KC_STATE_Y][KC_STATE_PX] = _kalmanData.R[1][0]*dt;
-            A[KC_STATE_Z][KC_STATE_PX] = _kalmanData.R[2][0]*dt;
+            A[KC_STATE_X][KC_STATE_PX] = _R[0][0]*dt;
+            A[KC_STATE_Y][KC_STATE_PX] = _R[1][0]*dt;
+            A[KC_STATE_Z][KC_STATE_PX] = _R[2][0]*dt;
 
-            A[KC_STATE_X][KC_STATE_PY] = _kalmanData.R[0][1]*dt;
-            A[KC_STATE_Y][KC_STATE_PY] = _kalmanData.R[1][1]*dt;
-            A[KC_STATE_Z][KC_STATE_PY] = _kalmanData.R[2][1]*dt;
+            A[KC_STATE_X][KC_STATE_PY] = _R[0][1]*dt;
+            A[KC_STATE_Y][KC_STATE_PY] = _R[1][1]*dt;
+            A[KC_STATE_Z][KC_STATE_PY] = _R[2][1]*dt;
 
-            A[KC_STATE_X][KC_STATE_PZ] = _kalmanData.R[0][2]*dt;
-            A[KC_STATE_Y][KC_STATE_PZ] = _kalmanData.R[1][2]*dt;
-            A[KC_STATE_Z][KC_STATE_PZ] = _kalmanData.R[2][2]*dt;
+            A[KC_STATE_X][KC_STATE_PZ] = _R[0][2]*dt;
+            A[KC_STATE_Y][KC_STATE_PZ] = _R[1][2]*dt;
+            A[KC_STATE_Z][KC_STATE_PZ] = _R[2][2]*dt;
 
             // position from attitude error
-            A[KC_STATE_X][KC_STATE_D0] = (_kalmanData.S[KC_STATE_PY]*_kalmanData.R[0][2] - 
-                    _kalmanData.S[KC_STATE_PZ]*_kalmanData.R[0][1])*dt;
-            A[KC_STATE_Y][KC_STATE_D0] = (_kalmanData.S[KC_STATE_PY]*_kalmanData.R[1][2] - 
-                    _kalmanData.S[KC_STATE_PZ]*_kalmanData.R[1][1])*dt;
-            A[KC_STATE_Z][KC_STATE_D0] = (_kalmanData.S[KC_STATE_PY]*_kalmanData.R[2][2] - 
-                    _kalmanData.S[KC_STATE_PZ]*_kalmanData.R[2][1])*dt;
+            A[KC_STATE_X][KC_STATE_D0] = (_S[KC_STATE_PY]*_R[0][2] - 
+                    _S[KC_STATE_PZ]*_R[0][1])*dt;
+            A[KC_STATE_Y][KC_STATE_D0] = (_S[KC_STATE_PY]*_R[1][2] - 
+                    _S[KC_STATE_PZ]*_R[1][1])*dt;
+            A[KC_STATE_Z][KC_STATE_D0] = (_S[KC_STATE_PY]*_R[2][2] - 
+                    _S[KC_STATE_PZ]*_R[2][1])*dt;
 
-            A[KC_STATE_X][KC_STATE_D1] = (- _kalmanData.S[KC_STATE_PX]*_kalmanData.R[0][2] + 
-                    _kalmanData.S[KC_STATE_PZ]*_kalmanData.R[0][0])*dt;
-            A[KC_STATE_Y][KC_STATE_D1] = (- _kalmanData.S[KC_STATE_PX]*_kalmanData.R[1][2] + 
-                    _kalmanData.S[KC_STATE_PZ]*_kalmanData.R[1][0])*dt;
-            A[KC_STATE_Z][KC_STATE_D1] = (- _kalmanData.S[KC_STATE_PX]*_kalmanData.R[2][2] + 
-                    _kalmanData.S[KC_STATE_PZ]*_kalmanData.R[2][0])*dt;
+            A[KC_STATE_X][KC_STATE_D1] = (- _S[KC_STATE_PX]*_R[0][2] + 
+                    _S[KC_STATE_PZ]*_R[0][0])*dt;
+            A[KC_STATE_Y][KC_STATE_D1] = (- _S[KC_STATE_PX]*_R[1][2] + 
+                    _S[KC_STATE_PZ]*_R[1][0])*dt;
+            A[KC_STATE_Z][KC_STATE_D1] = (- _S[KC_STATE_PX]*_R[2][2] + 
+                    _S[KC_STATE_PZ]*_R[2][0])*dt;
 
-            A[KC_STATE_X][KC_STATE_D2] = (_kalmanData.S[KC_STATE_PX]*_kalmanData.R[0][1] - 
-                    _kalmanData.S[KC_STATE_PY]*_kalmanData.R[0][0])*dt;
-            A[KC_STATE_Y][KC_STATE_D2] = (_kalmanData.S[KC_STATE_PX]*_kalmanData.R[1][1] - 
-                    _kalmanData.S[KC_STATE_PY]*_kalmanData.R[1][0])*dt;
-            A[KC_STATE_Z][KC_STATE_D2] = (_kalmanData.S[KC_STATE_PX]*_kalmanData.R[2][1] - 
-                    _kalmanData.S[KC_STATE_PY]*_kalmanData.R[2][0])*dt;
+            A[KC_STATE_X][KC_STATE_D2] = (_S[KC_STATE_PX]*_R[0][1] - 
+                    _S[KC_STATE_PY]*_R[0][0])*dt;
+            A[KC_STATE_Y][KC_STATE_D2] = (_S[KC_STATE_PX]*_R[1][1] - 
+                    _S[KC_STATE_PY]*_R[1][0])*dt;
+            A[KC_STATE_Z][KC_STATE_D2] = (_S[KC_STATE_PX]*_R[2][1] - 
+                    _S[KC_STATE_PY]*_R[2][0])*dt;
 
             // body-frame velocity from body-frame velocity
             A[KC_STATE_PX][KC_STATE_PX] = 1; //drag negligible
@@ -981,15 +978,15 @@ class KalmanFilter {
 
             // body-frame velocity from attitude error
             A[KC_STATE_PX][KC_STATE_D0] =  0;
-            A[KC_STATE_PY][KC_STATE_D0] = -GRAVITY_MAGNITUDE*_kalmanData.R[2][2]*dt;
-            A[KC_STATE_PZ][KC_STATE_D0] =  GRAVITY_MAGNITUDE*_kalmanData.R[2][1]*dt;
+            A[KC_STATE_PY][KC_STATE_D0] = -GRAVITY_MAGNITUDE*_R[2][2]*dt;
+            A[KC_STATE_PZ][KC_STATE_D0] =  GRAVITY_MAGNITUDE*_R[2][1]*dt;
 
-            A[KC_STATE_PX][KC_STATE_D1] =  GRAVITY_MAGNITUDE*_kalmanData.R[2][2]*dt;
+            A[KC_STATE_PX][KC_STATE_D1] =  GRAVITY_MAGNITUDE*_R[2][2]*dt;
             A[KC_STATE_PY][KC_STATE_D1] =  0;
-            A[KC_STATE_PZ][KC_STATE_D1] = -GRAVITY_MAGNITUDE*_kalmanData.R[2][0]*dt;
+            A[KC_STATE_PZ][KC_STATE_D1] = -GRAVITY_MAGNITUDE*_R[2][0]*dt;
 
-            A[KC_STATE_PX][KC_STATE_D2] = -GRAVITY_MAGNITUDE*_kalmanData.R[2][1]*dt;
-            A[KC_STATE_PY][KC_STATE_D2] =  GRAVITY_MAGNITUDE*_kalmanData.R[2][0]*dt;
+            A[KC_STATE_PX][KC_STATE_D2] = -GRAVITY_MAGNITUDE*_R[2][1]*dt;
+            A[KC_STATE_PY][KC_STATE_D2] =  GRAVITY_MAGNITUDE*_R[2][0]*dt;
             A[KC_STATE_PZ][KC_STATE_D2] =  0;
 
 
@@ -1032,9 +1029,9 @@ class KalmanFilter {
             A[KC_STATE_D2][KC_STATE_D2] = 1 - d0*d0/2 - d1*d1/2;
 
             // ====== COVARIANCE UPDATE ======
-            mat_mult(Am, &_kalmanData.Pm, tmpNN1m); // A P
+            mat_mult(Am, &_Pm, tmpNN1m); // A P
             mat_trans(Am, tmpNN2m); // A'
-            mat_mult(tmpNN1m, tmpNN2m, &_kalmanData.Pm); // A P A'
+            mat_mult(tmpNN1m, tmpNN2m, &_Pm); // A P A'
             // Process noise is added after the return from the prediction step
 
             // ====== PREDICTION STEP ======
@@ -1055,66 +1052,66 @@ class KalmanFilter {
                 zacc = acc->z;
 
                 // position updates in the body frame (will be rotated to inertial frame)
-                dx = _kalmanData.S[KC_STATE_PX] * dt;
-                dy = _kalmanData.S[KC_STATE_PY] * dt;
-                dz = _kalmanData.S[KC_STATE_PZ] * dt + zacc * dt2 / 2.0f; 
+                dx = _S[KC_STATE_PX] * dt;
+                dy = _S[KC_STATE_PY] * dt;
+                dz = _S[KC_STATE_PZ] * dt + zacc * dt2 / 2.0f; 
                 // thrust can only be produced in the body's Z direction
 
                 // position update
-                _kalmanData.S[KC_STATE_X] += _kalmanData.R[0][0] * dx + 
-                    _kalmanData.R[0][1] * dy + _kalmanData.R[0][2] * dz;
-                _kalmanData.S[KC_STATE_Y] += _kalmanData.R[1][0] * dx + 
-                    _kalmanData.R[1][1] * dy + _kalmanData.R[1][2] * dz;
-                _kalmanData.S[KC_STATE_Z] += _kalmanData.R[2][0] * dx + 
-                    _kalmanData.R[2][1] * dy + _kalmanData.R[2][2] * dz - 
+                _S[KC_STATE_X] += _R[0][0] * dx + 
+                    _R[0][1] * dy + _R[0][2] * dz;
+                _S[KC_STATE_Y] += _R[1][0] * dx + 
+                    _R[1][1] * dy + _R[1][2] * dz;
+                _S[KC_STATE_Z] += _R[2][0] * dx + 
+                    _R[2][1] * dy + _R[2][2] * dz - 
                     GRAVITY_MAGNITUDE * dt2 / 2.0f;
 
                 // keep previous time step's state for the update
-                tmpSPX = _kalmanData.S[KC_STATE_PX];
-                tmpSPY = _kalmanData.S[KC_STATE_PY];
-                tmpSPZ = _kalmanData.S[KC_STATE_PZ];
+                tmpSPX = _S[KC_STATE_PX];
+                tmpSPY = _S[KC_STATE_PY];
+                tmpSPZ = _S[KC_STATE_PZ];
 
                 // body-velocity update: accelerometers - gyros cross velocity
                 // - gravity in body frame
-                _kalmanData.S[KC_STATE_PX] += dt * (gyro->z * tmpSPY - gyro->y *
-                        tmpSPZ - GRAVITY_MAGNITUDE * _kalmanData.R[2][0]);
-                _kalmanData.S[KC_STATE_PY] += dt * (-gyro->z * tmpSPX + gyro->x * tmpSPZ - 
-                        GRAVITY_MAGNITUDE * _kalmanData.R[2][1]);
-                _kalmanData.S[KC_STATE_PZ] += dt * (zacc + gyro->y * tmpSPX - gyro->x * 
-                        tmpSPY - GRAVITY_MAGNITUDE * _kalmanData.R[2][2]);
+                _S[KC_STATE_PX] += dt * (gyro->z * tmpSPY - gyro->y *
+                        tmpSPZ - GRAVITY_MAGNITUDE * _R[2][0]);
+                _S[KC_STATE_PY] += dt * (-gyro->z * tmpSPX + gyro->x * tmpSPZ - 
+                        GRAVITY_MAGNITUDE * _R[2][1]);
+                _S[KC_STATE_PZ] += dt * (zacc + gyro->y * tmpSPX - gyro->x * 
+                        tmpSPY - GRAVITY_MAGNITUDE * _R[2][2]);
             }
             else {
                 // Acceleration can be in any direction, as measured by the
                 // accelerometer. This occurs, eg. in freefall or while being carried.
 
                 // position updates in the body frame (will be rotated to inertial frame)
-                dx = _kalmanData.S[KC_STATE_PX] * dt + acc->x * dt2 / 2.0f;
-                dy = _kalmanData.S[KC_STATE_PY] * dt + acc->y * dt2 / 2.0f;
-                dz = _kalmanData.S[KC_STATE_PZ] * dt + acc->z * dt2 / 2.0f; 
+                dx = _S[KC_STATE_PX] * dt + acc->x * dt2 / 2.0f;
+                dy = _S[KC_STATE_PY] * dt + acc->y * dt2 / 2.0f;
+                dz = _S[KC_STATE_PZ] * dt + acc->z * dt2 / 2.0f; 
                 // thrust can only be produced in the body's Z direction
 
                 // position update
-                _kalmanData.S[KC_STATE_X] += _kalmanData.R[0][0] * dx 
-                    + _kalmanData.R[0][1] * dy + _kalmanData.R[0][2] * dz;
-                _kalmanData.S[KC_STATE_Y] += _kalmanData.R[1][0] * dx + 
-                    _kalmanData.R[1][1] * dy + _kalmanData.R[1][2] * dz;
-                _kalmanData.S[KC_STATE_Z] += _kalmanData.R[2][0] * dx + 
-                    _kalmanData.R[2][1] * dy + _kalmanData.R[2][2] * dz - 
+                _S[KC_STATE_X] += _R[0][0] * dx 
+                    + _R[0][1] * dy + _R[0][2] * dz;
+                _S[KC_STATE_Y] += _R[1][0] * dx + 
+                    _R[1][1] * dy + _R[1][2] * dz;
+                _S[KC_STATE_Z] += _R[2][0] * dx + 
+                    _R[2][1] * dy + _R[2][2] * dz - 
                     GRAVITY_MAGNITUDE * dt2 / 2.0f;
 
                 // keep previous time step's state for the update
-                tmpSPX = _kalmanData.S[KC_STATE_PX];
-                tmpSPY = _kalmanData.S[KC_STATE_PY];
-                tmpSPZ = _kalmanData.S[KC_STATE_PZ];
+                tmpSPX = _S[KC_STATE_PX];
+                tmpSPY = _S[KC_STATE_PY];
+                tmpSPZ = _S[KC_STATE_PZ];
 
                 // body-velocity update: accelerometers - gyros cross velocity
                 // - gravity in body frame
-                _kalmanData.S[KC_STATE_PX] += dt * (acc->x + gyro->z * tmpSPY -
-                        gyro->y * tmpSPZ - GRAVITY_MAGNITUDE * _kalmanData.R[2][0]);
-                _kalmanData.S[KC_STATE_PY] += dt * (acc->y - gyro->z * tmpSPX + gyro->x * 
-                        tmpSPZ - GRAVITY_MAGNITUDE * _kalmanData.R[2][1]);
-                _kalmanData.S[KC_STATE_PZ] += dt * (acc->z + gyro->y * tmpSPX - gyro->x * 
-                        tmpSPY - GRAVITY_MAGNITUDE * _kalmanData.R[2][2]);
+                _S[KC_STATE_PX] += dt * (acc->x + gyro->z * tmpSPY -
+                        gyro->y * tmpSPZ - GRAVITY_MAGNITUDE * _R[2][0]);
+                _S[KC_STATE_PY] += dt * (acc->y - gyro->z * tmpSPX + gyro->x * 
+                        tmpSPZ - GRAVITY_MAGNITUDE * _R[2][1]);
+                _S[KC_STATE_PZ] += dt * (acc->z + gyro->y * tmpSPX - gyro->x * 
+                        tmpSPY - GRAVITY_MAGNITUDE * _R[2][2]);
             }
 
             // attitude update (rotate by gyroscope), we do this in quaternions
@@ -1136,43 +1133,43 @@ class KalmanFilter {
 
             // rotate the quad's attitude by the delta quaternion vector computed above
 
-            tmpq0 = dq[0]*_kalmanData.q[0] - dq[1]*_kalmanData.q[1] - 
-                dq[2]*_kalmanData.q[2] - dq[3]*_kalmanData.q[3];
+            tmpq0 = dq[0]*_q[0] - dq[1]*_q[1] - 
+                dq[2]*_q[2] - dq[3]*_q[3];
 
-            tmpq1 = dq[1]*_kalmanData.q[0] + dq[0]*_kalmanData.q[1] + 
-                dq[3]*_kalmanData.q[2] - dq[2]*_kalmanData.q[3];
+            tmpq1 = dq[1]*_q[0] + dq[0]*_q[1] + 
+                dq[3]*_q[2] - dq[2]*_q[3];
 
-            tmpq2 = dq[2]*_kalmanData.q[0] - dq[3]*_kalmanData.q[1] + 
-                dq[0]*_kalmanData.q[2] + dq[1]*_kalmanData.q[3];
+            tmpq2 = dq[2]*_q[0] - dq[3]*_q[1] + 
+                dq[0]*_q[2] + dq[1]*_q[3];
 
-            tmpq3 = dq[3]*_kalmanData.q[0] + dq[2]*_kalmanData.q[1] - 
-                dq[1]*_kalmanData.q[2] + dq[0]*_kalmanData.q[3];
+            tmpq3 = dq[3]*_q[0] + dq[2]*_q[1] - 
+                dq[1]*_q[2] + dq[0]*_q[3];
 
             if (! quadIsFlying) {
 
                 float keep = 1.0f - ROLLPITCH_ZERO_REVERSION;
 
                 tmpq0 = keep * tmpq0 + 
-                    ROLLPITCH_ZERO_REVERSION * _kalmanData.initialQuaternion[0];
+                    ROLLPITCH_ZERO_REVERSION * _initialQuaternion[0];
                 tmpq1 = keep * tmpq1 + 
-                    ROLLPITCH_ZERO_REVERSION * _kalmanData.initialQuaternion[1];
+                    ROLLPITCH_ZERO_REVERSION * _initialQuaternion[1];
                 tmpq2 = keep * tmpq2 + 
-                    ROLLPITCH_ZERO_REVERSION * _kalmanData.initialQuaternion[2];
+                    ROLLPITCH_ZERO_REVERSION * _initialQuaternion[2];
                 tmpq3 = keep * tmpq3 + 
-                    ROLLPITCH_ZERO_REVERSION * _kalmanData.initialQuaternion[3];
+                    ROLLPITCH_ZERO_REVERSION * _initialQuaternion[3];
             }
 
             // normalize and store the result
             float norm = fast_sqrt(
                     tmpq0*tmpq0 + tmpq1*tmpq1 + tmpq2*tmpq2 + tmpq3*tmpq3) + EPS;
 
-            _kalmanData.q[0] = tmpq0/norm; 
-            _kalmanData.q[1] = tmpq1/norm; 
-            _kalmanData.q[2] = tmpq2/norm; 
-            _kalmanData.q[3] = tmpq3/norm;
+            _q[0] = tmpq0/norm; 
+            _q[1] = tmpq1/norm; 
+            _q[2] = tmpq2/norm; 
+            _q[3] = tmpq3/norm;
 
 
-            _kalmanData.isUpdated = true;
+            _isUpdated = true;
         }
 
         void scalarUpdate(
@@ -1228,7 +1225,7 @@ class KalmanFilter {
             // ====== INNOVATION COVARIANCE ======
 
             mat_trans(Hm, HTm);
-            mat_mult(&_kalmanData.Pm, HTm, PHTm); // PH'
+            mat_mult(&_Pm, HTm, PHTm); // PH'
             float R = stdMeasNoise*stdMeasNoise;
             float HPHR = R; // HPH' + R
             for (int i=0; i<KC_STATE_DIM; i++) { 
@@ -1243,7 +1240,7 @@ class KalmanFilter {
             // Calculate the Kalman gain and perform the state update
             for (int i=0; i<KC_STATE_DIM; i++) {
                 K[i] = PHTd[i]/HPHR; // kalman gain = (PH' (HPH' + R )^-1)
-                _kalmanData.S[i] = _kalmanData.S[i] + K[i] * error; // state update
+                _S[i] = _S[i] + K[i] * error; // state update
             }
 
 
@@ -1253,8 +1250,8 @@ class KalmanFilter {
                 tmpNN1d[KC_STATE_DIM*i+i] -= 1; 
             } // KH - I
             mat_trans(tmpNN1m, tmpNN2m); // (KH - I)'
-            mat_mult(tmpNN1m, &_kalmanData.Pm, tmpNN3m); // (KH - I)*P
-            mat_mult(tmpNN3m, tmpNN2m, &_kalmanData.Pm); // (KH - I)*P*(KH - I)'
+            mat_mult(tmpNN1m, &_Pm, tmpNN3m); // (KH - I)*P
+            mat_mult(tmpNN3m, tmpNN2m, &_Pm); // (KH - I)*P*(KH - I)'
 
             // add the measurement variance and ensure boundedness and symmetry
             // TODO: Why would it hit these bounds? Needs to be investigated.
@@ -1263,18 +1260,18 @@ class KalmanFilter {
                     float v = K[i] * R * K[j];
 
                     // add measurement noise
-                    float p = 0.5f*_kalmanData.P[i][j] + 0.5f*_kalmanData.P[j][i] + v; 
+                    float p = 0.5f*_P[i][j] + 0.5f*_P[j][i] + v; 
                     if (isnan(p) || p > MAX_COVARIANCE) {
-                        _kalmanData.P[i][j] = _kalmanData.P[j][i] = MAX_COVARIANCE;
+                        _P[i][j] = _P[j][i] = MAX_COVARIANCE;
                     } else if ( i==j && p < MIN_COVARIANCE ) {
-                        _kalmanData.P[i][j] = _kalmanData.P[j][i] = MIN_COVARIANCE;
+                        _P[i][j] = _P[j][i] = MIN_COVARIANCE;
                     } else {
-                        _kalmanData.P[i][j] = _kalmanData.P[j][i] = p;
+                        _P[i][j] = _P[j][i] = p;
                     }
                 }
             }
 
-            _kalmanData.isUpdated = true;
+            _isUpdated = true;
         }
 
         /** 
@@ -1298,9 +1295,9 @@ class KalmanFilter {
         // robust update function
         void robustUpdateWithDistance(distanceMeasurement_t *d)
         {
-            float dx = _kalmanData.S[KC_STATE_X] - d->x;
-            float dy = _kalmanData.S[KC_STATE_Y] - d->y;
-            float dz = _kalmanData.S[KC_STATE_Z] - d->z;
+            float dx = _S[KC_STATE_X] - d->x;
+            float dy = _S[KC_STATE_Y] - d->y;
+            float dz = _S[KC_STATE_Z] - d->z;
             float measuredDistance = d->distance;
 
             float predictedDistance = fast_sqrt(powf(dx, 2) + powf(dy, 2) + powf(dz, 2));
@@ -1372,11 +1369,11 @@ class KalmanFilter {
             static arm_matrix_instance_f32 x_errm = {KC_STATE_DIM, 1, x_err};
             static float X_state[KC_STATE_DIM] = {0.0};
             float P_iter[KC_STATE_DIM][KC_STATE_DIM];
-            memcpy(P_iter, _kalmanData.P, sizeof(P_iter));
+            memcpy(P_iter, _P, sizeof(P_iter));
 
             float R_iter = d->stdDev * d->stdDev;  // measurement covariance
 
-            memcpy(X_state, _kalmanData.S, sizeof(X_state));
+            memcpy(X_state, _S, sizeof(X_state));
 
             // ---------------------- Start iteration -----------------------
             for (int iter = 0; iter < MAX_ITER; iter++) {
@@ -1505,7 +1502,7 @@ class KalmanFilter {
                     x_err[i] = Kw[i] * error_check;           
 
                     // convert to nominal state
-                    X_state[i] = _kalmanData.S[i] + x_err[i];       
+                    X_state[i] = _S[i] + x_err[i];       
                 }
                 // update P_iter matrix and R matrix for next iteration
                 memcpy(P_iter, P_w, sizeof(P_iter));
@@ -1527,7 +1524,7 @@ class KalmanFilter {
             arm_matrix_instance_f32 H = {1, KC_STATE_DIM, h};
             h[KC_STATE_Z] = 1;
             scalarUpdate(
-                    &H, height->height - _kalmanData.S[KC_STATE_Z], height->stdDev);
+                    &H, height->height - _S[KC_STATE_Z], height->stdDev);
         }
 
         // Measurement model where the measurement is the distance to a known
@@ -1538,9 +1535,9 @@ class KalmanFilter {
             float h[KC_STATE_DIM] = {};
             arm_matrix_instance_f32 H = {1, KC_STATE_DIM, h};
 
-            float dx = _kalmanData.S[KC_STATE_X] - d->x;
-            float dy = _kalmanData.S[KC_STATE_Y] - d->y;
-            float dz = _kalmanData.S[KC_STATE_Z] - d->z;
+            float dx = _S[KC_STATE_X] - d->x;
+            float dy = _S[KC_STATE_Y] - d->y;
+            float dz = _S[KC_STATE_Z] - d->z;
 
             float measuredDistance = d->distance;
 
@@ -1600,14 +1597,14 @@ class KalmanFilter {
             //  S[KC_STATE_PZ];
 
 
-            float dx_g = _kalmanData.S[KC_STATE_PX];
-            float dy_g = _kalmanData.S[KC_STATE_PY];
+            float dx_g = _S[KC_STATE_PX];
+            float dy_g = _S[KC_STATE_PY];
             float z_g = 0.0;
             // Saturate elevation in prediction and correction to avoid singularities
-            if ( _kalmanData.S[KC_STATE_Z] < 0.1f ) {
+            if ( _S[KC_STATE_Z] < 0.1f ) {
                 z_g = 0.1;
             } else {
-                z_g = _kalmanData.S[KC_STATE_Z];
+                z_g = _S[KC_STATE_Z];
             }
 
             // ~~~ X velocity prediction and update ~~~
@@ -1615,14 +1612,14 @@ class KalmanFilter {
             float hx[KC_STATE_DIM] = {};
             arm_matrix_instance_f32 Hx = {1, KC_STATE_DIM, hx};
             _predictedNX = (flow->dt * Npix / thetapix ) * 
-                ((dx_g * _kalmanData.R[2][2] / z_g) - omegay_b);
+                ((dx_g * _R[2][2] / z_g) - omegay_b);
             _measuredNX = flow->dpixelx*FLOW_RESOLUTION;
 
             // derive measurement equation with respect to dx (and z?)
             hx[KC_STATE_Z] = (Npix * flow->dt / thetapix) * 
-                ((_kalmanData.R[2][2] * dx_g) / (-z_g * z_g));
+                ((_R[2][2] * dx_g) / (-z_g * z_g));
             hx[KC_STATE_PX] = (Npix * flow->dt / thetapix) * 
-                (_kalmanData.R[2][2] / z_g);
+                (_R[2][2] / z_g);
 
             //First update
             scalarUpdate(&Hx, (_measuredNX-_predictedNX), 
@@ -1632,13 +1629,13 @@ class KalmanFilter {
             float hy[KC_STATE_DIM] = {};
             arm_matrix_instance_f32 Hy = {1, KC_STATE_DIM, hy};
             _predictedNY = (flow->dt * Npix / thetapix ) * 
-                ((dy_g * _kalmanData.R[2][2] / z_g) + omegax_b);
+                ((dy_g * _R[2][2] / z_g) + omegax_b);
             _measuredNY = flow->dpixely*FLOW_RESOLUTION;
 
             // derive measurement equation with respect to dy (and z?)
             hy[KC_STATE_Z] = (Npix * flow->dt / thetapix) * 
-                ((_kalmanData.R[2][2] * dy_g) / (-z_g * z_g));
-            hy[KC_STATE_PY] = (Npix * flow->dt / thetapix) * (_kalmanData.R[2][2] / z_g);
+                ((_R[2][2] * dy_g) / (-z_g * z_g));
+            hy[KC_STATE_PY] = (Npix * flow->dt / thetapix) * (_R[2][2] / z_g);
 
             // Second update
             scalarUpdate(
@@ -1655,16 +1652,11 @@ class KalmanFilter {
                 arm_matrix_instance_f32 H = {1, KC_STATE_DIM, h};
                 h[KC_STATE_X+i] = 1;
                 scalarUpdate(
-                        &H, pose->pos[i] - _kalmanData.S[KC_STATE_X+i], pose->stdDevPos);
+                        &H, pose->pos[i] - _S[KC_STATE_X+i], pose->stdDevPos);
             }
 
             // compute orientation error
-            const quat_t q_ekf = 
-                mkquat(
-                        _kalmanData.q[1], 
-                        _kalmanData.q[2], 
-                        _kalmanData.q[3], 
-                        _kalmanData.q[0]);
+            const quat_t q_ekf = mkquat( _q[1], _q[2], _q[3], _q[0]);
             const quat_t q_measured = 
                 mkquat(pose->quat.x, pose->quat.y, pose->quat.z, pose->quat.w);
             const quat_t q_residual = qqmul(qinv(q_ekf), q_measured);
@@ -1701,7 +1693,7 @@ class KalmanFilter {
                 arm_matrix_instance_f32 H = {1, KC_STATE_DIM, h};
                 h[KC_STATE_X+i] = 1;
                 scalarUpdate(&H, xyz->pos[i] -
-                        _kalmanData.S[KC_STATE_X+i], xyz->stdDev); 
+                        _S[KC_STATE_X+i], xyz->stdDev); 
             }
         }
 
@@ -1715,9 +1707,9 @@ class KalmanFilter {
             float measurement = tdoa->distanceDiff;
 
             // predict based on current state
-            float x = _kalmanData.S[KC_STATE_X];
-            float y = _kalmanData.S[KC_STATE_Y];
-            float z = _kalmanData.S[KC_STATE_Z];
+            float x = _S[KC_STATE_X];
+            float y = _S[KC_STATE_Y];
+            float z = _S[KC_STATE_Z];
 
             float x1 = tdoa->anchorPositions[1].x;
             float y1 = tdoa->anchorPositions[1].y; 
@@ -1765,14 +1757,14 @@ class KalmanFilter {
 
             // Only update the filter if the measurement is reliable 
             // (\hat{h} -> infty when R[2][2] -> 0)
-            if (fabs(_kalmanData.R[2][2]) > 0.1f && _kalmanData.R[2][2] > 0) {
+            if (fabs(_R[2][2]) > 0.1f && _R[2][2] > 0) {
                 float angle = 
-                    fabsf(acosf(_kalmanData.R[2][2])) - 
+                    fabsf(acosf(_R[2][2])) - 
                     DEGREES_TO_RADIANS * (15.0f / 2.0f);
                 if (angle < 0.0f) {
                     angle = 0.0f;
                 }
-                float predictedDistance = _kalmanData.S[KC_STATE_Z] / cosf(angle);
+                float predictedDistance = _S[KC_STATE_Z] / cosf(angle);
                 float measuredDistance = tof->distance; // [m]
 
 
@@ -1807,7 +1799,7 @@ class KalmanFilter {
             arm_matrix_instance_f32 H = {1, KC_STATE_DIM, h};
 
             h[KC_STATE_D2] = 1;
-            scalarUpdate(&H, _kalmanData.S[KC_STATE_D2] - error->yawError, error->stdDev); 
+            scalarUpdate(&H, _S[KC_STATE_D2] - error->yawError, error->stdDev); 
         }
 
 
@@ -1817,9 +1809,9 @@ class KalmanFilter {
             // Measurement equation:
             // d_ij = d_j - d_i
             float measurement = 0.0f;
-            float x = _kalmanData.S[KC_STATE_X];
-            float y = _kalmanData.S[KC_STATE_Y];
-            float z = _kalmanData.S[KC_STATE_Z];
+            float x = _S[KC_STATE_X];
+            float y = _S[KC_STATE_Y];
+            float z = _S[KC_STATE_Z];
 
             float x1 = tdoa->anchorPositions[1].x; 
             float y1 = tdoa->anchorPositions[1].y; 
@@ -1921,13 +1913,13 @@ class KalmanFilter {
                 float P_iter[KC_STATE_DIM][KC_STATE_DIM];
 
                 // init P_iter as P_prior
-                memcpy(P_iter, _kalmanData.P, sizeof(P_iter));                 
+                memcpy(P_iter, _P, sizeof(P_iter));                 
 
                 // measurement covariance
                 float R_iter = tdoa->stdDev * tdoa->stdDev;                    
 
                 // copy Xpr to X_State and then update in each iterations
-                memcpy(X_state, _kalmanData.S, sizeof(X_state));                     
+                memcpy(X_state, _S, sizeof(X_state));                     
 
                 // ---------------------- Start iteration ----------------------- //
                 for (int iter = 0; iter < MAX_ITER; iter++)
@@ -2041,7 +2033,7 @@ class KalmanFilter {
                             x_err[i] = Kw[i] * error_check;                   
 
                             // convert to nominal state
-                            X_state[i] = _kalmanData.S[i] + x_err[i];               
+                            X_state[i] = _S[i] + x_err[i];               
                         }
                         // update P_iter matrix and R matrix for next iteration
                         memcpy(P_iter, P_w, sizeof(P_iter));
