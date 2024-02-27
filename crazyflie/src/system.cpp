@@ -18,8 +18,6 @@
 #include <crtp/crtp.h>
 #include <crtp/crtp_mem.hpp>
 
-#include <mixers/quadrotor.hpp>
-
 #include <platform/platform.h>
 
 // Crazyfle tasks
@@ -391,8 +389,7 @@ static void systemTask(void *arg)
             &safety,
             &estimatorTask,
             &imuTask,
-            getOpenLoopDemands,
-            mixQuadrotor);
+            getOpenLoopDemands);
 
     // -----------------------------------------------------------------------
 

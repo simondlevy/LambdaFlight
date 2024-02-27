@@ -44,8 +44,7 @@ class CoreTask : public FreeRTOSTask {
                 Safety * safety,
                 EstimatorTask * estimatorTask,
                 ImuTask * imuTask,
-                const openLoopFun_t openLoopFun,
-                const mixFun_t mixFun)
+                const openLoopFun_t openLoopFun)
         {
             if (didInit) {
                 return true;
