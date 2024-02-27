@@ -41,8 +41,6 @@ class EstimatorTask : public FreeRTOSTask {
 
             _dataMutex = xSemaphoreCreateMutexStatic(&_dataMutexBuffer);
 
-            _kalmanFilter.setDefaultParams();
-
             _measurementsQueue = xQueueCreateStatic(
                     QUEUE_LENGTH, 
                     QUEUE_ITEM_SIZE,
@@ -53,7 +51,7 @@ class EstimatorTask : public FreeRTOSTask {
 
             consolePrintf("ESTIMATOR: estimatorTaskStart\n");
 
-            _kalmanFilter.init(msec());
+            _kalmanFilter.init(msec(), true);
         }
 
         bool didInit(void)
@@ -170,7 +168,7 @@ class EstimatorTask : public FreeRTOSTask {
             xSemaphoreTake(_runTaskSemaphore, portMAX_DELAY);
 
             if (didResetEstimation) {
-                _kalmanFilter.init(nowMs);
+                _kalmanFilter.init(nowMs, false);
                 didResetEstimation = false;
             }
 

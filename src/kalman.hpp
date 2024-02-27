@@ -169,8 +169,12 @@ class KalmanFilter {
         }
 
 
-        void init(const uint32_t nowMs)
+        void init(const uint32_t nowMs, const bool setDefaults)
         {
+            if (setDefaults) {
+                setDefaultParams();
+            }
+
             axis3fSubSamplerInit(&_accSubSampler, GRAVITY_MAGNITUDE);
             axis3fSubSamplerInit(&_gyroSubSampler, DEGREES_TO_RADIANS);
 
@@ -267,39 +271,6 @@ class KalmanFilter {
              
             // Add process noise every loop, rather than every prediction
             addProcessNoise(nowMs);
-        }
-
-
-        void setDefaultParams(void)
-        {
-            // Initial variances, uncertain of position, but know we're
-            // stationary and roughly flat
-            _params.stdDevInitialPosition_xy = 100;
-            _params.stdDevInitialPosition_z = 1;
-            _params.stdDevInitialVelocity = 0.01;
-            _params.stdDevInitialAttitude_rollpitch = 0.01;
-            _params.stdDevInitialAttitude_yaw = 0.01;
-
-            _params.procNoiseAcc_xy = 0.5f;
-            _params.procNoiseAcc_z = 1.0f;
-            _params.procNoiseVel = 0;
-            _params.procNoisePos = 0;
-            _params.procNoiseAtt = 0;
-            _params.measNoiseGyro_rollpitch = 0.1f; // radians per second
-            _params.measNoiseGyro_yaw = 0.1f;       // radians per second
-
-            _params.initialX = 0.0;
-            _params.initialY = 0.0;
-            _params.initialZ = 0.0;
-
-            // Initial yaw of the Crazyflie in radians.
-            // 0 --- facing positive X
-            // PI / 2 --- facing positive Y
-            // PI --- facing negative X
-            // 3 * PI / 2 --- facing negative Y
-            _params.initialYaw = 0.0;
-
-            _didInit = true;
         }
 
         void update(measurement_t & m, const uint32_t nowMs)
@@ -1608,4 +1579,37 @@ class KalmanFilter {
 
             return true;
         }
+
+        void setDefaultParams(void)
+        {
+            // Initial variances, uncertain of position, but know we're
+            // stationary and roughly flat
+            _params.stdDevInitialPosition_xy = 100;
+            _params.stdDevInitialPosition_z = 1;
+            _params.stdDevInitialVelocity = 0.01;
+            _params.stdDevInitialAttitude_rollpitch = 0.01;
+            _params.stdDevInitialAttitude_yaw = 0.01;
+
+            _params.procNoiseAcc_xy = 0.5f;
+            _params.procNoiseAcc_z = 1.0f;
+            _params.procNoiseVel = 0;
+            _params.procNoisePos = 0;
+            _params.procNoiseAtt = 0;
+            _params.measNoiseGyro_rollpitch = 0.1f; // radians per second
+            _params.measNoiseGyro_yaw = 0.1f;       // radians per second
+
+            _params.initialX = 0.0;
+            _params.initialY = 0.0;
+            _params.initialZ = 0.0;
+
+            // Initial yaw of the Crazyflie in radians.
+            // 0 --- facing positive X
+            // PI / 2 --- facing positive Y
+            // PI --- facing negative X
+            // 3 * PI / 2 --- facing negative Y
+            _params.initialYaw = 0.0;
+
+            _didInit = true;
+        }
+
 };
