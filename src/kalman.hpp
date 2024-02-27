@@ -139,7 +139,10 @@ class KalmanFilter {
         // The quad's attitude as a quaternion (w,x,y,z) We store as a quaternion
         // to allow easy normalization (in comparison to a rotation matrix),
         // while also being robust against singularities (in comparison to euler angles)
-        float _q[4];
+        float _qw;
+        float _qx;
+        float _qy;
+        float _qz;
 
         // The quad's attitude as a rotation matrix (used by the prediction,
         // updated by the finalization)
@@ -150,7 +153,10 @@ class KalmanFilter {
         arm_matrix_instance_f32 _Pm;
 
         // Quaternion used for initial orientation [w,x,y,z]
-        float _initialQuaternion[4];
+        float _qw_init;
+        float _qx_init;
+        float _qy_init;
+        float _qz_init;
 
         // Tracks whether an update to the state has been made, and the state
         // therefore requires finalization
@@ -205,11 +211,12 @@ class KalmanFilter {
             _outlierFilterTdoa.reset();
 
             // Reset all data to 0 (like upon system reset)
+            
             memset(&_S, 0, sizeof(_S));
             memset(&_R, 0, sizeof(_R));
             memset(&_P, 0, sizeof(_P));
             memset(&_Pm, 0, sizeof(_Pm));
-            memset(&_initialQuaternion, 0, sizeof(_initialQuaternion));
+
             _isUpdated = false;
             _lastPredictionMs = 0;
             _lastProcessNoiseUpdateMs = 0;
@@ -219,14 +226,15 @@ class KalmanFilter {
             _S[KC_STATE_Z] = _params.initialZ;
 
             // reset the attitude quaternion
-            _initialQuaternion[0] = arm_cos_f32(_params.initialYaw / 2);
-            _initialQuaternion[1] = 0.0;
-            _initialQuaternion[2] = 0.0;
-            _initialQuaternion[3] = arm_sin_f32(_params.initialYaw / 2);
+            _qw_init = arm_cos_f32(_params.initialYaw / 2);
+            _qx_init = 0;
+            _qy_init = 0;
+            _qz_init = arm_sin_f32(_params.initialYaw / 2);
 
-            for (int i = 0; i < 4; i++) { 
-                _q[i] = _initialQuaternion[i]; 
-            }
+	    _qw = _qw_init;
+	    _qx = _qx_init;
+	    _qy = _qy_init;
+	    _qz = _qz_init;
 
             // then set the initial rotation matrix to the identity. This only affects
             // the first prediction step, since in the finalization, after shifting
@@ -312,39 +320,40 @@ class KalmanFilter {
             }
 
             // Incorporate the attitude error (Kalman filter state) with the attitude
-            float v0 = _S[KC_STATE_D0];
-            float v1 = _S[KC_STATE_D1];
-            float v2 = _S[KC_STATE_D2];
+            auto v0 = _S[KC_STATE_D0];
+            auto v1 = _S[KC_STATE_D1];
+            auto v2 = _S[KC_STATE_D2];
 
             // Move attitude error into attitude if any of the angle errors are
             // large enough
             if ((fabsf(v0) > 0.1e-3f || fabsf(v1) > 0.1e-3f || fabsf(v2) >
                         0.1e-3f) && (fabsf(v0) < 10 && fabsf(v1) < 10 &&
-                            fabsf(v2) < 10)) {
-                float angle = fast_sqrt(v0*v0 + v1*v1 + v2*v2) + EPS;
-                float ca = arm_cos_f32(angle / 2.0f);
-                float sa = arm_sin_f32(angle / 2.0f);
-                float dq[4] = {ca, sa * v0 / angle, sa * v1 / angle, sa * v2 / angle};
+                            fabsf(v2) < 10)) 
+            {
+                auto angle = fast_sqrt(v0*v0 + v1*v1 + v2*v2) + EPS;
+                auto ca = arm_cos_f32(angle / 2.0f);
+                auto sa = arm_sin_f32(angle / 2.0f);
+
+                auto dqw = ca;
+                auto dqx = sa * v0 / angle;
+                auto dqy = sa * v1 / angle;
+                auto dqz = sa * v2 / angle;
 
                 // Rotate the quad's attitude by the delta quaternion vector
                 // computed above
-                float tmpq0 = dq[0] * _q[0] - dq[1] * _q[1] - 
-                    dq[2] * _q[2] - dq[3] * _q[3];
-                float tmpq1 = dq[1] * _q[0] + dq[0] * _q[1] + 
-                    dq[3] * _q[2] - dq[2] * _q[3];
-                float tmpq2 = dq[2] * _q[0] - dq[3] * _q[1] + 
-                    dq[0] * _q[2] + dq[1] * _q[3];
-                float tmpq3 = dq[3] * _q[0] + dq[2] * _q[1] - 
-                    dq[1] * _q[2] + dq[0] * _q[3];
+                auto tmpq0 = dqw * _qw - dqx * _qx - dqy * _qy - dqz * _qz;
+                auto tmpq1 = dqx * _qw + dqw * _qx + dqz * _qy - dqy * _qz;
+                auto tmpq2 = dqy * _qw - dqz * _qx + dqw * _qy + dqx * _qz;
+                auto tmpq3 = dqz * _qw + dqy * _qx - dqx * _qy + dqw * _qz;
 
                 // normalize and store the result
-                float norm = fast_sqrt(tmpq0 * tmpq0 + tmpq1 * tmpq1 + tmpq2 * tmpq2 + 
+                auto norm = fast_sqrt(tmpq0 * tmpq0 + tmpq1 * tmpq1 + tmpq2 * tmpq2 + 
                         tmpq3 * tmpq3) + EPS;
 
-                _q[0] = tmpq0 / norm;
-                _q[1] = tmpq1 / norm;
-                _q[2] = tmpq2 / norm;
-                _q[3] = tmpq3 / norm;
+                _qw = tmpq0 / norm;
+                _qx = tmpq1 / norm;
+                _qy = tmpq2 / norm;
+                _qz = tmpq3 / norm;
 
                 /** Rotate the covariance, since we've rotated the body
                  *
@@ -394,35 +403,35 @@ class KalmanFilter {
             // Convert the new attitude to a rotation matrix, such that we can
             // rotate body-frame velocity and acc
 
-            _R[0][0] = _q[0] * _q[0] + 
-                _q[1] * _q[1] - _q[2] * 
-                _q[2] - _q[3] * _q[3];
+            _R[0][0] = _qw * _qw + 
+                _qx * _qx - _qy * 
+                _qy - _qz * _qz;
 
-            _R[0][1] = 2 * _q[1] * _q[2] - 
-                2 * _q[0] * _q[3];
+            _R[0][1] = 2 * _qx * _qy - 
+                2 * _qw * _qz;
 
-            _R[0][2] = 2 * _q[1] * _q[3] + 
-                2 * _q[0] * _q[2];
+            _R[0][2] = 2 * _qx * _qz + 
+                2 * _qw * _qy;
 
-            _R[1][0] = 2 * _q[1] * _q[2] + 
-                2 * _q[0] * _q[3];
+            _R[1][0] = 2 * _qx * _qy + 
+                2 * _qw * _qz;
 
-            _R[1][1] = _q[0] * _q[0] - 
-                _q[1] * _q[1] + _q[2] * 
-                _q[2] - _q[3] * _q[3];
+            _R[1][1] = _qw * _qw - 
+                _qx * _qx + _qy * 
+                _qy - _qz * _qz;
 
-            _R[1][2] = 2 * _q[2] * _q[3] - 
-                2 * _q[0] * _q[1];
+            _R[1][2] = 2 * _qy * _qz - 
+                2 * _qw * _qx;
 
-            _R[2][0] = 2 * _q[1] * _q[3] - 
-                2 * _q[0] * _q[2];
+            _R[2][0] = 2 * _qx * _qz - 
+                2 * _qw * _qy;
 
-            _R[2][1] = 2 * _q[2] * _q[3] + 
-                2 * _q[0] * _q[1];
+            _R[2][1] = 2 * _qy * _qz + 
+                2 * _qw * _qx;
 
-            _R[2][2] = _q[0] * _q[0] - 
-                _q[1] * _q[1] - _q[2] * 
-                _q[2] + _q[3] * _q[3];
+            _R[2][2] = _qw * _qw - 
+                _qx * _qx - _qy * 
+                _qy + _qz * _qz;
 
             // reset the attitude error
             _S[KC_STATE_D0] = 0;
@@ -571,10 +580,10 @@ class KalmanFilter {
 
         void updateWithQuaternion(const quaternion_t & quat)
         {
-            _q[0] = quat.w;
-            _q[1] = quat.x;
-            _q[2] = quat.y;
-            _q[3] = quat.z;
+            _qw = quat.w;
+            _qx = quat.x;
+            _qy = quat.y;
+            _qz = quat.z;
         }
 
         void getVehicleState(vehicleState_t & state)
@@ -598,24 +607,24 @@ class KalmanFilter {
                 _R[2][2]*_S[KC_STATE_PZ];
 
             state.phi = RADIANS_TO_DEGREES *
-                atan2f(2*(_q[2]*_q[3]+_q[0]*
-                            _q[1]) ,
-                        _q[0]*_q[0] -
-                        _q[1]*_q[1] -
-                        _q[2]*_q[2] +
-                        _q[3]*_q[3]);
+                atan2f(2*(_qy*_qz+_qw*
+                            _qx) ,
+                        _qw*_qw -
+                        _qx*_qx -
+                        _qy*_qy +
+                        _qz*_qz);
 
             state.theta = -RADIANS_TO_DEGREES * // note negation
-                asinf(-2*(_q[1]*_q[3] -
-                        _q[0]*_q[2]));
+                asinf(-2*(_qx*_qz -
+                        _qw*_qy));
 
             state.psi = RADIANS_TO_DEGREES *
-                atan2f(2*(_q[1]*_q[2]+_q[0]*
-                            _q[3])
-                        , _q[0]*_q[0] +
-                        _q[1]*_q[1] -
-                        _q[2]*_q[2] -
-                        _q[3]*_q[3]);
+                atan2f(2*(_qx*_qy+_qw*
+                            _qz)
+                        , _qw*_qw +
+                        _qx*_qx -
+                        _qy*_qy -
+                        _qz*_qz);
 
             // Get angular velocities directly from gyro
             state.dphi =    _gyroLatest.x;     
@@ -1116,57 +1125,44 @@ class KalmanFilter {
 
             // attitude update (rotate by gyroscope), we do this in quaternions
             // this is the gyroscope angular velocity integrated over the sample period
-            float dtwx = dt*gyro->x;
-            float dtwy = dt*gyro->y;
-            float dtwz = dt*gyro->z;
+            auto dtwx = dt*gyro->x;
+            auto dtwy = dt*gyro->y;
+            auto dtwz = dt*gyro->z;
 
             // compute the quaternion values in [w,x,y,z] order
-            float angle = fast_sqrt(dtwx*dtwx + dtwy*dtwy + dtwz*dtwz) + EPS;
-            float ca = arm_cos_f32(angle/2.0f);
-            float sa = arm_sin_f32(angle/2.0f);
-            float dq[4] = {ca , sa*dtwx/angle , sa*dtwy/angle , sa*dtwz/angle};
-
-            float tmpq0;
-            float tmpq1;
-            float tmpq2;
-            float tmpq3;
+            auto angle = fast_sqrt(dtwx*dtwx + dtwy*dtwy + dtwz*dtwz) + EPS;
+            auto ca = arm_cos_f32(angle/2.0f);
+            auto sa = arm_sin_f32(angle/2.0f);
+            auto dqw = ca;
+            auto dqx = sa*dtwx/angle;
+            auto dqy = sa*dtwy/angle;
+            auto dqz = sa*dtwz/angle;
 
             // rotate the quad's attitude by the delta quaternion vector computed above
 
-            tmpq0 = dq[0]*_q[0] - dq[1]*_q[1] - 
-                dq[2]*_q[2] - dq[3]*_q[3];
-
-            tmpq1 = dq[1]*_q[0] + dq[0]*_q[1] + 
-                dq[3]*_q[2] - dq[2]*_q[3];
-
-            tmpq2 = dq[2]*_q[0] - dq[3]*_q[1] + 
-                dq[0]*_q[2] + dq[1]*_q[3];
-
-            tmpq3 = dq[3]*_q[0] + dq[2]*_q[1] - 
-                dq[1]*_q[2] + dq[0]*_q[3];
+            auto tmpq0 = dqw*_qw - dqx*_qx - dqy*_qy - dqz*_qz;
+            auto tmpq1 = dqx*_qw + dqw*_qx + dqz*_qy - dqy*_qz;
+            auto tmpq2 = dqy*_qw - dqz*_qx + dqw*_qy + dqx*_qz;
+            auto tmpq3 = dqz*_qw + dqy*_qx - dqx*_qy + dqw*_qz;
 
             if (! quadIsFlying) {
 
                 float keep = 1.0f - ROLLPITCH_ZERO_REVERSION;
 
-                tmpq0 = keep * tmpq0 + 
-                    ROLLPITCH_ZERO_REVERSION * _initialQuaternion[0];
-                tmpq1 = keep * tmpq1 + 
-                    ROLLPITCH_ZERO_REVERSION * _initialQuaternion[1];
-                tmpq2 = keep * tmpq2 + 
-                    ROLLPITCH_ZERO_REVERSION * _initialQuaternion[2];
-                tmpq3 = keep * tmpq3 + 
-                    ROLLPITCH_ZERO_REVERSION * _initialQuaternion[3];
+                tmpq0 = keep * tmpq0 + ROLLPITCH_ZERO_REVERSION * _qw_init;
+                tmpq1 = keep * tmpq1 + ROLLPITCH_ZERO_REVERSION * _qx_init;
+                tmpq2 = keep * tmpq2 + ROLLPITCH_ZERO_REVERSION * _qy_init;
+                tmpq3 = keep * tmpq3 + ROLLPITCH_ZERO_REVERSION * _qz_init;
             }
 
             // normalize and store the result
             float norm = fast_sqrt(
                     tmpq0*tmpq0 + tmpq1*tmpq1 + tmpq2*tmpq2 + tmpq3*tmpq3) + EPS;
 
-            _q[0] = tmpq0/norm; 
-            _q[1] = tmpq1/norm; 
-            _q[2] = tmpq2/norm; 
-            _q[3] = tmpq3/norm;
+            _qw = tmpq0/norm; 
+            _qx = tmpq1/norm; 
+            _qy = tmpq2/norm; 
+            _qz = tmpq3/norm;
 
 
             _isUpdated = true;
@@ -1656,7 +1652,7 @@ class KalmanFilter {
             }
 
             // compute orientation error
-            const quat_t q_ekf = mkquat( _q[1], _q[2], _q[3], _q[0]);
+            const quat_t q_ekf = mkquat( _qx, _qy, _qz, _qw);
             const quat_t q_measured = 
                 mkquat(pose->quat.x, pose->quat.y, pose->quat.z, pose->quat.w);
             const quat_t q_residual = qqmul(qinv(q_ekf), q_measured);
