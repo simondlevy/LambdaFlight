@@ -54,7 +54,7 @@ class EstimatorTask : public FreeRTOSTask {
             consolePrintf("ESTIMATOR: estimatorTaskStart\n");
 
             _kalmanFilter.init(msec());
-            consolePrintf("ESTIMATOR: Using %s estimator\n", _kalmanFilter.getName());              }
+        }
 
         bool didInit(void)
         {

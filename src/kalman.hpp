@@ -171,11 +171,6 @@ class KalmanFilter {
             return _didInit;
         }
 
-        const char * getName(void)
-        {
-            return "Kalman";
-        }
-
         void setDefaultParams(void)
         {
             // Initial variances, uncertain of position, but know we're
