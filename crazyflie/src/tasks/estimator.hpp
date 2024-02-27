@@ -179,6 +179,9 @@ class EstimatorTask : public FreeRTOSTask {
                 _kalmanFilter.predict(nowMs, _safety->isFlying()); 
             }
 
+            // Add process noise every loop, rather than every prediction
+            _kalmanFilter.addProcessNoise(nowMs);
+
             // Run the system dynamics to predict the state forward.
             if (nowMs >= nextPredictionMs) {
 
@@ -190,9 +193,6 @@ class EstimatorTask : public FreeRTOSTask {
                             _rateSupervisor.getLatestCount());
                 }
             }
-
-            // Add process noise every loop, rather than every prediction
-            _kalmanFilter.addProcessNoise(nowMs);
 
             // Sensor measurements can come in sporadically and faster
             // than the stabilizer loop frequency, we therefore consume all
