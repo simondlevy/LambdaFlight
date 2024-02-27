@@ -33,7 +33,6 @@
 #include <timers.h>
 #include <semphr.h>
 
-#include <kalman.hpp>
 #include <crc32.hpp>
 
 #include <crtp/crtp.h>

@@ -22,7 +22,6 @@
 
 #include <constants.h>
 #include <crossplatform.h>
-#include <kalman.hpp>
 #include <motors.h>
 #include <rateSupervisor.hpp>
 #include <safety.hpp>
