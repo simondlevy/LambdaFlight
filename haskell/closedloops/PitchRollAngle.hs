@@ -30,11 +30,11 @@ import Demands
 import State
 import Utils
 
-run reset kp ki ilimit dt target actual integ = (output, integ') where
+run reset kp ki ilimit dt target actual integ = (demand, integ') where
 
     error = target - actual
 
-    output = kp * error + ki * integ
+    demand = kp * error + ki * integ
 
     integ' = if reset then 0 else constrain (integ + error * dt) (-ilimit) ilimit
 

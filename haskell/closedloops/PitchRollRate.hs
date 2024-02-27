@@ -29,12 +29,22 @@ import Demands
 import State
 import Utils
 
-runPid kp ki kd ilimit dt error errorErrorPrev errorErrorInteg = output where
+run nothrust reset kp ki kd ilimit dt target actual integ prev =
+  (demand, integ', prev') where
 
-    deriv = (error - errorErrorPrev) / dt
+    error = target - actual
 
-    output = kp * error + ki * errorErrorInteg + kd * deriv
+    demand = if nothrust 
+             then 0 else 
+             kp * error + ki * integ + kd * (error - prev) / dt
 
+    integ' = if reset then 0 
+             else if nothrust then integ
+             else constrain (integ + error * dt) (-ilimit) ilimit
+
+    prev' = if reset then 0 
+            else if nothrust then prev
+            else error
 
 {--
 
@@ -54,47 +64,22 @@ pitchRollRatePid reset hover dt state demands = demands' where
   kd = 1.25
   ilimit = 33
 
-  isThrustZero = (thrust demands) == 0
+  nothrust = (thrust demands) == 0
 
-  -------------------------------------------------------------------
+  (rollDemand, rollInteg, rollPrev) = 
+    run nothrust reset kp ki kd ilimit dt (roll demands) (dphi state)
+        rollInteg' rollPrev'
 
-  rollError = (roll demands) - (dphi state)
+  rollInteg' = [0] ++ rollInteg
 
-  rollDemand = if isThrustZero then 0
-               else runPid kp ki kd ilimit dt rollError rollErrorPrev' rollErrorInteg'
+  rollPrev' = [0] ++ rollPrev
 
-  rollErrorPrev = if reset then 0 
-                  else if isThrustZero then rollErrorPrev'
-                  else rollError
+  (pitchDemand, pitchInteg, pitchPrev) = 
+    run nothrust reset kp ki kd ilimit dt (pitch demands) (dtheta state) 
+        pitchInteg' pitchPrev'
 
-  rollErrorInteg = if reset  then 0
-                   else if isThrustZero then rollErrorInteg'
-                   else constrain (rollErrorInteg' + rollError * dt) (-ilimit) ilimit
+  pitchInteg' = [0] ++ pitchInteg
 
-  rollErrorInteg' = [0] ++ rollErrorInteg
-
-  rollErrorPrev' = [0] ++ rollErrorPrev
-
-  -------------------------------------------------------------------
-
-  pitchError = (pitch demands) - (dtheta state)
-
-  pitchDemand = if isThrustZero then 0
-               else runPid kp ki kd ilimit dt pitchError pitchErrorPrev' pitchErrorInteg'
-
-  pitchErrorPrev = if reset then 0 
-              else if isThrustZero then pitchErrorPrev'
-              else pitchError
-
-  pitchErrorInteg = if reset  then 0
-               else if isThrustZero then pitchErrorInteg'
-               else constrain (pitchErrorInteg' + pitchError * dt) (-ilimit) ilimit
-
-  pitchErrorInteg' = [0] ++ pitchErrorInteg
-
-  pitchErrorPrev' = [0] ++ pitchErrorPrev
-
-
-  -------------------------------------------------------------------
+  pitchPrev' = [0] ++ pitchPrev
 
   demands' = Demands (thrust demands) rollDemand pitchDemand (yaw demands)
