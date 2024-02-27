@@ -91,14 +91,6 @@ class EstimatorTask : public FreeRTOSTask {
             enqueue(&m, isInInterrupt);
         }
 
-        void enqueueBaro(const baro_t * baro, const bool isInInterrupt)
-        {
-            KalmanFilter::measurement_t m = {};
-            m.type = KalmanFilter::MeasurementTypeBarometer;
-            m.data.barometer.baro = *baro;
-            enqueue(&m, isInInterrupt);
-        }
-
         void enqueueFlow(const flowMeasurement_t * flow, const bool isInInterrupt)
         {
             KalmanFilter::measurement_t m = {};
@@ -110,7 +102,7 @@ class EstimatorTask : public FreeRTOSTask {
         void enqueueRange(const tofMeasurement_t * tof, const bool isInInterrupt)
         {
             KalmanFilter::measurement_t m = {};
-            m.type = KalmanFilter::MeasurementTypeTOF;
+            m.type = KalmanFilter::MeasurementTypeRange;
             m.data.tof = *tof;
             enqueue(&m, isInInterrupt);
         }

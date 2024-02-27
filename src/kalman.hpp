@@ -73,25 +73,18 @@ class KalmanFilter {
      public:
 
         typedef enum {
-            MeasurementTypeTDOA,
-            MeasurementTypePosition,
-            MeasurementTypePose,
-            MeasurementTypeDistance,
-            MeasurementTypeTOF,
-            MeasurementTypeAbsoluteHeight,
+            MeasurementTypeRange,
             MeasurementTypeFlow,
-            MeasurementTypeYawError,
-            MeasurementTypeSweepAngle,
             MeasurementTypeGyroscope,
             MeasurementTypeAcceleration,
-            MeasurementTypeBarometer,
         } MeasurementType;
 
-        typedef struct
-        {
+        typedef struct {
+
             MeasurementType type;
-            union
-            {
+
+            union {
+
                 tdoaMeasurement_t tdoa;
                 positionMeasurement_t position;
                 poseMeasurement_t pose;
@@ -105,13 +98,14 @@ class KalmanFilter {
                 accelerationMeasurement_t acceleration;
                 barometerMeasurement_t barometer;
             } data;
+
         } measurement_t;
 
    private:
 
         // Indexes to access the quad's state, stored as a column vector
-        typedef enum
-        {
+        typedef enum {
+
             KC_STATE_X,
             KC_STATE_Y,
             KC_STATE_Z,
@@ -324,14 +318,6 @@ class KalmanFilter {
             _isUpdated = false;
         }
 
-        void updateWithQuaternion(const quaternion_t & quat)
-        {
-            _qw = quat.w;
-            _qx = quat.x;
-            _qy = quat.y;
-            _qz = quat.z;
-        }
-
     private:
 
         static constexpr float GRAVITY_MAGNITUDE = 9.81;
@@ -392,7 +378,6 @@ class KalmanFilter {
             float procNoiseVel;
             float procNoisePos;
             float procNoiseAtt;
-            float measNoiseBaro;           // meters
             float measNoiseGyro_rollpitch; // radians per second
             float measNoiseGyro_yaw;       // radians per second
 
@@ -1213,48 +1198,6 @@ class KalmanFilter {
 
         }  
 
-        // Measurement model where the measurement is the absolute height
-        void updateWithAbsoluteHeight(heightMeasurement_t* height) 
-        {
-            float h[KC_STATE_DIM] = {};
-            arm_matrix_instance_f32 H = {1, KC_STATE_DIM, h};
-            h[KC_STATE_Z] = 1;
-            scalarUpdate(
-                    &H, height->height - _S[KC_STATE_Z], height->stdDev);
-        }
-
-        // Measurement model where the measurement is the distance to a known
-        // point in space
-        void updateWithDistance(distanceMeasurement_t* d) 
-        {
-            // a measurement of distance to point (x, y, z)
-            float h[KC_STATE_DIM] = {};
-            arm_matrix_instance_f32 H = {1, KC_STATE_DIM, h};
-
-            float dx = _S[KC_STATE_X] - d->x;
-            float dy = _S[KC_STATE_Y] - d->y;
-            float dz = _S[KC_STATE_Z] - d->z;
-
-            float measuredDistance = d->distance;
-
-            float predictedDistance = fast_sqrt(powf(dx, 2) + powf(dy, 2) + powf(dz, 2));
-            if (predictedDistance != 0.0f) {
-
-                // The measurement is: z = sqrt(dx^2 + dy^2 + dz^2). The
-                // derivative dz/dX gives h.
-                h[KC_STATE_X] = dx/predictedDistance;
-                h[KC_STATE_Y] = dy/predictedDistance;
-                h[KC_STATE_Z] = dz/predictedDistance;
-            } else {
-                // Avoid divide by zero
-                h[KC_STATE_X] = 1.0f;
-                h[KC_STATE_Y] = 0.0f;
-                h[KC_STATE_Z] = 0.0f;
-            }
-
-            scalarUpdate(&H, measuredDistance-predictedDistance, d->stdDev);
-        }
-
         void updateWithFlow(const flowMeasurement_t *flow) 
         {
             const Axis3f *gyro = &_gyroLatest;
@@ -1338,114 +1281,7 @@ class KalmanFilter {
                     &Hy, (_measuredNY-_predictedNY), flow->stdDevY*FLOW_RESOLUTION);
         }
 
-        void updateWithPose(poseMeasurement_t *pose)
-        {
-            // a direct measurement of states x, y, and z, and orientation do a
-            // scalar update for each state, since this should be faster than
-            // updating all together
-            for (int i=0; i<3; i++) {
-                float h[KC_STATE_DIM] = {};
-                arm_matrix_instance_f32 H = {1, KC_STATE_DIM, h};
-                h[KC_STATE_X+i] = 1;
-                scalarUpdate(
-                        &H, pose->pos[i] - _S[KC_STATE_X+i], pose->stdDevPos);
-            }
-
-            // compute orientation error
-            const quat_t q_ekf = mkquat( _qx, _qy, _qz, _qw);
-            const quat_t q_measured = 
-                mkquat(pose->quat.x, pose->quat.y, pose->quat.z, pose->quat.w);
-            const quat_t q_residual = qqmul(qinv(q_ekf), q_measured);
-
-            // small angle approximation, see eq. 141 in
-            // http://mars.cs.umn.edu/tr/reports/Trawny05b.pdf
-            struct vec const err_quat = 
-                vscl(2.0f / q_residual.w, quatimagpart(q_residual));
-
-            // do a scalar update for each state
-            {
-                float h[KC_STATE_DIM] = {};
-                arm_matrix_instance_f32 H = {1, KC_STATE_DIM, h};
-                h[KC_STATE_D0] = 1;
-                scalarUpdate(&H, err_quat.x, pose->stdDevQuat);
-                h[KC_STATE_D0] = 0;
-
-                h[KC_STATE_D1] = 1;
-                scalarUpdate(&H, err_quat.y, pose->stdDevQuat);
-                h[KC_STATE_D1] = 0;
-
-                h[KC_STATE_D2] = 1;
-                scalarUpdate(&H, err_quat.z, pose->stdDevQuat);
-            }
-        }
-
-        void updateWithPosition(positionMeasurement_t *xyz)
-        {
-            // a direct measurement of states x, y, and z do a scalar update
-            // for each state, since this should be faster than updating all
-            // together
-            for (int i=0; i<3; i++) {
-                float h[KC_STATE_DIM] = {};
-                arm_matrix_instance_f32 H = {1, KC_STATE_DIM, h};
-                h[KC_STATE_X+i] = 1;
-                scalarUpdate(&H, xyz->pos[i] -
-                        _S[KC_STATE_X+i], xyz->stdDev); 
-            }
-        }
-
-        void updateWithTdoa( tdoaMeasurement_t *tdoa, const uint32_t nowMs)
-        {
-            /**
-             * Measurement equation:
-             * dR = dT + d1 - d0
-             */
-
-            float measurement = tdoa->distanceDiff;
-
-            // predict based on current state
-            float x = _S[KC_STATE_X];
-            float y = _S[KC_STATE_Y];
-            float z = _S[KC_STATE_Z];
-
-            float x1 = tdoa->anchorPositions[1].x;
-            float y1 = tdoa->anchorPositions[1].y; 
-            float z1 = tdoa->anchorPositions[1].z;
-            float x0 = tdoa->anchorPositions[0].x;
-            float y0 = tdoa->anchorPositions[0].y;
-            float z0 = tdoa->anchorPositions[0].z;
-
-            float dx1 = x - x1;
-            float dy1 = y - y1;
-            float dz1 = z - z1;
-
-            float dy0 = y - y0;
-            float dx0 = x - x0;
-            float dz0 = z - z0;
-
-            float d1 = sqrtf(powf(dx1, 2) + powf(dy1, 2) + powf(dz1, 2));
-            float d0 = sqrtf(powf(dx0, 2) + powf(dy0, 2) + powf(dz0, 2));
-
-            float predicted = d1 - d0;
-            float error = measurement - predicted;
-
-            float h[KC_STATE_DIM] = {};
-            arm_matrix_instance_f32 H = {1, KC_STATE_DIM, h};
-
-            if ((d0 != 0.0f) && (d1 != 0.0f)) {
-                h[KC_STATE_X] = (dx1 / d1 - dx0 / d0);
-                h[KC_STATE_Y] = (dy1 / d1 - dy0 / d0);
-                h[KC_STATE_Z] = (dz1 / d1 - dz0 / d0);
-
-                bool sampleIsGood = 
-                    _outlierFilterTdoa.validateIntegrator(tdoa, error, nowMs);
-
-                if (sampleIsGood) {
-                    scalarUpdate(&H, error, tdoa->stdDev);
-                }
-            }
-        }
-
-        void updateWithTof(tofMeasurement_t *tof)
+        void updateWithRange(tofMeasurement_t *tof)
         {
             // Updates the filter with a measured distance in the zb direction using the
             float h[KC_STATE_DIM] = {};
@@ -1486,260 +1322,6 @@ class KalmanFilter {
                 // Scalar update
                 scalarUpdate(
                         &H, measuredDistance-predictedDistance, tof->stdDev);
-            }
-        }
-
-        void updateWithYawError(yawErrorMeasurement_t *error)
-        {
-            float h[KC_STATE_DIM] = {};
-            arm_matrix_instance_f32 H = {1, KC_STATE_DIM, h};
-
-            h[KC_STATE_D2] = 1;
-            scalarUpdate(&H, _S[KC_STATE_D2] - error->yawError, error->stdDev); 
-        }
-
-
-        // robsut update function
-        void robustUpdateWithTdoa(tdoaMeasurement_t *tdoa)
-        {
-            // Measurement equation:
-            // d_ij = d_j - d_i
-            float measurement = 0.0f;
-            float x = _S[KC_STATE_X];
-            float y = _S[KC_STATE_Y];
-            float z = _S[KC_STATE_Z];
-
-            float x1 = tdoa->anchorPositions[1].x; 
-            float y1 = tdoa->anchorPositions[1].y; 
-            float z1 = tdoa->anchorPositions[1].z;
-            float x0 = tdoa->anchorPositions[0].x; 
-            float y0 = tdoa->anchorPositions[0].y; 
-            float z0 = tdoa->anchorPositions[0].z;
-
-            float dx1 = x - x1;   float  dy1 = y - y1;   float dz1 = z - z1;
-            float dx0 = x - x0;   float  dy0 = y - y0;   float dz0 = z - z0;
-
-            float d1 = sqrtf(powf(dx1, 2) + powf(dy1, 2) + powf(dz1, 2));
-            float d0 = sqrtf(powf(dx0, 2) + powf(dy0, 2) + powf(dz0, 2));
-            // if measurements make sense
-            if ((d0 != 0.0f) && (d1 != 0.0f)) {
-                float predicted = d1 - d0;
-                measurement = tdoa->distanceDiff;
-
-                // innovation term based on prior x
-                // innovation term based on prior state
-                float error_check = measurement - predicted;    
-
-                // ------------------ matrix definition --------------------------- //
-
-                static float P_chol[KC_STATE_DIM][KC_STATE_DIM];
-                static arm_matrix_instance_f32 Pc_m = {
-                    KC_STATE_DIM, KC_STATE_DIM, (float *)P_chol
-                };
-
-                static float Pc_tran[KC_STATE_DIM][KC_STATE_DIM];
-                static arm_matrix_instance_f32 Pc_tran_m = {
-                    KC_STATE_DIM, KC_STATE_DIM, (float *)Pc_tran
-                };
-
-                float h[KC_STATE_DIM] = {};
-                arm_matrix_instance_f32 H = {
-                    1, KC_STATE_DIM, h
-                };
-
-                // The Kalman gain as a column vector
-                static float Kw[KC_STATE_DIM];
-                static arm_matrix_instance_f32 Kwm = {
-                    KC_STATE_DIM, 1, (float *)Kw
-                };
-
-                static float e_x[KC_STATE_DIM];
-                static arm_matrix_instance_f32 e_x_m = {
-                    KC_STATE_DIM, 1, e_x
-                };
-
-                static float Pc_inv[KC_STATE_DIM][KC_STATE_DIM];
-                static arm_matrix_instance_f32 Pc_inv_m = {
-                    KC_STATE_DIM, KC_STATE_DIM, (float *)Pc_inv
-                };
-
-                // rescale matrix
-                static float wx_inv[KC_STATE_DIM][KC_STATE_DIM];
-                static arm_matrix_instance_f32 wx_invm = {
-                    KC_STATE_DIM, KC_STATE_DIM, (float *)wx_inv
-                };
-                // tmp matrix for P_chol inverse
-                static float tmp1[KC_STATE_DIM][KC_STATE_DIM];
-                static arm_matrix_instance_f32 tmp1m = {
-                    KC_STATE_DIM, KC_STATE_DIM, (float *)tmp1
-                };
-
-                static float Pc_w_inv[KC_STATE_DIM][KC_STATE_DIM];
-                static arm_matrix_instance_f32 Pc_w_invm = {
-                    KC_STATE_DIM, KC_STATE_DIM, (float *)Pc_w_inv
-                };
-
-                static float P_w[KC_STATE_DIM][KC_STATE_DIM];
-                static arm_matrix_instance_f32 P_w_m = {
-                    KC_STATE_DIM, KC_STATE_DIM, (float *)P_w
-                };
-
-                static float HTd[KC_STATE_DIM];
-                static arm_matrix_instance_f32 HTm = {
-                    KC_STATE_DIM, 1, HTd
-                };
-
-                static float PHTd[KC_STATE_DIM];
-                static arm_matrix_instance_f32 PHTm = {
-                    KC_STATE_DIM, 1, PHTd
-                };
-
-                // ------------------- Initialization -----------------------//
-
-                // x prior (error state), set to be zeros. Not used for error
-                // state Kalman filter. Provide here for completeness float
-                // xpr[STATE_DIM] = {0.0};
-
-                // x_err comes from the KF update is the state of error state
-                // Kalman filter, set to be zero initially
-
-                static float x_err[KC_STATE_DIM] = {0.0};
-                static arm_matrix_instance_f32 x_errm = {KC_STATE_DIM, 1, x_err};
-                static float X_state[KC_STATE_DIM] = {0.0};
-                float P_iter[KC_STATE_DIM][KC_STATE_DIM];
-
-                // init P_iter as P_prior
-                memcpy(P_iter, _P, sizeof(P_iter));                 
-
-                // measurement covariance
-                float R_iter = tdoa->stdDev * tdoa->stdDev;                    
-
-                // copy Xpr to X_State and then update in each iterations
-                memcpy(X_state, _S, sizeof(X_state));                     
-
-                // ---------------------- Start iteration ----------------------- //
-                for (int iter = 0; iter < MAX_ITER; iter++)
-                {
-                    // cholesky decomposition for the prior covariance matrix
-
-                    // P_chol is a lower triangular matrix
-                    Cholesky_Decomposition(P_iter, P_chol);      
-                    mat_trans(&Pc_m, &Pc_tran_m);
-
-                    // decomposition for measurement covariance (scalar case)
-                    float R_chol = sqrtf(R_iter);
-
-                    // construct H matrix
-                    // X_state updates in each iteration
-                    float x_iter = X_state[KC_STATE_X],  y_iter = 
-                        X_state[KC_STATE_Y], z_iter = X_state[KC_STATE_Z];
-
-                    dx1 = x_iter - x1;  dy1 = y_iter - y1;   dz1 = z_iter - z1;
-                    dx0 = x_iter - x0;  dy0 = y_iter - y0;   dz0 = z_iter - z0;
-
-                    d1 = sqrtf(powf(dx1, 2) + powf(dy1, 2) + powf(dz1, 2));
-                    d0 = sqrtf(powf(dx0, 2) + powf(dy0, 2) + powf(dz0, 2));
-
-                    // predicted measurements in each iteration based on X_state
-                    float predicted_iter = d1 - d0;                           
-
-                    // innovation term based on iterated X_state
-                    float error_iter = measurement - predicted_iter;          
-                    float e_y = error_iter;
-
-                    if ((d0 != 0.0f) && (d1 != 0.0f)) {
-
-                        // measurement Jacobian changes in each iteration w.r.t
-                        // linearization point [x_iter, y_iter, z_iter]
-                        h[KC_STATE_X] = (dx1 / d1 - dx0 / d0);
-                        h[KC_STATE_Y] = (dy1 / d1 - dy0 / d0);
-                        h[KC_STATE_Z] = (dz1 / d1 - dz0 / d0);
-
-                        if (fabsf(R_chol - 0.0f) < 0.0001f){
-                            e_y = error_iter / 0.0001f;
-                        }
-                        else{
-                            e_y = error_iter / R_chol;
-                        }
-                        // Make sure P_chol, lower trangular matrix, is numerically stable
-                        for (int col=0; col<KC_STATE_DIM; col++) {
-                            for (int row=col; row<KC_STATE_DIM; row++) {
-                                if (isnan(P_chol[row][col]) || P_chol[row][col] > 
-                                        UPPER_BOUND) {
-                                    P_chol[row][col] = UPPER_BOUND;
-                                } else if(row!=col && P_chol[row][col] < LOWER_BOUND) {
-                                    P_chol[row][col] = LOWER_BOUND;
-                                } else if(row==col && P_chol[row][col]<0.0f){
-                                    P_chol[row][col] = 0.0f;
-                                }
-                            }
-                        }
-                        // Matrix inversion is numerically sensitive.  Add
-                        // small values on the diagonal of P_chol to avoid
-                        // numerical problems.
-                        float dummy_value = 1e-9f;
-                        for (int k=0; k<KC_STATE_DIM; k++){
-                            P_chol[k][k] = P_chol[k][k] + dummy_value;
-                        }
-                        // keep P_chol
-                        memcpy(tmp1, P_chol, sizeof(tmp1));
-
-                        // Pc_inv_m = inv(Pc_m) = inv(P_chol)
-                        mat_inv(&tmp1m, &Pc_inv_m);                            
-
-                        // e_x_m = Pc_inv_m.dot(x_errm)
-                        mat_mult(&Pc_inv_m, &x_errm, &e_x_m);                  
-
-                        // compute w_x, w_y --> weighting matrix
-                        // Since w_x is diagnal matrix, compute the inverse directly
-                        for (int state_k = 0; state_k < KC_STATE_DIM; state_k++){
-                            GM_state(e_x[state_k], &wx_inv[state_k][state_k]);
-                            wx_inv[state_k][state_k] = (float)1.0 / 
-                                wx_inv[state_k][state_k];
-                        }
-                        // rescale covariance matrix P
-                        mat_mult(&Pc_m, &wx_invm, &Pc_w_invm);                
-                        mat_mult(&Pc_w_invm, &Pc_tran_m, &P_w_m);             
-                        // rescale R matrix
-                        float w_y=0.0;      float R_w = 0.0f;
-                        GM_UWB(e_y, &w_y);                                    
-                        if (fabsf(w_y - 0.0f) < 0.0001f){
-                            R_w = (R_chol * R_chol) / 0.0001f;
-                        }else{
-                            R_w = (R_chol * R_chol) / w_y;
-                        }
-                        // ====== INNOVATION COVARIANCE ====== //
-                        mat_trans(&H, &HTm);
-                        mat_mult(&P_w_m, &HTm, &PHTm);                       
-
-                        float HPHR = R_w;                                     
-                        for (int i=0; i<KC_STATE_DIM; i++) {                  
-                            HPHR += h[i]*PHTd[i];                             
-                        }
-                        // ====== MEASUREMENT UPDATE ======
-                        // Calculate the Kalman gain and perform the state update
-                        for (int i=0; i<KC_STATE_DIM; i++) {
-                            Kw[i] = PHTd[i]/HPHR;                             
-
-                            //[Note]: The error_check here is the innovation
-                            //term based on prior state, which doesn't change
-                            //during iterations.
-
-                            // error state for next iteration
-                            x_err[i] = Kw[i] * error_check;                   
-
-                            // convert to nominal state
-                            X_state[i] = _S[i] + x_err[i];               
-                        }
-                        // update P_iter matrix and R matrix for next iteration
-                        memcpy(P_iter, P_w, sizeof(P_iter));
-                        R_iter = R_w;
-                    }
-                }
-                // After n iterations, we obtain the rescaled (1) P = P_iter,
-                // (2) R = R_iter, (3) Kw.  Call the kalman update function
-                // with weighted P, weighted K, h, and error_check
-                updateWithPKE(&H, &Kwm, &P_w_m, error_check);
             }
         }
 
@@ -1980,7 +1562,6 @@ class KalmanFilter {
             _params.procNoiseVel = 0;
             _params.procNoisePos = 0;
             _params.procNoiseAtt = 0;
-            _params.measNoiseBaro = 2.0f;           // meters
             _params.measNoiseGyro_rollpitch = 0.1f; // radians per second
             _params.measNoiseGyro_yaw = 0.1f;       // radians per second
 
@@ -2002,50 +1583,22 @@ class KalmanFilter {
         {
             switch (m.type) {
 
-                case MeasurementTypeTDOA:
+                case MeasurementTypeRange:
+                    updateWithRange(&m.data.tof);
+                    break;
 
-                    if (ROBUST_TDOA) {
-                        // robust KF update with TDOA measurements
-                        robustUpdateWithTdoa(&m.data.tdoa);
-                    } else{
-                        // standard KF update
-                        updateWithTdoa(&m.data.tdoa, nowMs);
-
-                    }
-                    break;
-                case MeasurementTypePosition:
-                    updateWithPosition(&m.data.position);
-                    break;
-                case MeasurementTypePose:
-                    updateWithPose(&m.data.pose);
-                    break;
-                case MeasurementTypeDistance:
-                    if(ROBUST_TWR){
-                        // robust KF update with UWB TWR measurements
-                        robustUpdateWithDistance(&m.data.distance);
-                    }else{
-                        // standard KF update
-                        updateWithDistance(&m.data.distance);
-                    }
-                    break;
-                case MeasurementTypeTOF:
-                    updateWithTof(&m.data.tof);
-                    break;
-                case MeasurementTypeAbsoluteHeight:
-                    updateWithAbsoluteHeight(&m.data.height);
-                    break;
                 case MeasurementTypeFlow:
                     updateWithFlow(&m.data.flow);
                     break;
-                case MeasurementTypeYawError:
-                    updateWithYawError(&m.data.yawError);
-                    break;
+
                 case MeasurementTypeGyroscope:
                     updateWithGyro(m);
                     break;
+
                 case MeasurementTypeAcceleration:
                     updateWithAccel(m);
                     break;
+
                 default:
                     break;
             }
