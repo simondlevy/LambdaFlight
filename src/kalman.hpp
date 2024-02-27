@@ -1757,38 +1757,88 @@ class KalmanFilter {
 
     public:
 
-        void setDefaultParams(void)
+        void addProcessNoise(const uint32_t nowMs) 
         {
-            // Initial variances, uncertain of position, but know we're
-            // stationary and roughly flat
-            _params.stdDevInitialPosition_xy = 100;
-            _params.stdDevInitialPosition_z = 1;
-            _params.stdDevInitialVelocity = 0.01;
-            _params.stdDevInitialAttitude_rollpitch = 0.01;
-            _params.stdDevInitialAttitude_yaw = 0.01;
+            float dt = (nowMs - _lastProcessNoiseUpdateMs) / 1000.0f;
 
-            _params.procNoiseAcc_xy = 0.5f;
-            _params.procNoiseAcc_z = 1.0f;
-            _params.procNoiseVel = 0;
-            _params.procNoisePos = 0;
-            _params.procNoiseAtt = 0;
-            _params.measNoiseBaro = 2.0f;           // meters
-            _params.measNoiseGyro_rollpitch = 0.1f; // radians per second
-            _params.measNoiseGyro_yaw = 0.1f;       // radians per second
-
-            _params.initialX = 0.0;
-            _params.initialY = 0.0;
-            _params.initialZ = 0.0;
-
-            // Initial yaw of the Crazyflie in radians.
-            // 0 --- facing positive X
-            // PI / 2 --- facing positive Y
-            // PI --- facing negative X
-            // 3 * PI / 2 --- facing negative Y
-            _params.initialYaw = 0.0;
-
-            _didInit = true;
+            if (dt > 0.0f) {
+                addProcessNoiseDt(dt);
+                _lastProcessNoiseUpdateMs = nowMs;
+            }
         }
+
+        bool didInit(void)
+        {
+            return _didInit;
+        }
+
+        void finalize(void)
+        {
+            // Matrix to rotate the attitude covariances once updated
+            static float A[KC_STATE_DIM][KC_STATE_DIM];
+            static arm_matrix_instance_f32 Am = {
+                KC_STATE_DIM, KC_STATE_DIM, (float *)A
+            };
+
+            // Temporary matrices for the covariance updates
+            static float tmpNN1d[KC_STATE_DIM * KC_STATE_DIM];
+            static arm_matrix_instance_f32 tmpNN1m = {
+                KC_STATE_DIM, KC_STATE_DIM, tmpNN1d
+            };
+
+            static float tmpNN2d[KC_STATE_DIM * KC_STATE_DIM];
+            static arm_matrix_instance_f32 tmpNN2m = {
+                KC_STATE_DIM, KC_STATE_DIM, tmpNN2d
+            }; 
+            return finalize(A, &Am, &tmpNN1m, &tmpNN2m);
+        }
+
+        void getVehicleState(vehicleState_t & state)
+        {
+            state.x = _S[KC_STATE_X];
+
+            state.dx = _r00*_S[KC_STATE_PX] + 
+                _r01*_S[KC_STATE_PY] + 
+                _r02*_S[KC_STATE_PZ];
+
+            state.y = _S[KC_STATE_Y];
+
+            state.dy = _r10*_S[KC_STATE_PX] + 
+                _r11*_S[KC_STATE_PY] + 
+                _r12*_S[KC_STATE_PZ];
+
+            state.z = _S[KC_STATE_Z];
+
+            state.dz = _r20*_S[KC_STATE_PX] + 
+                _r21*_S[KC_STATE_PY] + 
+                _r22*_S[KC_STATE_PZ];
+
+            state.phi = RADIANS_TO_DEGREES *
+                atan2f(2*(_qy*_qz+_qw*
+                            _qx) ,
+                        _qw*_qw -
+                        _qx*_qx -
+                        _qy*_qy +
+                        _qz*_qz);
+
+            state.theta = -RADIANS_TO_DEGREES * // note negation
+                asinf(-2*(_qx*_qz -
+                            _qw*_qy));
+
+            state.psi = RADIANS_TO_DEGREES *
+                atan2f(2*(_qx*_qy+_qw*
+                            _qz)
+                        , _qw*_qw +
+                        _qx*_qx -
+                        _qy*_qy -
+                        _qz*_qz);
+
+            // Get angular velocities directly from gyro
+            state.dphi =    _gyroLatest.x;     
+            state.dtheta = -_gyroLatest.y; // (negate for ENU)
+            state.dpsi =    _gyroLatest.z; 
+        }
+
 
         void init(const uint32_t nowMs)
         {
@@ -1876,9 +1926,29 @@ class KalmanFilter {
             _lastProcessNoiseUpdateMs = nowMs;
         }
 
-        bool didInit(void)
+        bool isStateWithinBounds(void) 
         {
-            return _didInit;
+            for (int i = 0; i < 3; i++) {
+
+                if (MAX_POSITITON > 0.0f) {
+
+                    if (_S[KC_STATE_X + i] > MAX_POSITITON) {
+                        return false;
+                    } else if (_S[KC_STATE_X + i] < -MAX_POSITITON) {
+                        return false;
+                    }
+                }
+
+                if (MAX_VELOCITY > 0.0f) {
+                    if (_S[KC_STATE_PX + i] > MAX_VELOCITY) {
+                        return false;
+                    } else if (_S[KC_STATE_PX + i] < -MAX_VELOCITY) {
+                        return false;
+                    }
+                }
+            }
+
+            return true;
         }
 
         void predict(const uint32_t nowMs, bool quadIsFlying) 
@@ -1894,14 +1964,38 @@ class KalmanFilter {
             _lastPredictionMs = nowMs;
         }
 
-        void addProcessNoise(const uint32_t nowMs) 
-        {
-            float dt = (nowMs - _lastProcessNoiseUpdateMs) / 1000.0f;
 
-            if (dt > 0.0f) {
-                addProcessNoiseDt(dt);
-                _lastProcessNoiseUpdateMs = nowMs;
-            }
+        void setDefaultParams(void)
+        {
+            // Initial variances, uncertain of position, but know we're
+            // stationary and roughly flat
+            _params.stdDevInitialPosition_xy = 100;
+            _params.stdDevInitialPosition_z = 1;
+            _params.stdDevInitialVelocity = 0.01;
+            _params.stdDevInitialAttitude_rollpitch = 0.01;
+            _params.stdDevInitialAttitude_yaw = 0.01;
+
+            _params.procNoiseAcc_xy = 0.5f;
+            _params.procNoiseAcc_z = 1.0f;
+            _params.procNoiseVel = 0;
+            _params.procNoisePos = 0;
+            _params.procNoiseAtt = 0;
+            _params.measNoiseBaro = 2.0f;           // meters
+            _params.measNoiseGyro_rollpitch = 0.1f; // radians per second
+            _params.measNoiseGyro_yaw = 0.1f;       // radians per second
+
+            _params.initialX = 0.0;
+            _params.initialY = 0.0;
+            _params.initialZ = 0.0;
+
+            // Initial yaw of the Crazyflie in radians.
+            // 0 --- facing positive X
+            // PI / 2 --- facing positive Y
+            // PI --- facing negative X
+            // 3 * PI / 2 --- facing negative Y
+            _params.initialYaw = 0.0;
+
+            _didInit = true;
         }
 
         void update(measurement_t & m, const uint32_t nowMs)
@@ -1956,97 +2050,4 @@ class KalmanFilter {
                     break;
             }
         }
-
-        void finalize(void)
-        {
-            // Matrix to rotate the attitude covariances once updated
-            static float A[KC_STATE_DIM][KC_STATE_DIM];
-            static arm_matrix_instance_f32 Am = {
-                KC_STATE_DIM, KC_STATE_DIM, (float *)A
-            };
-
-            // Temporary matrices for the covariance updates
-            static float tmpNN1d[KC_STATE_DIM * KC_STATE_DIM];
-            static arm_matrix_instance_f32 tmpNN1m = {
-                KC_STATE_DIM, KC_STATE_DIM, tmpNN1d
-            };
-
-            static float tmpNN2d[KC_STATE_DIM * KC_STATE_DIM];
-            static arm_matrix_instance_f32 tmpNN2m = {
-                KC_STATE_DIM, KC_STATE_DIM, tmpNN2d
-            }; 
-            return finalize(A, &Am, &tmpNN1m, &tmpNN2m);
-        }
-
-        bool isStateWithinBounds(void) 
-        {
-            for (int i = 0; i < 3; i++) {
-
-                if (MAX_POSITITON > 0.0f) {
-
-                    if (_S[KC_STATE_X + i] > MAX_POSITITON) {
-                        return false;
-                    } else if (_S[KC_STATE_X + i] < -MAX_POSITITON) {
-                        return false;
-                    }
-                }
-
-                if (MAX_VELOCITY > 0.0f) {
-                    if (_S[KC_STATE_PX + i] > MAX_VELOCITY) {
-                        return false;
-                    } else if (_S[KC_STATE_PX + i] < -MAX_VELOCITY) {
-                        return false;
-                    }
-                }
-            }
-
-            return true;
-        }
-
-        void getVehicleState(vehicleState_t & state)
-        {
-            state.x = _S[KC_STATE_X];
-
-            state.dx = _r00*_S[KC_STATE_PX] + 
-                _r01*_S[KC_STATE_PY] + 
-                _r02*_S[KC_STATE_PZ];
-
-            state.y = _S[KC_STATE_Y];
-
-            state.dy = _r10*_S[KC_STATE_PX] + 
-                _r11*_S[KC_STATE_PY] + 
-                _r12*_S[KC_STATE_PZ];
-
-            state.z = _S[KC_STATE_Z];
-
-            state.dz = _r20*_S[KC_STATE_PX] + 
-                _r21*_S[KC_STATE_PY] + 
-                _r22*_S[KC_STATE_PZ];
-
-            state.phi = RADIANS_TO_DEGREES *
-                atan2f(2*(_qy*_qz+_qw*
-                            _qx) ,
-                        _qw*_qw -
-                        _qx*_qx -
-                        _qy*_qy +
-                        _qz*_qz);
-
-            state.theta = -RADIANS_TO_DEGREES * // note negation
-                asinf(-2*(_qx*_qz -
-                            _qw*_qy));
-
-            state.psi = RADIANS_TO_DEGREES *
-                atan2f(2*(_qx*_qy+_qw*
-                            _qz)
-                        , _qw*_qw +
-                        _qx*_qx -
-                        _qy*_qy -
-                        _qz*_qz);
-
-            // Get angular velocities directly from gyro
-            state.dphi =    _gyroLatest.x;     
-            state.dtheta = -_gyroLatest.y; // (negate for ENU)
-            state.dpsi =    _gyroLatest.z; 
-        }
-
 };
