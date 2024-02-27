@@ -26,7 +26,6 @@
 
 #include <math.h>
 
-#include <num.hpp>
 #include <physicalConstants.h>
 
 #include <tasks/core.hpp>

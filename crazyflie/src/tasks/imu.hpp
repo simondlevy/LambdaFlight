@@ -24,7 +24,6 @@
 #include <console.h>
 #include <crossplatform.h>
 #include <lpf.hpp>
-#include <num.hpp>
 #include <physicalConstants.h>
 #include <datatypes.h>
 

@@ -35,7 +35,6 @@
 #include "crtp/crtp_commander.h"
 
 #include <linalg.h>
-#include <num.hpp>
 #include <datatypes.h>
 #include <config.h>
 
@@ -138,8 +137,8 @@ class Commander {
 
             if (inHoverMode) {
 
-                demands.thrust = Num::rescale(
-                        setpoint.position.z, 0.2, 2.0, -1, +1);
+                demands.thrust = 
+                    rescale(setpoint.position.z, 0.2, 2.0, -1, +1);
 
                 // In hover mode, velocity demands are already in [-1,+1]
                 demands.roll = setpoint.velocity.y;
@@ -148,6 +147,17 @@ class Commander {
         }
 
     private:
+
+        static float rescale(
+                const float value,
+                const float oldmin, 
+                const float oldmax, 
+                const float newmin, 
+                const float newmax) 
+        {
+            return (value - oldmin) / (oldmax - oldmin) * 
+                (newmax - newmin) + newmin;
+        }
 
         bool didInit;
 

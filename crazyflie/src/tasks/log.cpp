@@ -35,7 +35,6 @@
 
 #include <kalman.hpp>
 #include <crc32.hpp>
-#include <num.hpp>
 
 #include <crtp/crtp.h>
 
@@ -231,6 +230,43 @@ static uint32_t logsCrc;
 static uint16_t logsCount = 0;
 
 static crtpPacket_t p;
+
+/* Half precision floating point **********************************************
+ *
+ * To not use the GCC implementation, uint16_t is used to carry fp16 values
+ *
+ * FP16 or Half precision floating points is specified by IEEE 754 as binary 16.
+ * (float is specified as binary 32). This implementation is NOT GUARANTEED to
+ * be conform to the ieee 754 specification, it is 'just' good enough for the
+ * Crazyflie usage. For more info about fp16 see
+ * http://en.wikipedia.org/wiki/Half-precision_floating-point_format
+ *
+ * The current implementation has the following limitation:
+ *  * No subnormalized number generation
+ *  * Rounding seems to give at least 11 bits precision
+ *  * Faster and smaller than the GCC implementation
+ */
+
+static uint16_t single2half(float number)
+{
+    uint32_t num = 0;
+
+    memcpy(&num, &number, 4);
+
+    auto s = num >> 31;
+
+    auto e = (num >> 23)&0x0FF;
+
+    return 
+
+        (e==255) && (num&0x007fffff) ?  0x7E00 : // NaN
+
+        e>(127+15) ? s?0xFC00:0x7C00 :  //+/- inf
+
+        e<(127-15) ? 0 : // Don't generate subnormalised representation
+
+        (s<<15) | ((e-127+15)<<10) | (((num>>13)&0x3FF)+((num>>12)&0x01));
+}
 
 
 static inline int logGetType(logVarId_t varid)
@@ -573,7 +609,7 @@ static void logRunBlock(void * arg)
             }
             else
             {
-                valuei = Num::single2half(valuef);
+                valuei = single2half(valuef); 
                 if (!appendToPacket(&pk, &valuei, 2)) break;
             }
         }
