@@ -1352,6 +1352,30 @@ class KalmanFilter {
             }
         }
 
+        bool isStateWithinBounds(void) 
+        {
+            for (int i = 0; i < 3; i++) {
+
+                if (MAX_POSITITON > 0.0f) {
+
+                    if (_S[KC_STATE_X + i] > MAX_POSITITON) {
+                        return false;
+                    } else if (_S[KC_STATE_X + i] < -MAX_POSITITON) {
+                        return false;
+                    }
+                }
+
+                if (MAX_VELOCITY > 0.0f) {
+                    if (_S[KC_STATE_PX + i] > MAX_VELOCITY) {
+                        return false;
+                    } else if (_S[KC_STATE_PX + i] < -MAX_VELOCITY) {
+                        return false;
+                    }
+                }
+            }
+
+            return true;
+        }
 
     public:
 
@@ -1360,7 +1384,7 @@ class KalmanFilter {
             return _didInit;
         }
 
-        void finalize(void)
+        bool finalize(void)
         {
             // Matrix to rotate the attitude covariances once updated
             static float A[KC_STATE_DIM][KC_STATE_DIM];
@@ -1378,7 +1402,10 @@ class KalmanFilter {
             static arm_matrix_instance_f32 tmpNN2m = {
                 KC_STATE_DIM, KC_STATE_DIM, tmpNN2d
             }; 
-            return finalize(A, &Am, &tmpNN1m, &tmpNN2m);
+
+            finalize(A, &Am, &tmpNN1m, &tmpNN2m);
+
+            return isStateWithinBounds();
         }
 
         void getVehicleState(vehicleState_t & state)
@@ -1512,31 +1539,6 @@ class KalmanFilter {
             _isUpdated = false;
             _lastPredictionMs = nowMs;
             _lastProcessNoiseUpdateMs = nowMs;
-        }
-
-        bool isStateWithinBounds(void) 
-        {
-            for (int i = 0; i < 3; i++) {
-
-                if (MAX_POSITITON > 0.0f) {
-
-                    if (_S[KC_STATE_X + i] > MAX_POSITITON) {
-                        return false;
-                    } else if (_S[KC_STATE_X + i] < -MAX_POSITITON) {
-                        return false;
-                    }
-                }
-
-                if (MAX_VELOCITY > 0.0f) {
-                    if (_S[KC_STATE_PX + i] > MAX_VELOCITY) {
-                        return false;
-                    } else if (_S[KC_STATE_PX + i] < -MAX_VELOCITY) {
-                        return false;
-                    }
-                }
-            }
-
-            return true;
         }
 
         void addProcessNoiseAndPredict(

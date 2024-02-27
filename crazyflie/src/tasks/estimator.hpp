@@ -202,9 +202,7 @@ class EstimatorTask : public FreeRTOSTask {
                 _kalmanFilter.update(m, nowMs);
             }
 
-            _kalmanFilter.finalize();
-
-            if (!_kalmanFilter.isStateWithinBounds()) {
+            if (!_kalmanFilter.finalize()) { // is state within bounds?
 
                 didResetEstimation = true;
 
