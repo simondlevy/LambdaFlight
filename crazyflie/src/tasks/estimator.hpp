@@ -174,13 +174,8 @@ class EstimatorTask : public FreeRTOSTask {
                 didResetEstimation = false;
             }
 
-            if (nowMs >= nextPredictionMs) {
-
-                _kalmanFilter.predict(nowMs, _safety->isFlying()); 
-            }
-
-            // Add process noise every loop, rather than every prediction
-            _kalmanFilter.addProcessNoise(nowMs);
+            _kalmanFilter.addProcessNoiseAndPredict(
+                    nowMs, nextPredictionMs, _safety->isFlying());
 
             // Run the system dynamics to predict the state forward.
             if (nowMs >= nextPredictionMs) {

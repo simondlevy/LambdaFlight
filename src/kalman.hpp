@@ -1329,7 +1329,18 @@ class KalmanFilter {
             _gyroLatest = m.data.gyroscope.gyro;
         }
 
-    public:
+        void predict(const uint32_t nowMs, bool quadIsFlying) 
+        {
+            axis3fSubSamplerFinalize(&_accSubSampler);
+            axis3fSubSamplerFinalize(&_gyroSubSampler);
+
+            float dt = (nowMs - _lastPredictionMs) / 1000.0f;
+
+            predictDt(&_accSubSampler.subSample, &_gyroSubSampler.subSample, dt,
+                    quadIsFlying);
+
+            _lastPredictionMs = nowMs;
+        }
 
         void addProcessNoise(const uint32_t nowMs) 
         {
@@ -1340,6 +1351,9 @@ class KalmanFilter {
                 _lastProcessNoiseUpdateMs = nowMs;
             }
         }
+
+
+    public:
 
         bool didInit(void)
         {
@@ -1525,17 +1539,18 @@ class KalmanFilter {
             return true;
         }
 
-        void predict(const uint32_t nowMs, bool quadIsFlying) 
+        void addProcessNoiseAndPredict(
+                const uint32_t nowMs, 
+                const uint32_t nextPredictionMs,
+                const bool isFlying) 
         {
-            axis3fSubSamplerFinalize(&_accSubSampler);
-            axis3fSubSamplerFinalize(&_gyroSubSampler);
+            if (nowMs >= nextPredictionMs) {
 
-            float dt = (nowMs - _lastPredictionMs) / 1000.0f;
-
-            predictDt(&_accSubSampler.subSample, &_gyroSubSampler.subSample, dt,
-                    quadIsFlying);
-
-            _lastPredictionMs = nowMs;
+                predict(nowMs, isFlying); 
+            }
+             
+            // Add process noise every loop, rather than every prediction
+            addProcessNoise(nowMs);
         }
 
 
