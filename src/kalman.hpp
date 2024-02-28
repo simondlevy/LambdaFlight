@@ -90,11 +90,13 @@ class KalmanFilter {
 
         typedef enum {
 
-            ACTION_INIT,
-            ACTION_RESET,
-            ACTION_FOO,
+            MODE_INIT,
+            MODE_PREDICT,
+            MODE_UPDATE,
+            MODE_FINALIZE,
+            MODE_GET_STATE
 
-        } action_t;
+        } mode_t;
 
         typedef enum {
             MeasurementTypeRange,
@@ -116,6 +118,42 @@ class KalmanFilter {
             } data;
 
         } measurement_t;
+
+        bool step(
+                const mode_t mode, 
+                const measurement_t &measurement,
+                const uint32_t nowMsec,
+                const uint32_t nextPredictionMsec,
+                const bool isFlying,
+                vehicleState_t & state)
+        {
+            bool success = true;
+
+            switch (mode) {
+
+                case MODE_INIT:
+                    init(nowMsec);
+                    break;
+
+                case MODE_PREDICT:
+                    predict(nowMsec, nextPredictionMsec, isFlying);
+                    break;
+
+                case MODE_UPDATE:
+                    update(measurement, nowMsec);
+                    break;
+
+                case MODE_FINALIZE:
+                    success = finalize();
+                    break;
+
+                case MODE_GET_STATE:
+                    getVehicleState(state);
+                    break;
+            }
+
+            return success;
+        }
 
         bool finalize(void)
         {
@@ -265,7 +303,7 @@ class KalmanFilter {
             _lastProcessNoiseUpdateMs = nowMs;
         }
 
-        void addProcessNoiseAndPredict(
+        void predict(
                 const uint32_t nowMs, 
                 const uint32_t nextPredictionMs,
                 const bool isFlying) 
@@ -279,7 +317,7 @@ class KalmanFilter {
             addProcessNoise(nowMs);
         }
 
-        void update(measurement_t & m, const uint32_t nowMs)
+        void update(const measurement_t & m, const uint32_t nowMs)
         {
             switch (m.type) {
 
@@ -1445,7 +1483,7 @@ class KalmanFilter {
                     &Hy, (_measuredNY-_predictedNY), flow->stdDevY*FLOW_RESOLUTION);
         }
 
-        void updateWithRange(rangeMeasurement_t *range)
+        void updateWithRange(const rangeMeasurement_t *range)
         {
             // Updates the filter with a measured distance in the zb direction using the
             float h[KC_STATE_DIM] = {};
@@ -1489,13 +1527,13 @@ class KalmanFilter {
             }
         }
 
-        void updateWithAccel(measurement_t & m)
+        void updateWithAccel(const measurement_t & m)
         {
             axis3fSubSamplerAccumulate(&_accSubSampler, &m.data.acceleration.acc);
             _accLatest = m.data.acceleration.acc;
         }
 
-        void updateWithGyro(measurement_t & m)
+        void updateWithGyro(const measurement_t & m)
         {
             axis3fSubSamplerAccumulate(&_gyroSubSampler, &m.data.gyroscope.gyro);
             _gyroLatest = m.data.gyroscope.gyro;

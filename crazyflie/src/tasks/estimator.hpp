@@ -51,7 +51,7 @@ class EstimatorTask : public FreeRTOSTask {
 
             consolePrintf("ESTIMATOR: estimatorTaskStart\n");
 
-            _kalmanFilter.init(msec());
+            initKalmanFilter(msec());
         }
 
         void getVehicleState(vehicleState_t * state)
@@ -149,6 +149,10 @@ class EstimatorTask : public FreeRTOSTask {
 
         KalmanFilter _kalmanFilter;
 
+        KalmanFilter::measurement_t _measurement_none = {};
+
+        vehicleState_t _state_none = {};
+
         // Data used to enable the task and stabilizer loop to run with minimal locking
         // The estimator state produced by the task, copied to the stabilizer when needed.
         vehicleState_t _state;
@@ -158,19 +162,22 @@ class EstimatorTask : public FreeRTOSTask {
             return T2M(xTaskGetTickCount());
         }
 
+        void initKalmanFilter(const uint32_t nowMsec)
+        {
+            _kalmanFilter.step(KalmanFilter::MODE_INIT, _measurement_none,
+                    nowMsec, 0, false, _state_none);
+        }
+
         uint32_t step(const uint32_t nowMs, uint32_t nextPredictionMs) 
         {
             xSemaphoreTake(_runTaskSemaphore, portMAX_DELAY);
 
             if (didResetEstimation) {
-                _kalmanFilter.init(nowMs);
+                initKalmanFilter(nowMs);
                 didResetEstimation = false;
             }
 
-            _kalmanFilter.addProcessNoiseAndPredict(
-                    nowMs, 
-                    nextPredictionMs, 
-                    _safety->isFlying());
+            _kalmanFilter.predict(nowMs, nextPredictionMs, _safety->isFlying());
 
             // Run the system dynamics to predict the state forward.
             if (nowMs >= nextPredictionMs) {
