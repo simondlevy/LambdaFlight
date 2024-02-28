@@ -206,7 +206,10 @@ class EstimatorTask : public FreeRTOSTask {
                         nowMs, 0, false, _state_none);
             }
 
-            if (!_kalmanFilter.finalize()) { // is state within bounds?
+            // is state within bounds?
+            if (!_kalmanFilter.step(
+                        KalmanFilter::MODE_FINALIZE, _measurement_none, 0,
+                        0, false, _state_none)) { 
 
                 didResetEstimation = true;
 

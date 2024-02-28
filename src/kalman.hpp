@@ -155,31 +155,7 @@ class KalmanFilter {
             return success;
         }
 
-        bool finalize(void)
-        {
-            // Matrix to rotate the attitude covariances once updated
-            static float A[KC_STATE_DIM][KC_STATE_DIM];
-            static arm_matrix_instance_f32 Am = {
-                KC_STATE_DIM, KC_STATE_DIM, (float *)A
-            };
-
-            // Temporary matrices for the covariance updates
-            static float tmpNN1d[KC_STATE_DIM * KC_STATE_DIM];
-            static arm_matrix_instance_f32 tmpNN1m = {
-                KC_STATE_DIM, KC_STATE_DIM, tmpNN1d
-            };
-
-            static float tmpNN2d[KC_STATE_DIM * KC_STATE_DIM];
-            static arm_matrix_instance_f32 tmpNN2m = {
-                KC_STATE_DIM, KC_STATE_DIM, tmpNN2d
-            }; 
-
-            finalize(A, &Am, &tmpNN1m, &tmpNN2m);
-
-            return isStateWithinBounds();
-        }
-
-        void getVehicleState(vehicleState_t & state)
+       void getVehicleState(vehicleState_t & state)
         {
             state.x = _S[KC_STATE_X];
 
@@ -228,6 +204,31 @@ class KalmanFilter {
 
     private:
 
+        bool finalize(void)
+        {
+            // Matrix to rotate the attitude covariances once updated
+            static float A[KC_STATE_DIM][KC_STATE_DIM];
+            static arm_matrix_instance_f32 Am = {
+                KC_STATE_DIM, KC_STATE_DIM, (float *)A
+            };
+
+            // Temporary matrices for the covariance updates
+            static float tmpNN1d[KC_STATE_DIM * KC_STATE_DIM];
+            static arm_matrix_instance_f32 tmpNN1m = {
+                KC_STATE_DIM, KC_STATE_DIM, tmpNN1d
+            };
+
+            static float tmpNN2d[KC_STATE_DIM * KC_STATE_DIM];
+            static arm_matrix_instance_f32 tmpNN2m = {
+                KC_STATE_DIM, KC_STATE_DIM, tmpNN2d
+            }; 
+
+            finalize(A, &Am, &tmpNN1m, &tmpNN2m);
+
+            return isStateWithinBounds();
+        }
+
+ 
         void update(const measurement_t & m, const uint32_t nowMs)
         {
             switch (m.type) {
