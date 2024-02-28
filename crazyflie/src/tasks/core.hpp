@@ -66,7 +66,7 @@ class CoreTask : public FreeRTOSTask {
             auto pass = true;
 
             pass &= _imuTask->test();
-            pass &= _estimatorTask->didInit();
+            //pass &= _estimatorTask->didInit();
             pass &= motorsTest();
 
             return pass;

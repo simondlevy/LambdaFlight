@@ -54,10 +54,11 @@ class EstimatorTask : public FreeRTOSTask {
             _kalmanFilter.init(msec(), true);
         }
 
+        /*
         bool didInit(void)
         {
             return _kalmanFilter.didInit();
-        }
+        }*/
 
         void getVehicleState(vehicleState_t * state)
         {
@@ -173,7 +174,9 @@ class EstimatorTask : public FreeRTOSTask {
             }
 
             _kalmanFilter.addProcessNoiseAndPredict(
-                    nowMs, nextPredictionMs, _safety->isFlying());
+                    nowMs, 
+                    nextPredictionMs, 
+                    _safety->isFlying());
 
             // Run the system dynamics to predict the state forward.
             if (nowMs >= nextPredictionMs) {

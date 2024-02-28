@@ -70,7 +70,15 @@
 
 class KalmanFilter { 
 
-     public:
+    public:
+
+        typedef enum {
+
+            ACTION_INIT,
+            ACTION_RESET,
+            ACTION_FOO,
+
+        } action_t;
 
         typedef enum {
             MeasurementTypeRange,
@@ -268,7 +276,7 @@ class KalmanFilter {
 
                 predict(nowMs, isFlying); 
             }
-             
+
             // Add process noise every loop, rather than every prediction
             addProcessNoise(nowMs);
         }
@@ -298,7 +306,7 @@ class KalmanFilter {
             }
         }
 
-  private:
+    private:
 
         // Indexes to access the quad's state, stored as a column vector
         typedef enum {
