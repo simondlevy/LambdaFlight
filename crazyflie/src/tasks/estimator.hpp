@@ -177,7 +177,8 @@ class EstimatorTask : public FreeRTOSTask {
                 didResetEstimation = false;
             }
 
-            _kalmanFilter.predict(nowMs, nextPredictionMs, _safety->isFlying());
+            _kalmanFilter.step( KalmanFilter::MODE_PREDICT, _measurement_none,
+                    nowMs, nextPredictionMs, _safety->isFlying(), _state_none);
 
             // Run the system dynamics to predict the state forward.
             if (nowMs >= nextPredictionMs) {
@@ -201,7 +202,8 @@ class EstimatorTask : public FreeRTOSTask {
 
             while (pdTRUE == xQueueReceive(_measurementsQueue, &m, 0)) {
 
-                _kalmanFilter.update(m, nowMs);
+                _kalmanFilter.step(KalmanFilter::MODE_UPDATE, m,
+                        nowMs, 0, false, _state_none);
             }
 
             if (!_kalmanFilter.finalize()) { // is state within bounds?

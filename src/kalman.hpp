@@ -226,6 +226,48 @@ class KalmanFilter {
         }
 
 
+    private:
+
+        void update(const measurement_t & m, const uint32_t nowMs)
+        {
+            switch (m.type) {
+
+                case MeasurementTypeRange:
+                    updateWithRange(&m.data.range);
+                    break;
+
+                case MeasurementTypeFlow:
+                    updateWithFlow(&m.data.flow);
+                    break;
+
+                case MeasurementTypeGyroscope:
+                    updateWithGyro(m);
+                    break;
+
+                case MeasurementTypeAcceleration:
+                    updateWithAccel(m);
+                    break;
+
+                default:
+                    break;
+            }
+        }
+
+        void predict(
+                const uint32_t nowMs, 
+                const uint32_t nextPredictionMs,
+                const bool isFlying) 
+        {
+            if (nowMs >= nextPredictionMs) {
+
+                predict(nowMs, isFlying); 
+            }
+
+            // Add process noise every loop, rather than every prediction
+            addProcessNoise(nowMs);
+        }
+
+
         void init(const uint32_t nowMs)
         {
             axis3fSubSamplerInit(&_accSubSampler, GRAVITY_MAGNITUDE);
@@ -303,46 +345,6 @@ class KalmanFilter {
             _lastProcessNoiseUpdateMs = nowMs;
         }
 
-        void predict(
-                const uint32_t nowMs, 
-                const uint32_t nextPredictionMs,
-                const bool isFlying) 
-        {
-            if (nowMs >= nextPredictionMs) {
-
-                predict(nowMs, isFlying); 
-            }
-
-            // Add process noise every loop, rather than every prediction
-            addProcessNoise(nowMs);
-        }
-
-        void update(const measurement_t & m, const uint32_t nowMs)
-        {
-            switch (m.type) {
-
-                case MeasurementTypeRange:
-                    updateWithRange(&m.data.range);
-                    break;
-
-                case MeasurementTypeFlow:
-                    updateWithFlow(&m.data.flow);
-                    break;
-
-                case MeasurementTypeGyroscope:
-                    updateWithGyro(m);
-                    break;
-
-                case MeasurementTypeAcceleration:
-                    updateWithAccel(m);
-                    break;
-
-                default:
-                    break;
-            }
-        }
-
-    private:
 
         // Indexes to access the quad's state, stored as a column vector
         typedef enum {
