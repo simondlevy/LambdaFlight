@@ -220,8 +220,12 @@ class EstimatorTask : public FreeRTOSTask {
             }
 
             xSemaphoreTake(_dataMutex, portMAX_DELAY);
-            _kalmanFilter.getVehicleState(_state);
+
+            _kalmanFilter.step(KalmanFilter::MODE_GET_STATE, _measurement_none,
+                    0, 0, false, _state);
+
             xSemaphoreGive(_dataMutex);
+
 
             return nextPredictionMs;
         }

@@ -155,6 +155,8 @@ class KalmanFilter {
             return success;
         }
 
+    private:
+
        void getVehicleState(vehicleState_t & state)
         {
             state.x = _S[KC_STATE_X];
@@ -201,8 +203,6 @@ class KalmanFilter {
             state.dpsi =    _gyroLatest.z; 
         }
 
-
-    private:
 
         bool finalize(void)
         {
