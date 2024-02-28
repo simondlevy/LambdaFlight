@@ -51,7 +51,7 @@ class EstimatorTask : public FreeRTOSTask {
 
             consolePrintf("ESTIMATOR: estimatorTaskStart\n");
 
-            _kalmanFilter.init(msec(), true);
+            _kalmanFilter.init(msec());
         }
 
         /*
@@ -169,7 +169,7 @@ class EstimatorTask : public FreeRTOSTask {
             xSemaphoreTake(_runTaskSemaphore, portMAX_DELAY);
 
             if (didResetEstimation) {
-                _kalmanFilter.init(nowMs, false);
+                _kalmanFilter.init(nowMs);
                 didResetEstimation = false;
             }
 

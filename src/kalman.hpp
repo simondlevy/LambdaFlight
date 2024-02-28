@@ -193,11 +193,9 @@ class KalmanFilter {
         }
 
 
-        void init(const uint32_t nowMs, const bool setDefaults)
+        void init(const uint32_t nowMs)
         {
-            if (setDefaults) {
-                setDefaultParams();
-            }
+            _didInit = true;
 
             axis3fSubSamplerInit(&_accSubSampler, GRAVITY_MAGNITUDE);
             axis3fSubSamplerInit(&_gyroSubSampler, DEGREES_TO_RADIANS);
@@ -1559,10 +1557,4 @@ class KalmanFilter {
 
             return true;
         }
-
-        void setDefaultParams(void)
-        {
-            _didInit = true;
-        }
-
 };
