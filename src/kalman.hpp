@@ -117,11 +117,6 @@ class KalmanFilter {
 
         } measurement_t;
 
-        bool didInit(void)
-        {
-            return _didInit;
-        }
-
         bool finalize(void)
         {
             // Matrix to rotate the attitude covariances once updated
@@ -195,8 +190,6 @@ class KalmanFilter {
 
         void init(const uint32_t nowMs)
         {
-            _didInit = true;
-
             axis3fSubSamplerInit(&_accSubSampler, GRAVITY_MAGNITUDE);
             axis3fSubSamplerInit(&_gyroSubSampler, DEGREES_TO_RADIANS);
 
@@ -576,8 +569,6 @@ class KalmanFilter {
         Axis3fSubSampler_t _gyroSubSampler;
 
         OutlierFilterTdoa _outlierFilterTdoa;
-
-        bool _didInit;
 
         float _predictedNX;
         float _predictedNY;
