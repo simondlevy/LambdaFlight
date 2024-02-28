@@ -76,6 +76,14 @@ static constexpr float stdDevInitialVelocity = 0.01;
 static constexpr float stdDevInitialAttitude_rollpitch = 0.01;
 static constexpr float stdDevInitialAttitude_yaw = 0.01;
 
+static constexpr float procNoiseAcc_xy = 0.5f;
+static constexpr float procNoiseAcc_z = 1.0f;
+static constexpr float procNoiseVel = 0;
+static constexpr float procNoisePos = 0;
+static constexpr float procNoiseAtt = 0;
+static constexpr float measNoiseGyro_rollpitch = 0.1f; // radians per second
+static constexpr float measNoiseGyro_yaw = 0.1f;       // radians per second
+
 class KalmanFilter { 
 
     public:
@@ -563,22 +571,6 @@ class KalmanFilter {
             Axis3f subSample;
         } Axis3fSubSampler_t;
 
-
-        // The parameters used by the filter
-        typedef struct {
-
-            float procNoiseAcc_xy;
-            float procNoiseAcc_z;
-            float procNoiseVel;
-            float procNoisePos;
-            float procNoiseAtt;
-            float measNoiseGyro_rollpitch; // radians per second
-            float measNoiseGyro_yaw;       // radians per second
-
-        } params_t;
-
-        params_t _params;
-
         Axis3f _accLatest;
         Axis3f _gyroLatest;
 
@@ -645,35 +637,35 @@ class KalmanFilter {
         void addProcessNoiseDt(float dt)
         {
             _P[KC_STATE_X][KC_STATE_X] += 
-                powf(_params.procNoiseAcc_xy*dt*dt + _params.procNoiseVel*dt + 
-                        _params.procNoisePos, 2);  // add process noise on position
+                powf(procNoiseAcc_xy*dt*dt + procNoiseVel*dt + 
+                        procNoisePos, 2);  // add process noise on position
 
             _P[KC_STATE_Y][KC_STATE_Y] += 
-                powf(_params.procNoiseAcc_xy*dt*dt + _params.procNoiseVel*dt + 
-                        _params.procNoisePos, 2);  // add process noise on position
+                powf(procNoiseAcc_xy*dt*dt + procNoiseVel*dt + 
+                        procNoisePos, 2);  // add process noise on position
 
             _P[KC_STATE_Z][KC_STATE_Z] += 
-                powf(_params.procNoiseAcc_z*dt*dt + _params.procNoiseVel*dt + 
-                        _params.procNoisePos, 2);  // add process noise on position
+                powf(procNoiseAcc_z*dt*dt + procNoiseVel*dt + 
+                        procNoisePos, 2);  // add process noise on position
 
             _P[KC_STATE_PX][KC_STATE_PX] += 
-                powf(_params.procNoiseAcc_xy*dt + 
-                        _params.procNoiseVel, 2); // add process noise on velocity
+                powf(procNoiseAcc_xy*dt + 
+                        procNoiseVel, 2); // add process noise on velocity
 
             _P[KC_STATE_PY][KC_STATE_PY] += 
-                powf(_params.procNoiseAcc_xy*dt + 
-                        _params.procNoiseVel, 2); // add process noise on velocity
+                powf(procNoiseAcc_xy*dt + 
+                        procNoiseVel, 2); // add process noise on velocity
 
             _P[KC_STATE_PZ][KC_STATE_PZ] += 
-                powf(_params.procNoiseAcc_z*dt + 
-                        _params.procNoiseVel, 2); // add process noise on velocity
+                powf(procNoiseAcc_z*dt + 
+                        procNoiseVel, 2); // add process noise on velocity
 
             _P[KC_STATE_D0][KC_STATE_D0] += 
-                powf(_params.measNoiseGyro_rollpitch * dt + _params.procNoiseAtt, 2);
+                powf(measNoiseGyro_rollpitch * dt + procNoiseAtt, 2);
             _P[KC_STATE_D1][KC_STATE_D1] += 
-                powf(_params.measNoiseGyro_rollpitch * dt + _params.procNoiseAtt, 2);
+                powf(measNoiseGyro_rollpitch * dt + procNoiseAtt, 2);
             _P[KC_STATE_D2][KC_STATE_D2] += 
-                powf(_params.measNoiseGyro_yaw * dt + _params.procNoiseAtt, 2);
+                powf(measNoiseGyro_yaw * dt + procNoiseAtt, 2);
 
             for (int i=0; i<KC_STATE_DIM; i++) {
                 for (int j=i; j<KC_STATE_DIM; j++) {
@@ -1570,14 +1562,6 @@ class KalmanFilter {
 
         void setDefaultParams(void)
         {
-            _params.procNoiseAcc_xy = 0.5f;
-            _params.procNoiseAcc_z = 1.0f;
-            _params.procNoiseVel = 0;
-            _params.procNoisePos = 0;
-            _params.procNoiseAtt = 0;
-            _params.measNoiseGyro_rollpitch = 0.1f; // radians per second
-            _params.measNoiseGyro_yaw = 0.1f;       // radians per second
-
             _didInit = true;
         }
 
