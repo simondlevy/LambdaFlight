@@ -68,6 +68,14 @@
 #include <m_pi.h>
 #include <datatypes.h>
 
+// Initial variances, uncertain of position, but know we're
+// stationary and roughly flat
+static constexpr float stdDevInitialPosition_xy = 100;
+static constexpr float stdDevInitialPosition_z = 1;
+static constexpr float stdDevInitialVelocity = 0.01;
+static constexpr float stdDevInitialAttitude_rollpitch = 0.01;
+static constexpr float stdDevInitialAttitude_yaw = 0.01;
+
 class KalmanFilter { 
 
     public:
@@ -237,26 +245,17 @@ class KalmanFilter {
             }
 
             // initialize state variances
-            _P[KC_STATE_X][KC_STATE_X] = 
-                powf(_params.stdDevInitialPosition_xy, 2);
-            _P[KC_STATE_Y][KC_STATE_Y] = 
-                powf(_params.stdDevInitialPosition_xy, 2);
-            _P[KC_STATE_Z][KC_STATE_Z] = 
-                powf(_params.stdDevInitialPosition_z, 2);
+            _P[KC_STATE_X][KC_STATE_X] = powf(stdDevInitialPosition_xy, 2);
+            _P[KC_STATE_Y][KC_STATE_Y] = powf(stdDevInitialPosition_xy, 2);
+            _P[KC_STATE_Z][KC_STATE_Z] = powf(stdDevInitialPosition_z, 2);
 
-            _P[KC_STATE_PX][KC_STATE_PX] = 
-                powf(_params.stdDevInitialVelocity, 2);
-            _P[KC_STATE_PY][KC_STATE_PY] = 
-                powf(_params.stdDevInitialVelocity, 2);
-            _P[KC_STATE_PZ][KC_STATE_PZ] = 
-                powf(_params.stdDevInitialVelocity, 2);
+            _P[KC_STATE_PX][KC_STATE_PX] = powf(stdDevInitialVelocity, 2);
+            _P[KC_STATE_PY][KC_STATE_PY] = powf(stdDevInitialVelocity, 2);
+            _P[KC_STATE_PZ][KC_STATE_PZ] = powf(stdDevInitialVelocity, 2);
 
-            _P[KC_STATE_D0][KC_STATE_D0] = 
-                powf(_params.stdDevInitialAttitude_rollpitch, 2);
-            _P[KC_STATE_D1][KC_STATE_D1] = 
-                powf(_params.stdDevInitialAttitude_rollpitch, 2);
-            _P[KC_STATE_D2][KC_STATE_D2] = 
-                powf(_params.stdDevInitialAttitude_yaw, 2);
+            _P[KC_STATE_D0][KC_STATE_D0] = powf(stdDevInitialAttitude_rollpitch, 2);
+            _P[KC_STATE_D1][KC_STATE_D1] = powf(stdDevInitialAttitude_rollpitch, 2);
+            _P[KC_STATE_D2][KC_STATE_D2] = powf(stdDevInitialAttitude_yaw, 2);
 
             _Pm.numRows = KC_STATE_DIM;
             _Pm.numCols = KC_STATE_DIM;
@@ -567,14 +566,6 @@ class KalmanFilter {
 
         // The parameters used by the filter
         typedef struct {
-
-            // Initial variances, uncertain of position, but know we're stationary and
-            // roughly flat
-            float stdDevInitialPosition_xy;
-            float stdDevInitialPosition_z;
-            float stdDevInitialVelocity;
-            float stdDevInitialAttitude_rollpitch;
-            float stdDevInitialAttitude_yaw;
 
             float procNoiseAcc_xy;
             float procNoiseAcc_z;
@@ -1590,15 +1581,7 @@ class KalmanFilter {
 
         void setDefaultParams(void)
         {
-            // Initial variances, uncertain of position, but know we're
-            // stationary and roughly flat
-            _params.stdDevInitialPosition_xy = 100;
-            _params.stdDevInitialPosition_z = 1;
-            _params.stdDevInitialVelocity = 0.01;
-            _params.stdDevInitialAttitude_rollpitch = 0.01;
-            _params.stdDevInitialAttitude_yaw = 0.01;
-
-            _params.procNoiseAcc_xy = 0.5f;
+           _params.procNoiseAcc_xy = 0.5f;
             _params.procNoiseAcc_z = 1.0f;
             _params.procNoiseVel = 0;
             _params.procNoisePos = 0;
