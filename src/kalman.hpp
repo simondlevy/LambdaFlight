@@ -206,15 +206,15 @@ class KalmanFilter {
             _lastPredictionMs = 0;
             _lastProcessNoiseUpdateMs = 0;
 
-            _S[KC_STATE_X] = _params.initialX;
-            _S[KC_STATE_Y] = _params.initialY;
-            _S[KC_STATE_Z] = _params.initialZ;
+            _S[KC_STATE_X] = 0;
+            _S[KC_STATE_Y] = 0;
+            _S[KC_STATE_Z] = 0;
 
             // reset the attitude quaternion
-            _qw_init = arm_cos_f32(_params.initialYaw / 2);
+            _qw_init = 1;
             _qx_init = 0;
             _qy_init = 0;
-            _qz_init = arm_sin_f32(_params.initialYaw / 2);
+            _qz_init = 0;
 
             _qw = _qw_init;
             _qx = _qx_init;
@@ -574,17 +574,6 @@ class KalmanFilter {
             float procNoiseAtt;
             float measNoiseGyro_rollpitch; // radians per second
             float measNoiseGyro_yaw;       // radians per second
-
-            float initialX;
-            float initialY;
-            float initialZ;
-
-            // Initial yaw of the Crazyflie in radians.
-            // 0 --- facing positive X
-            // PI / 2 --- facing positive Y
-            // PI --- facing negative X
-            // 3 * PI / 2 --- facing negative Y
-            float initialYaw;
 
         } params_t;
 
@@ -1581,24 +1570,13 @@ class KalmanFilter {
 
         void setDefaultParams(void)
         {
-           _params.procNoiseAcc_xy = 0.5f;
+            _params.procNoiseAcc_xy = 0.5f;
             _params.procNoiseAcc_z = 1.0f;
             _params.procNoiseVel = 0;
             _params.procNoisePos = 0;
             _params.procNoiseAtt = 0;
             _params.measNoiseGyro_rollpitch = 0.1f; // radians per second
             _params.measNoiseGyro_yaw = 0.1f;       // radians per second
-
-            _params.initialX = 0.0;
-            _params.initialY = 0.0;
-            _params.initialZ = 0.0;
-
-            // Initial yaw of the Crazyflie in radians.
-            // 0 --- facing positive X
-            // PI / 2 --- facing positive Y
-            // PI --- facing negative X
-            // 3 * PI / 2 --- facing negative Y
-            _params.initialYaw = 0.0;
 
             _didInit = true;
         }
