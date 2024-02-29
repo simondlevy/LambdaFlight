@@ -20,10 +20,6 @@
 
 
 
-//========================================================================================================================//
-
-
-
 //REQUIRED LIBRARIES (included with download in main sketch folder)
 
 #include <Wire.h>     //I2c communication
@@ -35,8 +31,6 @@
 #include "src/MPU9250/MPU9250.h"
 
 MPU9250 mpu9250 = MPU9250(Wire, 0x69);
-
-
 
 //Setup gyro and accel full scale value selection and scale factor
 
@@ -331,16 +325,16 @@ void loop() {
   loopBlink(); //Indicate we are in main loop with short blink every 1.5 seconds
 
   //Print data at 100hz (uncomment one at a time for troubleshooting) - SELECT ONE:
-  printRadioData();     //Prints radio pwm values (expected: 1000 to 2000)
-  //printDesiredState();  //Prints desired vehicle state commanded in either degrees or deg/sec (expected: +/- maxAXIS for roll, pitch, yaw; 0 to 1 for throttle)
-  //printGyroData();      //Prints filtered gyro data direct from IMU (expected: ~ -250 to 250, 0 at rest)
-  //printAccelData();     //Prints filtered accelerometer data direct from IMU (expected: ~ -2 to 2; x,y 0 when level, z 1 when level)
-  //printMagData();       //Prints filtered magnetometer data direct from IMU (expected: ~ -300 to 300)
-  //printRollPitchYaw();  //Prints roll, pitch, and yaw angles in degrees from Madgwick filter (expected: degrees, 0 when level)
-  //printPIDoutput();     //Prints computed stabilized PID variables from controller and desired setpoint (expected: ~ -1 to 1)
+  debugRadioData();     //Prints radio pwm values (expected: 1000 to 2000)
+  //debugDesiredState();  //Prints desired vehicle state commanded in either degrees or deg/sec (expected: +/- maxAXIS for roll, pitch, yaw; 0 to 1 for throttle)
+  //debugGyroData();      //Prints filtered gyro data direct from IMU (expected: ~ -250 to 250, 0 at rest)
+  //debugAccelData();     //Prints filtered accelerometer data direct from IMU (expected: ~ -2 to 2; x,y 0 when level, z 1 when level)
+  //debugMagData();       //Prints filtered magnetometer data direct from IMU (expected: ~ -300 to 300)
+  //debugRollPitchYaw();  //Prints roll, pitch, and yaw angles in degrees from Madgwick filter (expected: degrees, 0 when level)
+  //debugPIDoutput();     //Prints computed stabilized PID variables from controller and desired setpoint (expected: ~ -1 to 1)
   //printMotorCommands(); //Prints the values being written to the motors (expected: 120 to 250)
-  //printServoCommands(); //Prints the values being written to the servos (expected: 0 to 180)
-  //printLoopRate();      //Prints the time between loops in microseconds (expected: microseconds between loop iterations)
+  //debugServoCommands(); //Prints the values being written to the servos (expected: 0 to 180)
+  //debugLoopRate();      //Prints the time between loops in microseconds (expected: microseconds between loop iterations)
 
   // Get arming status
   armedStatus(); //Check if the throttle cut is off and throttle is low.
@@ -1070,15 +1064,6 @@ void getCommands() {
    * The raw radio commands are filtered with a first order low-pass filter to eliminate any really high frequency noise. 
    */
 
-  #if defined USE_PPM_RX || defined USE_PWM_RX
-    channel_1_pwm = getRadioPWM(1);
-    channel_2_pwm = getRadioPWM(2);
-    channel_3_pwm = getRadioPWM(3);
-    channel_4_pwm = getRadioPWM(4);
-    channel_5_pwm = getRadioPWM(5);
-    channel_6_pwm = getRadioPWM(6);
-    
-  #elif defined USE_SBUS_RX
     if (sbus.read(&sbusChannels[0], &sbusFailSafe, &sbusLostFrame))
     {
       //sBus scaling below is for Taranis-Plus and X4R-SB
@@ -1092,23 +1077,6 @@ void getCommands() {
       channel_6_pwm = sbusChannels[5] * scale + bias; 
     }
 
-  #elif defined USE_DSM_RX
-    if (DSM.timedOut(micros())) {
-        //Serial.println("*** DSM RX TIMED OUT ***");
-    }
-    else if (DSM.gotNewFrame()) {
-        uint16_t values[num_DSM_channels];
-        DSM.getChannelValues(values, num_DSM_channels);
-
-        channel_1_pwm = values[0];
-        channel_2_pwm = values[1];
-        channel_3_pwm = values[2];
-        channel_4_pwm = values[3];
-        channel_5_pwm = values[4];
-        channel_6_pwm = values[5];
-    }
-  #endif
-  
   //Low-pass the critical commands and update previous values
   float b = 0.7; //Lower=slower, higher=noiser
   channel_1_pwm = (1.0 - b)*channel_1_pwm_prev + b*channel_1_pwm;
@@ -1278,7 +1246,7 @@ void calibrateESCs() {
       servo7.write(s7_command_PWM);
       commandMotors(); //Sends command pulses to each motor pin using OneShot125 protocol
       
-      //printRadioData(); //Radio pwm values (expected: 1000 to 2000)
+      //debugRadioData(); //Radio pwm values (expected: 1000 to 2000)
       
       loopRate(2000); //Do not exceed 2000Hz, all filter parameters tuned to 2000Hz by default
    }
@@ -1473,25 +1441,21 @@ void setupBlink(int numBlinks,int upTime, int downTime) {
   }
 }
 
-void printRadioData() {
+void debugRadioData() {
   if (current_time - print_counter > 10000) {
     print_counter = micros();
-    Serial.print(F(" CH1:"));
-    Serial.print(channel_1_pwm);
-    Serial.print(F(" CH2:"));
-    Serial.print(channel_2_pwm);
-    Serial.print(F(" CH3:"));
-    Serial.print(channel_3_pwm);
-    Serial.print(F(" CH4:"));
-    Serial.print(channel_4_pwm);
-    Serial.print(F(" CH5:"));
-    Serial.print(channel_5_pwm);
-    Serial.print(F(" CH6:"));
-    Serial.println(channel_6_pwm);
+    Serial.printf(
+            "CH1=%04d  CH2=%04d  CH3=%04d  CH4=%04d  CH5=%04d  CH6=%04d\n",
+            channel_1_pwm, 
+            channel_2_pwm, 
+            channel_3_pwm, 
+            channel_4_pwm, 
+            channel_5_pwm, 
+            channel_6_pwm);
   }
 }
 
-void printDesiredState() {
+void debugDesiredState() {
   if (current_time - print_counter > 10000) {
     print_counter = micros();
     Serial.print(F("thro_des:"));
@@ -1505,7 +1469,7 @@ void printDesiredState() {
   }
 }
 
-void printGyroData() {
+void debugGyroData() {
   if (current_time - print_counter > 10000) {
     print_counter = micros();
     Serial.print(F("GyroX:"));
@@ -1517,7 +1481,7 @@ void printGyroData() {
   }
 }
 
-void printAccelData() {
+void debugAccelData() {
   if (current_time - print_counter > 10000) {
     print_counter = micros();
     Serial.print(F("AccX:"));
@@ -1529,7 +1493,7 @@ void printAccelData() {
   }
 }
 
-void printMagData() {
+void debugMagData() {
   if (current_time - print_counter > 10000) {
     print_counter = micros();
     Serial.print(F("MagX:"));
@@ -1541,19 +1505,15 @@ void printMagData() {
   }
 }
 
-void printRollPitchYaw() {
+void debugRollPitchYaw() {
   if (current_time - print_counter > 10000) {
     print_counter = micros();
-    Serial.print(F("roll:"));
-    Serial.print(roll_IMU);
-    Serial.print(F(" pitch:"));
-    Serial.print(pitch_IMU);
-    Serial.print(F(" yaw:"));
-    Serial.println(yaw_IMU);
+    Serial.printf("roll=%+3.3f  pitch=%+3.3f  yaw=%+3.3f\n",
+                roll_IMU, pitch_IMU, yaw_IMU);
   }
 }
 
-void printPIDoutput() {
+void debugPIDoutput() {
   if (current_time - print_counter > 10000) {
     print_counter = micros();
     Serial.print(F("roll_PID:"));
@@ -1583,7 +1543,7 @@ void printMotorCommands() {
   }
 }
 
-void printServoCommands() {
+void debugServoCommands() {
   if (current_time - print_counter > 10000) {
     print_counter = micros();
     Serial.print(F("s1_command:"));
@@ -1603,7 +1563,7 @@ void printServoCommands() {
   }
 }
 
-void printLoopRate() {
+void debugLoopRate() {
   if (current_time - print_counter > 10000) {
     print_counter = micros();
     Serial.print(F("dt:"));
