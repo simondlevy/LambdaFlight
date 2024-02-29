@@ -70,19 +70,47 @@
 
 // Initial variances, uncertain of position, but know we're
 // stationary and roughly flat
-static constexpr float stdDevInitialPosition_xy = 100;
-static constexpr float stdDevInitialPosition_z = 1;
-static constexpr float stdDevInitialVelocity = 0.01;
-static constexpr float stdDevInitialAttitude_rollpitch = 0.01;
-static constexpr float stdDevInitialAttitude_yaw = 0.01;
+static const float STDEV_INITIAL_POSITION_XY = 100;
+static const float STDEV_INITIAL_POSITION_Z = 1;
+static const float STDEV_INITIAL_VELOCITY = 0.01;
+static const float STDEV_INITIAL_ATTITUDE_ROLL_PITCH = 0.01;
+static const float STDEV_INITIAL_ATTITUDE_YAW = 0.01;
 
-static constexpr float procNoiseAcc_xy = 0.5f;
-static constexpr float procNoiseAcc_z = 1.0f;
-static constexpr float procNoiseVel = 0;
-static constexpr float procNoisePos = 0;
-static constexpr float procNoiseAtt = 0;
-static constexpr float measNoiseGyro_rollpitch = 0.1f; // radians per second
-static constexpr float measNoiseGyro_yaw = 0.1f;       // radians per second
+static const float PROC_NOISE_ACC_XY = 0.5;
+static const float PROC_NOISE_ACC_Z = 1.0;
+static const float PROC_NOISE_VEL = 0;
+static const float PROC_NOISE_POS = 0;
+static const float PROC_NOISE_ATT = 0;
+static const float MEAS_NOISE_GYRO_ROLL_PITCH = 0.1; // radians per second
+static const float MEAS_NOISE_GYRO_ROLL_YAW = 0.1;   // radians per second
+
+static const float GRAVITY_MAGNITUDE = 9.81;
+
+static const float DEGREES_TO_RADIANS = PI / 180.0f;
+static const float RADIANS_TO_DEGREES = 180.0f / PI;
+
+//We do get the measurements in 10x the motion pixels (experimentally measured)
+static const float FLOW_RESOLUTION = 0.1;
+
+// The bounds on the covariance, these shouldn't be hit, but sometimes are... why?
+static const float MAX_COVARIANCE = 100;
+static const float MIN_COVARIANCE = 1e-6;
+
+// The bounds on states, these shouldn't be hit...
+static const float MAX_POSITITON = 100; //meters
+static const float MAX_VELOCITY = 10; //meters per second
+
+// Small number epsilon, to prevent dividing by zero
+static const float EPS = 1e-6f;
+
+// the reversion of pitch and roll to zero
+static const float ROLLPITCH_ZERO_REVERSION = 0.001;
+
+static const int MAX_ITER = 2;
+
+static const float UPPER_BOUND = 100;
+static const float LOWER_BOUND = -100;
+
 
 class KalmanFilter { 
 
@@ -156,6 +184,95 @@ class KalmanFilter {
         }
 
     private:
+
+        // Indexes to access the quad's state, stored as a column vector
+        typedef enum {
+
+            KC_STATE_X,
+            KC_STATE_Y,
+            KC_STATE_Z,
+            KC_STATE_PX,
+            KC_STATE_PY,
+            KC_STATE_PZ,
+            KC_STATE_D0,
+            KC_STATE_D1,
+            KC_STATE_D2,
+            KC_STATE_DIM
+
+        } kalmanCoreStateIdx_t;
+
+        typedef struct {
+            Axis3f sum;
+            uint32_t count;
+            float conversionFactor;
+
+            Axis3f subSample;
+        } Axis3fSubSampler_t;
+
+
+        Axis3f _accLatest;
+        Axis3f _gyroLatest;
+
+        Axis3fSubSampler_t _accSubSampler;
+        Axis3fSubSampler_t _gyroSubSampler;
+
+        OutlierFilterTdoa _outlierFilterTdoa;
+
+        float _predictedNX;
+        float _predictedNY;
+
+        float _measuredNX;
+        float _measuredNY;
+
+        /**
+         * Vehicle State
+         *
+         * The internally-estimated state is:
+         * - X, Y, Z: the quad's position in the global frame
+         * - PX, PY, PZ: the quad's velocity in its body frame
+         * - D0, D1, D2: attitude error
+         *
+         * For more information, refer to the paper
+         */
+        float _S[KC_STATE_DIM];
+
+        // The quad's attitude as a quaternion (w,x,y,z) We store as a quaternion
+        // to allow easy normalization (in comparison to a rotation matrix),
+        // while also being robust against singularities (in comparison to euler angles)
+        float _qw;
+        float _qx;
+        float _qy;
+        float _qz;
+
+        // The quad's attitude as a rotation matrix (used by the prediction,
+        // updated by the finalization)
+        float _r00;
+        float _r01;
+        float _r02;
+        float _r10;
+        float _r11;
+        float _r12;
+        float _r20;
+        float _r21;
+        float _r22;
+
+        // The covariance matrix
+        __attribute__((aligned(4))) float _P[KC_STATE_DIM][KC_STATE_DIM];
+        arm_matrix_instance_f32 _Pm;
+
+        // Quaternion used for initial orientation [w,x,y,z]
+        float _qw_init;
+        float _qx_init;
+        float _qy_init;
+        float _qz_init;
+
+        // Tracks whether an update to the state has been made, and the state
+        // therefore requires finalization
+        bool _isUpdated;
+
+        uint32_t _lastPredictionMs;
+        uint32_t _lastProcessNoiseUpdateMs;
+
 
        void getVehicleState(vehicleState_t & state)
         {
@@ -325,17 +442,17 @@ class KalmanFilter {
             }
 
             // initialize state variances
-            _P[KC_STATE_X][KC_STATE_X] = powf(stdDevInitialPosition_xy, 2);
-            _P[KC_STATE_Y][KC_STATE_Y] = powf(stdDevInitialPosition_xy, 2);
-            _P[KC_STATE_Z][KC_STATE_Z] = powf(stdDevInitialPosition_z, 2);
+            _P[KC_STATE_X][KC_STATE_X] = powf(STDEV_INITIAL_POSITION_XY, 2);
+            _P[KC_STATE_Y][KC_STATE_Y] = powf(STDEV_INITIAL_POSITION_XY, 2);
+            _P[KC_STATE_Z][KC_STATE_Z] = powf(STDEV_INITIAL_POSITION_Z, 2);
 
-            _P[KC_STATE_PX][KC_STATE_PX] = powf(stdDevInitialVelocity, 2);
-            _P[KC_STATE_PY][KC_STATE_PY] = powf(stdDevInitialVelocity, 2);
-            _P[KC_STATE_PZ][KC_STATE_PZ] = powf(stdDevInitialVelocity, 2);
+            _P[KC_STATE_PX][KC_STATE_PX] = powf(STDEV_INITIAL_VELOCITY, 2);
+            _P[KC_STATE_PY][KC_STATE_PY] = powf(STDEV_INITIAL_VELOCITY, 2);
+            _P[KC_STATE_PZ][KC_STATE_PZ] = powf(STDEV_INITIAL_VELOCITY, 2);
 
-            _P[KC_STATE_D0][KC_STATE_D0] = powf(stdDevInitialAttitude_rollpitch, 2);
-            _P[KC_STATE_D1][KC_STATE_D1] = powf(stdDevInitialAttitude_rollpitch, 2);
-            _P[KC_STATE_D2][KC_STATE_D2] = powf(stdDevInitialAttitude_yaw, 2);
+            _P[KC_STATE_D0][KC_STATE_D0] = powf(STDEV_INITIAL_ATTITUDE_ROLL_PITCH, 2);
+            _P[KC_STATE_D1][KC_STATE_D1] = powf(STDEV_INITIAL_ATTITUDE_ROLL_PITCH, 2);
+            _P[KC_STATE_D2][KC_STATE_D2] = powf(STDEV_INITIAL_ATTITUDE_YAW, 2);
 
             _Pm.numRows = KC_STATE_DIM;
             _Pm.numCols = KC_STATE_DIM;
@@ -345,72 +462,6 @@ class KalmanFilter {
             _lastPredictionMs = nowMs;
             _lastProcessNoiseUpdateMs = nowMs;
         }
-
-
-        // Indexes to access the quad's state, stored as a column vector
-        typedef enum {
-
-            KC_STATE_X,
-            KC_STATE_Y,
-            KC_STATE_Z,
-            KC_STATE_PX,
-            KC_STATE_PY,
-            KC_STATE_PZ,
-            KC_STATE_D0,
-            KC_STATE_D1,
-            KC_STATE_D2,
-            KC_STATE_DIM
-
-        } kalmanCoreStateIdx_t;
-
-        /**
-         * Vehicle State
-         *
-         * The internally-estimated state is:
-         * - X, Y, Z: the quad's position in the global frame
-         * - PX, PY, PZ: the quad's velocity in its body frame
-         * - D0, D1, D2: attitude error
-         *
-         * For more information, refer to the paper
-         */
-        float _S[KC_STATE_DIM];
-
-        // The quad's attitude as a quaternion (w,x,y,z) We store as a quaternion
-        // to allow easy normalization (in comparison to a rotation matrix),
-        // while also being robust against singularities (in comparison to euler angles)
-        float _qw;
-        float _qx;
-        float _qy;
-        float _qz;
-
-        // The quad's attitude as a rotation matrix (used by the prediction,
-        // updated by the finalization)
-        float _r00;
-        float _r01;
-        float _r02;
-        float _r10;
-        float _r11;
-        float _r12;
-        float _r20;
-        float _r21;
-        float _r22;
-
-        // The covariance matrix
-        __attribute__((aligned(4))) float _P[KC_STATE_DIM][KC_STATE_DIM];
-        arm_matrix_instance_f32 _Pm;
-
-        // Quaternion used for initial orientation [w,x,y,z]
-        float _qw_init;
-        float _qx_init;
-        float _qy_init;
-        float _qz_init;
-
-        // Tracks whether an update to the state has been made, and the state
-        // therefore requires finalization
-        bool _isUpdated;
-
-        uint32_t _lastPredictionMs;
-        uint32_t _lastProcessNoiseUpdateMs;
 
         void predictDt(Axis3f *acc, Axis3f *gyro, float dt, bool quadIsFlying)
         {
@@ -562,69 +613,16 @@ class KalmanFilter {
             _isUpdated = false;
         }
 
-        static constexpr float GRAVITY_MAGNITUDE = 9.81;
-
-        static constexpr float DEGREES_TO_RADIANS = PI / 180.0f;
-        static constexpr float RADIANS_TO_DEGREES = 180.0f / PI;
-
-        // Use the robust implementations of TWR and TDoA, off by default but can be
-        // turned on through a parameter.  The robust implementations use around 10%
-        // more CPU VS the standard flavours
-        static const bool ROBUST_TWR = false;
-        static const bool ROBUST_TDOA = false;
-
-        //We do get the measurements in 10x the motion pixels (experimentally measured)
-        static constexpr float FLOW_RESOLUTION = 0.1;
-
-        // The bounds on the covariance, these shouldn't be hit, but sometimes are... why?
-        static constexpr float MAX_COVARIANCE = 100;
-        static constexpr float MIN_COVARIANCE = 1e-6;
-
-        // The bounds on states, these shouldn't be hit...
-        static constexpr float MAX_POSITITON = 100; //meters
-        static constexpr float MAX_VELOCITY = 10; //meters per second
-
-        // Small number epsilon, to prevent dividing by zero
-        static constexpr float EPS = 1e-6f;
-
-        // the reversion of pitch and roll to zero
-        static constexpr float ROLLPITCH_ZERO_REVERSION = 0.001;
-
-        static const int MAX_ITER = 2;
-
-        static constexpr float UPPER_BOUND = 100;
-        static constexpr float LOWER_BOUND = -100;
-
-        typedef struct {
-            Axis3f sum;
-            uint32_t count;
-            float conversionFactor;
-
-            Axis3f subSample;
-        } Axis3fSubSampler_t;
-
-        Axis3f _accLatest;
-        Axis3f _gyroLatest;
-
-        Axis3fSubSampler_t _accSubSampler;
-        Axis3fSubSampler_t _gyroSubSampler;
-
-        OutlierFilterTdoa _outlierFilterTdoa;
-
-        float _predictedNX;
-        float _predictedNY;
-
-        float _measuredNX;
-        float _measuredNY;
-
         static void axis3fSubSamplerInit(Axis3fSubSampler_t* subSampler, const
-                float conversionFactor) { memset(subSampler, 0,
-                    sizeof(Axis3fSubSampler_t));
-                subSampler->conversionFactor = conversionFactor;
+                float conversionFactor) 
+        { 
+            memset(subSampler, 0, sizeof(Axis3fSubSampler_t));
+            subSampler->conversionFactor = conversionFactor;
         }
 
         static void axis3fSubSamplerAccumulate(Axis3fSubSampler_t* subSampler,
-                const Axis3f* sample) {
+                const Axis3f* sample) 
+        {
             subSampler->sum.x += sample->x;
             subSampler->sum.y += sample->y;
             subSampler->sum.z += sample->z;
@@ -667,35 +665,35 @@ class KalmanFilter {
         void addProcessNoiseDt(float dt)
         {
             _P[KC_STATE_X][KC_STATE_X] += 
-                powf(procNoiseAcc_xy*dt*dt + procNoiseVel*dt + 
-                        procNoisePos, 2);  // add process noise on position
+                powf(PROC_NOISE_ACC_XY*dt*dt + PROC_NOISE_VEL*dt + 
+                        PROC_NOISE_POS, 2);  // add process noise on position
 
             _P[KC_STATE_Y][KC_STATE_Y] += 
-                powf(procNoiseAcc_xy*dt*dt + procNoiseVel*dt + 
-                        procNoisePos, 2);  // add process noise on position
+                powf(PROC_NOISE_ACC_XY*dt*dt + PROC_NOISE_VEL*dt + 
+                        PROC_NOISE_POS, 2);  // add process noise on position
 
             _P[KC_STATE_Z][KC_STATE_Z] += 
-                powf(procNoiseAcc_z*dt*dt + procNoiseVel*dt + 
-                        procNoisePos, 2);  // add process noise on position
+                powf(PROC_NOISE_ACC_Z*dt*dt + PROC_NOISE_VEL*dt + 
+                        PROC_NOISE_POS, 2);  // add process noise on position
 
             _P[KC_STATE_PX][KC_STATE_PX] += 
-                powf(procNoiseAcc_xy*dt + 
-                        procNoiseVel, 2); // add process noise on velocity
+                powf(PROC_NOISE_ACC_XY*dt + 
+                        PROC_NOISE_VEL, 2); // add process noise on velocity
 
             _P[KC_STATE_PY][KC_STATE_PY] += 
-                powf(procNoiseAcc_xy*dt + 
-                        procNoiseVel, 2); // add process noise on velocity
+                powf(PROC_NOISE_ACC_XY*dt + 
+                        PROC_NOISE_VEL, 2); // add process noise on velocity
 
             _P[KC_STATE_PZ][KC_STATE_PZ] += 
-                powf(procNoiseAcc_z*dt + 
-                        procNoiseVel, 2); // add process noise on velocity
+                powf(PROC_NOISE_ACC_Z*dt + 
+                        PROC_NOISE_VEL, 2); // add process noise on velocity
 
             _P[KC_STATE_D0][KC_STATE_D0] += 
-                powf(measNoiseGyro_rollpitch * dt + procNoiseAtt, 2);
+                powf(MEAS_NOISE_GYRO_ROLL_PITCH * dt + PROC_NOISE_ATT, 2);
             _P[KC_STATE_D1][KC_STATE_D1] += 
-                powf(measNoiseGyro_rollpitch * dt + procNoiseAtt, 2);
+                powf(MEAS_NOISE_GYRO_ROLL_PITCH * dt + PROC_NOISE_ATT, 2);
             _P[KC_STATE_D2][KC_STATE_D2] += 
-                powf(measNoiseGyro_yaw * dt + procNoiseAtt, 2);
+                powf(MEAS_NOISE_GYRO_ROLL_YAW * dt + PROC_NOISE_ATT, 2);
 
             for (int i=0; i<KC_STATE_DIM; i++) {
                 for (int j=i; j<KC_STATE_DIM; j++) {

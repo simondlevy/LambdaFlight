@@ -149,6 +149,7 @@ const int ch4Pin = 20; //rudd
 const int ch5Pin = 21; //gear (throttle cut)
 const int ch6Pin = 22; //aux1 (free aux channel)
 const int PPM_Pin = 23;
+
 //OneShot125 ESC pin outputs:
 const int m1Pin = 0;
 const int m2Pin = 1;
@@ -156,6 +157,7 @@ const int m3Pin = 2;
 const int m4Pin = 3;
 const int m5Pin = 4;
 const int m6Pin = 5;
+
 //PWM servo or ESC outputs:
 const int servo1Pin = 6;
 const int servo2Pin = 7;
@@ -325,14 +327,14 @@ void loop() {
   loopBlink(); //Indicate we are in main loop with short blink every 1.5 seconds
 
   //Print data at 100hz (uncomment one at a time for troubleshooting) - SELECT ONE:
-  debugRadioData();     //Prints radio pwm values (expected: 1000 to 2000)
+  //debugRadioData();     //Prints radio pwm values (expected: 1000 to 2000)
   //debugDesiredState();  //Prints desired vehicle state commanded in either degrees or deg/sec (expected: +/- maxAXIS for roll, pitch, yaw; 0 to 1 for throttle)
   //debugGyroData();      //Prints filtered gyro data direct from IMU (expected: ~ -250 to 250, 0 at rest)
   //debugAccelData();     //Prints filtered accelerometer data direct from IMU (expected: ~ -2 to 2; x,y 0 when level, z 1 when level)
   //debugMagData();       //Prints filtered magnetometer data direct from IMU (expected: ~ -300 to 300)
-  //debugRollPitchYaw();  //Prints roll, pitch, and yaw angles in degrees from Madgwick filter (expected: degrees, 0 when level)
+  debugRollPitchYaw();  //Prints roll, pitch, and yaw angles in degrees from Madgwick filter (expected: degrees, 0 when level)
   //debugPIDoutput();     //Prints computed stabilized PID variables from controller and desired setpoint (expected: ~ -1 to 1)
-  //printMotorCommands(); //Prints the values being written to the motors (expected: 120 to 250)
+  //debugMotorCommands(); //Prints the values being written to the motors (expected: 120 to 250)
   //debugServoCommands(); //Prints the values being written to the servos (expected: 0 to 180)
   //debugLoopRate();      //Prints the time between loops in microseconds (expected: microseconds between loop iterations)
 
@@ -1445,7 +1447,7 @@ void debugRadioData() {
   if (current_time - print_counter > 10000) {
     print_counter = micros();
     Serial.printf(
-            "CH1=%04d  CH2=%04d  CH3=%04d  CH4=%04d  CH5=%04d  CH6=%04d\n",
+            "CH1:%04d  CH2:%04d  CH3:%04d  CH4:%04d  CH5:%04d  CH6:%04d\n",
             channel_1_pwm, 
             channel_2_pwm, 
             channel_3_pwm, 
@@ -1508,7 +1510,7 @@ void debugMagData() {
 void debugRollPitchYaw() {
   if (current_time - print_counter > 10000) {
     print_counter = micros();
-    Serial.printf("roll=%+3.3f  pitch=%+3.3f  yaw=%+3.3f\n",
+    Serial.printf("roll:%+3.3f  pitch:%+3.3f  yaw:%+3.3f\n",
                 roll_IMU, pitch_IMU, yaw_IMU);
   }
 }
@@ -1525,7 +1527,7 @@ void debugPIDoutput() {
   }
 }
 
-void printMotorCommands() {
+void debugMotorCommands() {
   if (current_time - print_counter > 10000) {
     print_counter = micros();
     Serial.print(F("m1_command:"));
