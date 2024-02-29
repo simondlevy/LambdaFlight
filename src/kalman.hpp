@@ -64,7 +64,6 @@
 
 #include <linalg.h>
 #include <math3d.h>
-#include <outlierFilterTdoa.hpp>
 #include <m_pi.h>
 #include <datatypes.h>
 
@@ -210,13 +209,12 @@ class KalmanFilter {
         } Axis3fSubSampler_t;
 
 
-        Axis3f _accLatest;
+        //////////////////////////////////////////////////////////////////////////
+
         Axis3f _gyroLatest;
 
         Axis3fSubSampler_t _accSubSampler;
         Axis3fSubSampler_t _gyroSubSampler;
-
-        OutlierFilterTdoa _outlierFilterTdoa;
 
         float _predictedNX;
         float _predictedNY;
@@ -273,8 +271,9 @@ class KalmanFilter {
         uint32_t _lastPredictionMs;
         uint32_t _lastProcessNoiseUpdateMs;
 
+        //////////////////////////////////////////////////////////////////////////
 
-       void getVehicleState(vehicleState_t & state)
+        void getVehicleState(vehicleState_t & state)
         {
             state.x = _S[KC_STATE_X];
 
@@ -345,7 +344,7 @@ class KalmanFilter {
             return isStateWithinBounds();
         }
 
- 
+
         void update(const measurement_t & m, const uint32_t nowMs)
         {
             switch (m.type) {
@@ -385,13 +384,10 @@ class KalmanFilter {
             addProcessNoise(nowMs);
         }
 
-
         void init(const uint32_t nowMs)
         {
             axis3fSubSamplerInit(&_accSubSampler, GRAVITY_MAGNITUDE);
             axis3fSubSamplerInit(&_gyroSubSampler, DEGREES_TO_RADIANS);
-
-            _outlierFilterTdoa.reset();
 
             // Reset all data to 0 (like upon system reset)
 
@@ -1531,7 +1527,6 @@ class KalmanFilter {
         void updateWithAccel(const measurement_t & m)
         {
             axis3fSubSamplerAccumulate(&_accSubSampler, &m.data.acceleration.acc);
-            _accLatest = m.data.acceleration.acc;
         }
 
         void updateWithGyro(const measurement_t & m)
