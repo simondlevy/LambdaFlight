@@ -88,7 +88,6 @@ static const float QZ_INIT = 0;
 
 // Initial variances, uncertain of position, but know we're
 // stationary and roughly flat
-static const float STDEV_INITIAL_POSITION_XY = 100;
 static const float STDEV_INITIAL_POSITION_Z = 1;
 static const float STDEV_INITIAL_VELOCITY = 0.01;
 static const float STDEV_INITIAL_ATTITUDE_ROLL_PITCH = 0.01;
@@ -207,7 +206,7 @@ class KalmanFilter {
          * Vehicle State
          *
          * The internally-estimated state is:
-         * - X, Y, Z: the quad's position in the global frame
+         * - Z: the quad's altitude
          * - PX, PY, PZ: the quad's velocity in its body frame
          * - D0, D1, D2: attitude error
          *
@@ -215,8 +214,6 @@ class KalmanFilter {
          */         
         typedef struct {
 
-             float x;
-             float y;
              float z;
              float px;
              float py;
@@ -230,8 +227,6 @@ class KalmanFilter {
          // Indexes to access the quad's state, stored as a column vector
          typedef enum {
 
-             KC_STATE_X,
-             KC_STATE_Y,
              KC_STATE_Z,
              KC_STATE_PX,
              KC_STATE_PY,
@@ -297,13 +292,9 @@ class KalmanFilter {
 
          void getVehicleState(vehicleState_t & state)
          {
-             state.x = _kalmanState.x;
-
              state.dx = _r00*_kalmanState.px + 
                  _r01*_kalmanState.py + 
                  _r02*_kalmanState.pz;
-
-             state.y = _kalmanState.y;
 
              state.dy = _r10*_kalmanState.px + 
                  _r11*_kalmanState.py + 
@@ -420,8 +411,6 @@ class KalmanFilter {
              _lastPredictionMs = 0;
              _lastProcessNoiseUpdateMs = 0;
 
-             _kalmanState.x = 0;
-             _kalmanState.y = 0;
              _kalmanState.z = 0;
 
              _qw = QW_INIT;
@@ -453,8 +442,6 @@ class KalmanFilter {
              }
 
              // initialize state variances
-             _P[KC_STATE_X][KC_STATE_X] = powf(STDEV_INITIAL_POSITION_XY, 2);
-             _P[KC_STATE_Y][KC_STATE_Y] = powf(STDEV_INITIAL_POSITION_XY, 2);
              _P[KC_STATE_Z][KC_STATE_Z] = powf(STDEV_INITIAL_POSITION_Z, 2);
 
              _P[KC_STATE_PX][KC_STATE_PX] = powf(STDEV_INITIAL_VELOCITY, 2);
@@ -563,10 +550,6 @@ class KalmanFilter {
                  float d1 = v1/2; 
                  float d2 = v2/2;
 
-                 A[KC_STATE_X][KC_STATE_X] = 1;
-                 A[KC_STATE_Y][KC_STATE_Y] = 1;
-                 A[KC_STATE_Z][KC_STATE_Z] = 1;
-
                  A[KC_STATE_PX][KC_STATE_PX] = 1;
                  A[KC_STATE_PY][KC_STATE_PY] = 1;
                  A[KC_STATE_PZ][KC_STATE_PZ] = 1;
@@ -661,14 +644,6 @@ class KalmanFilter {
 
          void addProcessNoiseDt(float dt)
          {
-             _P[KC_STATE_X][KC_STATE_X] += 
-                 powf(PROC_NOISE_ACC_XY*dt*dt + PROC_NOISE_VEL*dt + 
-                         PROC_NOISE_POS, 2);  // add process noise on position
-
-             _P[KC_STATE_Y][KC_STATE_Y] += 
-                 powf(PROC_NOISE_ACC_XY*dt*dt + PROC_NOISE_VEL*dt + 
-                         PROC_NOISE_POS, 2);  // add process noise on position
-
              _P[KC_STATE_Z][KC_STATE_Z] += 
                  powf(PROC_NOISE_ACC_Z*dt*dt + PROC_NOISE_VEL*dt + 
                          PROC_NOISE_POS, 2);  // add process noise on position
@@ -740,50 +715,23 @@ class KalmanFilter {
 
              // ====== DYNAMICS LINEARIZATION ======
              // Initialize as the identity
-             A[KC_STATE_X][KC_STATE_X] = 1;
-             A[KC_STATE_Y][KC_STATE_Y] = 1;
-             A[KC_STATE_Z][KC_STATE_Z] = 1;
-
              A[KC_STATE_PX][KC_STATE_PX] = 1;
              A[KC_STATE_PY][KC_STATE_PY] = 1;
              A[KC_STATE_PZ][KC_STATE_PZ] = 1;
-
              A[KC_STATE_D0][KC_STATE_D0] = 1;
              A[KC_STATE_D1][KC_STATE_D1] = 1;
              A[KC_STATE_D2][KC_STATE_D2] = 1;
 
-             // position from body-frame velocity
-             A[KC_STATE_X][KC_STATE_PX] = _r00*dt;
-             A[KC_STATE_Y][KC_STATE_PX] = _r10*dt;
+             // altitude from body-frame velocity
              A[KC_STATE_Z][KC_STATE_PX] = _r20*dt;
-
-             A[KC_STATE_X][KC_STATE_PY] = _r01*dt;
-             A[KC_STATE_Y][KC_STATE_PY] = _r11*dt;
              A[KC_STATE_Z][KC_STATE_PY] = _r21*dt;
-
-             A[KC_STATE_X][KC_STATE_PZ] = _r02*dt;
-             A[KC_STATE_Y][KC_STATE_PZ] = _r12*dt;
              A[KC_STATE_Z][KC_STATE_PZ] = _r22*dt;
 
-             // position from attitude error
-             A[KC_STATE_X][KC_STATE_D0] = (_kalmanState.py*_r02 - 
-                     _kalmanState.pz*_r01)*dt;
-             A[KC_STATE_Y][KC_STATE_D0] = (_kalmanState.py*_r12 - 
-                     _kalmanState.pz*_r11)*dt;
+             // altitude from attitude error
              A[KC_STATE_Z][KC_STATE_D0] = (_kalmanState.py*_r22 - 
                      _kalmanState.pz*_r21)*dt;
-
-             A[KC_STATE_X][KC_STATE_D1] = (- _kalmanState.px*_r02 + 
-                     _kalmanState.pz*_r00)*dt;
-             A[KC_STATE_Y][KC_STATE_D1] = (- _kalmanState.px*_r12 + 
-                     _kalmanState.pz*_r10)*dt;
              A[KC_STATE_Z][KC_STATE_D1] = (- _kalmanState.px*_r22 + 
                      _kalmanState.pz*_r20)*dt;
-
-             A[KC_STATE_X][KC_STATE_D2] = (_kalmanState.px*_r01 - 
-                     _kalmanState.py*_r00)*dt;
-             A[KC_STATE_Y][KC_STATE_D2] = (_kalmanState.px*_r11 - 
-                     _kalmanState.py*_r10)*dt;
              A[KC_STATE_Z][KC_STATE_D2] = (_kalmanState.px*_r21 - 
                      _kalmanState.py*_r20)*dt;
 
@@ -882,8 +830,6 @@ class KalmanFilter {
                  // thrust can only be produced in the body's Z direction
 
                  // position update
-                 _kalmanState.x += _r00 * dx + _r01 * dy + _r02 * dz;
-                 _kalmanState.y += _r10 * dx + _r11 * dy + _r12 * dz;
                  _kalmanState.z += _r20 * dx + _r21 * dy + _r22 * dz - 
                      GRAVITY_MAGNITUDE * dt2 / 2.0f;
 
@@ -911,13 +857,8 @@ class KalmanFilter {
                  dz = _kalmanState.pz * dt + acc->z * dt2 / 2.0f; 
                  // thrust can only be produced in the body's Z direction
 
-                 // position update
-                 _kalmanState.x += _r00 * dx 
-                     + _r01 * dy + _r02 * dz;
-                 _kalmanState.y += _r10 * dx + 
-                     _r11 * dy + _r12 * dz;
-                 _kalmanState.z += _r20 * dx + 
-                     _r21 * dy + _r22 * dz - 
+                 // altitude update
+                 _kalmanState.z += _r20 * dx + _r21 * dy + _r22 * dz - 
                      GRAVITY_MAGNITUDE * dt2 / 2.0f;
 
                  // keep previous time step's state for the update
@@ -1050,15 +991,13 @@ class KalmanFilter {
              for (int i=0; i<KC_STATE_DIM; i++) {
                  K[i] = PHTd[i]/HPHR; // kalman gain = (PH' (HPH' + R )^-1)
              }
-             _kalmanState.x  += K[0] * error;
-             _kalmanState.y  += K[1] * error;
-             _kalmanState.z  += K[2] * error;
-             _kalmanState.px += K[3] * error;
-             _kalmanState.py += K[4] * error;
-             _kalmanState.pz += K[5] * error;
-             _kalmanState.d0 += K[6] * error;
-             _kalmanState.d1 += K[7] * error;
-             _kalmanState.d2 += K[8] * error;
+             _kalmanState.z  += K[0] * error;
+             _kalmanState.px += K[1] * error;
+             _kalmanState.py += K[2] * error;
+             _kalmanState.pz += K[3] * error;
+             _kalmanState.d0 += K[4] * error;
+             _kalmanState.d1 += K[5] * error;
+             _kalmanState.d2 += K[6] * error;
 
              // ====== COVARIANCE UPDATE ======
              mat_mult(Km, Hm, tmpNN1m); // KH
@@ -1256,8 +1195,6 @@ class KalmanFilter {
         bool isStateWithinBounds(void) 
         {
             return 
-                isPositionWithinBounds(_kalmanState.x) &&
-                isPositionWithinBounds(_kalmanState.y) &&
                 isPositionWithinBounds(_kalmanState.z) &&
                 isVelocityWithinBounds(_kalmanState.px) &&
                 isVelocityWithinBounds(_kalmanState.py) &&
