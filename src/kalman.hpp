@@ -80,13 +80,6 @@ static inline void mat_mult(const arm_matrix_instance_f32 * pSrcA,
   arm_mat_mult_f32(pSrcA, pSrcB, pDst);
 }
 
-static inline float fast_sqrt(float32_t in) 
-{
-  float pOut = 0;
-  arm_sqrt_f32(in, &pOut);
-  return pOut;
-}
-
 // Quaternion used for initial orientation
 static const float QW_INIT = 1;
 static const float QX_INIT = 0;
@@ -372,7 +365,6 @@ class KalmanFilter {
             return isStateWithinBounds();
         }
 
-
         void update(const measurement_t & m, const uint32_t nowMs)
         {
             switch (m.type) {
@@ -525,9 +517,9 @@ class KalmanFilter {
                         0.1e-3f) && (fabsf(v0) < 10 && fabsf(v1) < 10 &&
                             fabsf(v2) < 10)) 
             {
-                auto angle = fast_sqrt(v0*v0 + v1*v1 + v2*v2) + EPS;
-                auto ca = arm_cos_f32(angle / 2.0f);
-                auto sa = arm_sin_f32(angle / 2.0f);
+                auto angle = sqrt(v0*v0 + v1*v1 + v2*v2) + EPS;
+                auto ca = cos(angle / 2.0f);
+                auto sa = sin(angle / 2.0f);
 
                 auto dqw = ca;
                 auto dqx = sa * v0 / angle;
@@ -542,7 +534,7 @@ class KalmanFilter {
                 auto tmpq3 = dqz * _qw + dqy * _qx - dqx * _qy + dqw * _qz;
 
                 // normalize and store the result
-                auto norm = fast_sqrt(tmpq0 * tmpq0 + tmpq1 * tmpq1 + tmpq2 * tmpq2 + 
+                auto norm = sqrt(tmpq0 * tmpq0 + tmpq1 * tmpq1 + tmpq2 * tmpq2 + 
                         tmpq3 * tmpq3) + EPS;
 
                 _qw = tmpq0 / norm;
@@ -949,9 +941,9 @@ class KalmanFilter {
             auto dtwz = dt*gyro->z;
 
             // compute the quaternion values in [w,x,y,z] order
-            auto angle = fast_sqrt(dtwx*dtwx + dtwy*dtwy + dtwz*dtwz) + EPS;
-            auto ca = arm_cos_f32(angle/2.0f);
-            auto sa = arm_sin_f32(angle/2.0f);
+            auto angle = sqrt(dtwx*dtwx + dtwy*dtwy + dtwz*dtwz) + EPS;
+            auto ca = cos(angle/2.0f);
+            auto sa = sin(angle/2.0f);
             auto dqw = ca;
             auto dqx = sa*dtwx/angle;
             auto dqy = sa*dtwy/angle;
@@ -975,8 +967,9 @@ class KalmanFilter {
             }
 
             // normalize and store the result
-            float norm = fast_sqrt(
-                    tmpq0*tmpq0 + tmpq1*tmpq1 + tmpq2*tmpq2 + tmpq3*tmpq3) + EPS;
+            float norm = 
+                sqrt(tmpq0*tmpq0 + tmpq1*tmpq1 + tmpq2*tmpq2 + tmpq3*tmpq3) + 
+                EPS;
 
             _qw = tmpq0/norm; 
             _qx = tmpq1/norm; 
