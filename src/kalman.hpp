@@ -67,6 +67,12 @@
 #include <m_pi.h>
 #include <datatypes.h>
 
+// Quaternion used for initial orientation
+static const float QW_INIT = 1;
+static const float QX_INIT = 0;
+static const float QY_INIT = 0;
+static const float QZ_INIT = 0;
+
 // Initial variances, uncertain of position, but know we're
 // stationary and roughly flat
 static const float STDEV_INITIAL_POSITION_XY = 100;
@@ -216,12 +222,6 @@ class KalmanFilter {
         Axis3fSubSampler_t _accSubSampler;
         Axis3fSubSampler_t _gyroSubSampler;
 
-        float _predictedNX;
-        float _predictedNY;
-
-        float _measuredNX;
-        float _measuredNY;
-
         /**
          * Vehicle State
          *
@@ -257,12 +257,6 @@ class KalmanFilter {
         // The covariance matrix
         __attribute__((aligned(4))) float _P[KC_STATE_DIM][KC_STATE_DIM];
         arm_matrix_instance_f32 _Pm;
-
-        // Quaternion used for initial orientation [w,x,y,z]
-        float _qw_init;
-        float _qx_init;
-        float _qy_init;
-        float _qz_init;
 
         // Tracks whether an update to the state has been made, and the state
         // therefore requires finalization
@@ -403,16 +397,10 @@ class KalmanFilter {
             _S[KC_STATE_Y] = 0;
             _S[KC_STATE_Z] = 0;
 
-            // reset the attitude quaternion
-            _qw_init = 1;
-            _qx_init = 0;
-            _qy_init = 0;
-            _qz_init = 0;
-
-            _qw = _qw_init;
-            _qx = _qx_init;
-            _qy = _qy_init;
-            _qz = _qz_init;
+            _qw = QW_INIT;
+            _qx = QX_INIT;
+            _qy = QY_INIT;
+            _qz = QZ_INIT;
 
             // set the initial rotation matrix to the identity. This only affects
             // the first prediction step, since in the finalization, after shifting
@@ -1033,10 +1021,10 @@ class KalmanFilter {
 
                 float keep = 1.0f - ROLLPITCH_ZERO_REVERSION;
 
-                tmpq0 = keep * tmpq0 + ROLLPITCH_ZERO_REVERSION * _qw_init;
-                tmpq1 = keep * tmpq1 + ROLLPITCH_ZERO_REVERSION * _qx_init;
-                tmpq2 = keep * tmpq2 + ROLLPITCH_ZERO_REVERSION * _qy_init;
-                tmpq3 = keep * tmpq3 + ROLLPITCH_ZERO_REVERSION * _qz_init;
+                tmpq0 = keep * tmpq0 + ROLLPITCH_ZERO_REVERSION * QW_INIT;
+                tmpq1 = keep * tmpq1 + ROLLPITCH_ZERO_REVERSION * QX_INIT;
+                tmpq2 = keep * tmpq2 + ROLLPITCH_ZERO_REVERSION * QY_INIT;
+                tmpq3 = keep * tmpq3 + ROLLPITCH_ZERO_REVERSION * QZ_INIT;
             }
 
             // normalize and store the result
@@ -1449,9 +1437,9 @@ class KalmanFilter {
             // predicts the number of accumulated pixels in the x-direction
             float hx[KC_STATE_DIM] = {};
             arm_matrix_instance_f32 Hx = {1, KC_STATE_DIM, hx};
-            _predictedNX = (flow->dt * Npix / thetapix ) * 
+            auto predictedNX = (flow->dt * Npix / thetapix ) * 
                 ((dx_g * _r22 / z_g) - omegay_b);
-            _measuredNX = flow->dpixelx*FLOW_RESOLUTION;
+            auto measuredNX = flow->dpixelx*FLOW_RESOLUTION;
 
             // derive measurement equation with respect to dx (and z?)
             hx[KC_STATE_Z] = (Npix * flow->dt / thetapix) * 
@@ -1460,15 +1448,15 @@ class KalmanFilter {
                 (_r22 / z_g);
 
             //First update
-            scalarUpdate(&Hx, (_measuredNX-_predictedNX), 
+            scalarUpdate(&Hx, (measuredNX-predictedNX), 
                     flow->stdDevX*FLOW_RESOLUTION);
 
             // ~~~ Y velocity prediction and update ~~~
             float hy[KC_STATE_DIM] = {};
             arm_matrix_instance_f32 Hy = {1, KC_STATE_DIM, hy};
-            _predictedNY = (flow->dt * Npix / thetapix ) * 
+            auto predictedNY = (flow->dt * Npix / thetapix ) * 
                 ((dy_g * _r22 / z_g) + omegax_b);
-            _measuredNY = flow->dpixely*FLOW_RESOLUTION;
+            auto measuredNY = flow->dpixely*FLOW_RESOLUTION;
 
             // derive measurement equation with respect to dy (and z?)
             hy[KC_STATE_Z] = (Npix * flow->dt / thetapix) * 
@@ -1477,7 +1465,7 @@ class KalmanFilter {
 
             // Second update
             scalarUpdate(
-                    &Hy, (_measuredNY-_predictedNY), flow->stdDevY*FLOW_RESOLUTION);
+                    &Hy, (measuredNY-predictedNY), flow->stdDevY*FLOW_RESOLUTION);
         }
 
         void updateWithRange(const rangeMeasurement_t *range)
