@@ -26,12 +26,6 @@ static inline void mat_trans(const arm_matrix_instance_f32 * pSrc,
   arm_mat_trans_f32(pSrc, pDst);
 }
 
-static inline void mat_inv(const arm_matrix_instance_f32 * pSrc, 
-        arm_matrix_instance_f32 * pDst) 
-{
-  arm_mat_inverse_f32(pSrc, pDst);
-}
-
 static inline void mat_mult(const arm_matrix_instance_f32 * pSrcA, 
         const arm_matrix_instance_f32 * pSrcB, arm_matrix_instance_f32 * pDst) 
 {
@@ -43,10 +37,4 @@ static inline float fast_sqrt(float32_t in)
   float pOut = 0;
   arm_sqrt_f32(in, &pOut);
   return pOut;
-}
-
-static inline void mat_scale(const arm_matrix_instance_f32 * pSrcA,
-        float32_t scale, arm_matrix_instance_f32 * pDst) 
-{
-  arm_mat_scale_f32(pSrcA, scale, pDst);
 }
