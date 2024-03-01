@@ -34,9 +34,7 @@ typedef struct {
 // angular velocity in degrees/second.
 typedef struct {
 
-    float x;       // positive forward
     float dx;      // positive forward
-    float y;       // positive leftward
     float dy;      // positive leftward
     float z;       // positive upward
     float dz;      // positive upward

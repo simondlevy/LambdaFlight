@@ -33,9 +33,7 @@ import Copilot.Compile.C99
 import Utils
 
 data StateStruct = StateStruct { 
-    x'      :: Field "x" Float 
-  , dx'     :: Field "dx" Float 
-  , y'      :: Field "y" Float 
+    dx'     :: Field "dx" Float 
   , dy'     :: Field "dy" Float 
   , z'      :: Field "z" Float 
   , dz'     :: Field "dz" Float 
@@ -48,9 +46,7 @@ data StateStruct = StateStruct {
 }
 
 data State = State { 
-    x      :: SFloat 
-  , dx     :: SFloat 
-  , y      :: SFloat 
+    dx     :: SFloat 
   , dy     :: SFloat 
   , z      :: SFloat 
   , dz     :: SFloat 
@@ -66,9 +62,7 @@ instance Struct StateStruct where
 
     typename _ = "state" -- Name of the type in C
 
-    toValues v = [ Value Float (x' v)
-                 , Value Float (dx' v)
-                 , Value Float (y' v)
+    toValues v = [ Value Float (dx' v)
                  , Value Float (dy' v)
                  , Value Float (z' v)
                  , Value Float (dz' v)
@@ -84,8 +78,6 @@ instance Typed StateStruct where
 
   typeOf = Struct (StateStruct
                    (Field 0) 
-                   (Field 0) 
-                   (Field 0) 
                    (Field 0)
                    (Field 0)
                    (Field 0)
@@ -98,9 +90,7 @@ instance Typed StateStruct where
                   )
 
 liftState :: Stream StateStruct -> State
-liftState state = State (state # x') 
-                        (state # dx') 
-                        (state # y') 
+liftState state = State (state # dx') 
                         (state # dy') 
                         (state # z') 
                         (state # dz') 
