@@ -62,10 +62,30 @@
 
 #pragma once
 
-#include <linalg.h>
 #include <math3d.h>
 #include <m_pi.h>
 #include <datatypes.h>
+
+#include <arm_math.h>
+
+static inline void mat_trans(const arm_matrix_instance_f32 * pSrc, 
+        arm_matrix_instance_f32 * pDst) 
+{
+  arm_mat_trans_f32(pSrc, pDst);
+}
+
+static inline void mat_mult(const arm_matrix_instance_f32 * pSrcA, 
+        const arm_matrix_instance_f32 * pSrcB, arm_matrix_instance_f32 * pDst) 
+{
+  arm_mat_mult_f32(pSrcA, pSrcB, pDst);
+}
+
+static inline float fast_sqrt(float32_t in) 
+{
+  float pOut = 0;
+  arm_sqrt_f32(in, &pOut);
+  return pOut;
+}
 
 // Quaternion used for initial orientation
 static const float QW_INIT = 1;

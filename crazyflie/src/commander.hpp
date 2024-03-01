@@ -34,7 +34,6 @@
 
 #include "crtp/crtp_commander.h"
 
-#include <linalg.h>
 #include <datatypes.h>
 #include <config.h>
 

@@ -21,7 +21,6 @@
 // Arduino class
 #include <vl53l1.hpp>
 
-#include <linalg.h>
 #include <task.hpp>
 #include <tasks/estimator.hpp>
 
