@@ -1089,6 +1089,9 @@ extern PowerMonitorTask powerMonitorTask;
 extern PowerMonitorTask::syslinkInfo_t pmSyslinkInfo;
 extern crtpStats_t crtpStats;
 
+static float stateX;
+static float stateY;
+
 //////////////////////////////////////////////////////////////////////////////
 
     LOG_GROUP_START(radio)
@@ -1165,8 +1168,8 @@ LOG_GROUP_STOP(stabilizer)
 LOG_GROUP_STOP(controller)
 
     LOG_GROUP_START(stateEstimate)
-    LOG_ADD_CORE(LOG_FLOAT, x, &vehicleState.x)
-    LOG_ADD_CORE(LOG_FLOAT, y, &vehicleState.y)
+    LOG_ADD_CORE(LOG_FLOAT, x, &stateX)
+    LOG_ADD_CORE(LOG_FLOAT, y, &stateY)
     LOG_ADD_CORE(LOG_FLOAT, z, &vehicleState.z)
     LOG_ADD_CORE(LOG_FLOAT, vx, &vehicleState.dx)
     LOG_ADD_CORE(LOG_FLOAT, vy, &vehicleState.dy)
