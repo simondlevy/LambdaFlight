@@ -57,6 +57,45 @@ typedef enum {
 
 } kalmanMode_e;
 
+typedef union {
+    struct {
+        float x;
+        float y;
+        float z;
+    };
+    float axis[3];
+} Axis3f;
+
+typedef struct flowMeasurement_s {
+  uint32_t timestamp;
+  union {
+    struct {
+      float dpixelx;  // Accumulated pixel count x
+      float dpixely;  // Accumulated pixel count y
+    };
+    float dpixel[2];  // Accumulated pixel count
+  };
+  float stdDevX;      // Measurement standard deviation
+  float stdDevY;      // Measurement standard deviation
+  float dt;           // Time during which pixels were accumulated
+} flowMeasurement_t;
+
+
+typedef struct rangeMeasurement_s {
+  uint32_t timestamp;
+  float distance;
+  float stdDev;
+} rangeMeasurement_t;
+
+typedef struct
+{
+  Axis3f gyro; // deg/s, for legacy reasons
+} gyroscopeMeasurement_t;
+
+typedef struct
+{
+  Axis3f acc; // Gs, for legacy reasons
+} accelerationMeasurement_t;
 
 //////////////////////////////////////////////////////////////////////////////
 
@@ -71,15 +110,6 @@ typedef union {
     };
     int16_t axis[3];
 } Axis3i16;
-
-typedef union {
-    struct {
-        float x;
-        float y;
-        float z;
-    };
-    float axis[3];
-} Axis3f;
 
 struct vec3_s {
     uint32_t timestamp; // Timestamp when the data was computed
@@ -122,201 +152,9 @@ typedef enum {
     MeasurementSourceLocationService  = 0,
 } measurementSource_t;
 
-typedef struct tdoaMeasurement_s {
-    union {
-        point_t anchorPositions[2];
-        struct {
-            point_t anchorPositionA;
-            point_t anchorPositionB;
-        };
-    };
-    union {
-        uint8_t anchorIds[2];
-        struct {
-            uint8_t anchorIdA;
-            uint8_t anchorIdB;
-        };
-    };
-
-    float distanceDiff;
-    float stdDev;
-} tdoaMeasurement_t;
-
-typedef struct baro_s {
-    float pressure;           // mbar
-    float temperature;        // degree Celcius
-    float asl;                // m (ASL = altitude above sea level)
-} baro_t;
-
-typedef struct positionMeasurement_s {
-    union {
-        struct {
-            float x;
-            float y;
-            float z;
-        };
-        float pos[3];
-    };
-    float stdDev;
-    measurementSource_t source;
-} positionMeasurement_t;
-
-typedef struct poseMeasurement_s {
-    union {
-        struct {
-            float x;
-            float y;
-            float z;
-        };
-        float pos[3];
-    };
-    quaternion_t quat;
-    float stdDevPos;
-    float stdDevQuat;
-} poseMeasurement_t;
-
-typedef struct distanceMeasurement_s {
-  union {
-    struct {
-      float x;
-      float y;
-      float z;
-    };
-    float pos[3];
-  };
-  uint8_t anchorId;
-  float distance;
-  float stdDev;
-} distanceMeasurement_t;
-
-typedef struct zDistance_s {
-  uint32_t timestamp;
-  float distance;           // m
-} zDistance_t;
-
 typedef struct sensorData_s {
   Axis3f acc;               // Gs
   Axis3f gyro;              // deg/s
   Axis3f mag;               // gauss
-  baro_t baro;
   uint64_t interruptTimestamp;
 } sensorData_t;
-
-/** Estimate of position */
-typedef struct estimate_s {
-  uint32_t timestamp; // Timestamp when the data was computed
-
-  point_t position;
-} estimate_t;
-
-/** Setpoint for althold */
-typedef struct setpointZ_s {
-  float z;
-  bool isUpdate; // True = small update of setpoint, false = completely new
-} setpointZ_t;
-
-/** Flow measurement**/
-typedef struct flowMeasurement_s {
-  uint32_t timestamp;
-  union {
-    struct {
-      float dpixelx;  // Accumulated pixel count x
-      float dpixely;  // Accumulated pixel count y
-    };
-    float dpixel[2];  // Accumulated pixel count
-  };
-  float stdDevX;      // Measurement standard deviation
-  float stdDevY;      // Measurement standard deviation
-  float dt;           // Time during which pixels were accumulated
-} flowMeasurement_t;
-
-
-/** TOF measurement**/
-typedef struct rangeMeasurement_s {
-  uint32_t timestamp;
-  float distance;
-  float stdDev;
-} rangeMeasurement_t;
-
-/** Absolute height measurement */
-typedef struct heightMeasurement_s {
-  uint32_t timestamp;
-  float height;
-  float stdDev;
-} heightMeasurement_t;
-
-/** Yaw error measurement */
-typedef struct {
-  uint32_t timestamp;
-  float yawError;
-  float stdDev;
-} yawErrorMeasurement_t;
-
-/** Sweep angle measurement */
-typedef struct {
-  uint32_t timestamp;
-  const vec3d* sensorPos;    // Sensor position in the CF reference frame
-  const vec3d* rotorPos;     // Pos of rotor origin in global reference frame
-  const mat3d* rotorRot;     // Rotor rotation matrix
-  const mat3d* rotorRotInv;  // Inverted rotor rotation matrix
-  uint8_t sensorId;
-  uint8_t baseStationId;
-  uint8_t sweepId;
-  float t;                   // t is the tilt angle of the light plane on the rotor
-  float measuredSweepAngle;
-  float stdDev;
-} sweepAngleMeasurement_t;
-
-/** gyroscope measurement */
-typedef struct
-{
-  Axis3f gyro; // deg/s, for legacy reasons
-} gyroscopeMeasurement_t;
-
-/** accelerometer measurement */
-typedef struct
-{
-  Axis3f acc; // Gs, for legacy reasons
-} accelerationMeasurement_t;
-
-/** barometer measurement */
-typedef struct
-{
-  baro_t baro; // for legacy reasons
-} barometerMeasurement_t;
-
-typedef struct {
-  // position - mm
-  int16_t x;
-  int16_t y;
-  int16_t z;
-  // velocity - mm / sec
-  int16_t vx;
-  int16_t vy;
-  int16_t vz;
-  // acceleration - mm / sec^2
-  int16_t ax;
-  int16_t ay;
-  int16_t az;
-  // compressed quaternion, see quatcompress.h
-  int32_t quat;
-  // angular velocity - milliradians / sec
-  int16_t rateRoll;
-  int16_t ratePitch;
-  int16_t rateYaw;
-} stateCompressed_t;
-
-typedef struct {
-  // position - mm
-  int16_t x;
-  int16_t y;
-  int16_t z;
-  // velocity - mm / sec
-  int16_t vx;
-  int16_t vy;
-  int16_t vz;
-  // acceleration - mm / sec^2
-  int16_t ax;
-  int16_t ay;
-  int16_t az;
-} setpointCompressed_t;
