@@ -70,6 +70,11 @@ class EstimatorTask : public FreeRTOSTask {
             xSemaphoreGive(_runTaskSemaphore);
         }
 
+        void setKalmanSuccess(bool success)
+        {
+            _didKalmanSucceed = success;
+        }
+
         void enqueueGyro(const Axis3f * gyro, const bool isInInterrupt)
         {
             measurement_t m = {};
@@ -134,6 +139,8 @@ class EstimatorTask : public FreeRTOSTask {
         uint8_t measurementsQueueStorage[QUEUE_LENGTH * QUEUE_ITEM_SIZE];
         StaticQueue_t measurementsQueueBuffer;
         xQueueHandle _measurementsQueue;
+
+        bool _didKalmanSucceed;
 
         RateSupervisor _rateSupervisor;
 
@@ -214,9 +221,12 @@ class EstimatorTask : public FreeRTOSTask {
             }
 
             kalmanMode = KALMAN_MODE_FINALIZE;
+            _didKalmanSucceed = false;
+            _kalmanFilter.step(_state_none);
 
             // is state within bounds?
-            if (!_kalmanFilter.step(_state_none)) { 
+            if (!_didKalmanSucceed) { 
+
                 didResetEstimation = true;
 
                 if (nowMsec > _warningBlockTimeMsec) {

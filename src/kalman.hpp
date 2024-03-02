@@ -129,9 +129,9 @@ class KalmanFilter {
 
     public:
 
-        bool step(vehicleState_t & state)
+        void step(vehicleState_t & state)
         {
-            bool success = true;
+            void setKalmanSuccess(bool);
 
             switch (kalmanMode) {
 
@@ -148,15 +148,13 @@ class KalmanFilter {
                     break;
 
                 case KALMAN_MODE_FINALIZE:
-                    success = finalize();
+                    setKalmanSuccess(finalize());
                     break;
 
                 case KALMAN_MODE_GET_STATE:
                     getVehicleState(state);
                     break;
             }
-
-            return success;
         }
 
     private:
