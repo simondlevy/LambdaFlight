@@ -286,13 +286,9 @@ class KalmanFilter {
 
          void getVehicleState(vehicleState_t & state)
          {
-             state.dx = _r00*_kalmanState.dx + 
-                 _r01*_kalmanState.dy + 
-                 _r02*_kalmanState.dz;
+             state.dx = _kalmanState.dx;
 
-             state.dy = _r10*_kalmanState.dx + 
-                 _r11*_kalmanState.dy + 
-                 _r12*_kalmanState.dz;
+             state.dy = _kalmanState.dy;
 
              state.z = _kalmanState.z;
 

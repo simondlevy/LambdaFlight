@@ -60,22 +60,13 @@ positionPid reset hover dt state demands = demands'  where
   ki = 1
   ilimit = 5000
     
-  -- Rotate world-coordinate velocities into body coordinates
-  psi' = deg2rad $ psi state
-  cospsi = cos psi'
-  sinpsi = sin psi'
-  dx' = dx state
-  dy' = dy state
-  dxb =  dx'   * cospsi + dy' * sinpsi
-  dyb = (-dx') * sinpsi + dy' * cospsi       
-
   (rollDemand, rollInteg) = 
-    run kp ki hover reset dt ilimit (roll demands) dyb rollInteg'
+    run kp ki hover reset dt ilimit (roll demands) (dy state) rollInteg'
 
   rollInteg' = [0] ++ rollInteg
 
   (pitchDemand, pitchInteg) = 
-    run kp ki hover reset dt ilimit (pitch demands) dxb pitchInteg'
+    run kp ki hover reset dt ilimit (pitch demands) (dx state) pitchInteg'
 
   pitchInteg' = [0] ++ pitchInteg
 
