@@ -70,9 +70,14 @@ class EstimatorTask : public FreeRTOSTask {
             xSemaphoreGive(_runTaskSemaphore);
         }
 
-        void setKalmanSuccess(bool success)
+        void setKalmanStateInBounds(bool inBounds)
         {
-            _didKalmanSucceed = success;
+            _isStateInBounds = inBounds;
+        }
+
+        void setVehicleState(vehicleState_t & state)
+        {
+            memcpy(&_state, &state, sizeof(vehicleState_t));
         }
 
         void enqueueGyro(const Axis3f * gyro, const bool isInInterrupt)
@@ -140,7 +145,7 @@ class EstimatorTask : public FreeRTOSTask {
         StaticQueue_t measurementsQueueBuffer;
         xQueueHandle _measurementsQueue;
 
-        bool _didKalmanSucceed;
+        bool _isStateInBounds;
 
         RateSupervisor _rateSupervisor;
 
@@ -158,10 +163,6 @@ class EstimatorTask : public FreeRTOSTask {
 
         KalmanFilter _kalmanFilter;
 
-        measurement_t _measurement_none = {};
-
-        vehicleState_t _state_none = {};
-
         // Data used to enable the task and stabilizer loop to run with minimal locking
         // The estimator state produced by the task, copied to the stabilizer when needed.
         vehicleState_t _state;
@@ -175,7 +176,7 @@ class EstimatorTask : public FreeRTOSTask {
         {
             kalmanMode = KALMAN_MODE_INIT; 
             kalmanNowMsec = nowMsec;
-            _kalmanFilter.step(_state_none);
+            _kalmanFilter.step();
         }
 
         uint32_t step(const uint32_t nowMsec, uint32_t nextPredictionMsec) 
@@ -192,7 +193,7 @@ class EstimatorTask : public FreeRTOSTask {
             kalmanNextPredictionMsec = nextPredictionMsec;
             kalmanIsFlying = _safety->isFlying();
 
-            _kalmanFilter.step(_state_none);
+            _kalmanFilter.step();
 
             // Run the system dynamics to predict the state forward.
             if (nowMsec >= nextPredictionMsec) {
@@ -217,15 +218,14 @@ class EstimatorTask : public FreeRTOSTask {
 
                 kalmanMode = KALMAN_MODE_UPDATE; 
                 kalmanNowMsec = nowMsec;
-                _kalmanFilter.step(_state_none);
+                _kalmanFilter.step();
             }
 
             kalmanMode = KALMAN_MODE_FINALIZE;
-            _didKalmanSucceed = false;
-            _kalmanFilter.step(_state_none);
+            _isStateInBounds = false;
+            _kalmanFilter.step();
 
-            // is state within bounds?
-            if (!_didKalmanSucceed) { 
+            if (!_isStateInBounds) { 
 
                 didResetEstimation = true;
 
@@ -239,7 +239,7 @@ class EstimatorTask : public FreeRTOSTask {
 
             kalmanMode = KALMAN_MODE_GET_STATE;
 
-            _kalmanFilter.step(_state);
+            _kalmanFilter.step();
 
             xSemaphoreGive(_dataMutex);
 

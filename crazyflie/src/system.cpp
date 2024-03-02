@@ -82,9 +82,14 @@ void setMotors(float m1, float m2, float m3, float m4)
     coreTask.setMotors(m1, m2, m3, m4);
 }
 
-void setKalmanSuccess(bool success)
+void setKalmanStateInBounds(bool inBounds)
 {
-    estimatorTask.setKalmanSuccess(success);
+    estimatorTask.setKalmanStateInBounds(inBounds);
+}
+
+void setVehicleState(vehicleState_t & state)
+{
+    estimatorTask.setVehicleState(state);
 }
 
 static float cpp;
