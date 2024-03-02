@@ -129,28 +129,7 @@ class KalmanFilter {
 
     public:
 
-        typedef enum {
-            MeasurementTypeRange,
-            MeasurementTypeFlow,
-            MeasurementTypeGyroscope,
-            MeasurementTypeAcceleration,
-        } MeasurementType;
-
-        typedef struct {
-
-            MeasurementType type;
-
-            union {
-
-                rangeMeasurement_t range;
-                flowMeasurement_t flow;
-                gyroscopeMeasurement_t gyroscope;
-                accelerationMeasurement_t acceleration;
-            } data;
-
-        } measurement_t;
-
-        bool step(const measurement_t &measurement, vehicleState_t & state)
+        bool step(vehicleState_t & state)
         {
             bool success = true;
 
@@ -165,7 +144,7 @@ class KalmanFilter {
                     break;
 
                 case KALMAN_MODE_UPDATE:
-                    update(measurement, kalmanNowMsec);
+                    update(kalmanMeasurement, kalmanNowMsec);
                     break;
 
                 case KALMAN_MODE_FINALIZE:

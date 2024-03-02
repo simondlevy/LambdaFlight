@@ -9,3 +9,4 @@ kalmanMode_e kalmanMode;
 uint32_t kalmanNowMsec;
 uint32_t kalmanNextPredictionMsec;
 bool kalmanIsFlying;
+measurement_t kalmanMeasurement;

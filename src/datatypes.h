@@ -97,6 +97,28 @@ typedef struct
   Axis3f acc; // Gs, for legacy reasons
 } accelerationMeasurement_t;
 
+typedef enum {
+    MeasurementTypeRange,
+    MeasurementTypeFlow,
+    MeasurementTypeGyroscope,
+    MeasurementTypeAcceleration,
+} MeasurementType;
+
+typedef struct {
+
+    MeasurementType type;
+
+    union {
+
+        rangeMeasurement_t range;
+        flowMeasurement_t flow;
+        gyroscopeMeasurement_t gyroscope;
+        accelerationMeasurement_t acceleration;
+    } data;
+
+} measurement_t;
+
+
 //////////////////////////////////////////////////////////////////////////////
 
 typedef void (*openLoopFun_t)(
@@ -153,8 +175,8 @@ typedef enum {
 } measurementSource_t;
 
 typedef struct sensorData_s {
-  Axis3f acc;               // Gs
-  Axis3f gyro;              // deg/s
-  Axis3f mag;               // gauss
-  uint64_t interruptTimestamp;
+    Axis3f acc;               // Gs
+    Axis3f gyro;              // deg/s
+    Axis3f mag;               // gauss
+    uint64_t interruptTimestamp;
 } sensorData_t;

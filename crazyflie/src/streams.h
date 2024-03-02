@@ -9,3 +9,4 @@ extern kalmanMode_e kalmanMode;
 extern uint32_t kalmanNowMsec;
 extern uint32_t kalmanNextPredictionMsec;
 extern bool kalmanIsFlying;
+extern measurement_t kalmanMeasurement;

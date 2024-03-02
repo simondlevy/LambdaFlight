@@ -72,32 +72,32 @@ class EstimatorTask : public FreeRTOSTask {
 
         void enqueueGyro(const Axis3f * gyro, const bool isInInterrupt)
         {
-            KalmanFilter::measurement_t m = {};
-            m.type = KalmanFilter::MeasurementTypeGyroscope;
+            measurement_t m = {};
+            m.type = MeasurementTypeGyroscope;
             m.data.gyroscope.gyro = *gyro;
             enqueue(&m, isInInterrupt);
         }
 
         void enqueueAccel(const Axis3f * accel, const bool isInInterrupt)
         {
-            KalmanFilter::measurement_t m = {};
-            m.type = KalmanFilter::MeasurementTypeAcceleration;
+            measurement_t m = {};
+            m.type = MeasurementTypeAcceleration;
             m.data.acceleration.acc = *accel;
             enqueue(&m, isInInterrupt);
         }
 
         void enqueueFlow(const flowMeasurement_t * flow, const bool isInInterrupt)
         {
-            KalmanFilter::measurement_t m = {};
-            m.type = KalmanFilter::MeasurementTypeFlow;
+            measurement_t m = {};
+            m.type = MeasurementTypeFlow;
             m.data.flow = *flow;
             enqueue(&m, isInInterrupt);
         }
 
         void enqueueRange(const rangeMeasurement_t * range, const bool isInInterrupt)
         {
-            KalmanFilter::measurement_t m = {};
-            m.type = KalmanFilter::MeasurementTypeRange;
+            measurement_t m = {};
+            m.type = MeasurementTypeRange;
             m.data.range = *range;
             enqueue(&m, isInInterrupt);
         }
@@ -130,7 +130,7 @@ class EstimatorTask : public FreeRTOSTask {
         static const uint32_t PREDICTION_UPDATE_INTERVAL_MS = 1000 / PREDICT_RATE;
 
         static const size_t QUEUE_LENGTH = 20;
-        static const auto QUEUE_ITEM_SIZE = sizeof(KalmanFilter::measurement_t);
+        static const auto QUEUE_ITEM_SIZE = sizeof(measurement_t);
         uint8_t measurementsQueueStorage[QUEUE_LENGTH * QUEUE_ITEM_SIZE];
         StaticQueue_t measurementsQueueBuffer;
         xQueueHandle _measurementsQueue;
@@ -151,7 +151,7 @@ class EstimatorTask : public FreeRTOSTask {
 
         KalmanFilter _kalmanFilter;
 
-        KalmanFilter::measurement_t _measurement_none = {};
+        measurement_t _measurement_none = {};
 
         vehicleState_t _state_none = {};
 
@@ -168,7 +168,7 @@ class EstimatorTask : public FreeRTOSTask {
         {
             kalmanMode = KALMAN_MODE_INIT; 
             kalmanNowMsec = nowMsec;
-            _kalmanFilter.step( _measurement_none, _state_none);
+            _kalmanFilter.step(_state_none);
         }
 
         uint32_t step(const uint32_t nowMsec, uint32_t nextPredictionMsec) 
@@ -185,7 +185,7 @@ class EstimatorTask : public FreeRTOSTask {
             kalmanNextPredictionMsec = nextPredictionMsec;
             kalmanIsFlying = _safety->isFlying();
 
-            _kalmanFilter.step(_measurement_none, _state_none);
+            _kalmanFilter.step(_state_none);
 
             // Run the system dynamics to predict the state forward.
             if (nowMsec >= nextPredictionMsec) {
@@ -205,19 +205,18 @@ class EstimatorTask : public FreeRTOSTask {
 
             // Pull the latest sensors values of interest; discard the rest
 
-            KalmanFilter::measurement_t m = {};
-
-            while (pdTRUE == xQueueReceive(_measurementsQueue, &m, 0)) {
+            while (pdTRUE == xQueueReceive(
+                        _measurementsQueue, &kalmanMeasurement, 0)) {
 
                 kalmanMode = KALMAN_MODE_UPDATE; 
                 kalmanNowMsec = nowMsec;
-                _kalmanFilter.step(m, _state_none);
+                _kalmanFilter.step(_state_none);
             }
 
             kalmanMode = KALMAN_MODE_FINALIZE;
 
             // is state within bounds?
-            if (!_kalmanFilter.step(_measurement_none, _state_none)) { 
+            if (!_kalmanFilter.step(_state_none)) { 
                 didResetEstimation = true;
 
                 if (nowMsec > _warningBlockTimeMsec) {
@@ -230,7 +229,7 @@ class EstimatorTask : public FreeRTOSTask {
 
             kalmanMode = KALMAN_MODE_GET_STATE;
 
-            _kalmanFilter.step(_measurement_none, _state);
+            _kalmanFilter.step(_state);
 
             xSemaphoreGive(_dataMutex);
 
@@ -265,7 +264,7 @@ class EstimatorTask : public FreeRTOSTask {
         }
 
         void enqueue(
-                const KalmanFilter::measurement_t * measurement, 
+                const measurement_t * measurement, 
                 const bool isInInterrupt)
         {
             if (!_measurementsQueue) {
