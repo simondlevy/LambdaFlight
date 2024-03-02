@@ -259,14 +259,8 @@ class KalmanFilter {
          float _qy;
          float _qz;
 
-         // The quad's attitude as a rotation matrix (used by the prediction,
+         // Third row (Z) of attitude as a rotation matrix (used by the prediction,
          // updated by the finalization)
-         float _r00;
-         float _r01;
-         float _r02;
-         float _r10;
-         float _r11;
-         float _r12;
          float _r20;
          float _r21;
          float _r22;
@@ -292,7 +286,8 @@ class KalmanFilter {
 
              state.z = _kalmanState.z;
 
-             state.dz = _r20*_kalmanState.dx + 
+             state.dz = 
+                 _r20*_kalmanState.dx + 
                  _r21*_kalmanState.dy + 
                  _r22*_kalmanState.dz;
 
@@ -411,12 +406,6 @@ class KalmanFilter {
              // set the initial rotation matrix to the identity. This only affects
              // the first prediction step, since in the finalization, after shifting
              // attitude errors into the attitude state, the rotation matrix is updated.
-             _r00 = 1;
-             _r01 = 0;
-             _r02 = 0;
-             _r10 = 0;
-             _r11 = 1;
-             _r12 = 0;
              _r20 = 0;
              _r21 = 0;
              _r22 = 1;
@@ -563,13 +552,6 @@ class KalmanFilter {
 
              // Convert the new attitude to a rotation matrix, such that we can
              // rotate body-frame velocity and acc
-
-             _r00 = _qw * _qw + _qx * _qx - _qy * _qy - _qz * _qz;
-             _r01 = 2 * _qx * _qy - 2 * _qw * _qz; 
-             _r02 = 2 * _qx * _qz + 2 * _qw * _qy; 
-             _r10 = 2 * _qx * _qy + 2 * _qw * _qz;
-             _r11 = _qw * _qw - _qx * _qx + _qy * _qy - _qz * _qz;
-             _r12 = 2 * _qy * _qz - 2 * _qw * _qx; 
              _r20 = 2 * _qx * _qz - 2 * _qw * _qy;
              _r21 = 2 * _qy * _qz + 2 * _qw * _qx;
              _r22 = _qw * _qw - _qx * _qx - _qy * _qy + _qz * _qz;
