@@ -21,17 +21,8 @@ WorldInfo {
   ]
   title "LIS-EPFL Blimp"
   physics "blimp_physics"
-  contactProperties [
-    ContactProperties {
-      material1 "blimp"
-      coulombFriction [
-        0.6
-      ]
-      bounce 0.4
-      bounceVelocity 0
-    }
-  ]
 }
+
 Viewpoint {
   orientation 0.12886696059458586 0.060173610492208145 -0.9898345533812433 1.921830125849391
   position -0.7158540273007847 5.211143316155065 2.1781063902672084

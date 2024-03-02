@@ -53,6 +53,7 @@ static dBodyID gRobotBody = NULL;
 
 #include <stdio.h>
 
+/*
 static FILE * logfp;
 
 static void report(void)
@@ -68,6 +69,7 @@ static void report(void)
     }
     count++;
 }
+*/
 
 
 //-----------------------------------------------------------------
@@ -75,7 +77,7 @@ static void report(void)
 
 DLLEXPORT void webots_physics_init() 
 {
-    logfp = fopen("/home/levys/Desktop/log.txt", "w");
+    //logfp = fopen("/home/levys/Desktop/log.txt", "w");
 
     // init global variables
     gRobotBody = dWebotsGetBodyFromDEF(kRobotName);
@@ -89,78 +91,13 @@ DLLEXPORT void webots_physics_init()
 
 DLLEXPORT void webots_physics_step() 
 {
-    Matrix33 rotBodyToFrame;
-    Matrix33 rotFrameToBody;
-    Matrix33 rotFrameToAeroBody;
-    Matrix33 tmp1, tmp2;
-    dReal *ode;
-    Vector6 genPos, genSpeed, genForce;
-    dVector3 propThrusts;
-    double *controls;
-    int size;
-
-    report();
+    // report();
 
     // we return if we have no robot to actuate.
     if (gRobotBody == NULL)
         return;
 
-    dBodySetPosition(gRobotBody, 0, 0, 0);
-
-    return;
-
-    // read control surfaces values
-    controls = (double *)dWebotsReceive(&size);
-    if (size != 3 * sizeof(double)) {
-        // physics plugin and controller run with different frequencies
-        // therefore it is not guarantied that control value are present in the
-        // buffer for each webots_physics_step()
-        return;
-    }
-
-    b2b_commandsToThrust(controls[0], controls[1], controls[2], propThrusts);
-
-    // get rotation matrix from webots frame coordinate to aero body coordinate
-    ode = (dReal *)dBodyGetRotation(gRobotBody);
-    rotBodyToFrame[0] = ode[0];
-    rotBodyToFrame[1] = ode[1];
-    rotBodyToFrame[2] = ode[2];
-    rotBodyToFrame[3] = ode[4];
-    rotBodyToFrame[4] = ode[5];
-    rotBodyToFrame[5] = ode[6];
-    rotBodyToFrame[6] = ode[8];
-    rotBodyToFrame[7] = ode[9];
-    rotBodyToFrame[8] = ode[10];
-    utils_Assign(rotFrameToBody, rotBodyToFrame, 9);
-    utils_InvertMatrix33(rotFrameToBody);
-    utils_Multiply(rotFrameToAeroBody, kRotWebotsToAeroBody, rotFrameToBody, 3, 3, 3);
-
-    // get the velocity in aero body coordinate...
-    utils_Multiply(genSpeed, rotFrameToAeroBody, dBodyGetLinearVel(gRobotBody), 3, 3, 1);
-    utils_Multiply(&genSpeed[3], rotFrameToAeroBody, dBodyGetAngularVel(gRobotBody), 3, 3, 1);
-
-    // get the body position...
-    utils_Multiply(genPos, kRotWebotsToAeroBody, dBodyGetPosition(gRobotBody), 3, 3, 1);
-
-    // ...and rotation.
-    utils_Multiply(tmp1, rotFrameToBody, kRotAeroToWebotsBody, 3, 3, 3);
-    utils_Multiply(tmp2, kRotWebotsToAeroBody, tmp1, 3, 3, 3);
-    genPos[3] = dAtan2(tmp2[5], tmp2[8]);
-    genPos[4] = dAsin(-tmp2[2]);
-    genPos[5] = dAtan2(tmp2[1], tmp2[0]);
-
-    // run blimp model
-    bmod_ComputeGenForces(genPos, genSpeed, propThrusts, tmp1);
-
-    // convert back to webots coordinate...
-    utils_Multiply(genForce, kRotAeroToWebotsBody, tmp1, 3, 3, 1);
-    utils_Multiply(&genForce[3], kRotAeroToWebotsBody, &tmp1[3], 3, 3, 1);
-
-    // ...and apply to body.
-    //dBodyAddRelForce(gRobotBody, genForce[0], genForce[1], genForce[2]);
-    //dBodyAddRelTorque(gRobotBody, genForce[3], genForce[4], genForce[5]);
-
-
+    dBodySetPosition(gRobotBody, -1, 1, 1);
 }
 
 DLLEXPORT int webots_physics_collide(dGeomID g1, dGeomID g2) {
