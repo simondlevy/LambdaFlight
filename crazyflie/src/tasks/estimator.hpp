@@ -24,6 +24,8 @@
 #include <safety.hpp>
 #include <task.hpp>
 
+#include <streams.h>
+
 class EstimatorTask : public FreeRTOSTask {
 
     public:
@@ -164,8 +166,9 @@ class EstimatorTask : public FreeRTOSTask {
 
         void initKalmanFilter(const uint32_t nowMsec)
         {
-            _kalmanFilter.step(KalmanFilter::MODE_INIT, _measurement_none,
-                    nowMsec, 0, false, _state_none);
+            kalmanMode = KALMAN_MODE_INIT; 
+            _kalmanFilter.step(
+                    _measurement_none, nowMsec, 0, false, _state_none);
         }
 
         uint32_t step(const uint32_t nowMs, uint32_t nextPredictionMs) 
@@ -177,8 +180,10 @@ class EstimatorTask : public FreeRTOSTask {
                 didResetEstimation = false;
             }
 
-            _kalmanFilter.step( KalmanFilter::MODE_PREDICT, _measurement_none,
-                    nowMs, nextPredictionMs, _safety->isFlying(), _state_none);
+            kalmanMode = KALMAN_MODE_PREDICT;
+
+            _kalmanFilter.step(_measurement_none, nowMs, nextPredictionMs,
+                    _safety->isFlying(), _state_none);
 
             // Run the system dynamics to predict the state forward.
             if (nowMs >= nextPredictionMs) {
@@ -202,15 +207,15 @@ class EstimatorTask : public FreeRTOSTask {
 
             while (pdTRUE == xQueueReceive(_measurementsQueue, &m, 0)) {
 
-                _kalmanFilter.step(KalmanFilter::MODE_UPDATE, m,
-                        nowMs, 0, false, _state_none);
+                kalmanMode = KALMAN_MODE_UPDATE; 
+                _kalmanFilter.step(m, nowMs, 0, false, _state_none);
             }
+
+            kalmanMode = KALMAN_MODE_FINALIZE;
 
             // is state within bounds?
             if (!_kalmanFilter.step(
-                        KalmanFilter::MODE_FINALIZE, _measurement_none, 0,
-                        0, false, _state_none)) { 
-
+                        _measurement_none, 0, 0, false, _state_none)) { 
                 didResetEstimation = true;
 
                 if (nowMs > _warningBlockTimeMs) {
@@ -221,8 +226,9 @@ class EstimatorTask : public FreeRTOSTask {
 
             xSemaphoreTake(_dataMutex, portMAX_DELAY);
 
-            _kalmanFilter.step(KalmanFilter::MODE_GET_STATE, _measurement_none,
-                    0, 0, false, _state);
+            kalmanMode = KALMAN_MODE_GET_STATE;
+
+            _kalmanFilter.step(_measurement_none, 0, 0, false, _state);
 
             xSemaphoreGive(_dataMutex);
 

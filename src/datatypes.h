@@ -47,6 +47,17 @@ typedef struct {
 
 } vehicleState_t;
 
+typedef enum {
+
+    KALMAN_MODE_INIT,
+    KALMAN_MODE_PREDICT,
+    KALMAN_MODE_UPDATE,
+    KALMAN_MODE_FINALIZE,
+    KALMAN_MODE_GET_STATE
+
+} kalmanMode_e;
+
+
 //////////////////////////////////////////////////////////////////////////////
 
 typedef void (*openLoopFun_t)(

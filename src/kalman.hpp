@@ -65,6 +65,7 @@
 #include <math3d.h>
 #include <m_pi.h>
 #include <datatypes.h>
+#include <streams.h>
 
 #include <arm_math.h>
 
@@ -129,16 +130,6 @@ class KalmanFilter {
     public:
 
         typedef enum {
-
-            MODE_INIT,
-            MODE_PREDICT,
-            MODE_UPDATE,
-            MODE_FINALIZE,
-            MODE_GET_STATE
-
-        } mode_t;
-
-        typedef enum {
             MeasurementTypeRange,
             MeasurementTypeFlow,
             MeasurementTypeGyroscope,
@@ -160,7 +151,6 @@ class KalmanFilter {
         } measurement_t;
 
         bool step(
-                const mode_t mode, 
                 const measurement_t &measurement,
                 const uint32_t nowMsec,
                 const uint32_t nextPredictionMsec,
@@ -169,25 +159,25 @@ class KalmanFilter {
         {
             bool success = true;
 
-            switch (mode) {
+            switch (kalmanMode) {
 
-                case MODE_INIT:
+                case KALMAN_MODE_INIT:
                     init(nowMsec);
                     break;
 
-                case MODE_PREDICT:
+                case KALMAN_MODE_PREDICT:
                     predict(nowMsec, nextPredictionMsec, isFlying);
                     break;
 
-                case MODE_UPDATE:
+                case KALMAN_MODE_UPDATE:
                     update(measurement, nowMsec);
                     break;
 
-                case MODE_FINALIZE:
+                case KALMAN_MODE_FINALIZE:
                     success = finalize();
                     break;
 
-                case MODE_GET_STATE:
+                case KALMAN_MODE_GET_STATE:
                     getVehicleState(state);
                     break;
             }
