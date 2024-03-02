@@ -38,9 +38,7 @@ yscale = 4e-5
 
 spec = do
 
-    let motors = step clock_rate tbase tscale tmin prscale yscale
-
-    --trigger "setMotors" true [arg tbase, arg tbase, arg tbase, arg tbase]
+    let motors = coreStep clock_rate tbase tscale tmin prscale yscale
 
     trigger "setMotors" true [
         arg $ Motors.qm1 motors, 

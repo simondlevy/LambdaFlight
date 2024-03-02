@@ -55,9 +55,7 @@ resetPids :: SBool
 resetPids = extern "resetPids" Nothing
 
 
-step :: ClockRate -> SFloat -> SFloat -> SFloat -> SFloat -> SFloat -> Motors
-
-step clock_rate tbase tscale tmin prscale yscale = motors where
+coreStep clock_rate tbase tscale tmin prscale yscale = motors where
 
   vehicleState = liftState stateStruct
 
@@ -81,3 +79,7 @@ step clock_rate tbase tscale tmin prscale yscale = motors where
                                  ((roll demands') * prscale)
                                  ((pitch demands') * prscale)
                                  ((yaw demands') * yscale)
+
+realStep clock_rate tbase tscale tmin prscale yscale = motors where
+
+  motors = coreStep clock_rate tbase tscale tmin prscale yscale
