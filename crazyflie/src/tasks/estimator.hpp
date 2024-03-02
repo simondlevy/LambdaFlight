@@ -145,7 +145,7 @@ class EstimatorTask : public FreeRTOSTask {
         // Semaphore to signal that we got data from the stabilizer loop to process
         SemaphoreHandle_t _runTaskSemaphore;
 
-        uint32_t _warningBlockTimeMs;
+        uint32_t _warningBlockTimeMsec;
 
         Safety * _safety;
 
@@ -167,30 +167,32 @@ class EstimatorTask : public FreeRTOSTask {
         void initKalmanFilter(const uint32_t nowMsec)
         {
             kalmanMode = KALMAN_MODE_INIT; 
-            _kalmanFilter.step(
-                    _measurement_none, nowMsec, 0, false, _state_none);
+            kalmanNowMsec = nowMsec;
+            _kalmanFilter.step( _measurement_none, _state_none);
         }
 
-        uint32_t step(const uint32_t nowMs, uint32_t nextPredictionMs) 
+        uint32_t step(const uint32_t nowMsec, uint32_t nextPredictionMsec) 
         {
             xSemaphoreTake(_runTaskSemaphore, portMAX_DELAY);
 
             if (didResetEstimation) {
-                initKalmanFilter(nowMs);
+                initKalmanFilter(nowMsec);
                 didResetEstimation = false;
             }
 
             kalmanMode = KALMAN_MODE_PREDICT;
+            kalmanNowMsec = nowMsec;
+            kalmanNextPredictionMsec = nextPredictionMsec;
+            kalmanIsFlying = _safety->isFlying();
 
-            _kalmanFilter.step(_measurement_none, nowMs, nextPredictionMs,
-                    _safety->isFlying(), _state_none);
+            _kalmanFilter.step(_measurement_none, _state_none);
 
             // Run the system dynamics to predict the state forward.
-            if (nowMs >= nextPredictionMs) {
+            if (nowMsec >= nextPredictionMsec) {
 
-                nextPredictionMs = nowMs + PREDICTION_UPDATE_INTERVAL_MS;
+                nextPredictionMsec = nowMsec + PREDICTION_UPDATE_INTERVAL_MS;
 
-                if (!_rateSupervisor.validate(nowMs)) {
+                if (!_rateSupervisor.validate(nowMsec)) {
                     consolePrintf(
                             "ESTIMATOR: WARNING: Kalman prediction rate off (%lu)\n", 
                             _rateSupervisor.getLatestCount());
@@ -208,18 +210,18 @@ class EstimatorTask : public FreeRTOSTask {
             while (pdTRUE == xQueueReceive(_measurementsQueue, &m, 0)) {
 
                 kalmanMode = KALMAN_MODE_UPDATE; 
-                _kalmanFilter.step(m, nowMs, 0, false, _state_none);
+                kalmanNowMsec = nowMsec;
+                _kalmanFilter.step(m, _state_none);
             }
 
             kalmanMode = KALMAN_MODE_FINALIZE;
 
             // is state within bounds?
-            if (!_kalmanFilter.step(
-                        _measurement_none, 0, 0, false, _state_none)) { 
+            if (!_kalmanFilter.step(_measurement_none, _state_none)) { 
                 didResetEstimation = true;
 
-                if (nowMs > _warningBlockTimeMs) {
-                    _warningBlockTimeMs = nowMs + WARNING_HOLD_BACK_TIME_MS;
+                if (nowMsec > _warningBlockTimeMsec) {
+                    _warningBlockTimeMsec = nowMsec + WARNING_HOLD_BACK_TIME_MS;
                     consolePrintf("ESTIMATOR: State out of bounds, resetting\n");
                 }
             }
@@ -228,12 +230,11 @@ class EstimatorTask : public FreeRTOSTask {
 
             kalmanMode = KALMAN_MODE_GET_STATE;
 
-            _kalmanFilter.step(_measurement_none, 0, 0, false, _state);
+            _kalmanFilter.step(_measurement_none, _state);
 
             xSemaphoreGive(_dataMutex);
 
-
-            return nextPredictionMs;
+            return nextPredictionMsec;
         }
 
         static void runEstimatorTask(void * obj) 
@@ -247,10 +248,10 @@ class EstimatorTask : public FreeRTOSTask {
 
             systemWaitStart();
 
-            auto nextPredictionMs = msec();
+            auto nextPredictionMsec = msec();
 
             _rateSupervisor.init(
-                    nextPredictionMs, 
+                    nextPredictionMsec, 
                     1000, 
                     PREDICT_RATE - 1, 
                     PREDICT_RATE + 1, 
@@ -259,7 +260,7 @@ class EstimatorTask : public FreeRTOSTask {
             while (true) {
 
                 // would be nice if this had a precision higher than 1ms...
-                nextPredictionMs = step(msec(), nextPredictionMs);
+                nextPredictionMsec = step(msec(), nextPredictionMsec);
             }
         }
 

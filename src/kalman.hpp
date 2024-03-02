@@ -150,27 +150,22 @@ class KalmanFilter {
 
         } measurement_t;
 
-        bool step(
-                const measurement_t &measurement,
-                const uint32_t nowMsec,
-                const uint32_t nextPredictionMsec,
-                const bool isFlying,
-                vehicleState_t & state)
+        bool step(const measurement_t &measurement, vehicleState_t & state)
         {
             bool success = true;
 
             switch (kalmanMode) {
 
                 case KALMAN_MODE_INIT:
-                    init(nowMsec);
+                    init(kalmanNowMsec);
                     break;
 
                 case KALMAN_MODE_PREDICT:
-                    predict(nowMsec, nextPredictionMsec, isFlying);
+                    predict(kalmanNowMsec, kalmanNextPredictionMsec, kalmanIsFlying);
                     break;
 
                 case KALMAN_MODE_UPDATE:
-                    update(measurement, nowMsec);
+                    update(measurement, kalmanNowMsec);
                     break;
 
                 case KALMAN_MODE_FINALIZE:
