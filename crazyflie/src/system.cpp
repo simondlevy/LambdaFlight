@@ -45,6 +45,9 @@
 #include <system.h>
 #include <worker.hpp>
 
+// Haskell Copilot streams
+#include <streams.h>
+
 // Arduino class
 #include <vl53l1.hpp>
 
@@ -72,14 +75,7 @@ UsbLinkTask usbLinkTask;
 
 PowerMonitorTask::syslinkInfo_t pmSyslinkInfo;
 
-// Haskell Copilot suppoort --------------------------------------------------
-
-// Streams shared with Haskell Copilot
-demands_t openLoopDemands;
-//demands_t finalDemands;
-vehicleState_t vehicleState;
-bool inHoverMode;
-bool resetPids;
+// Haskell Copilot callbacks --------------------------------------------------
 
 void setMotors(float m1, float m2, float m3, float m4)
 {
