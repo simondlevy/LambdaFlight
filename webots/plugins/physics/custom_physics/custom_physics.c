@@ -62,10 +62,15 @@ DLLEXPORT void webots_physics_step()
     // report();
 
     // we return if we have no robot to actuate.
-    if (gRobotBody == NULL)
+    if (gRobotBody == NULL) {
         return;
+    }
 
-    dBodySetPosition(gRobotBody, -1, 1, 1);
+    static float z;
+
+    z = z == 0 ? 1 : z + 0.01;
+
+    dBodySetPosition(gRobotBody, -1, 1, z);
 }
 
 DLLEXPORT int webots_physics_collide(dGeomID g1, dGeomID g2) {
