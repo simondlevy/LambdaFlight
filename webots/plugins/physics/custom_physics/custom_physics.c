@@ -79,6 +79,10 @@ DLLEXPORT void webots_physics_step()
     z = z == 0 ? 1 : z + 0.001;
 
     dBodySetPosition(gRobotBody, -1, 1, z);
+
+    dMatrix3 rot = {};
+
+    dBodySetRotation(gRobotBody, rot);
 }
 
 DLLEXPORT int webots_physics_collide(dGeomID g1, dGeomID g2) {
