@@ -231,6 +231,8 @@ int main(int argc, char ** argv)
         openLoopDemands.thrust = 2 * ((altitudeTarget - ALTITUDE_TARGET_MIN) /
                 (ALTITUDE_TARGET_MAX - ALTITUDE_TARGET_MIN)) - 1;
 
+        // Run copilot PID controllers and motor mixer, which will call
+        // setMotors() above
         copilot_control_step();
 
         // setup emitter buffer

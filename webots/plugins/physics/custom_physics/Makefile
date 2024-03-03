@@ -17,7 +17,7 @@
 # You may add some variable definitions hereafter to customize the build process
 # See documentation in $(WEBOTS_HOME_PATH)/resources/Makefile.include
 
-C_SOURCES = custom_physics.c custommodel.c custom2b.c utils.c
+CXX_SOURCES = custom_physics.cpp custommodel.cpp custom2b.cpp utils.cpp
 
 ### Do not modify: this includes Webots global Makefile.include
 null :=
@@ -25,5 +25,8 @@ space := $(null) $(null)
 WEBOTS_HOME_PATH?=$(subst $(space),\ ,$(strip $(subst \,/,$(WEBOTS_HOME))))
 include $(WEBOTS_HOME_PATH)/resources/Makefile.include
 
+# Use the Webots C API in your C++ controller program
+USE_C_API = true
+
 edit:
-	vim custom_physics.c
+	vim custom_physics.cpp

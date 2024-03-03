@@ -11,6 +11,8 @@
 #include "custommodel.h"
 #include "utils.h"
 
+#include "dynamics/fixedpitch/quadxcf.hpp"
+
 // constants
 const char kRobotName[] = "custom_crazyflie";
 const dReal kRotWebotsToAeroBody[] = {1, 0, 0, 0, 1, 0, 0, 0, 1};
