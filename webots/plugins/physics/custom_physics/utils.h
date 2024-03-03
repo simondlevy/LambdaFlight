@@ -1,6 +1,6 @@
 /****************************************************************************
 
-blimp_physics -- A blimp physics model for Webots.
+custom_physics -- A custom physics model for Webots.
 
 Copyright (C) 2006 Laboratory of Intelligent Systems, EPFL, Lausanne
 Authors:    Alexis Guanella            guanella@ini.phys.ethz.ch
@@ -38,28 +38,41 @@ Author:		Alexis Guanella (ag)
 
 ------------------------------------------------------------------------------*/
 
-#include "blimp2b.h"
+#ifndef _UTILS_H
+#define _UTILS_H
 
-static const dReal SinAlphaTimesdAlpha = REAL(0.144);
-static const dReal SinBetaTimesdBeta = REAL(0.073);
-static const dReal CosBetaTimesdBeta = REAL(0.484);
-static const dReal SinGammaTimesdGamma = REAL(0.045);
+#include <ode/common.h>
 
 //------------------------------------------------------------------------------
-// Engines: command [-1.0...1.0] to thrust [N] converters
+// Missing from <ode/common.h>
 
-void b2b_commandsToThrust(double inFront, double inYaw, double inVert, dReal *propThrusts) {
-  // our thrusters do not have same power in both direction due to propeller shape.
-  propThrusts[0] = inFront * (inFront < 0 ? REAL(0.0450) : REAL(0.0400));
-  propThrusts[1] = inYaw * (inYaw < 0 ? REAL(0.0250) : REAL(0.0300));
-  propThrusts[2] = inVert * (inVert < 0 ? REAL(0.0450) : REAL(0.0250));
-}
+#if defined(dSINGLE)
+#define dAsin(x) ((float)asinf(float(x)))
+#elif defined(dDOUBLE)
+#define dAsin(x) asin(x)
+#else
+#error You must #define dSINGLE or dDOUBLE
+#endif
 
-void b2b_compThrustWrench(const dReal *propThrusts, dReal *genForceAB) {
-  genForceAB[0] += +propThrusts[0];
-  genForceAB[1] += -propThrusts[1];
-  genForceAB[2] += +propThrusts[2];
-  genForceAB[3] += +SinBetaTimesdBeta * propThrusts[1];
-  genForceAB[4] += +SinAlphaTimesdAlpha * propThrusts[0] - SinGammaTimesdGamma * propThrusts[2];
-  genForceAB[5] += +CosBetaTimesdBeta * propThrusts[1];
-}
+typedef dReal Vector6[6];
+typedef dReal Matrix33[9];
+
+//------------------------------------------------------------------------------
+// Lin. Algebra
+
+/* set a vector/matrix of size n to all zeros, or to a specific value. */
+void utils_SetZero(dReal *a, int n);
+void utils_SetValue(dReal *a, int n, dReal value);
+void utils_Assign(dReal *a, const dReal *b, int n);
+void utils_Add(dReal *a, const dReal *b, int n);
+
+/* matrix multiplication. all matrices are stored in standard row format.
+ * the digit refers to the argument that is transposed:
+ *		A = B  * C   (sizes: A:p*r B:p*q C:q*r)
+ */
+void utils_Multiply(dReal *A, const dReal *B, const dReal *C, int p, int q, int r);
+
+/* Matrix inversion */
+void utils_InvertMatrix33(dReal *m);
+
+#endif  // _UTILS_H

@@ -8,19 +8,19 @@ EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2023b/project
 EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2023b/projects/objects/chairs/protos/Chair.proto"
 EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2023b/projects/objects/tables/protos/RoundTable.proto"
 
-EXTERNPROTO "../protos/Blimp.proto"
+EXTERNPROTO "../protos/Custom.proto"
 
 WorldInfo {
   info [
-    "A blimp robot model demonstrating custom physics."
+    "A custom robot model demonstrating custom physics."
     "If you wish you can control the robot with the keyboard:"
     "The control keys are: up, down, right, left, page up, page down and space (reset)."
     "Authors: Jean-Christophe Zufferey, Alexis Guanella, Antoine Beyeler"
     "Laboratory of Intelligent Systems (LIS)"
     "Swiss Federal Institute of Technology (EPFL), Lausanne"
   ]
-  title "LIS-EPFL Blimp"
-  physics "blimp_physics"
+  title "LIS-EPFL Custom"
+  physics "custom_physics"
 }
 
 Viewpoint {
@@ -30,7 +30,7 @@ Viewpoint {
 }
 TexturedBackground {
 }
-DEF blimp_lis Blimp {
+DEF custom_lis Custom {
   translation -3.5905 -1.2767 1.196
   rotation 0.008908834396613568 -0.023760697188772353 0.9996779791206752 2.4247010340014534
 }

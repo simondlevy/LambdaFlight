@@ -1,6 +1,6 @@
 /****************************************************************************
 
-blimp_physics -- A blimp physics model for Webots.
+custom_physics -- A custom physics model for Webots.
 
 Copyright (C) 2006 Laboratory of Intelligent Systems, EPFL, Lausanne
 Authors:    Alexis Guanella            guanella@ini.phys.ethz.ch
@@ -37,7 +37,7 @@ Author:		Alexis Guanella (ag)
                         Antoine Beyeler (ab)
 
 Comments:
-Some functions are specific to blimp2b (like b2b_compThrustForce),
+Some functions are specific to custom2b (like b2b_compThrustForce),
 therefore we included these function in this file.
 BE CAREFUL, because some parameters are in the Webots *.wbt world
 file:
@@ -59,7 +59,7 @@ for front support (idem for friction parameters)
 //------------------------------------------------------------------------------
 // Dynamic model parameters
 
-static const dReal b2b_m = REAL(0.184);  // mass of blimp2b [kg]
+static const dReal b2b_m = REAL(0.184);  // mass of custom2b [kg]
 static const dReal b2b_addedMass[] =     // added mass parameters [m]
   {REAL(0.033), REAL(0.129), REAL(0.129)};
 

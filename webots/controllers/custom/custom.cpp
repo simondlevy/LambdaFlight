@@ -1,6 +1,6 @@
 /****************************************************************************
 
-  blimp_joystick -- A blimp controller for Webots.
+  custom_joystick -- A custom controller for Webots.
 
   Copyright (C) 2006 Laboratory of Intelligent Systems, EPFL, Lausanne
 Authors:    Alexis Guanella            guanella@ini.phys.ethz.ch
@@ -65,7 +65,7 @@ int main() {
     // Handle emitter
     gEmitter = wb_robot_get_device("emitter");
     if (!gEmitter)
-        printf("!!! blimp_joystick :: reset :: emitter is not available.\n");
+        printf("!!! custom_joystick :: reset :: emitter is not available.\n");
 
     while (wb_robot_step(TIMESTEP) != -1) {
         // Send joystick value.

@@ -1,6 +1,6 @@
 /****************************************************************************
 
-  blimp_physics -- A blimp physics model for Webots.
+  custom_physics -- A custom physics model for Webots.
 
   Copyright (C) 2006 Laboratory of Intelligent Systems, EPFL, Lausanne
 Authors:    Alexis Guanella            guanella@ini.phys.ethz.ch
@@ -39,12 +39,12 @@ Author:		Antoine Beyeler (ab)
 
 #include <plugins/physics.h>
 
-#include "blimp2b.h"
-#include "blimpmodel.h"
+#include "custom2b.h"
+#include "custommodel.h"
 #include "utils.h"
 
 // constants
-const char kRobotName[] = "blimp_lis";
+const char kRobotName[] = "custom_lis";
 const dReal kRotWebotsToAeroBody[] = {1, 0, 0, 0, 1, 0, 0, 0, 1};
 const dReal kRotAeroToWebotsBody[] = {1, 0, 0, 0, 1, 0, 0, 0, 1};
 
@@ -82,9 +82,9 @@ DLLEXPORT void webots_physics_init()
     // init global variables
     gRobotBody = dWebotsGetBodyFromDEF(kRobotName);
     if (gRobotBody == NULL)
-        dWebotsConsolePrintf("!!! blimp_physics :: webots_physics_init :: error : could not get body of robot.\r\n");
+        dWebotsConsolePrintf("!!! custom_physics :: webots_physics_init :: error : could not get body of robot.\r\n");
     else {
-        // disable gravity for the blimp: buoyancy counteract gravity.
+        // disable gravity for the custom: buoyancy counteract gravity.
         dBodySetGravityMode(gRobotBody, 0);
     }
 }

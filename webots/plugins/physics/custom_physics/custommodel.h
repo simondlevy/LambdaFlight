@@ -1,6 +1,6 @@
 /****************************************************************************
 
-blimp_physics -- A blimp physics model for Webots.
+custom_physics -- A custom physics model for Webots.
 
 Copyright (C) 2006 Laboratory of Intelligent Systems, EPFL, Lausanne
 Authors:    Alexis Guanella            guanella@ini.phys.ethz.ch

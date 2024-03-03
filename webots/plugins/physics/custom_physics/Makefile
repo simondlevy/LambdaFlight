@@ -17,7 +17,7 @@
 # You may add some variable definitions hereafter to customize the build process
 # See documentation in $(WEBOTS_HOME_PATH)/resources/Makefile.include
 
-C_SOURCES = blimp_physics.c blimpmodel.c blimp2b.c utils.c
+C_SOURCES = custom_physics.c custommodel.c custom2b.c utils.c
 
 ### Do not modify: this includes Webots global Makefile.include
 null :=
@@ -26,4 +26,4 @@ WEBOTS_HOME_PATH?=$(subst $(space),\ ,$(strip $(subst \,/,$(WEBOTS_HOME))))
 include $(WEBOTS_HOME_PATH)/resources/Makefile.include
 
 edit:
-	vim blimp_physics.c
+	vim custom_physics.c
