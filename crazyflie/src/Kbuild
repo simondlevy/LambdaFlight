@@ -6,7 +6,7 @@ obj-y += platform/
 obj-y += stm32f4/
 obj-y += tasks/
 
-obj-y += copilot.o
+obj-y += copilot_core.o
 
 obj-y += bootloader.o
 obj-y += cfassert.o

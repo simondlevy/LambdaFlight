@@ -27,7 +27,6 @@ import Copilot.Compile.C99
 import Clock
 import Demands
 import Mixers
-import Modes
 import Motors
 import State
 import Utils
@@ -55,6 +54,23 @@ inHoverMode = extern "inHoverMode" Nothing
 resetPids :: SBool
 resetPids = extern "resetPids" Nothing
 
+runningMode :: SInt8
+runningMode = extern "runningMode" Nothing
+
+kalman_mode_init :: SInt8
+kalman_mode_init = 0
+
+kalman_mode_predict :: SInt8
+kalman_mode_predict = 1
+
+kalman_mode_update :: SInt8
+kalman_mode_update = 2
+
+kalman_mode_finalize :: SInt8
+kalman_mode_finalize = 3
+
+kalman_mode_get_state :: SInt8
+kalman_mode_get_state = 4
 
 coreStep clock_rate tbase tscale tmin prscale yscale = motors where
 
