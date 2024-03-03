@@ -16,6 +16,7 @@ PROTO Simple [
   field SFBool     synchronization TRUE        # Is `Robot.synchronization`.
   field MFNode     extensionSlot   []          # Extends the robot with new nodes in the extension slot.
 ]
+
 {
   Robot {
     translation IS translation

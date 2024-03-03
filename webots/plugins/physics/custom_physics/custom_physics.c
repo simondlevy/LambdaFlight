@@ -68,7 +68,7 @@ DLLEXPORT void webots_physics_step()
 
     static float z;
 
-    z = z == 0 ? 1 : z + 0.01;
+    z = z == 0 ? 1 : z + 0.001;
 
     dBodySetPosition(gRobotBody, -1, 1, z);
 }
