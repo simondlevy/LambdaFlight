@@ -26,7 +26,7 @@ import Copilot.Compile.C99
 
 import Utils
 
-data Mode = 
+data Mode =
          MODE_RUN_CORE
        | MODE_KALMAN_INIT
        | MODE_KALMAN_PREDICT
@@ -34,7 +34,7 @@ data Mode =
        | MODE_KALMAN_FINALIZE
        | MODE_KALMAN_GET_STATE
 
-modeToInt :: Mode -> SInt
+modeToInt :: Mode -> SInt8
 modeToInt MODE_RUN_CORE         = 0
 modeToInt MODE_KALMAN_INIT      = 1
 modeToInt MODE_KALMAN_PREDICT   = 2

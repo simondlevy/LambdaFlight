@@ -27,6 +27,7 @@ import Copilot.Compile.C99
 import Clock
 import Demands
 import Mixers
+import Modes
 import Motors
 import State
 import Utils
