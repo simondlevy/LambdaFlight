@@ -135,27 +135,30 @@ class KalmanFilter {
             void setVehicleState(vehicleState_t & state);
             vehicleState_t state  = {};
 
-            switch (kalmanMode) {
+            switch (copilotMode) {
 
-                case KALMAN_MODE_INIT:
+                case COPILOT_MODE_KALMAN_INIT:
                     init(kalmanNowMsec);
                     break;
 
-                case KALMAN_MODE_PREDICT:
+                case COPILOT_MODE_KALMAN_PREDICT:
                     predict(kalmanNowMsec, kalmanNextPredictionMsec, kalmanIsFlying);
                     break;
 
-                case KALMAN_MODE_UPDATE:
+                case COPILOT_MODE_KALMAN_UPDATE:
                     update(kalmanMeasurement, kalmanNowMsec);
                     break;
 
-                case KALMAN_MODE_FINALIZE:
+                case COPILOT_MODE_KALMAN_FINALIZE:
                     setKalmanStateInBounds(finalize());
                     break;
 
-                case KALMAN_MODE_GET_STATE:
+                case COPILOT_MODE_KALMAN_GET_STATE:
                     getVehicleState(state);
                     setVehicleState(state);
+                    break;
+
+                default:
                     break;
             }
         }

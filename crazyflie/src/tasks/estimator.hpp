@@ -174,7 +174,7 @@ class EstimatorTask : public FreeRTOSTask {
 
         void initKalmanFilter(const uint32_t nowMsec)
         {
-            kalmanMode = KALMAN_MODE_INIT; 
+            copilotMode = COPILOT_MODE_KALMAN_INIT; 
             kalmanNowMsec = nowMsec;
             _kalmanFilter.step();
         }
@@ -188,7 +188,7 @@ class EstimatorTask : public FreeRTOSTask {
                 didResetEstimation = false;
             }
 
-            kalmanMode = KALMAN_MODE_PREDICT;
+            copilotMode = COPILOT_MODE_KALMAN_PREDICT;
             kalmanNowMsec = nowMsec;
             kalmanNextPredictionMsec = nextPredictionMsec;
             kalmanIsFlying = _safety->isFlying();
@@ -216,12 +216,12 @@ class EstimatorTask : public FreeRTOSTask {
             while (pdTRUE == xQueueReceive(
                         _measurementsQueue, &kalmanMeasurement, 0)) {
 
-                kalmanMode = KALMAN_MODE_UPDATE; 
+                copilotMode = COPILOT_MODE_KALMAN_UPDATE; 
                 kalmanNowMsec = nowMsec;
                 _kalmanFilter.step();
             }
 
-            kalmanMode = KALMAN_MODE_FINALIZE;
+            copilotMode = COPILOT_MODE_KALMAN_FINALIZE;
             _isStateInBounds = false;
             _kalmanFilter.step();
 
@@ -237,7 +237,7 @@ class EstimatorTask : public FreeRTOSTask {
 
             xSemaphoreTake(_dataMutex, portMAX_DELAY);
 
-            kalmanMode = KALMAN_MODE_GET_STATE;
+            copilotMode = COPILOT_MODE_KALMAN_GET_STATE;
 
             _kalmanFilter.step();
 
