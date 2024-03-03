@@ -59,7 +59,7 @@ void report(float value)
     printf("%f\n", value);
 }
 
-void copilot_core_step(void);
+void copilot_control_step(void);
 
 void setMotors(float m1, float m2, float m3, float m4)
 {
@@ -224,7 +224,7 @@ int main(int argc, char ** argv)
         openLoopDemands.thrust = 2 * ((altitudeTarget - ALTITUDE_TARGET_MIN) /
                 (ALTITUDE_TARGET_MAX - ALTITUDE_TARGET_MIN)) - 1;
 
-       copilot_core_step();
+       copilot_control_step();
 
         //report(sec_start);
     }
