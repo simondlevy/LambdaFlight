@@ -66,6 +66,14 @@ DLLEXPORT void webots_physics_step()
         return;
     }
 
+    // read open-loop demand values
+    /*
+    int size = 0;
+    controls = (double *)dWebotsReceive(&size);
+    if (size != 3 * sizeof(double)) {
+        return;
+    }*/
+
     static float z;
 
     z = z == 0 ? 1 : z + 0.001;

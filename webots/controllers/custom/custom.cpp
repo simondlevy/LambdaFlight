@@ -65,7 +65,8 @@ int main() {
     // Handle emitter
     gEmitter = wb_robot_get_device("emitter");
     if (!gEmitter)
-        printf("!!! custom_joystick :: reset :: emitter is not available.\n");
+        printf("!!! blimp_joystick :: reset :: emitter is not available.\n");
+
 
     while (wb_robot_step(TIMESTEP) != -1) {
         // Send joystick value.
@@ -109,7 +110,7 @@ int main() {
             if (command[0] || command[1] || command[2]) {
                 //printf("command = ( %g , %g , %g )\n", 
                 //        command[0], command[1], command[2]);
-                wb_emitter_send(gEmitter, command, sizeof(command));
+                //wb_emitter_send(gEmitter, command, sizeof(command));
             }
 
 
