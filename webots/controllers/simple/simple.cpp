@@ -44,7 +44,6 @@ static WbDeviceTag _m3_motor;
 static WbDeviceTag _m4_motor;
 
 
-
 // These are global so they can be shared with Haskell Copilot ---------------
 
 demands_t openLoopDemands;

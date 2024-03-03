@@ -1,123 +1,171 @@
-/****************************************************************************
-
-  custom_joystick -- A custom controller for Webots.
-
-  Copyright (C) 2006 Laboratory of Intelligent Systems, EPFL, Lausanne
-Authors:    Alexis Guanella            guanella@ini.phys.ethz.ch
-Antoine Beyeler            antoine.beyeler@epfl.ch
-Jean-Christophe Zufferey   jean-christophe.zufferey@epfl.ch
-Dario Floreano             dario.floreano@epfl.ch
-Olivier Michel             Olivier.Michel@cyberbotics.com
-
-Web: http://lis.epfl.ch
-
-The authors of any publication arising from research using this software are
-kindly requested to add the following reference:
-
-Zufferey, J.C., Guanella, A., Beyeler, A., Floreano, D. (2006) Flying over
-the Reality Gap: From Simulated to Real Indoor Airships. Autonomous Robots,
-Springer US.
-
-This program is free software; you can redistribute it and/or modify
-it under the terms of the GNU General Public License as published by
-the Free Software Foundation; either version 2 of the License, or
-(at your option) any later version.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-GNU General Public License for more details.
-
-You should have received a copy of the GNU General Public License
-along with this program; if not, write to the Free Software
-Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
-
- ******************************************************************************/
-
-#include <webots/camera.h>
-#include <webots/emitter.h>
-#include <webots/keyboard.h>
-#include <webots/robot.h>
+/**
+ * Haskell Copilot simulator support for Webots
+ *
+ * Copyright (C) 2024 Simon D. Levy
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, in version 3.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program. If not, see <http://www.gnu.org/licenses/>.
+ */
 
 #include <time.h>
 
-#include "js.h"
+#include <webots/camera.h>
+#include <webots/emitter.h>
+#include <webots/gps.h>
+#include <webots/gyro.h>
+#include <webots/inertial_unit.h>
+#include <webots/motor.h>
+#include <webots/robot.h>
 
-#define TIMESTEP 32  // ms
-#define KEY_INCREMENT 0.05
+#include "sticks.hpp"
 
-int main() {
-    double command[3] = {0.0, 0.0, 0.0};
-    WbDeviceTag gEmitter = 0;
+// ----------------------------------------------------------------------------
+
+// https://www.bitcraze.io/documentation/tutorials/getting-started-with-flow-deck/
+static const float ALTITUDE_TARGET_INITIAL = 0.4;
+static const float ALTITUDE_TARGET_MIN = 0.2;
+static const float ALTITUDE_TARGET_MAX = 2.0;  // 3.0 in original
+
+static const float DT = .01;
+
+
+/*
+void setMotors(float m1, float m2, float m3, float m4)
+{
+}*/
+
+// ---------------------------------------------------------------------------
+
+static Sticks _sticks;
+
+static WbDeviceTag _makeMotor(const char * name, const float direction)
+{
+    auto motor = wb_robot_get_device(name);
+
+    wb_motor_set_position(motor, INFINITY);
+    wb_motor_set_velocity(motor, direction);
+
+    return motor;
+}
+
+/*
+static WbDeviceTag _makeSensor(
+        const char * name, 
+        const uint32_t timestep,
+        void (*f)(WbDeviceTag tag, int sampling_period))
+{
+    auto sensor = wb_robot_get_device(name);
+    f(sensor, timestep);
+    return sensor;
+}
+
+static float _constrain(const float val, const float lo, const float hi)
+{
+    return val < lo ? lo : val > hi ? hi : val;
+}
+
+static uint32_t _timesec(void)
+{
+    struct timespec spec = {};
+    clock_gettime(CLOCK_REALTIME, &spec);
+    return spec.tv_sec; 
+}*/
+
+int main(int argc, char ** argv)
+{
 
     wb_robot_init();
-    WbDeviceTag camera = wb_robot_get_device("camera");
-    wb_camera_enable(camera, TIMESTEP * 2);
-    // Handle joystick
-    jsJoystick *gJoystick = new jsJoystick();
-    if (gJoystick->notWorking()) {
-        delete gJoystick, gJoystick = NULL;
-        printf("No joystick available, using keyboard control (click in the 3D windows before pressing keys).\n");
-        printf("Available control keys: up, down, right, left, page up, page down and space (reset).\n");
-        wb_keyboard_enable(TIMESTEP);
+
+    const int timestep = (int)wb_robot_get_basic_time_step();
+
+    // Initialize motors
+   auto m1_motor = _makeMotor("m1_motor", +1);
+   auto m2_motor = _makeMotor("m2_motor", -1);
+   auto m3_motor = _makeMotor("m3_motor", +1);
+   auto m4_motor = _makeMotor("m4_motor", -1);
+
+    // Initialize sensors
+    //auto imu = _makeSensor("inertial_unit", timestep, wb_inertial_unit_enable);
+    //auto gyro = _makeSensor("gyro", timestep, wb_gyro_enable);
+    //auto gps = _makeSensor("gps", timestep, wb_gps_enable);
+    //auto camera = _makeSensor("camera", timestep, wb_camera_enable);
+
+    _sticks.init();
+
+    //auto altitudeTarget = ALTITUDE_TARGET_INITIAL;
+
+    //auto sec_start = _timesec();
+
+    //auto inHoverMode = false;
+    //auto resetPids = false;
+
+    // Start emitter for simulating radio signals to vehicle
+    auto emitter = wb_robot_get_device("emitter");
+    if (!emitter) {
+        printf("emitter is not available.\n");
     }
 
-    // Handle emitter
-    gEmitter = wb_robot_get_device("emitter");
-    if (!gEmitter)
-        printf("!!! blimp_joystick :: reset :: emitter is not available.\n");
+    while (wb_robot_step(timestep) != -1) {
 
+        /*
+        //Un-comment if you want to try OpenCV
 
-    while (wb_robot_step(TIMESTEP) != -1) {
-        // Send joystick value.
-        if (gEmitter) {
-            // read joystick.
-            if (gJoystick) {
-                float axes[12];
-                int buttons[12];
-                gJoystick->read(buttons, axes);
-                command[0] = (double)-axes[1];
-                command[1] = (double)axes[3];
-                command[2] = (double)axes[2];
-            } else {
-                switch (wb_keyboard_get_key()) {
-                    case WB_KEYBOARD_DOWN:
-                        command[0] -= KEY_INCREMENT;
-                        break;
-                    case WB_KEYBOARD_UP:
-                        command[0] += KEY_INCREMENT;
-                        break;
-                    case WB_KEYBOARD_LEFT:
-                        command[1] += KEY_INCREMENT;
-                        break;
-                    case WB_KEYBOARD_RIGHT:
-                        command[1] -= KEY_INCREMENT;
-                        break;
-                    case WB_KEYBOARD_PAGEUP:
-                        command[2] += KEY_INCREMENT;
-                        break;
-                    case WB_KEYBOARD_PAGEDOWN:
-                        command[2] -= KEY_INCREMENT;
-                        break;
-                    case ' ':  // space -> reset
-                        command[0] = 0.0;
-                        command[1] = 0.0;
-                        command[2] = 0.0;
-                }
-            }
+        // Get open-loop demands from input device (keyboard, joystick, etc.)
+        float throttle = 0;
+        float roll = 0;
+        float pitch = 0;
+        float yaw = 0;
+        auto inHoverMode = false;
+        _sticks.read(throttle, roll, pitch, yaw, inHoverMode);
 
-            // setup emitter buffer
-            if (command[0] || command[1] || command[2]) {
-                //printf("command = ( %g , %g , %g )\n", 
-                //        command[0], command[1], command[2]);
-                //wb_emitter_send(gEmitter, command, sizeof(command));
-            }
+        auto thrust = throttle;
 
+        // Adjust roll for positive leftward
+        roll = -roll;
 
+        // Get vehicle state from sensors
+        _getVehicleState(gyro, imu, gps);
 
+        // Integrate stick demand to get altitude target
+        altitudeTarget = _constrain(
+        altitudeTarget + thrust * DT, 
+        ALTITUDE_TARGET_MIN, ALTITUDE_TARGET_MAX);
+
+        // Rescale altitude target to [-1,+1]
+        thrust = 2 * ((altitudeTarget - ALTITUDE_TARGET_MIN) /
+        (ALTITUDE_TARGET_MAX - ALTITUDE_TARGET_MIN)) - 1;
+
+        // copilot_core_step();
+
+        report(sec_start);
+
+        // setup emitter buffer
+        if (command[0] || command[1] || command[2]) {
+        printf("command = ( %g , %g , %g )\n", 
+        command[0], command[1], command[2]);
+        wb_emitter_send(emitter, command, sizeof(command));
         }
+
+         */
+
+        // Set simulated motor values
+        float mvel = 100;
+        wb_motor_set_velocity(m1_motor, +mvel);
+        wb_motor_set_velocity(m2_motor, -mvel);
+        wb_motor_set_velocity(m3_motor, +mvel);
+        wb_motor_set_velocity(m4_motor, -mvel);
     }
 
     wb_robot_cleanup();
+
     return 0;
 }
