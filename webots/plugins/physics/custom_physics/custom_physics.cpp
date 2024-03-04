@@ -48,6 +48,8 @@ FixedPitchDynamics::fixed_pitch_params_t FPARAMS = {
 
 static auto _dynamics = QuadXBFDynamics(VPARAMS, FPARAMS);
 
+static const double DT = 0.01;
+
 // Physics plug-in implementation ---------------------------------
 
 DLLEXPORT void webots_physics_init() 
@@ -59,6 +61,9 @@ DLLEXPORT void webots_physics_init()
 
     // disable gravity for the custom: buoyancy counteract gravity.
     dBodySetGravityMode(_robotBody, 0);
+
+    double rotation[3] = {0, 0, 0};
+    _dynamics.init(rotation);
 }
 
 DLLEXPORT void webots_physics_step() 
@@ -76,8 +81,12 @@ DLLEXPORT void webots_physics_step()
 
     // If we have enough motor values, run the dynamics
     if (size == 4 * sizeof(float)) {
-        fprintf(logfp, "%f,%f,%f,%f\n",
-                motorvals[0], motorvals[1], motorvals[2], motorvals[3]);
+
+        _dynamics.update(motorvals, DT);
+
+        fprintf(logfp, "%f,%f,%f,%f => %f\n",
+                motorvals[0], motorvals[1], motorvals[2], motorvals[3],
+                _dynamics.getStateZ());
         fflush(logfp);
 
         //static float z;
