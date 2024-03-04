@@ -47,8 +47,13 @@ DLLEXPORT void webots_physics_step()
     // read motor values sent by main program
     int size = 0;
     auto motorvals = (float *)dWebotsReceive(&size);
-    fprintf(logfp, "%ld\n", size / sizeof(float));
-    fflush(logfp);
+
+    // If we have enough motor values, run the dynamics
+    if (size == 4 * sizeof(float)) {
+        fprintf(logfp, "%f,%f,%f,%f\n",
+                motorvals[0], motorvals[1], motorvals[2], motorvals[3]);
+        fflush(logfp);
+    }
 
     //static float z;
     //z = z == 0 ? 1 : z + 0.001;
