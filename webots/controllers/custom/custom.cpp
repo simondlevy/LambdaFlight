@@ -44,6 +44,7 @@ static WbDeviceTag _m2_motor;
 static WbDeviceTag _m3_motor;
 static WbDeviceTag _m4_motor;
 
+static WbDeviceTag _emitter;
 
 // These are global so they can be shared with Haskell Copilot ---------------
 
@@ -69,6 +70,8 @@ void setMotors(float m1, float m2, float m3, float m4)
     wb_motor_set_velocity(_m2_motor, -m2);
     wb_motor_set_velocity(_m3_motor, +m3);
     wb_motor_set_velocity(_m4_motor, -m4);
+
+    // wb_emitter_send(_emitter, command, sizeof(command));
 }
 
 // ---------------------------------------------------------------------------
@@ -173,6 +176,8 @@ int main(int argc, char ** argv)
 
     const int timestep = (int)wb_robot_get_basic_time_step();
 
+    _emitter = wb_robot_get_device("emitter");
+
     // Initialize motors
     _m1_motor = _makeMotor("m1_motor", +1);
     _m2_motor = _makeMotor("m2_motor", -1);
@@ -240,7 +245,6 @@ int main(int argc, char ** argv)
         if (command[0] || command[1] || command[2]) {
             printf("command = ( %g , %g , %g )\n", 
                     command[0], command[1], command[2]);
-            wb_emitter_send(emitter, command, sizeof(command));
         }*/
 
 

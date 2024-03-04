@@ -67,8 +67,8 @@ PROTO Custom [
       DEF M1 Propeller {
         shaftAxis 0 0 1
         centerOfThrust 0.031 -0.031 0.008
-        thrustConstants 4e-05 0
-        torqueConstants 2.4e-06 0
+        thrustConstants 0 0
+        torqueConstants 0 0
         fastHelixThreshold 50
         device RotationalMotor {
           name "m1_motor"
@@ -115,8 +115,8 @@ PROTO Custom [
       DEF M2 Propeller {
         shaftAxis 0 0 1
         centerOfThrust -0.031 -0.031 0.008
-        thrustConstants -4e-05 0
-        torqueConstants 2.4e-06 0
+        thrustConstants 0 0
+        torqueConstants 0 0
         fastHelixThreshold 50
         device RotationalMotor {
           name "m2_motor"
@@ -139,8 +139,8 @@ PROTO Custom [
       DEF M3 Propeller {
         shaftAxis 0 0 1
         centerOfThrust -0.031 0.031 0.008
-        thrustConstants 4e-05 0
-        torqueConstants 2.4e-06 0
+        thrustConstants 0 0
+        torqueConstants 0 0
         fastHelixThreshold 50
         device RotationalMotor {
           name "m3_motor"
@@ -163,8 +163,8 @@ PROTO Custom [
       DEF M4 Propeller {
         shaftAxis 0 0 1
         centerOfThrust 0.031 0.031 0.008
-        thrustConstants -4e-05 0
-        torqueConstants 2.4e-06 0
+        thrustConstants 0 0
+        torqueConstants 0 0
         fastHelixThreshold 50
         device RotationalMotor {
           name "m4_motor"

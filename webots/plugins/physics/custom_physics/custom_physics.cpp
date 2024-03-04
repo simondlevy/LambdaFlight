@@ -76,14 +76,11 @@ DLLEXPORT void webots_physics_step()
         return;
     }*/
 
-    static float z;
-
-    z = z == 0 ? 1 : z + 0.001;
-
-    dBodySetPosition(gRobotBody, -1, 1, z);
+    //static float z;
+    //z = z == 0 ? 1 : z + 0.001;
+    //dBodySetPosition(gRobotBody, -1, 1, z);
 
     dMatrix3 rot = {};
-
     dBodySetRotation(gRobotBody, rot);
 }
 
