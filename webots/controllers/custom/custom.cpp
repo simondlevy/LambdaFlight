@@ -66,17 +66,18 @@ void copilot_control_step(void);
 void setMotors(float m1, float m2, float m3, float m4)
 {
     // Set simulated motor values to spin props
-    wb_motor_set_velocity(_m1_motor, +m1);
-    wb_motor_set_velocity(_m2_motor, -m2);
-    wb_motor_set_velocity(_m3_motor, +m3);
-    wb_motor_set_velocity(_m4_motor, -m4);
+    static const float SPINSCALE = 100;
+    wb_motor_set_velocity(_m1_motor, +m1*SPINSCALE);
+    wb_motor_set_velocity(_m2_motor, -m2*SPINSCALE);
+    wb_motor_set_velocity(_m3_motor, +m3*SPINSCALE);
+    wb_motor_set_velocity(_m4_motor, -m4*SPINSCALE);
 
     // Send motor values to custom physics simulation.  First two sets of
     // values are bogus for some reason, so we skip them.
     static uint32_t _count;
     if (_count++ > 2) {
-        const float DIV = 120;
-        float command[4] = {m1/DIV, m2/DIV, m3/DIV, m4/DIV};
+        printf("%3.3f %3.3f %3.3f %3.3f\n", m1, m2, m3, m4);
+        float command[4] = {m1, m2, m3, m4};
         wb_emitter_send(_emitter, command, sizeof(command));
     }
 }

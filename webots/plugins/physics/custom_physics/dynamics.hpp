@@ -423,7 +423,6 @@ class Dynamics {
                 _airborne = true;
             }
 
-
             // Once airborne, we can update dynamics
             if (_airborne) {
 

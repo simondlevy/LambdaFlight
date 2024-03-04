@@ -30,11 +30,11 @@ import Motors
 
 -- Scaling constants
 clock_rate = RATE_100_HZ
-tbase = 56
-tscale = 0.25
+tbase = 1e-1
+tscale = 1e-2 
 tmin =   0   
-prscale = 1e-4 
-yscale = 4e-5
+prscale = 0 -- 1e-4 
+yscale = 1e-5
 
 spec = do
 
