@@ -198,10 +198,6 @@ class Dynamics {
             }
         }
 
-        // Height above ground, set by kinematics
-        double _agl = 0;
-
-
         // quad, hexa, octo, etc.
         uint8_t _rotorCount = 0;
 
@@ -305,15 +301,6 @@ class Dynamics {
         }
 
 
-        /**
-         * Sets height above ground level (AGL).
-         * This method can be called by the kinematic visualization.
-         */
-        void setAgl(const double agl)
-        {
-            _agl = agl;
-        }
-
         // Different for each vehicle
 
         virtual int8_t getRotorDirection(const uint8_t i) = 0;
@@ -409,13 +396,14 @@ class Dynamics {
             // We're airborne once net downward acceleration goes below zero
             double netz = accelNED[2] + _wparams.g;
 
-            // If we're airborne, check for low AGL on descent
-            /*
+            // If we're airborne, check for return to ground
             if (_airborne) {
 
-                if (_agl <= 0 && netz >= 0) {
+                if (_vstate.z > 0) {
 
                     _airborne = false;
+
+                    _vstate.z = -0.01; // XXX shoudl get this from sim
 
                     _vstate.dx = 0;
                     _vstate.dy = 0;
@@ -426,13 +414,12 @@ class Dynamics {
                     _vstate.dtheta = 0;
                     _vstate.dpsi = 0;
 
-                    _vstate.z += _agl;
                 }
             }
 
             // If we're not airborne, we become airborne when downward
             // acceleration has become negative
-            else */ if (netz < 0) {
+            else if (netz < 0) {
                 _airborne = true;
             }
 
@@ -468,19 +455,6 @@ class Dynamics {
                 _inertialAccel[1] = accelNED[1];
                 _inertialAccel[2] = accelNED[2];
             }
-            else if (_autoland) {
-                //"fly" to agl=0
-                _vstate.z += 5 * _agl * dt;
-            }
-
-            // XXX
-            //vstate.z = -1;
-
-            /*
-            fprintf(logfp, "%3.3f,%3.3f,%3.3f,%3.3f => %d | %+3.3f | %+3.3f\n",
-                    actuators[0], actuators[1], actuators[2], actuators[3],
-                    _airborne, _vstate.dz, _vstate.z);
-            fflush(logfp);*/
 
         } // update
 

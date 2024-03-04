@@ -88,7 +88,7 @@ DLLEXPORT void webots_physics_step()
 
         dBodySetPosition(_robotBody, -1, 1, _dynamics.getStateZ());
 
-        auto pos = dBodyGetPosition(_robotBody);
+        // auto pos = dBodyGetPosition(_robotBody);
 
         dMatrix3 rot = {};
         dBodySetRotation(_robotBody, rot);
