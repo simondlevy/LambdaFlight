@@ -21,8 +21,34 @@ static dBodyID _robotBody = NULL;
 
 static FILE * logfp;
 
-//-----------------------------------------------------------------
-// Physics plug-in implementation
+// Dynamics model -------------------------------------------------
+
+Dynamics::vehicle_params_t VPARAMS = {
+
+    // Estimated
+    2.E-06, // d drag cofficient [T=d*w^2]
+
+    // https://www.dji.com/phantom-4/info
+    1.380,  // m mass [kg]
+
+    // Estimated
+    2,      // Ix [kg*m^2] 
+    2,      // Iy [kg*m^2] 
+    3,      // Iz [kg*m^2] 
+    38E-04, // Jr prop inertial [kg*m^2] 
+    15000,  // maxrpm
+
+    20      // maxspeed [m/s]
+};
+
+FixedPitchDynamics::fixed_pitch_params_t FPARAMS = {
+    5.E-06, // b thrust coefficient [F=b*w^2]
+    0.350   // l arm length [m]
+};
+
+static auto _dynamics = QuadXBFDynamics(VPARAMS, FPARAMS);
+
+// Physics plug-in implementation ---------------------------------
 
 DLLEXPORT void webots_physics_init() 
 {
@@ -53,14 +79,14 @@ DLLEXPORT void webots_physics_step()
         fprintf(logfp, "%f,%f,%f,%f\n",
                 motorvals[0], motorvals[1], motorvals[2], motorvals[3]);
         fflush(logfp);
+
+        //static float z;
+        //z = z == 0 ? 1 : z + 0.001;
+        //dBodySetPosition(_robotBody, -1, 1, z);
+
+        dMatrix3 rot = {};
+        dBodySetRotation(_robotBody, rot);
     }
-
-    //static float z;
-    //z = z == 0 ? 1 : z + 0.001;
-    //dBodySetPosition(_robotBody, -1, 1, z);
-
-    dMatrix3 rot = {};
-    dBodySetRotation(_robotBody, rot);
 }
 
 DLLEXPORT int webots_physics_collide(dGeomID g1, dGeomID g2) {
