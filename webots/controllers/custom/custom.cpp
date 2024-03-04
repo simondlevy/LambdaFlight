@@ -75,7 +75,7 @@ void setMotors(float m1, float m2, float m3, float m4)
     // values are bogus for some reason, so we skip them.
     static uint32_t _count;
     if (_count++ > 2) {
-        float command[4] = {m1, m2, m3, m4};
+        float command[4] = {m1/60, m2/60, m3/60, m4/60};
         wb_emitter_send(_emitter, command, sizeof(command));
     }
 }

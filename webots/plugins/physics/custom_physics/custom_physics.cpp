@@ -13,6 +13,8 @@
 
 #include "dynamics/fixedpitch/quadxcf.hpp"
 
+#define LOGFILE "/home/levys@ad.wlu.edu/Desktop/log.txt"
+
 // constants
 const char ROBOT_NAME[] = "custom_crazyflie";
 
@@ -54,7 +56,7 @@ static const double DT = 0.01;
 
 DLLEXPORT void webots_physics_init() 
 {
-    logfp = fopen("/home/levys/Desktop/log.txt", "w");
+    logfp = fopen(LOGFILE, "w");
 
     // init global variables
     _robotBody = dWebotsGetBodyFromDEF(ROBOT_NAME);
@@ -81,8 +83,6 @@ DLLEXPORT void webots_physics_step()
 
     // If we have enough motor values, run the dynamics
     if (size == 4 * sizeof(float)) {
-
-        _dynamics.update(motorvals, DT);
 
         fprintf(logfp, "%f,%f,%f,%f => %f\n",
                 motorvals[0], motorvals[1], motorvals[2], motorvals[3],
