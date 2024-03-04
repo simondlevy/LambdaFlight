@@ -71,9 +71,13 @@ void setMotors(float m1, float m2, float m3, float m4)
     wb_motor_set_velocity(_m3_motor, +m3);
     wb_motor_set_velocity(_m4_motor, -m4);
 
-    // Send motor values to custom physics simulation
-    float command[4] = {m1, m2, m3, m4};
-    wb_emitter_send(_emitter, command, sizeof(command));
+    // Send motor values to custom physics simulation.  First two sets of
+    // values are bogus for some reason, so we skip them.
+    static uint32_t _count;
+    if (_count++ > 2) {
+        float command[4] = {m1, m2, m3, m4};
+        wb_emitter_send(_emitter, command, sizeof(command));
+    }
 }
 
 // ---------------------------------------------------------------------------
