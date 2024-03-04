@@ -84,14 +84,11 @@ DLLEXPORT void webots_physics_step()
     // If we have enough motor values, run the dynamics
     if (size == 4 * sizeof(float)) {
 
-        fprintf(logfp, "%f,%f,%f,%f => %f\n",
-                motorvals[0], motorvals[1], motorvals[2], motorvals[3],
-                _dynamics.getStateZ());
-        fflush(logfp);
+        _dynamics.update(motorvals, 0.01, logfp);
 
-        //static float z;
-        //z = z == 0 ? 1 : z + 0.001;
-        //dBodySetPosition(_robotBody, -1, 1, z);
+        dBodySetPosition(_robotBody, -1, 1, _dynamics.getStateZ());
+
+        auto pos = dBodyGetPosition(_robotBody);
 
         dMatrix3 rot = {};
         dBodySetRotation(_robotBody, rot);

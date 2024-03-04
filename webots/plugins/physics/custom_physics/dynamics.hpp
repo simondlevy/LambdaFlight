@@ -297,8 +297,6 @@ class Dynamics {
             _vstate.theta = rotation[1];
             _vstate.psi   = rotation[2];
 
-            _airborne = airborne;
-
             // Initialize inertial frame acceleration in NED coordinates
             bodyZToInertial(-_wparams.g, rotation, _inertialAccel);
 
@@ -362,7 +360,7 @@ class Dynamics {
                   (servos)
          * @param dt time in seconds since previous update
          */
-        void update(const float * factuators, const double dt) 
+        void update(const float * factuators, const double dt, FILE * logfp) 
         {
             // Convert actuator values to double-precision for consistency
             double actuators[10];
@@ -412,6 +410,7 @@ class Dynamics {
             double netz = accelNED[2] + _wparams.g;
 
             // If we're airborne, check for low AGL on descent
+            /*
             if (_airborne) {
 
                 if (_agl <= 0 && netz >= 0) {
@@ -433,9 +432,10 @@ class Dynamics {
 
             // If we're not airborne, we become airborne when downward
             // acceleration has become negative
-            else {
-                _airborne = netz < 0;
+            else */ if (netz < 0) {
+                _airborne = true;
             }
+
 
             // Once airborne, we can update dynamics
             if (_airborne) {
@@ -475,6 +475,12 @@ class Dynamics {
 
             // XXX
             //vstate.z = -1;
+
+            /*
+            fprintf(logfp, "%3.3f,%3.3f,%3.3f,%3.3f => %d | %+3.3f | %+3.3f\n",
+                    actuators[0], actuators[1], actuators[2], actuators[3],
+                    _airborne, _vstate.dz, _vstate.z);
+            fflush(logfp);*/
 
         } // update
 
