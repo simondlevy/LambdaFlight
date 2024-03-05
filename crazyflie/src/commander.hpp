@@ -114,7 +114,7 @@ class Commander {
             xQueueOverwrite(priorityQueue, &priority);
         }
 
-        void getDemands(demands_t & demands, uint32_t & timestamp, bool & inHoverMode)
+        void getDemands(demands_t & demands, uint32_t & timestamp, bool & stream_inHoverMode)
         {
             setpoint_t setpoint = {};
 
@@ -124,7 +124,7 @@ class Commander {
 
             timestamp = setpoint.timestamp;
 
-            inHoverMode = setpoint.mode.z != modeDisable;
+            stream_inHoverMode = setpoint.mode.z != modeDisable;
 
             // Demands start with setpoints (sticks).  For unformity with
             // other kinds of open-loop control (e.g. R/C receivers) we
@@ -134,7 +134,7 @@ class Commander {
             demands.pitch  = setpoint.attitude.pitch / 30;
             demands.yaw    = setpoint.attitudeRate.yaw / 200;
 
-            if (inHoverMode) {
+            if (stream_inHoverMode) {
 
                 demands.thrust = 
                     rescale(setpoint.position.z, 0.2, 2.0, -1, +1);

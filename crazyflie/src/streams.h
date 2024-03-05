@@ -2,7 +2,7 @@
 
 extern demands_t openLoopDemands;
 extern vehicleState_t vehicleState;
-extern bool inHoverMode;
+extern bool stream_inHoverMode;
 extern bool resetPids;
 
 extern Axis3f stream_gyro;

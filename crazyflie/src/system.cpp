@@ -300,9 +300,9 @@ StackType_t  memTaskStackBuffer[MEM_TASK_STACK_DEPTH];
 StaticTask_t memTaskTaskBuffer;
 
 static void getOpenLoopDemands(
-        demands_t & demands, uint32_t & timestamp, bool & inHoverMode)
+        demands_t & demands, uint32_t & timestamp, bool & stream_inHoverMode)
 {
-    commander.getDemands(demands, timestamp, inHoverMode);
+    commander.getDemands(demands, timestamp, stream_inHoverMode);
 }
 
 static void systemTask(void *arg)

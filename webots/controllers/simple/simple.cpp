@@ -50,7 +50,7 @@ demands_t openLoopDemands;
 
 vehicleState_t vehicleState;
 
-bool inHoverMode;
+bool stream_inHoverMode;
 
 bool resetPids;
 
@@ -190,7 +190,7 @@ int main(int argc, char ** argv)
 
     auto sec_start = _timesec();
 
-    inHoverMode = false;
+    stream_inHoverMode = false;
     resetPids = false;
 
     while (wb_robot_step(timestep) != -1) {
@@ -205,7 +205,7 @@ int main(int argc, char ** argv)
                 openLoopDemands.roll, 
                 openLoopDemands.pitch, 
                 openLoopDemands.yaw,
-                inHoverMode);
+                stream_inHoverMode);
 
         openLoopDemands.thrust = throttle;
 
