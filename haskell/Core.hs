@@ -72,7 +72,7 @@ kalman_mode_finalize = 3
 kalman_mode_get_state :: SInt8
 kalman_mode_get_state = 4
 
-coreStep clock_rate tbase tscale tmin prscale yscale = motors where
+step clock_rate tbase tscale tmin prscale yscale = motors where
 
   vehicleState = liftState stateStruct
 
@@ -96,7 +96,3 @@ coreStep clock_rate tbase tscale tmin prscale yscale = motors where
                                  ((roll demands') * prscale)
                                  ((pitch demands') * prscale)
                                  ((yaw demands') * yscale)
-
-realStep clock_rate tbase tscale tmin prscale yscale = motors where
-
-  motors = coreStep clock_rate tbase tscale tmin prscale yscale

@@ -38,7 +38,7 @@ yscale = 4e-5
 
 spec = do
 
-    let motors = coreStep clock_rate tbase tscale tmin prscale yscale
+    let motors = step clock_rate tbase tscale tmin prscale yscale
 
     trigger "setMotors" true [
         arg $ Motors.qm1 motors, 
@@ -47,4 +47,4 @@ spec = do
         arg $ Motors.qm4 motors] 
 
 -- Compile the spec
-main = reify spec >>= compileWith (CSettings "copilot_control_step" ".") "copilot"
+main = reify spec >>= compileWith (CSettings "copilot_step" ".") "copilot"
