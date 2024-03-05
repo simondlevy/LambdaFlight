@@ -1,14 +1,21 @@
+#pragma once
+
 #include <datatypes.h>
 
-extern demands_t openLoopDemands;
-extern vehicleState_t vehicleState;
-extern bool stream_inHoverMode;
-extern bool resetPids;
+#ifndef _MAIN
+#define EXTERN extern
+#else
+#define EXTERN
+#endif
 
-extern Axis3f stream_gyro;
+EXTERN demands_t stream_openLoopDemands;
+EXTERN vehicleState_t stream_vehicleState;
+EXTERN bool stream_inHoverMode;
+EXTERN bool stream_resetPids;
+//EXTERN Axis3f stream_stream_gyro;
 
-extern copilotMode_e copilotMode;
-extern uint32_t kalmanNowMsec;
-extern uint32_t kalmanNextPredictionMsec;
-extern bool kalmanIsFlying;
-extern measurement_t kalmanMeasurement;
+EXTERN copilotMode_e copilotMode;
+EXTERN uint32_t kalmanNowMsec;
+EXTERN uint32_t kalmanNextPredictionMsec;
+EXTERN bool kalmanIsFlying;
+EXTERN measurement_t kalmanMeasurement;

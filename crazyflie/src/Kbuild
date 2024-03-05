@@ -18,7 +18,6 @@ obj-y += mem.o
 obj-y += onewire.o
 obj-y += params.o
 obj-y += storage.o
-obj-y += streams.o
 obj-y += sysload.o
 obj-y += system.o
 obj-y += vl53l1_crazyflie.o

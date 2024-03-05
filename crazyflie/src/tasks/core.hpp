@@ -26,6 +26,8 @@
 #include <rateSupervisor.hpp>
 #include <safety.hpp>
 
+#include <streams.h>
+
 class CoreTask : public FreeRTOSTask {
 
     public:
@@ -75,8 +77,7 @@ class CoreTask : public FreeRTOSTask {
         // Called from crtp_commander_openloop
         void resetControllers(void)
         {
-            extern bool resetPids;
-            resetPids = true;
+            stream_resetPids = true;
         }
 
     private:
@@ -140,8 +141,7 @@ class CoreTask : public FreeRTOSTask {
 
                 // Get state vector linear positions and velocities and
                 // angles from estimator
-                extern vehicleState_t vehicleState;
-                _estimatorTask->getVehicleState(&vehicleState);
+                _estimatorTask->getVehicleState(&stream_vehicleState);
 
                 const auto areMotorsAllowedToRun = _safety->areMotorsAllowedToRun();
 
@@ -154,20 +154,18 @@ class CoreTask : public FreeRTOSTask {
 
                     // Get open-loop demands in [-1,+1], as well as timestamp
                     // when they received, and whether hover mode is indicated
-                    extern demands_t openLoopDemands;
-                    _openLoopFun(openLoopDemands, timestamp, stream_inHoverMode);
+                    _openLoopFun(stream_openLoopDemands, timestamp, stream_inHoverMode);
 
                     // Use safety algorithm to modify demands based on sensor data
                     // and open-loop info
-                    _safety->update(sensorData, step, timestamp, openLoopDemands);
+                    _safety->update(sensorData, step, timestamp, stream_openLoopDemands);
 
                     // Run Haskell Copilot
                     extern void copilot_step(void);
                     copilot_step();
 
                     // Cancel PID resetting
-                    extern bool resetPids;
-                    resetPids = false;
+                    stream_resetPids = false;
 
                     // Scale motors spins for output
                     scaleMotors(_uncapped, _motorvals);
