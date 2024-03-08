@@ -161,8 +161,8 @@ class CoreTask : public FreeRTOSTask {
                     _safety->update(sensorData, step, timestamp, stream_openLoopDemands);
 
                     // Run Haskell Copilot
-                    extern void copilot_step(void);
-                    copilot_step();
+                    extern void copilot_step_core(void);
+                    copilot_step_core();
 
                     // Cancel PID resetting
                     stream_resetPids = false;
