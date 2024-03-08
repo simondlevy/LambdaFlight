@@ -19,7 +19,7 @@
 #include <semphr.h>
 
 #include <crossplatform.h>
-#include <kalman.hpp>
+#include <ekf.hpp>
 #include <rateSupervisor.hpp>
 #include <safety.hpp>
 #include <task.hpp>
@@ -174,7 +174,7 @@ class EstimatorTask : public FreeRTOSTask {
 
         void initKalmanFilter(const uint32_t nowMsec)
         {
-            kalmanMode = KALMAN_MODE_INIT; 
+            ekfMode = EKF_MODE_INIT; 
             kalmanNowMsec = nowMsec;
             _kalmanFilter.step();
         }
@@ -188,7 +188,7 @@ class EstimatorTask : public FreeRTOSTask {
                 didResetEstimation = false;
             }
 
-            kalmanMode = KALMAN_MODE_PREDICT;
+            ekfMode = EKF_MODE_PREDICT;
             kalmanNowMsec = nowMsec;
             kalmanNextPredictionMsec = nextPredictionMsec;
             kalmanIsFlying = _safety->isFlying();
@@ -216,12 +216,12 @@ class EstimatorTask : public FreeRTOSTask {
             while (pdTRUE == xQueueReceive(
                         _measurementsQueue, &kalmanMeasurement, 0)) {
 
-                kalmanMode = KALMAN_MODE_UPDATE; 
+                ekfMode = EKF_MODE_UPDATE; 
                 kalmanNowMsec = nowMsec;
                 _kalmanFilter.step();
             }
 
-            kalmanMode = KALMAN_MODE_FINALIZE;
+            ekfMode = EKF_MODE_FINALIZE;
             _isStateInBounds = false;
             _kalmanFilter.step();
 
@@ -237,7 +237,7 @@ class EstimatorTask : public FreeRTOSTask {
 
             xSemaphoreTake(_dataMutex, portMAX_DELAY);
 
-            kalmanMode = KALMAN_MODE_GET_STATE;
+            ekfMode = EKF_MODE_GET_STATE;
 
             _kalmanFilter.step();
 

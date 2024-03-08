@@ -49,13 +49,13 @@ typedef struct {
 
 typedef enum {
 
-    KALMAN_MODE_INIT,
-    KALMAN_MODE_PREDICT,
-    KALMAN_MODE_UPDATE,
-    KALMAN_MODE_FINALIZE,
-    KALMAN_MODE_GET_STATE
+    EKF_MODE_INIT,
+    EKF_MODE_PREDICT,
+    EKF_MODE_UPDATE,
+    EKF_MODE_FINALIZE,
+    EKF_MODE_GET_STATE
 
-} kalmanMode_e;
+} ekfMode_e;
 
 typedef union {
     struct {

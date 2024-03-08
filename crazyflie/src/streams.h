@@ -13,7 +13,7 @@ EXTERN vehicleState_t stream_vehicleState;
 EXTERN bool stream_inHoverMode;
 EXTERN bool stream_resetPids;
 
-EXTERN kalmanMode_e kalmanMode;
+EXTERN ekfMode_e ekfMode;
 EXTERN uint32_t kalmanNowMsec;
 EXTERN uint32_t kalmanNextPredictionMsec;
 EXTERN bool kalmanIsFlying;
