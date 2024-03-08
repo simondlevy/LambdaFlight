@@ -1,5 +1,5 @@
 {--
-  LambdaFlight core algorithm for real and simulated flight controllers
+  LambdaFlight for simulated Crazyflie
  
   Copyright (C) 2024 Simon D. Levy
  
@@ -23,6 +23,11 @@ module Core where
 
 import Language.Copilot
 import Copilot.Compile.C99
+
+import Clock
+import Motors
+
+import Constants
 
 import Clock
 import Demands
@@ -57,7 +62,7 @@ inHoverMode = extern "stream_inHoverMode" Nothing
 resetPids :: SBool
 resetPids = extern "stream_resetPids" Nothing
 
-step clock_rate tbase tscale tmin prscale yscale = motors where
+step = motors where
 
   vehicleState = liftState stateStruct
 
@@ -81,3 +86,18 @@ step clock_rate tbase tscale tmin prscale yscale = motors where
                                  ((roll demands') * prscale)
                                  ((pitch demands') * prscale)
                                  ((yaw demands') * yscale)
+
+------------------------------------------------------------------------------
+ 
+spec = do
+
+    let motors = step
+
+    trigger "setMotors" true [
+        arg $ Motors.qm1 motors, 
+        arg $ Motors.qm2 motors, 
+        arg $ Motors.qm3 motors, 
+        arg $ Motors.qm4 motors] 
+
+-- Compile the spec
+main = reify spec >>= compileWith (CSettings "copilot_step_core" ".") "copilot_core"

@@ -16,35 +16,25 @@
   along with this program. If not, see <http://www.gnu.org/licenses/>.
 --} 
 
-{-# LANGUAGE DataKinds #-}
-{-# LANGUAGE RebindableSyntax #-}
+module Constants where
 
-module Main where
-
-import Language.Copilot
-import Copilot.Compile.C99
-
+import Utils
 import Clock
-import Core
-import Motors
 
--- Scaling constants
+clock_rate :: ClockRate
 clock_rate = RATE_100_HZ
+
+tbase :: SFloat
 tbase = 56
+
+tscale :: SFloat
 tscale = 0.25
+
+tmin :: SFloat
 tmin =   0   
+
+prscale :: SFloat
 prscale = 1e-4 
+
+yscale :: SFloat
 yscale = 4e-5
-
-spec = do
-
-    let motors = step clock_rate tbase tscale tmin prscale yscale
-
-    trigger "setMotors" true [
-        arg $ Motors.qm1 motors, 
-        arg $ Motors.qm2 motors, 
-        arg $ Motors.qm3 motors, 
-        arg $ Motors.qm4 motors] 
-
--- Compile the spec
-main = reify spec >>= compileWith (CSettings "copilot_step_core" ".") "copilot_core"
