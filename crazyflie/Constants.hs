@@ -1,5 +1,5 @@
 {--
-  LambdaFlight core algorithm for Crazyflie
+  LambdaFlight for simulated Crazyflie
  
   Copyright (C) 2024 Simon D. Levy
  
@@ -16,35 +16,25 @@
   along with this program. If not, see <http://www.gnu.org/licenses/>.
 --} 
 
-{-# LANGUAGE DataKinds #-}
-{-# LANGUAGE RebindableSyntax #-}
+module Constants where
 
-module Main where
-
-import Language.Copilot
-import Copilot.Compile.C99
-
+import Utils
 import Clock
-import Core
-import Motors
 
--- Scaling constants
+clock_rate :: ClockRate
 clock_rate = RATE_500_HZ
+
+tbase :: SFloat
 tbase = 36000
+
+tscale :: SFloat
 tscale = 1000
+
+tmin :: SFloat
 tmin = 2000
+
+prscale :: SFloat
 prscale = 1
+
+yscale :: SFloat
 yscale = 1
-
-spec = do
-
-    let motors = step clock_rate tbase tscale tmin prscale yscale
-
-    trigger "setMotors" true [
-        arg $ Motors.qm1 motors, 
-        arg $ Motors.qm2 motors, 
-        arg $ Motors.qm3 motors, 
-        arg $ Motors.qm4 motors] 
-
--- Compile the spec
-main = reify spec >>= compileWith (CSettings "copilot_step_core" ".") "copilot_core"
