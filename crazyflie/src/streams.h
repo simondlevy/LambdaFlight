@@ -12,9 +12,8 @@ EXTERN demands_t stream_openLoopDemands;
 EXTERN vehicleState_t stream_vehicleState;
 EXTERN bool stream_inHoverMode;
 EXTERN bool stream_resetPids;
-//EXTERN Axis3f stream_stream_gyro;
 
-EXTERN copilotMode_e copilotMode;
+EXTERN kalmanMode_e kalmanMode;
 EXTERN uint32_t kalmanNowMsec;
 EXTERN uint32_t kalmanNextPredictionMsec;
 EXTERN bool kalmanIsFlying;
