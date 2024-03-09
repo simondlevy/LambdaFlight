@@ -25,6 +25,7 @@
 #include <task.hpp>
 
 #include <streams.h>
+#include <copilot_ekf.h>
 
 class EstimatorTask : public FreeRTOSTask {
 
@@ -177,6 +178,7 @@ class EstimatorTask : public FreeRTOSTask {
             stream_ekfMode = EKF_MODE_INIT; 
             stream_ekfNowMsec = nowMsec;
             _ekf.step();
+            copilot_step_ekf();
         }
 
         uint32_t step(const uint32_t nowMsec, uint32_t nextPredictionMsec) 
@@ -194,6 +196,7 @@ class EstimatorTask : public FreeRTOSTask {
             stream_ekfIsFlying = _safety->isFlying();
 
             _ekf.step();
+            copilot_step_ekf();
 
             // Run the system dynamics to predict the state forward.
             if (nowMsec >= nextPredictionMsec) {
@@ -219,11 +222,13 @@ class EstimatorTask : public FreeRTOSTask {
                 stream_ekfMode = EKF_MODE_UPDATE; 
                 stream_ekfNowMsec = nowMsec;
                 _ekf.step();
+                copilot_step_ekf();
             }
 
             stream_ekfMode = EKF_MODE_FINALIZE;
             _isStateInBounds = false;
             _ekf.step();
+            copilot_step_ekf();
 
             if (!_isStateInBounds) { 
 
@@ -240,6 +245,7 @@ class EstimatorTask : public FreeRTOSTask {
             stream_ekfMode = EKF_MODE_GET_STATE;
 
             _ekf.step();
+            copilot_step_ekf();
 
             xSemaphoreGive(_dataMutex);
 
