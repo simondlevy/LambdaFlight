@@ -47,23 +47,30 @@ data Ekf = Ekf {
                  , lastPredictionMsec :: SInt32
                  , lastProcessNoiesUpdateMsec :: SInt32
                  , isUpdated :: SBool
+
+                 , r20 :: SFloat
+                 , r21 :: SFloat
+                 , r22 :: SFloat
                }
 
 runEkf :: SInt32 -> Ekf
 
-runEkf nowMsec = Ekf qw 
-                     qx 
-                     qy 
-                     qz 
-                     lastPredictionMsec 
-                     lastProcessNoiseUpdateMsec 
-                     isUpdated
+runEkf nowMsec = Ekf qw qx qy qz 
+
+                     lastPredictionMsec lastProcessNoiseUpdateMsec isUpdated 
+
+                     r20 r21 r22
 
    where init = ekfMode == mode_init
 
-         isUpdated = if init then not init else isUpdated'
+         isUpdated = if init then not init else isUpdated' -- not init = False
          lastPredictionMsec = if init then nowMsec else lastPredictionMsec'
-         lastProcessNoiseUpdateMsec = if init then nowMsec else lastProcessNoiseUpdateMsec'
+         lastProcessNoiseUpdateMsec = if init then nowMsec 
+                                      else lastProcessNoiseUpdateMsec'
+
+         r20 = if init then 0 else r20'
+         r21 = if init then 0 else r20'
+         r22 = if init then 1 else r20'
 
          qw = if init then 1 else qw'
          qx = if init then 0 else qx'
@@ -79,6 +86,13 @@ runEkf nowMsec = Ekf qw
          lastProcessNoiseUpdateMsec' = [0] ++ lastProcessNoiseUpdateMsec
          isUpdated' = [False] ++ isUpdated
 
+         -- Set the initial rotation matrix to the identity. This only affects
+         -- the first prediction step, since in the finalization, after 
+         -- shifting attitude errors into the attitude state, the rotation
+         -- matrix is updated.
+         r20' = [0] ++ r20
+         r21' = [0] ++ r21
+         r22' = [1] ++ r22
 
 
 spec = do
