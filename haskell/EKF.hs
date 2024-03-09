@@ -24,8 +24,22 @@ module Main where
 import Language.Copilot
 import Copilot.Compile.C99
 
+import Utils
 
-    trigger "setVehicleState" true [ ]
+type EkfMode = SInt8
+
+kalmanMode :: EkfMode
+kalmanMode = extern "stream_ekfMode" Nothing
+
+mode_init      = 0 :: EkfMode
+mode_predict   = 1 :: EkfMode
+mode_update    = 2 :: EkfMode
+mode_finalize  = 3 :: EkfMode
+mode_get_state = 4 :: EkfMode
+
+spec = do
+
+    trigger "dummy" true [ ]
 
 -- Compile the spec
 main = reify spec >>= compileWith (CSettings "copilot_step_ekf" ".") "copilot_ekf"

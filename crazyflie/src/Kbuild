@@ -7,6 +7,7 @@ obj-y += stm32f4/
 obj-y += tasks/
 
 obj-y += copilot_core.o
+obj-y += copilot_ekf.o
 
 obj-y += bootloader.o
 obj-y += cfassert.o

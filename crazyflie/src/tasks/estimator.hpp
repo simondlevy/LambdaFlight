@@ -25,6 +25,7 @@
 #include <task.hpp>
 
 #include <streams.h>
+#include <copilot_ekf.h>
 
 class EstimatorTask : public FreeRTOSTask {
 
@@ -53,7 +54,7 @@ class EstimatorTask : public FreeRTOSTask {
 
             consolePrintf("ESTIMATOR: estimatorTaskStart\n");
 
-            initKalmanFilter(msec());
+            initEkf(msec());
         }
 
         void getVehicleState(vehicleState_t * state)
@@ -161,7 +162,7 @@ class EstimatorTask : public FreeRTOSTask {
 
         Safety * _safety;
 
-        KalmanFilter _kalmanFilter;
+        Ekf _ekf;
 
         // Data used to enable the task and stabilizer loop to run with minimal locking
         // The estimator state produced by the task, copied to the stabilizer when needed.
@@ -172,11 +173,12 @@ class EstimatorTask : public FreeRTOSTask {
             return T2M(xTaskGetTickCount());
         }
 
-        void initKalmanFilter(const uint32_t nowMsec)
+        void initEkf(const uint32_t nowMsec)
         {
-            ekfMode = EKF_MODE_INIT; 
-            kalmanNowMsec = nowMsec;
-            _kalmanFilter.step();
+            stream_ekfMode = EKF_MODE_INIT; 
+            stream_ekfNowMsec = nowMsec;
+            _ekf.step();
+            copilot_step_ekf();
         }
 
         uint32_t step(const uint32_t nowMsec, uint32_t nextPredictionMsec) 
@@ -184,16 +186,17 @@ class EstimatorTask : public FreeRTOSTask {
             xSemaphoreTake(_runTaskSemaphore, portMAX_DELAY);
 
             if (didResetEstimation) {
-                initKalmanFilter(nowMsec);
+                initEkf(nowMsec);
                 didResetEstimation = false;
             }
 
-            ekfMode = EKF_MODE_PREDICT;
-            kalmanNowMsec = nowMsec;
-            kalmanNextPredictionMsec = nextPredictionMsec;
-            kalmanIsFlying = _safety->isFlying();
+            stream_ekfMode = EKF_MODE_PREDICT;
+            stream_ekfNowMsec = nowMsec;
+            stream_ekfNextPredictionMsec = nextPredictionMsec;
+            stream_ekfIsFlying = _safety->isFlying();
 
-            _kalmanFilter.step();
+            _ekf.step();
+            copilot_step_ekf();
 
             // Run the system dynamics to predict the state forward.
             if (nowMsec >= nextPredictionMsec) {
@@ -214,16 +217,18 @@ class EstimatorTask : public FreeRTOSTask {
             // Pull the latest sensors values of interest; discard the rest
 
             while (pdTRUE == xQueueReceive(
-                        _measurementsQueue, &kalmanMeasurement, 0)) {
+                        _measurementsQueue, &stream_ekfMeasurement, 0)) {
 
-                ekfMode = EKF_MODE_UPDATE; 
-                kalmanNowMsec = nowMsec;
-                _kalmanFilter.step();
+                stream_ekfMode = EKF_MODE_UPDATE; 
+                stream_ekfNowMsec = nowMsec;
+                _ekf.step();
+                copilot_step_ekf();
             }
 
-            ekfMode = EKF_MODE_FINALIZE;
+            stream_ekfMode = EKF_MODE_FINALIZE;
             _isStateInBounds = false;
-            _kalmanFilter.step();
+            _ekf.step();
+            copilot_step_ekf();
 
             if (!_isStateInBounds) { 
 
@@ -237,9 +242,10 @@ class EstimatorTask : public FreeRTOSTask {
 
             xSemaphoreTake(_dataMutex, portMAX_DELAY);
 
-            ekfMode = EKF_MODE_GET_STATE;
+            stream_ekfMode = EKF_MODE_GET_STATE;
 
-            _kalmanFilter.step();
+            _ekf.step();
+            copilot_step_ekf();
 
             xSemaphoreGive(_dataMutex);
 

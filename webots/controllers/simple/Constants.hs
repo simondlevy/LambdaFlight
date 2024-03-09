@@ -21,20 +21,14 @@ module Constants where
 import Utils
 import Clock
 
-clock_rate :: ClockRate
 clock_rate = RATE_100_HZ
 
-tbase :: SFloat
-tbase = 56
+tbase = 56 :: SFloat
 
-tscale :: SFloat
-tscale = 0.25
+tscale = 0.25 :: SFloat
 
-tmin :: SFloat
-tmin =   0   
+tmin = 0 :: SFloat
 
-prscale :: SFloat
-prscale = 1e-4 
+prscale = 1e-4 :: SFloat
 
-yscale :: SFloat
-yscale = 4e-5
+yscale = 4e-5 :: SFloat
