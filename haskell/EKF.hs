@@ -24,8 +24,10 @@ module Main where
 import Language.Copilot
 import Copilot.Compile.C99
 
+spec = do
 
-    trigger "setVehicleState" true [ ]
+
+    trigger "setVehicleStateFromHaskell" true [ ]
 
 -- Compile the spec
 main = reify spec >>= compileWith (CSettings "copilot_step_ekf" ".") "copilot_ekf"

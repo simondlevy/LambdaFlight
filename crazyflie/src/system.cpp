@@ -92,27 +92,10 @@ void setVehicleState(vehicleState_t & state)
     estimatorTask.setVehicleState(state);
 }
 
-static float cpp;
-static float haskell;
-
-void reportHaskell(float value)
+void setVehicleStateFromHaskell(void)
 {
-    haskell = value;
 }
 
-void reportCpp(float value)
-{
-    cpp = value;
-}
-
-void report(void)
-{
-    static uint32_t count;
-    if ((count++ % 200) == 0) {
-        consolePrintf("%d\n", cpp == haskell);
-        //consolePrintf("%04d: Cpp=%f   Haskell=%f\n", count, (double)cpp, (double)haskell);
-    }
-}
 
 // ---------------------------------------------------------------------------
 
