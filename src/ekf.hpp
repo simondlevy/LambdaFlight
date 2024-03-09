@@ -125,7 +125,7 @@ static const float EPS = 1e-6f;
 static const float ROLLPITCH_ZERO_REVERSION = 0.001;
 
 
-class KalmanFilter { 
+class Ekf { 
 
     public:
 
