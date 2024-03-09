@@ -39,15 +39,28 @@ mode_finalize  = 3 :: EkfMode
 mode_get_state = 4 :: EkfMode
 
 data Ekf = Ekf { 
-                   qw :: SFloat 
+
+                 -- state
+                    z :: SFloat
+                 , dx :: SFloat
+                 , dy :: SFloat
+                 , dz :: SFloat
+                 , e0 :: SFloat
+                 , e1 :: SFloat
+                 , e2 :: SFloat
+
+                 -- quaternion
+                 , qw :: SFloat 
                  , qx :: SFloat 
                  , qy :: SFloat 
                  , qz :: SFloat 
 
+                 -- misc
                  , lastPredictionMsec :: SInt32
                  , lastProcessNoiesUpdateMsec :: SInt32
                  , isUpdated :: SBool
 
+                  -- third row (Z) of attitude as a rotation matrix for prediction
                  , r20 :: SFloat
                  , r21 :: SFloat
                  , r22 :: SFloat
@@ -55,13 +68,20 @@ data Ekf = Ekf {
 
 runEkf :: SInt32 -> Ekf
 
-runEkf nowMsec = Ekf qw qx qy qz 
-
+runEkf nowMsec = Ekf z dx dy dz e0 e1 e2
+                     qw qx qy qz 
                      lastPredictionMsec lastProcessNoiseUpdateMsec isUpdated 
-
                      r20 r21 r22
 
    where init = ekfMode == mode_init
+
+         z = 0
+         dx = 0
+         dy = 0
+         dz = 0
+         e0 = 0
+         e1 = 0
+         e2 = 0
 
          isUpdated = if init then false else isUpdated'
 
