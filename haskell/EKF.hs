@@ -26,14 +26,20 @@ import Copilot.Compile.C99
 
 import Utils
 
-kalmanState :: SInt8
-kalmanState = extern "stream_ekfMode" Nothing
+type EkfMode = SInt8
 
-state_init = 0 :: SInt8
+kalmanMode :: EkfMode
+kalmanMode = extern "stream_ekfMode" Nothing
+
+mode_init      = 0 :: EkfMode
+mode_predict   = 1 :: EkfMode
+mode_update    = 2 :: EkfMode
+mode_finalize  = 3 :: EkfMode
+mode_get_state = 4 :: EkfMode
 
 spec = do
 
-    trigger "setVehicleStateFromHaskell" true [ ]
+    trigger "setVehicleModeFromHaskell" true [ ]
 
 -- Compile the spec
 main = reify spec >>= compileWith (CSettings "copilot_step_ekf" ".") "copilot_ekf"
