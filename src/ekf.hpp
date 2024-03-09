@@ -135,18 +135,21 @@ class KalmanFilter {
             void setVehicleState(vehicleState_t & state);
             vehicleState_t state  = {};
 
-            switch (ekfMode) {
+            switch (stream_ekfMode) {
 
                 case EKF_MODE_INIT:
-                    init(kalmanNowMsec);
+                    init(stream_ekfNowMsec);
                     break;
 
                 case EKF_MODE_PREDICT:
-                    predict(kalmanNowMsec, kalmanNextPredictionMsec, kalmanIsFlying);
+                    predict(
+                            stream_ekfNowMsec, 
+                            stream_ekfNextPredictionMsec, 
+                            stream_ekfIsFlying);
                     break;
 
                 case EKF_MODE_UPDATE:
-                    update(kalmanMeasurement, kalmanNowMsec);
+                    update(stream_ekfMeasurement, stream_ekfNowMsec);
                     break;
 
                 case EKF_MODE_FINALIZE:

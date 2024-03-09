@@ -24,8 +24,12 @@ module Main where
 import Language.Copilot
 import Copilot.Compile.C99
 
-spec = do
+import Utils
 
+kalmanState :: SInt8
+kalmanState = extern "stream_ekfMode" Nothing
+
+spec = do
 
     trigger "setVehicleStateFromHaskell" true [ ]
 

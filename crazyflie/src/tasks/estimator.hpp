@@ -174,8 +174,8 @@ class EstimatorTask : public FreeRTOSTask {
 
         void initKalmanFilter(const uint32_t nowMsec)
         {
-            ekfMode = EKF_MODE_INIT; 
-            kalmanNowMsec = nowMsec;
+            stream_ekfMode = EKF_MODE_INIT; 
+            stream_ekfNowMsec = nowMsec;
             _kalmanFilter.step();
         }
 
@@ -188,10 +188,10 @@ class EstimatorTask : public FreeRTOSTask {
                 didResetEstimation = false;
             }
 
-            ekfMode = EKF_MODE_PREDICT;
-            kalmanNowMsec = nowMsec;
-            kalmanNextPredictionMsec = nextPredictionMsec;
-            kalmanIsFlying = _safety->isFlying();
+            stream_ekfMode = EKF_MODE_PREDICT;
+            stream_ekfNowMsec = nowMsec;
+            stream_ekfNextPredictionMsec = nextPredictionMsec;
+            stream_ekfIsFlying = _safety->isFlying();
 
             _kalmanFilter.step();
 
@@ -214,14 +214,14 @@ class EstimatorTask : public FreeRTOSTask {
             // Pull the latest sensors values of interest; discard the rest
 
             while (pdTRUE == xQueueReceive(
-                        _measurementsQueue, &kalmanMeasurement, 0)) {
+                        _measurementsQueue, &stream_ekfMeasurement, 0)) {
 
-                ekfMode = EKF_MODE_UPDATE; 
-                kalmanNowMsec = nowMsec;
+                stream_ekfMode = EKF_MODE_UPDATE; 
+                stream_ekfNowMsec = nowMsec;
                 _kalmanFilter.step();
             }
 
-            ekfMode = EKF_MODE_FINALIZE;
+            stream_ekfMode = EKF_MODE_FINALIZE;
             _isStateInBounds = false;
             _kalmanFilter.step();
 
@@ -237,7 +237,7 @@ class EstimatorTask : public FreeRTOSTask {
 
             xSemaphoreTake(_dataMutex, portMAX_DELAY);
 
-            ekfMode = EKF_MODE_GET_STATE;
+            stream_ekfMode = EKF_MODE_GET_STATE;
 
             _kalmanFilter.step();
 
