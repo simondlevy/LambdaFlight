@@ -63,8 +63,10 @@ runEkf nowMsec = Ekf qw qx qy qz
 
    where init = ekfMode == mode_init
 
-         isUpdated = if init then not init else isUpdated' -- not init = False
+         isUpdated = if init then false else isUpdated'
+
          lastPredictionMsec = if init then nowMsec else lastPredictionMsec'
+
          lastProcessNoiseUpdateMsec = if init then nowMsec 
                                       else lastProcessNoiseUpdateMsec'
 
@@ -83,7 +85,9 @@ runEkf nowMsec = Ekf qw qx qy qz
          qz' = [0] ++ qz
 
          lastPredictionMsec' = [0] ++ lastPredictionMsec
+
          lastProcessNoiseUpdateMsec' = [0] ++ lastProcessNoiseUpdateMsec
+
          isUpdated' = [False] ++ isUpdated
 
          -- Set the initial rotation matrix to the identity. This only affects
