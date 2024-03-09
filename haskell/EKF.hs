@@ -29,6 +29,8 @@ import Utils
 kalmanState :: SInt8
 kalmanState = extern "stream_ekfMode" Nothing
 
+state_init = 0 :: SInt8
+
 spec = do
 
     trigger "setVehicleStateFromHaskell" true [ ]
