@@ -100,4 +100,5 @@ spec = do
         arg $ Motors.qm4 motors] 
 
 -- Compile the spec
-main = reify spec >>= compileWith (CSettings "copilot_step_core" ".") "copilot_core"
+main = reify spec >>= 
+  compileWith (CSettings "copilot_step_core" ".") "copilot_core"

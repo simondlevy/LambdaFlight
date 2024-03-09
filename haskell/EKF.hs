@@ -24,12 +24,13 @@ module Main where
 import Language.Copilot
 import Copilot.Compile.C99
 
+import State
 import Utils
 
 type EkfMode = SInt8
 
-kalmanMode :: EkfMode
-kalmanMode = extern "stream_ekfMode" Nothing
+ekfMode :: EkfMode
+ekfMode = extern "stream_ekfMode" Nothing
 
 mode_init      = 0 :: EkfMode
 mode_predict   = 1 :: EkfMode
@@ -37,9 +38,41 @@ mode_update    = 2 :: EkfMode
 mode_finalize  = 3 :: EkfMode
 mode_get_state = 4 :: EkfMode
 
+data Ekf = Ekf { 
+                   qw :: SFloat 
+                 , qx :: SFloat 
+                 , qy :: SFloat 
+                 , qz :: SFloat 
+
+                 , lastPredictionMsec :: SInt32
+               }
+
+runEkf :: SInt32 -> Ekf
+
+runEkf nowMsec = Ekf qw qx qy qz lastPredictionMsec
+
+   where init = ekfMode == mode_init
+
+         qw = if init then 1 else qw'
+         qx = if init then 0 else qx'
+         qy = if init then 0 else qw'
+         qz = if init then 0 else qz'
+
+         lastPredictionMsec = if init then nowMsec else lastPredictionMsec'
+
+         qw' = [1] ++ qw
+         qx' = [0] ++ qx
+         qy' = [0] ++ qy
+         qz' = [0] ++ qz
+
+         lastPredictionMsec' = [0] ++ lastPredictionMsec
+
+
+
 spec = do
 
     trigger "dummy" true [ ]
 
 -- Compile the spec
-main = reify spec >>= compileWith (CSettings "copilot_step_ekf" ".") "copilot_ekf"
+main = reify spec >>= 
+  compileWith (CSettings "copilot_step_ekf" ".") "copilot_ekf"
