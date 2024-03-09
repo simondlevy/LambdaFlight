@@ -45,20 +45,30 @@ data Ekf = Ekf {
                  , qz :: SFloat 
 
                  , lastPredictionMsec :: SInt32
+                 , lastProcessNoiesUpdateMsec :: SInt32
+                 , isUpdated :: SBool
                }
 
 runEkf :: SInt32 -> Ekf
 
-runEkf nowMsec = Ekf qw qx qy qz lastPredictionMsec
+runEkf nowMsec = Ekf qw 
+                     qx 
+                     qy 
+                     qz 
+                     lastPredictionMsec 
+                     lastProcessNoiseUpdateMsec 
+                     isUpdated
 
    where init = ekfMode == mode_init
+
+         isUpdated = if init then not init else isUpdated'
+         lastPredictionMsec = if init then nowMsec else lastPredictionMsec'
+         lastProcessNoiseUpdateMsec = if init then nowMsec else lastProcessNoiseUpdateMsec'
 
          qw = if init then 1 else qw'
          qx = if init then 0 else qx'
          qy = if init then 0 else qw'
          qz = if init then 0 else qz'
-
-         lastPredictionMsec = if init then nowMsec else lastPredictionMsec'
 
          qw' = [1] ++ qw
          qx' = [0] ++ qx
@@ -66,6 +76,8 @@ runEkf nowMsec = Ekf qw qx qy qz lastPredictionMsec
          qz' = [0] ++ qz
 
          lastPredictionMsec' = [0] ++ lastPredictionMsec
+         lastProcessNoiseUpdateMsec' = [0] ++ lastProcessNoiseUpdateMsec
+         isUpdated' = [False] ++ isUpdated
 
 
 

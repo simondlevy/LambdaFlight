@@ -360,10 +360,6 @@ class Ekf {
              memset(&_P, 0, sizeof(_P));
              memset(&_Pm, 0, sizeof(_Pm));
 
-             _isUpdated = false;
-             _lastPredictionMs = 0;
-             _lastProcessNoiseUpdateMs = 0;
-
              _kalmanState.z = 0;
 
              _qw = QW_INIT;
