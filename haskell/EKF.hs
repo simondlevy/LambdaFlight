@@ -38,6 +38,22 @@ mode_update    = 2 :: EkfMode
 mode_finalize  = 3 :: EkfMode
 mode_get_state = 4 :: EkfMode
 
+data Quat = Quat { 
+    qw :: SFloat
+  , qx :: SFloat
+  , qy :: SFloat
+  , qz :: SFloat 
+}
+
+initQuat :: SBool -> Quat -> Quat
+
+initQuat init quat = Quat qw' qx' qy' qz' where
+
+  qw' = if init then 1 else (qw quat)
+  qx' = if init then 0 else (qx quat)
+  qy' = if init then 0 else (qy quat)
+  qz' = if init then 0 else (qz quat)
+
 data Ekf = Ekf { 
 
                  -- state
@@ -50,10 +66,7 @@ data Ekf = Ekf {
                  , e2 :: SFloat
 
                  -- quaternion
-                 , qw :: SFloat 
-                 , qx :: SFloat 
-                 , qy :: SFloat 
-                 , qz :: SFloat 
+                 , quat :: Quat
 
                  -- misc
                  , lastPredictionMsec :: SInt32
@@ -69,7 +82,7 @@ data Ekf = Ekf {
 runEkf :: SInt32 -> Ekf
 
 runEkf nowMsec = Ekf z dx dy dz e0 e1 e2
-                     qw qx qy qz 
+                     quat
                      lastPredictionMsec lastProcessNoiseUpdateMsec isUpdated 
                      r20 r21 r22
 
@@ -85,6 +98,8 @@ runEkf nowMsec = Ekf z dx dy dz e0 e1 e2
          e1 = if init then 0 else e1'
          e2 = if init then 0 else e2'
 
+         quat = initQuat init (Quat qw' qx' qy' qz')
+
          isUpdated = if init then false else isUpdated'
 
          lastPredictionMsec = if init then nowMsec else lastPredictionMsec'
@@ -96,15 +111,10 @@ runEkf nowMsec = Ekf z dx dy dz e0 e1 e2
          r21 = if init then 0 else r20'
          r22 = if init then 1 else r20'
 
-         qw = if init then 1 else qw'
-         qx = if init then 0 else qx'
-         qy = if init then 0 else qw'
-         qz = if init then 0 else qz'
-
-         qw' = [1] ++ qw
-         qx' = [0] ++ qx
-         qy' = [0] ++ qy
-         qz' = [0] ++ qz
+         qw' = [1] ++ (qw quat)
+         qx' = [0] ++ (qx quat)
+         qy' = [0] ++ (qy quat)
+         qz' = [0] ++ (qz quat)
 
          z' = [0] ++ z
          dx' = [0] ++ dx

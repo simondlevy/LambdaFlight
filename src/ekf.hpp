@@ -185,7 +185,7 @@ class Ekf {
              float e1;
              float e2;
 
-         } kalmanState_t;
+         } ekfState_t;
 
          // Indexes to access the state
          typedef enum {
@@ -217,7 +217,7 @@ class Ekf {
          Axis3fSubSampler_t _accSubSampler;
          Axis3fSubSampler_t _gyroSubSampler;
 
-         kalmanState_t _kalmanState;
+         ekfState_t _ekfState;
 
          // The quad's attitude as a quaternion (w,x,y,z) We store as a quaternion
          // to allow easy normalization (in comparison to a rotation matrix),
@@ -248,16 +248,16 @@ class Ekf {
 
          void getVehicleState(vehicleState_t & state)
          {
-             state.dx = _kalmanState.dx;
+             state.dx = _ekfState.dx;
 
-             state.dy = _kalmanState.dy;
+             state.dy = _ekfState.dy;
 
-             state.z = _kalmanState.z;
+             state.z = _ekfState.z;
 
              state.dz = 
-                 _r20*_kalmanState.dx + 
-                 _r21*_kalmanState.dy + 
-                 _r22*_kalmanState.dz;
+                 _r20*_ekfState.dx + 
+                 _r21*_ekfState.dy + 
+                 _r22*_ekfState.dz;
 
              state.phi = RADIANS_TO_DEGREES *
                  atan2f(2*(_qy*_qz+_qw*
@@ -356,11 +356,11 @@ class Ekf {
 
              // Reset all data to 0 (like upon system reset)
 
-             memset(&_kalmanState, 0, sizeof(_kalmanState));
+             memset(&_ekfState, 0, sizeof(_ekfState));
              memset(&_P, 0, sizeof(_P));
              memset(&_Pm, 0, sizeof(_Pm));
 
-             _kalmanState.z = 0;
+             _ekfState.z = 0;
 
              _qw = QW_INIT;
              _qx = QX_INIT;
@@ -438,9 +438,9 @@ class Ekf {
              }
 
              // Incorporate the attitude error (Kalman filter state) with the attitude
-             auto v0 = _kalmanState.e0;
-             auto v1 = _kalmanState.e1;
-             auto v2 = _kalmanState.e2;
+             auto v0 = _ekfState.e0;
+             auto v1 = _ekfState.e1;
+             auto v2 = _ekfState.e2;
 
              // Move attitude error into attitude if any of the angle errors are
              // large enough
@@ -521,9 +521,9 @@ class Ekf {
              _r22 = _qw * _qw - _qx * _qx - _qy * _qy + _qz * _qz;
 
              // reset the attitude error
-             _kalmanState.e0 = 0;
-             _kalmanState.e1 = 0;
-             _kalmanState.e2 = 0;
+             _ekfState.e0 = 0;
+             _ekfState.e1 = 0;
+             _ekfState.e2 = 0;
 
              // enforce symmetry of the covariance matrix, and ensure the values
              // stay bounded
@@ -664,12 +664,12 @@ class Ekf {
              A[KC_STATE_Z][KC_STATE_DZ] = _r22*dt;
 
              // altitude from attitude error
-             A[KC_STATE_Z][KC_STATE_E0] = (_kalmanState.dy*_r22 - 
-                     _kalmanState.dz*_r21)*dt;
-             A[KC_STATE_Z][KC_STATE_E1] = (- _kalmanState.dx*_r22 + 
-                     _kalmanState.dz*_r20)*dt;
-             A[KC_STATE_Z][KC_STATE_E2] = (_kalmanState.dx*_r21 - 
-                     _kalmanState.dy*_r20)*dt;
+             A[KC_STATE_Z][KC_STATE_E0] = (_ekfState.dy*_r22 - 
+                     _ekfState.dz*_r21)*dt;
+             A[KC_STATE_Z][KC_STATE_E1] = (- _ekfState.dx*_r22 + 
+                     _ekfState.dz*_r20)*dt;
+             A[KC_STATE_Z][KC_STATE_E2] = (_ekfState.dx*_r21 - 
+                     _ekfState.dy*_r20)*dt;
 
              // body-frame velocity from body-frame velocity
              A[KC_STATE_DX][KC_STATE_DX] = 1; //drag negligible
@@ -760,27 +760,27 @@ class Ekf {
                  zacc = acc->z;
 
                  // position updates in the body frame (will be rotated to inertial frame)
-                 dx = _kalmanState.dx * dt;
-                 dy = _kalmanState.dy * dt;
-                 dz = _kalmanState.dz * dt + zacc * dt2 / 2.0f; 
+                 dx = _ekfState.dx * dt;
+                 dy = _ekfState.dy * dt;
+                 dz = _ekfState.dz * dt + zacc * dt2 / 2.0f; 
                  // thrust can only be produced in the body's Z direction
 
                  // position update
-                 _kalmanState.z += _r20 * dx + _r21 * dy + _r22 * dz - 
+                 _ekfState.z += _r20 * dx + _r21 * dy + _r22 * dz - 
                      GRAVITY_MAGNITUDE * dt2 / 2.0f;
 
                  // keep previous time step's state for the update
-                 tmpSDX = _kalmanState.dx;
-                 tmpSDY = _kalmanState.dy;
-                 tmpSDZ = _kalmanState.dz;
+                 tmpSDX = _ekfState.dx;
+                 tmpSDY = _ekfState.dy;
+                 tmpSDZ = _ekfState.dz;
 
                  // body-velocity update: accelerometers - gyros cross velocity
                  // - gravity in body frame
-                 _kalmanState.dx += dt * (gyro->z * tmpSDY - gyro->y *
+                 _ekfState.dx += dt * (gyro->z * tmpSDY - gyro->y *
                          tmpSDZ - GRAVITY_MAGNITUDE * _r20);
-                 _kalmanState.dy += dt * (-gyro->z * tmpSDX + gyro->x * tmpSDZ - 
+                 _ekfState.dy += dt * (-gyro->z * tmpSDX + gyro->x * tmpSDZ - 
                          GRAVITY_MAGNITUDE * _r21);
-                 _kalmanState.dz += dt * (zacc + gyro->y * tmpSDX - gyro->x * 
+                 _ekfState.dz += dt * (zacc + gyro->y * tmpSDX - gyro->x * 
                          tmpSDY - GRAVITY_MAGNITUDE * _r22);
              }
              else {
@@ -788,27 +788,27 @@ class Ekf {
                  // accelerometer. This occurs, eg. in freefall or while being carried.
 
                  // position updates in the body frame (will be rotated to inertial frame)
-                 dx = _kalmanState.dx * dt + acc->x * dt2 / 2.0f;
-                 dy = _kalmanState.dy * dt + acc->y * dt2 / 2.0f;
-                 dz = _kalmanState.dz * dt + acc->z * dt2 / 2.0f; 
+                 dx = _ekfState.dx * dt + acc->x * dt2 / 2.0f;
+                 dy = _ekfState.dy * dt + acc->y * dt2 / 2.0f;
+                 dz = _ekfState.dz * dt + acc->z * dt2 / 2.0f; 
                  // thrust can only be produced in the body's Z direction
 
                  // altitude update
-                 _kalmanState.z += _r20 * dx + _r21 * dy + _r22 * dz - 
+                 _ekfState.z += _r20 * dx + _r21 * dy + _r22 * dz - 
                      GRAVITY_MAGNITUDE * dt2 / 2.0f;
 
                  // keep previous time step's state for the update
-                 tmpSDX = _kalmanState.dx;
-                 tmpSDY = _kalmanState.dy;
-                 tmpSDZ = _kalmanState.dz;
+                 tmpSDX = _ekfState.dx;
+                 tmpSDY = _ekfState.dy;
+                 tmpSDZ = _ekfState.dz;
 
                  // body-velocity update: accelerometers - gyros cross velocity
                  // - gravity in body frame
-                 _kalmanState.dx += dt * (acc->x + gyro->z * tmpSDY -
+                 _ekfState.dx += dt * (acc->x + gyro->z * tmpSDY -
                          gyro->y * tmpSDZ - GRAVITY_MAGNITUDE * _r20);
-                 _kalmanState.dy += dt * (acc->y - gyro->z * tmpSDX + gyro->x * 
+                 _ekfState.dy += dt * (acc->y - gyro->z * tmpSDX + gyro->x * 
                          tmpSDZ - GRAVITY_MAGNITUDE * _r21);
-                 _kalmanState.dz += dt * (acc->z + gyro->y * tmpSDX - gyro->x * 
+                 _ekfState.dz += dt * (acc->z + gyro->y * tmpSDX - gyro->x * 
                          tmpSDY - GRAVITY_MAGNITUDE * _r22);
              }
 
@@ -927,13 +927,13 @@ class Ekf {
              for (int i=0; i<KC_STATE_DIM; i++) {
                  K[i] = PHTd[i]/HPHR; // kalman gain = (PH' (HPH' + R )^-1)
              }
-             _kalmanState.z  += K[0] * error;
-             _kalmanState.dx += K[1] * error;
-             _kalmanState.dy += K[2] * error;
-             _kalmanState.dz += K[3] * error;
-             _kalmanState.e0 += K[4] * error;
-             _kalmanState.e1 += K[5] * error;
-             _kalmanState.e2 += K[6] * error;
+             _ekfState.z  += K[0] * error;
+             _ekfState.dx += K[1] * error;
+             _ekfState.dy += K[2] * error;
+             _ekfState.dz += K[3] * error;
+             _ekfState.e0 += K[4] * error;
+             _ekfState.e1 += K[5] * error;
+             _ekfState.e2 += K[6] * error;
 
              // ====== COVARIANCE UPDATE ======
              mat_mult(Km, Hm, tmpNN1m); // KH
@@ -987,14 +987,14 @@ class Ekf {
              float omegax_b = gyro->x * DEGREES_TO_RADIANS;
              float omegay_b = gyro->y * DEGREES_TO_RADIANS;
 
-             float dx_g = _kalmanState.dx;
-             float dy_g = _kalmanState.dy;
+             float dx_g = _ekfState.dx;
+             float dy_g = _ekfState.dy;
              float z_g = 0.0;
              // Saturate elevation in prediction and correction to avoid singularities
-             if ( _kalmanState.z < 0.1f ) {
+             if ( _ekfState.z < 0.1f ) {
                  z_g = 0.1;
              } else {
-                 z_g = _kalmanState.z;
+                 z_g = _ekfState.z;
              }
 
              // ~~~ X velocity prediction and update ~~~
@@ -1049,7 +1049,7 @@ class Ekf {
                  if (angle < 0.0f) {
                      angle = 0.0f;
                  }
-                 float predictedDistance = _kalmanState.z / cosf(angle);
+                 float predictedDistance = _ekfState.z / cosf(angle);
                  float measuredDistance = range->distance; // [m]
 
 
@@ -1115,10 +1115,10 @@ class Ekf {
         bool isStateWithinBounds(void) 
         {
             return 
-                isPositionWithinBounds(_kalmanState.z) &&
-                isVelocityWithinBounds(_kalmanState.dx) &&
-                isVelocityWithinBounds(_kalmanState.dy) &&
-                isVelocityWithinBounds(_kalmanState.dz);
+                isPositionWithinBounds(_ekfState.z) &&
+                isVelocityWithinBounds(_ekfState.dx) &&
+                isVelocityWithinBounds(_ekfState.dy) &&
+                isVelocityWithinBounds(_ekfState.dz);
         }
 
         static bool isPositionWithinBounds(const float pos)
