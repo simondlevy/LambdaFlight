@@ -87,16 +87,18 @@ data Axis3fSubSampler = Axis3fSubSampler {
 
      count :: SInt32
    , conversionFactor :: SFloat
+   , subSample :: Axis3f
 }
 
 initAxis3fSubSampler :: SBool -> Axis3fSubSampler -> Axis3fSubSampler
 
 initAxis3fSubSampler init a3fss = a3fss' where
 
-  a3fss' = Axis3fSubSampler count' conversionFactor'
+  a3fss' = Axis3fSubSampler count' conversionFactor' subSample'
 
   count' = if init then 0 else count a3fss
   conversionFactor' = if init then 0 else conversionFactor a3fss
+  subSample' = initAxis3f init (subSample a3fss)
 
 ------------------------------------------------------------------------------
 
@@ -181,7 +183,8 @@ runEkf nowMsec = Ekf ekfState
          accSubSampler = 
            initAxis3fSubSampler init 
                                 (Axis3fSubSampler accCount' 
-                                                  accConversionFactor')
+                                                  accConversionFactor'
+                                                  accSubSampler')
 
          isUpdated = if init then false else isUpdated'
 
@@ -190,9 +193,15 @@ runEkf nowMsec = Ekf ekfState
          lastProcessNoiseUpdateMsec = if init then nowMsec 
                                       else lastProcessNoiseUpdateMsec'
 
+         accSubSampler' = Axis3f ax' ay' az'
+
          r20 = if init then 0 else r20'
          r21 = if init then 0 else r20'
          r22 = if init then 1 else r20'
+
+         ax' = [0] ++ (x accSubSampler')
+         ay' = [0] ++ (y accSubSampler')
+         az' = [0] ++ (z accSubSampler')
 
          qw' = [1] ++ (qw quat)
          qx' = [0] ++ (qx quat)
