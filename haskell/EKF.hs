@@ -57,10 +57,8 @@ initAxis3f init axis3f = Axis3f x' y' z' where
   y' = if init then 0 else y axis3f
   z' = if init then 0 else z axis3f
   
-
 ------------------------------------------------------------------------------
 
-{--
 data Axis3fSubSampler = Axis3fSubSampler {
 
      summ :: Axis3f
@@ -76,26 +74,6 @@ initAxis3fSubSampler init a3fss = a3fss' where
   a3fss' = Axis3fSubSampler summ' count' conversionFactor' subSample'
 
   summ' = initAxis3f init (summ a3fss)
-  count' = if init then 0 else count a3fss
-  conversionFactor' = if init then 0 else conversionFactor a3fss
-  subSample' = initAxis3f init (subSample a3fss')
---}
-
-------------------------------------------------------------------------------
-
-data Axis3fSubSampler = Axis3fSubSampler {
-
-     count :: SInt32
-   , conversionFactor :: SFloat
-   , subSample :: Axis3f
-}
-
-initAxis3fSubSampler :: SBool -> Axis3fSubSampler -> Axis3fSubSampler
-
-initAxis3fSubSampler init a3fss = a3fss' where
-
-  a3fss' = Axis3fSubSampler count' conversionFactor' subSample'
-
   count' = if init then 0 else count a3fss
   conversionFactor' = if init then 0 else conversionFactor a3fss
   subSample' = initAxis3f init (subSample a3fss)
@@ -182,7 +160,8 @@ runEkf nowMsec = Ekf ekfState
 
          accSubSampler = 
            initAxis3fSubSampler init 
-                                (Axis3fSubSampler accCount' 
+                                (Axis3fSubSampler accSumm'
+                                                  accCount' 
                                                   accConversionFactor'
                                                   accSubSampler')
 
@@ -193,6 +172,8 @@ runEkf nowMsec = Ekf ekfState
          lastProcessNoiseUpdateMsec = if init then nowMsec 
                                       else lastProcessNoiseUpdateMsec'
 
+         accSumm' = Axis3f asx' asy' asz'
+
          accSubSampler' = Axis3f ax' ay' az'
 
          r20 = if init then 0 else r20'
@@ -202,6 +183,10 @@ runEkf nowMsec = Ekf ekfState
          ax' = [0] ++ (x accSubSampler')
          ay' = [0] ++ (y accSubSampler')
          az' = [0] ++ (z accSubSampler')
+
+         asx' = [0] ++ (x accSumm')
+         asy' = [0] ++ (y accSumm')
+         asz' = [0] ++ (z accSumm')
 
          qw' = [1] ++ (qw quat)
          qx' = [0] ++ (qx quat)
