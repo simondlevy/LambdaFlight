@@ -76,23 +76,21 @@ class EstimatorTask : public FreeRTOSTask {
             _isStateInBounds = inBounds;
         }
 
-        void setVehicleState(vehicleState_t & state)
-        {
-            _state.dx     = state.dx;
-            _state.dy     = state.dy;
-            _state.z      = state.z;
-            _state.dz     = state.dz;
-            _state.dphi   = state.dphi;
-            _state.dtheta = state.dtheta;
-            _state.dpsi   = state.dpsi;
-        }
-
-        void setEulerAngles(
-                const float phi, const float theta, const float psi) 
+        // Called from system.cpp
+        void setStateAngular(
+                const float phi, 
+                const float dphi, 
+                const float theta, 
+                const float dtheta, 
+                const float psi,
+                const float dpsi) 
         {
             _state.phi = phi;
+            _state.dphi = dphi;
             _state.theta = theta;
+            _state.dtheta = dtheta;
             _state.psi = psi;
+            _state.dpsi = dpsi;
         }
 
         void enqueueGyro(const Axis3f * gyro, const bool isInInterrupt)
@@ -229,9 +227,14 @@ class EstimatorTask : public FreeRTOSTask {
             // measurements since the last loop, rather than accumulating
 
             // Pull the latest sensors values of interest; discard the rest
-
             while (pdTRUE == xQueueReceive(
                         _measurementsQueue, &stream_ekfMeasurement, 0)) {
+
+                if (stream_ekfMeasurement.type == MeasurementTypeGyroscope) {
+                    stream_gyro.x = stream_ekfMeasurement.data.gyroscope.gyro.x;
+                    stream_gyro.y = stream_ekfMeasurement.data.gyroscope.gyro.y;
+                    stream_gyro.z = stream_ekfMeasurement.data.gyroscope.gyro.z;
+                }
 
                 stream_ekfMode = EKF_MODE_UPDATE; 
                 stream_ekfNowMsec = nowMsec;
@@ -256,9 +259,25 @@ class EstimatorTask : public FreeRTOSTask {
 
             xSemaphoreTake(_dataMutex, portMAX_DELAY);
 
-            stream_ekfMode = EKF_MODE_GET_STATE;
+            // Get altitude and linear velocity from C++ EKF
 
-            _ekf.step();
+            _state.dx = _ekf._ekfState.dx;
+
+            _state.dy = _ekf._ekfState.dy;
+
+            _state.z = _ekf._ekfState.z;
+
+            _state.dz = 
+                _ekf._r20 * _ekf._ekfState.dx +
+                _ekf._r21 * _ekf._ekfState.dy +
+                _ekf._r22 * _ekf._ekfState.dz;
+
+            // Quaternion is used by Haskell EKF
+            stream_quat.w = _ekf._qz;
+            stream_quat.x = _ekf._qw;
+            stream_quat.y = _ekf._qx;
+            stream_quat.z = _ekf._qy;
+            stream_ekfMode = EKF_MODE_GET_STATE;
             copilot_step_ekf();
 
             xSemaphoreGive(_dataMutex);

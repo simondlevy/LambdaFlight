@@ -24,6 +24,7 @@ module Main where
 import Language.Copilot
 import Copilot.Compile.C99
 
+import Imu
 import Quaternion
 import Utils
 
@@ -35,6 +36,9 @@ ekfModeStream = extern "stream_ekfMode" Nothing
 quatStream :: Stream QuatStruct
 quatStream = extern "stream_quat" Nothing
 
+gyroStream :: Stream ImuStruct
+gyroStream = extern "stream_gyro" Nothing
+
 mode_init      = 0 :: EkfModeStream
 mode_predict   = 1 :: EkfModeStream
 mode_update    = 2 :: EkfModeStream
@@ -45,11 +49,22 @@ spec = do
 
     let (phi, theta, psi) = quat2euler quatStream
 
-    trigger "setEulerAngles" 
+    -- Get angular velocities directly from gyro
+    let (dphi, dtheta, dpsi) = (gyroStream # x', gyroStream # y', gyroStream # z')
+
+    trigger "setStateAngles" 
+
             (ekfModeStream == mode_get_state) 
+
             [ arg $ rad2deg phi, 
-              arg $ -(rad2deg theta),  -- note negation
-              arg $ rad2deg psi]
+              arg dphi,
+
+              -- negate theta,dtheta for ENU
+              arg $ -(rad2deg theta),  
+              arg $ -dtheta,
+
+              arg $ rad2deg psi, 
+              arg dpsi ]
 
 -- Compile the spec
 main = reify spec >>= 

@@ -15,6 +15,7 @@ EXTERN bool stream_inHoverMode;
 EXTERN bool stream_resetPids;
 
 EXTERN quat_t stream_quat;
+EXTERN axes_t stream_gyro;
 
 EXTERN int8_t stream_ekfMode;
 EXTERN uint32_t stream_ekfNowMsec;

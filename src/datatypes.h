@@ -27,6 +27,14 @@ typedef struct {
 
 } demands_t;
 
+typedef struct axes {
+
+    float x;
+    float y;
+    float z;
+
+} axes_t;
+
 // From Eqn. (11) in Bouabdallah,  Murrieri, Siegwart (2004). 
 // We use ENU coordinates based on 
 // https://www.bitcraze.io/documentation/system/platform/cf2-coordinate-system

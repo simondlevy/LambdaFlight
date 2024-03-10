@@ -129,11 +129,20 @@ class Ekf {
 
     public:
 
+        // The quad's attitude as a quaternion (w,x,y,z) We store as a quaternion
+        // to allow easy normalization (in comparison to a rotation matrix),
+        // while also being robust against singularities (in comparison to euler angles)
+        float _qw;
+        float _qx;
+        float _qy;
+        float _qz;
+
         void step(void)
         {
             void setKalmanStateInBounds(bool);
-            void setVehicleState(vehicleState_t & state);
-            vehicleState_t state  = {};
+
+            void setStateLinear(
+                    const float dx, const float dy, const float z, const float dz);
 
             switch (stream_ekfMode) {
 
@@ -156,18 +165,10 @@ class Ekf {
                     setKalmanStateInBounds(finalize());
                     break;
 
-                case EKF_MODE_GET_STATE:
-                    stream_quat.w = _qz;
-                    stream_quat.x = _qw;
-                    stream_quat.y = _qx;
-                    stream_quat.z = _qy;
-                    getVehicleState(state);
-                    setVehicleState(state);
+                default:
                     break;
             }
         }
-
-    private:
 
         /**
          * Vehicle State
@@ -181,96 +182,68 @@ class Ekf {
          */         
         typedef struct {
 
-             float z;
-             float dx;
-             float dy;
-             float dz;
-             float e0;
-             float e1;
-             float e2;
+            float z;
+            float dx;
+            float dy;
+            float dz;
+            float e0;
+            float e1;
+            float e2;
 
-         } ekfState_t;
+        } ekfState_t;
 
-         // Indexes to access the state
-         typedef enum {
+        // Indexes to access the state
+        typedef enum {
 
-             KC_STATE_Z,
-             KC_STATE_DX,
-             KC_STATE_DY,
-             KC_STATE_DZ,
-             KC_STATE_E0,
-             KC_STATE_E1,
-             KC_STATE_E2,
-             KC_STATE_DIM
+            KC_STATE_Z,
+            KC_STATE_DX,
+            KC_STATE_DY,
+            KC_STATE_DZ,
+            KC_STATE_E0,
+            KC_STATE_E1,
+            KC_STATE_E2,
+            KC_STATE_DIM
 
-         } kalmanCoreStateIdx_t;
+        } kalmanCoreStateIdx_t;
 
-         typedef struct {
-             Axis3f sum;
-             uint32_t count;
-             float conversionFactor;
+        typedef struct {
+            Axis3f sum;
+            uint32_t count;
+            float conversionFactor;
 
-             Axis3f subSample;
-         } Axis3fSubSampler_t;
+            Axis3f subSample;
+        } Axis3fSubSampler_t;
 
-         //////////////////////////////////////////////////////////////////////////
+        //////////////////////////////////////////////////////////////////////////
 
-         Axis3f _gyroLatest;
+        Axis3f _gyroLatest;
 
-         Axis3fSubSampler_t _accSubSampler;
-         Axis3fSubSampler_t _gyroSubSampler;
+        Axis3fSubSampler_t _accSubSampler;
+        Axis3fSubSampler_t _gyroSubSampler;
 
-         ekfState_t _ekfState;
+        ekfState_t _ekfState;
 
-         // The quad's attitude as a quaternion (w,x,y,z) We store as a quaternion
-         // to allow easy normalization (in comparison to a rotation matrix),
-         // while also being robust against singularities (in comparison to euler angles)
-         float _qw;
-         float _qx;
-         float _qy;
-         float _qz;
+        // Third row (Z) of attitude as a rotation matrix (used by the prediction,
+        // updated by the finalization)
+        float _r20;
+        float _r21;
+        float _r22;
 
-         // Third row (Z) of attitude as a rotation matrix (used by the prediction,
-         // updated by the finalization)
-         float _r20;
-         float _r21;
-         float _r22;
+        // The covariance matrix
+        __attribute__((aligned(4))) float _P[KC_STATE_DIM][KC_STATE_DIM];
+        arm_matrix_instance_f32 _Pm;
 
-         // The covariance matrix
-         __attribute__((aligned(4))) float _P[KC_STATE_DIM][KC_STATE_DIM];
-         arm_matrix_instance_f32 _Pm;
+        // Tracks whether an update to the state has been made, and the state
+        // therefore requires finalization
+        bool _isUpdated;
 
-         // Tracks whether an update to the state has been made, and the state
-         // therefore requires finalization
-         bool _isUpdated;
+        uint32_t _lastPredictionMs;
+        uint32_t _lastProcessNoiseUpdateMs;
 
-         uint32_t _lastPredictionMs;
-         uint32_t _lastProcessNoiseUpdateMs;
+        //////////////////////////////////////////////////////////////////////////
 
-         //////////////////////////////////////////////////////////////////////////
-
-         void getVehicleState(vehicleState_t & state)
-         {
-             state.dx = _ekfState.dx;
-
-             state.dy = _ekfState.dy;
-
-             state.z = _ekfState.z;
-
-             state.dz = 
-                 _r20*_ekfState.dx + 
-                 _r21*_ekfState.dy + 
-                 _r22*_ekfState.dz;
-
-             // Get angular velocities directly from gyro
-             state.dphi =    _gyroLatest.x;     
-             state.dtheta = -_gyroLatest.y; // (negate for ENU)
-             state.dpsi =    _gyroLatest.z; 
-         }
-
-
-         bool finalize(void)
-         {
+        bool finalize(void)
+        {
              // Matrix to rotate the attitude covariances once updated
              static float A[KC_STATE_DIM][KC_STATE_DIM];
              static arm_matrix_instance_f32 Am = {
