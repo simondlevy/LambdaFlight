@@ -75,7 +75,7 @@ initAxis3fSubSampler init a3fss = a3fss' where
 
   a3fss' = Axis3fSubSampler summ' count' conversionFactor' subSample'
 
-  summ' = summ a3fss
+  summ' = if init then 0 else summ a3fss
   count' = count a3fss
   conversionFactor' = conversionFactor a3fss
   subSample' = subSample a3fss'
