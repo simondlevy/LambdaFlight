@@ -157,6 +157,10 @@ class Ekf {
                     break;
 
                 case EKF_MODE_GET_STATE:
+                    stream_quat.w = _qz;
+                    stream_quat.x = _qw;
+                    stream_quat.y = _qx;
+                    stream_quat.z = _qy;
                     getVehicleState(state);
                     setVehicleState(state);
                     break;
@@ -257,26 +261,6 @@ class Ekf {
                  _r20*_ekfState.dx + 
                  _r21*_ekfState.dy + 
                  _r22*_ekfState.dz;
-
-             state.phi = RADIANS_TO_DEGREES *
-                 atan2f(2*(_qy*_qz+_qw*
-                             _qx) ,
-                         _qw*_qw -
-                         _qx*_qx -
-                         _qy*_qy +
-                         _qz*_qz);
-
-             state.theta = -RADIANS_TO_DEGREES * // note negation
-                 asinf(-2*(_qx*_qz -
-                             _qw*_qy));
-
-             state.psi = RADIANS_TO_DEGREES *
-                 atan2f(2*(_qx*_qy+_qw*
-                             _qz)
-                         , _qw*_qw +
-                         _qx*_qx -
-                         _qy*_qy -
-                         _qz*_qz);
 
              // Get angular velocities directly from gyro
              state.dphi =    _gyroLatest.x;     

@@ -41,3 +41,11 @@ rad2deg rad = 180 * rad / pi
 
 deg2rad :: SFloat -> SFloat
 deg2rad deg = deg * pi / 180
+
+atan2 :: SFloat -> SFloat -> SFloat
+atan2 y x = if x > 0 then atan (y / x)
+            else if x < 0 && y >= 0 then atan (y / x) + pi
+            else if x < 0 && y < 0 then atan (y / x) - pi
+            else if x == 0 && y > 0 then pi
+            else if x == 0 && y < 0 then (-pi)
+            else 0 -- undefined

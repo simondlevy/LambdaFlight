@@ -1,6 +1,7 @@
 #pragma once
 
 #include <datatypes.h>
+#include <math3d.h>
 
 #ifndef _MAIN
 #define EXTERN extern
@@ -13,7 +14,9 @@ EXTERN vehicleState_t stream_vehicleState;
 EXTERN bool stream_inHoverMode;
 EXTERN bool stream_resetPids;
 
-EXTERN ekfMode_e stream_ekfMode;
+EXTERN quat_t stream_quat;
+
+EXTERN int8_t stream_ekfMode;
 EXTERN uint32_t stream_ekfNowMsec;
 EXTERN uint32_t stream_ekfNextPredictionMsec;
 EXTERN bool stream_ekfIsFlying;

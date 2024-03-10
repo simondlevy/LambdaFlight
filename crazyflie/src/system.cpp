@@ -77,8 +77,9 @@ PowerMonitorTask::syslinkInfo_t pmSyslinkInfo;
 
 // Haskell Copilot callbacks --------------------------------------------------
 
-void dummy(void)
+void setEulerAngles(float phi, float theta, float psi)
 {
+    estimatorTask.setEulerAngles(phi, theta, psi);
 }
 
 void setMotors(float m1, float m2, float m3, float m4)
@@ -95,11 +96,6 @@ void setVehicleState(vehicleState_t & state)
 {
     estimatorTask.setVehicleState(state);
 }
-
-void setVehicleStateFromHaskell(void)
-{
-}
-
 
 // ---------------------------------------------------------------------------
 

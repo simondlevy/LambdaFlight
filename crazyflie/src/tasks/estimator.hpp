@@ -78,7 +78,21 @@ class EstimatorTask : public FreeRTOSTask {
 
         void setVehicleState(vehicleState_t & state)
         {
-            memcpy(&_state, &state, sizeof(vehicleState_t));
+            _state.dx     = state.dx;
+            _state.dy     = state.dy;
+            _state.z      = state.z;
+            _state.dz     = state.dz;
+            _state.dphi   = state.dphi;
+            _state.dtheta = state.dtheta;
+            _state.dpsi   = state.dpsi;
+        }
+
+        void setEulerAngles(
+                const float phi, const float theta, const float psi) 
+        {
+            _state.phi = phi;
+            _state.theta = theta;
+            _state.psi = psi;
         }
 
         void enqueueGyro(const Axis3f * gyro, const bool isInInterrupt)
