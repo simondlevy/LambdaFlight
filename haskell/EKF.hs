@@ -149,97 +149,99 @@ data Ekf = Ekf {
 runEkf :: Ekf
 
 runEkf = Ekf ekfState quat
-           accSubSampler
-           gyroSubSampler
-           lastPredictionMsec 
-           lastProcessNoiseUpdateMsec 
-           isUpdated 
-           r20 
-           r21 
-           r22 where 
+                      accSubSampler
+                      gyroSubSampler
+                      lastPredictionMsec 
+                      lastProcessNoiseUpdateMsec 
+                      isUpdated 
+                      r20 
+                      r21 
+                      r22
 
-         init = ekfMode == mode_init
+  where
 
-         ekfState = initEkfState init (EkfState zz' dx' dy' dz' e0' e1' e2')
+    init = ekfMode == mode_init
 
-         quat = initQuat init (Quat qw' qx' qy' qz')
+    ekfState = initEkfState init (EkfState zz' dx' dy' dz' e0' e1' e2')
 
-         accSubSampler = 
-           initAxis3fSubSampler init 
-                                (Axis3fSubSampler accSumm'
-                                                  accCount' 
-                                                  accConversionFactor'
-                                                  accSubSampler')
-         gyroSubSampler = 
-           initAxis3fSubSampler init 
-                                (Axis3fSubSampler gyroSumm'
-                                                  gyroCount' 
-                                                  gyroConversionFactor'
-                                                  gyroSubSampler')
+    quat = initQuat init (Quat qw' qx' qy' qz')
 
-         isUpdated = if init then false else isUpdated'
+    accSubSampler = 
+      initAxis3fSubSampler init 
+                       (Axis3fSubSampler accSumm'
+                                     accCount' 
+                                     accConversionFactor'
+                                     accSubSampler')
+    gyroSubSampler = 
+      initAxis3fSubSampler init 
+                       (Axis3fSubSampler gyroSumm'
+                                     gyroCount' 
+                                     gyroConversionFactor'
+                                     gyroSubSampler')
 
-         lastPredictionMsec = if init then nowMsec else lastPredictionMsec'
+    isUpdated = if init then false else isUpdated'
 
-         lastProcessNoiseUpdateMsec = if init then nowMsec 
-                                      else lastProcessNoiseUpdateMsec'
+    lastPredictionMsec = if init then nowMsec else lastPredictionMsec'
 
-         accSumm' = Axis3f asx' asy' asz'
+    lastProcessNoiseUpdateMsec = if init then nowMsec 
+                            else lastProcessNoiseUpdateMsec'
 
-         accSubSampler' = Axis3f ax' ay' az'
+    accSumm' = Axis3f asx' asy' asz'
 
-         gyroSumm' = Axis3f gsx' gsy' gsz'
+    accSubSampler' = Axis3f ax' ay' az'
 
-         gyroSubSampler' = Axis3f gx' gy' gz'
+    gyroSumm' = Axis3f gsx' gsy' gsz'
 
-         r20 = if init then 0 else r20'
-         r21 = if init then 0 else r20'
-         r22 = if init then 1 else r20'
+    gyroSubSampler' = Axis3f gx' gy' gz'
 
-         ax' = [0] ++ (x accSubSampler')
-         ay' = [0] ++ (y accSubSampler')
-         az' = [0] ++ (z accSubSampler')
+    r20 = if init then 0 else r20'
+    r21 = if init then 0 else r20'
+    r22 = if init then 1 else r20'
 
-         asx' = [0] ++ (x accSumm')
-         asy' = [0] ++ (y accSumm')
-         asz' = [0] ++ (z accSumm')
+    ax' = [0] ++ (x accSubSampler')
+    ay' = [0] ++ (y accSubSampler')
+    az' = [0] ++ (z accSubSampler')
 
-         gx' = [0] ++ (x gyroSubSampler')
-         gy' = [0] ++ (y gyroSubSampler')
-         gz' = [0] ++ (z gyroSubSampler')
+    asx' = [0] ++ (x accSumm')
+    asy' = [0] ++ (y accSumm')
+    asz' = [0] ++ (z accSumm')
 
-         gsx' = [0] ++ (x gyroSumm')
-         gsy' = [0] ++ (y gyroSumm')
-         gsz' = [0] ++ (z gyroSumm')
+    gx' = [0] ++ (x gyroSubSampler')
+    gy' = [0] ++ (y gyroSubSampler')
+    gz' = [0] ++ (z gyroSubSampler')
 
-         qw' = [1] ++ (qw quat)
-         qx' = [0] ++ (qx quat)
-         qy' = [0] ++ (qy quat)
-         qz' = [0] ++ (qz quat)
+    gsx' = [0] ++ (x gyroSumm')
+    gsy' = [0] ++ (y gyroSumm')
+    gsz' = [0] ++ (z gyroSumm')
 
-         zz' = [0] ++ (zz ekfState)
-         dx' = [0] ++ (dx ekfState)
-         dy' = [0] ++ (dy ekfState)
-         dz' = [0] ++ (dz ekfState)
-         e0' = [0] ++ (e0 ekfState)
-         e1' = [0] ++ (e1 ekfState)
-         e2' = [0] ++ (e2 ekfState)
+    qw' = [1] ++ (qw quat)
+    qx' = [0] ++ (qx quat)
+    qy' = [0] ++ (qy quat)
+    qz' = [0] ++ (qz quat)
 
-         accCount' = [0] ++ (count accSubSampler)
-         accConversionFactor' = [0] ++ (conversionFactor accSubSampler)
+    zz' = [0] ++ (zz ekfState)
+    dx' = [0] ++ (dx ekfState)
+    dy' = [0] ++ (dy ekfState)
+    dz' = [0] ++ (dz ekfState)
+    e0' = [0] ++ (e0 ekfState)
+    e1' = [0] ++ (e1 ekfState)
+    e2' = [0] ++ (e2 ekfState)
 
-         gyroCount' = [0] ++ (count gyroSubSampler)
-         gyroConversionFactor' = [0] ++ (conversionFactor gyroSubSampler)
+    accCount' = [0] ++ (count accSubSampler)
+    accConversionFactor' = [0] ++ (conversionFactor accSubSampler)
 
-         lastPredictionMsec' = [0] ++ lastPredictionMsec
+    gyroCount' = [0] ++ (count gyroSubSampler)
+    gyroConversionFactor' = [0] ++ (conversionFactor gyroSubSampler)
 
-         lastProcessNoiseUpdateMsec' = [0] ++ lastProcessNoiseUpdateMsec
+    lastPredictionMsec' = [0] ++ lastPredictionMsec
 
-         isUpdated' = [False] ++ isUpdated
+    lastProcessNoiseUpdateMsec' = [0] ++ lastProcessNoiseUpdateMsec
 
-         r20' = [0] ++ r20
-         r21' = [0] ++ r21
-         r22' = [1] ++ r22
+    isUpdated' = [False] ++ isUpdated
+
+    r20' = [0] ++ r20
+    r21' = [0] ++ r21
+    r22' = [1] ++ r22
 
 ------------------------------------------------------------------------------
 
