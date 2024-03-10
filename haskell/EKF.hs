@@ -130,6 +130,7 @@ data Ekf = Ekf {
   , quat :: Quat
 
   , accSubSampler :: Axis3fSubSampler
+  , gyroSubSampler :: Axis3fSubSampler
 
   , lastPredictionMsec :: SInt32
   , lastProcessNoiesUpdateMsec :: SInt32
@@ -147,6 +148,7 @@ runEkf :: SInt32 -> Ekf
 runEkf nowMsec = Ekf ekfState
                      quat
                      accSubSampler
+                     gyroSubSampler
                      lastPredictionMsec lastProcessNoiseUpdateMsec isUpdated 
                      r20 r21 r22
 
@@ -165,6 +167,13 @@ runEkf nowMsec = Ekf ekfState
                                                   accConversionFactor'
                                                   accSubSampler')
 
+         gyroSubSampler = 
+           initAxis3fSubSampler init 
+                                (Axis3fSubSampler gyroSumm'
+                                                  gyroCount' 
+                                                  gyroConversionFactor'
+                                                  gyroSubSampler')
+
          isUpdated = if init then false else isUpdated'
 
          lastPredictionMsec = if init then nowMsec else lastPredictionMsec'
@@ -175,6 +184,10 @@ runEkf nowMsec = Ekf ekfState
          accSumm' = Axis3f asx' asy' asz'
 
          accSubSampler' = Axis3f ax' ay' az'
+
+         gyroSumm' = Axis3f gsx' gsy' gsz'
+
+         gyroSubSampler' = Axis3f gx' gy' gz'
 
          r20 = if init then 0 else r20'
          r21 = if init then 0 else r20'
@@ -187,6 +200,14 @@ runEkf nowMsec = Ekf ekfState
          asx' = [0] ++ (x accSumm')
          asy' = [0] ++ (y accSumm')
          asz' = [0] ++ (z accSumm')
+
+         gx' = [0] ++ (x gyroSubSampler')
+         gy' = [0] ++ (y gyroSubSampler')
+         gz' = [0] ++ (z gyroSubSampler')
+
+         gsx' = [0] ++ (x gyroSumm')
+         gsy' = [0] ++ (y gyroSumm')
+         gsz' = [0] ++ (z gyroSumm')
 
          qw' = [1] ++ (qw quat)
          qx' = [0] ++ (qx quat)
@@ -203,6 +224,9 @@ runEkf nowMsec = Ekf ekfState
 
          accCount' = [0] ++ (count accSubSampler)
          accConversionFactor' = [0] ++ (conversionFactor accSubSampler)
+
+         gyroCount' = [0] ++ (count gyroSubSampler)
+         gyroConversionFactor' = [0] ++ (conversionFactor gyroSubSampler)
 
          lastPredictionMsec' = [0] ++ lastPredictionMsec
 
