@@ -41,6 +41,50 @@ mode_get_state = 4 :: EkfMode
 
 ------------------------------------------------------------------------------
 
+data Axis3f = Axis3f {
+
+    x :: SFloat
+  , y :: SFloat
+  , z :: SFloat
+
+}
+
+initAxis3f :: SBool -> Axis3f -> Axis3f
+
+initAxis3f init axis3f = Axis3f x' y' z' where
+
+  x' = if init then 0 else (x axis3f)
+  y' = if init then 0 else (y axis3f)
+  z' = if init then 0 else (z axis3f)
+  
+
+------------------------------------------------------------------------------
+
+data Axis3fSubSampler = Axis3fSubSampler {
+
+     summ :: Axis3f
+   , count :: SInt32
+   , conversionFactor :: SFloat
+   , subSample :: Axis3f
+
+}
+
+initAxis3fSubSampler :: SBool -> Axis3fSubSampler -> Axis3fSubSampler
+
+initAxis3fSubSampler init a3fss = a3fss' where
+
+  a3fss' = Axis3fSubSampler summ' count' conversionFactor' subSample'
+
+  summ' = summ a3fss
+  count' = count a3fss
+  conversionFactor' = conversionFactor a3fss
+  subSample' = subSample a3fss'
+ 
+
+
+
+------------------------------------------------------------------------------
+
 data Quat = Quat { 
     qw :: SFloat
   , qx :: SFloat
@@ -99,16 +143,6 @@ data Ekf = Ekf {
   , r20 :: SFloat
   , r21 :: SFloat
   , r22 :: SFloat
-}
-
-------------------------------------------------------------------------------
-
-data Axis3f = Axis3f {
-
-    x :: SFloat
-  , y :: SFloat
-  , z :: SFloat
-
 }
 
 ------------------------------------------------------------------------------
