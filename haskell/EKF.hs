@@ -61,7 +61,7 @@ initQuat init quat = Quat qw' qx' qy' qz' where
 
 data EkfState = EkfState {
 
-     z :: SFloat
+    zz :: SFloat
   , dx :: SFloat
   , dy :: SFloat
   , dz :: SFloat
@@ -72,9 +72,9 @@ data EkfState = EkfState {
 
 initEkfState :: SBool -> EkfState -> EkfState
 
-initEkfState init ekfState = EkfState z' dx' dy' dz' e0' e1' e2' where
+initEkfState init ekfState = EkfState zz' dx' dy' dz' e0' e1' e2' where
 
-  z'  = if init then 0 else (z ekfState)
+  zz' = if init then 0 else (zz ekfState)
   dx' = if init then 0 else (dx ekfState)
   dy' = if init then 0 else (dy ekfState)
   dz' = if init then 0 else (dz ekfState)
@@ -103,6 +103,16 @@ data Ekf = Ekf {
 
 ------------------------------------------------------------------------------
 
+data Axis3f = Axis3f {
+
+    x :: SFloat
+  , y :: SFloat
+  , z :: SFloat
+
+}
+
+------------------------------------------------------------------------------
+
 runEkf :: SInt32 -> Ekf
 
 runEkf nowMsec = Ekf ekfState
@@ -114,7 +124,7 @@ runEkf nowMsec = Ekf ekfState
 
          init = ekfMode == mode_init
 
-         ekfState = initEkfState init (EkfState z' dx' dy' dz' e0' e1' e2')
+         ekfState = initEkfState init (EkfState zz' dx' dy' dz' e0' e1' e2')
 
          quat = initQuat init (Quat qw' qx' qy' qz')
 
@@ -134,7 +144,7 @@ runEkf nowMsec = Ekf ekfState
          qy' = [0] ++ (qy quat)
          qz' = [0] ++ (qz quat)
 
-         z'  = [0] ++ (z ekfState)
+         zz' = [0] ++ (zz ekfState)
          dx' = [0] ++ (dx ekfState)
          dy' = [0] ++ (dy ekfState)
          dz' = [0] ++ (dz ekfState)
