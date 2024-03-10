@@ -53,9 +53,9 @@ initAxis3f :: SBool -> Axis3f -> Axis3f
 
 initAxis3f init axis3f = Axis3f x' y' z' where
 
-  x' = if init then 0 else (x axis3f)
-  y' = if init then 0 else (y axis3f)
-  z' = if init then 0 else (z axis3f)
+  x' = if init then 0 else x axis3f
+  y' = if init then 0 else y axis3f
+  z' = if init then 0 else z axis3f
   
 
 ------------------------------------------------------------------------------
@@ -75,13 +75,11 @@ initAxis3fSubSampler init a3fss = a3fss' where
 
   a3fss' = Axis3fSubSampler summ' count' conversionFactor' subSample'
 
-  summ' = if init then 0 else summ a3fss
-  count' = count a3fss
-  conversionFactor' = conversionFactor a3fss
-  subSample' = subSample a3fss'
+  summ' = initAxis3f init (summ a3fss)
+  count' = if init then 0 else count a3fss
+  conversionFactor' = if init then 0 else conversionFactor a3fss
+  subSample' = initAxis3f init (subSample a3fss')
  
-
-
 
 ------------------------------------------------------------------------------
 
@@ -96,10 +94,10 @@ initQuat :: SBool -> Quat -> Quat
 
 initQuat init quat = Quat qw' qx' qy' qz' where
 
-  qw' = if init then 1 else (qw quat)
-  qx' = if init then 0 else (qx quat)
-  qy' = if init then 0 else (qy quat)
-  qz' = if init then 0 else (qz quat)
+  qw' = if init then 1 else qw quat
+  qx' = if init then 0 else qx quat
+  qy' = if init then 0 else qy quat
+  qz' = if init then 0 else qz quat
 
 ------------------------------------------------------------------------------
 
@@ -118,13 +116,13 @@ initEkfState :: SBool -> EkfState -> EkfState
 
 initEkfState init ekfState = EkfState zz' dx' dy' dz' e0' e1' e2' where
 
-  zz' = if init then 0 else (zz ekfState)
-  dx' = if init then 0 else (dx ekfState)
-  dy' = if init then 0 else (dy ekfState)
-  dz' = if init then 0 else (dz ekfState)
-  e0' = if init then 0 else (e0 ekfState)
-  e1' = if init then 0 else (e1 ekfState)
-  e2' = if init then 0 else (e2 ekfState)
+  zz' = if init then 0 else zz ekfState
+  dx' = if init then 0 else dx ekfState
+  dy' = if init then 0 else dy ekfState
+  dz' = if init then 0 else dz ekfState
+  e0' = if init then 0 else e0 ekfState
+  e1' = if init then 0 else e1 ekfState
+  e2' = if init then 0 else e2 ekfState
 
 ------------------------------------------------------------------------------
 
