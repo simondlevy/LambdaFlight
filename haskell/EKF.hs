@@ -73,15 +73,17 @@ runEkf nowMsec = Ekf z dx dy dz e0 e1 e2
                      lastPredictionMsec lastProcessNoiseUpdateMsec isUpdated 
                      r20 r21 r22
 
-   where init = ekfMode == mode_init
+   where 
 
-         z = 0
-         dx = 0
-         dy = 0
-         dz = 0
-         e0 = 0
-         e1 = 0
-         e2 = 0
+         init = ekfMode == mode_init
+
+         z = if init then 0 else z'
+         dx = if init then 0 else dx'
+         dy = if init then 0 else dy'
+         dz = if init then 0 else dz'
+         e0 = if init then 0 else e0' 
+         e1 = if init then 0 else e1'
+         e2 = if init then 0 else e2'
 
          isUpdated = if init then false else isUpdated'
 
@@ -103,6 +105,14 @@ runEkf nowMsec = Ekf z dx dy dz e0 e1 e2
          qx' = [0] ++ qx
          qy' = [0] ++ qy
          qz' = [0] ++ qz
+
+         z' = [0] ++ z
+         dx' = [0] ++ dx
+         dy' = [0] ++ dy
+         dz' = [0] ++ dz
+         e0' = [0] ++ e0
+         e1' = [0] ++ e1
+         e2' = [0] ++ e2
 
          lastPredictionMsec' = [0] ++ lastPredictionMsec
 
