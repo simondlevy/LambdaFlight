@@ -60,13 +60,13 @@ initAxis3f init axis3f = Axis3f x' y' z' where
 
 ------------------------------------------------------------------------------
 
+{--
 data Axis3fSubSampler = Axis3fSubSampler {
 
      summ :: Axis3f
    , count :: SInt32
    , conversionFactor :: SFloat
    , subSample :: Axis3f
-
 }
 
 initAxis3fSubSampler :: SBool -> Axis3fSubSampler -> Axis3fSubSampler
@@ -79,7 +79,24 @@ initAxis3fSubSampler init a3fss = a3fss' where
   count' = if init then 0 else count a3fss
   conversionFactor' = if init then 0 else conversionFactor a3fss
   subSample' = initAxis3f init (subSample a3fss')
- 
+--}
+
+------------------------------------------------------------------------------
+
+data Axis3fSubSampler = Axis3fSubSampler {
+
+     count :: SInt32
+   , conversionFactor :: SFloat
+}
+
+initAxis3fSubSampler :: SBool -> Axis3fSubSampler -> Axis3fSubSampler
+
+initAxis3fSubSampler init a3fss = a3fss' where
+
+  a3fss' = Axis3fSubSampler count' conversionFactor'
+
+  count' = if init then 0 else count a3fss
+  conversionFactor' = if init then 0 else conversionFactor a3fss
 
 ------------------------------------------------------------------------------
 
@@ -132,7 +149,8 @@ data Ekf = Ekf {
 
   , quat :: Quat
 
-    -- misc
+  , accSubSampler :: Axis3fSubSampler
+
   , lastPredictionMsec :: SInt32
   , lastProcessNoiesUpdateMsec :: SInt32
   , isUpdated :: SBool
@@ -143,12 +161,12 @@ data Ekf = Ekf {
   , r22 :: SFloat
 }
 
-------------------------------------------------------------------------------
 
 runEkf :: SInt32 -> Ekf
 
 runEkf nowMsec = Ekf ekfState
                      quat
+                     accSubSampler
                      lastPredictionMsec lastProcessNoiseUpdateMsec isUpdated 
                      r20 r21 r22
 
@@ -159,6 +177,11 @@ runEkf nowMsec = Ekf ekfState
          ekfState = initEkfState init (EkfState zz' dx' dy' dz' e0' e1' e2')
 
          quat = initQuat init (Quat qw' qx' qy' qz')
+
+         accSubSampler = 
+           initAxis3fSubSampler init 
+                                (Axis3fSubSampler accCount' 
+                                                  accConversionFactor')
 
          isUpdated = if init then false else isUpdated'
 
@@ -184,16 +207,15 @@ runEkf nowMsec = Ekf ekfState
          e1' = [0] ++ (e1 ekfState)
          e2' = [0] ++ (e2 ekfState)
 
+         accCount' = [0] ++ (count accSubSampler)
+         accConversionFactor' = [0] ++ (conversionFactor accSubSampler)
+
          lastPredictionMsec' = [0] ++ lastPredictionMsec
 
          lastProcessNoiseUpdateMsec' = [0] ++ lastProcessNoiseUpdateMsec
 
          isUpdated' = [False] ++ isUpdated
 
-         -- Set the initial rotation matrix to the identity. This only affects
-         -- the first prediction step, since in the finalization, after 
-         -- shifting attitude errors into the attitude state, the rotation
-         -- matrix is updated.
          r20' = [0] ++ r20
          r21' = [0] ++ r21
          r22' = [1] ++ r22
