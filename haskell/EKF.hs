@@ -33,6 +33,9 @@ type EkfMode = SInt8
 ekfMode :: EkfMode
 ekfMode = extern "stream_ekfMode" Nothing
 
+nowMsec :: SInt32
+nowMsec = extern "stream_nowMsec" Nothing
+
 mode_init      = 0 :: EkfMode
 mode_predict   = 1 :: EkfMode
 mode_update    = 2 :: EkfMode
@@ -143,20 +146,17 @@ data Ekf = Ekf {
 }
 
 
-runEkf :: SInt32 -> Ekf
+runEkf :: Ekf
 
-runEkf nowMsec = Ekf ekfState
-                     quat
-                     accSubSampler
-                     gyroSubSampler
-                     lastPredictionMsec 
-                     lastProcessNoiseUpdateMsec 
-                     isUpdated 
-                     r20 
-                     r21 
-                     r22
-
-   where 
+runEkf = Ekf ekfState quat
+           accSubSampler
+           gyroSubSampler
+           lastPredictionMsec 
+           lastProcessNoiseUpdateMsec 
+           isUpdated 
+           r20 
+           r21 
+           r22 where 
 
          init = ekfMode == mode_init
 
