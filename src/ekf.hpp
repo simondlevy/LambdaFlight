@@ -209,7 +209,6 @@ class Ekf {
              Axis3f subSample;
          } Axis3fSubSampler_t;
 
-
          //////////////////////////////////////////////////////////////////////////
 
          Axis3f _gyroLatest;

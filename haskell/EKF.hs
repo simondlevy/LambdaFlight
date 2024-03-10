@@ -149,8 +149,12 @@ runEkf nowMsec = Ekf ekfState
                      quat
                      accSubSampler
                      gyroSubSampler
-                     lastPredictionMsec lastProcessNoiseUpdateMsec isUpdated 
-                     r20 r21 r22
+                     lastPredictionMsec 
+                     lastProcessNoiseUpdateMsec 
+                     isUpdated 
+                     r20 
+                     r21 
+                     r22
 
    where 
 
@@ -166,7 +170,6 @@ runEkf nowMsec = Ekf ekfState
                                                   accCount' 
                                                   accConversionFactor'
                                                   accSubSampler')
-
          gyroSubSampler = 
            initAxis3fSubSampler init 
                                 (Axis3fSubSampler gyroSumm'
