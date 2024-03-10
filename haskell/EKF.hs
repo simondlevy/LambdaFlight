@@ -24,8 +24,9 @@ module Main where
 import Language.Copilot
 import Copilot.Compile.C99
 
-import State
 import Utils
+
+------------------------------------------------------------------------------
 
 type EkfMode = SInt8
 
@@ -37,6 +38,8 @@ mode_predict   = 1 :: EkfMode
 mode_update    = 2 :: EkfMode
 mode_finalize  = 3 :: EkfMode
 mode_get_state = 4 :: EkfMode
+
+------------------------------------------------------------------------------
 
 data Quat = Quat { 
     qw :: SFloat
@@ -54,34 +57,55 @@ initQuat init quat = Quat qw' qx' qy' qz' where
   qy' = if init then 0 else (qy quat)
   qz' = if init then 0 else (qz quat)
 
+------------------------------------------------------------------------------
+
+data EkfState = EkfState {
+
+     z :: SFloat
+  , dx :: SFloat
+  , dy :: SFloat
+  , dz :: SFloat
+  , e0 :: SFloat
+  , e1 :: SFloat
+  , e2 :: SFloat
+}
+
+initEkfState :: SBool -> EkfState -> EkfState
+
+initEkfState init ekfState = EkfState z' dx' dy' dz' e0' e1' e2' where
+
+  z'  = if init then 0 else (z ekfState)
+  dx' = if init then 0 else (dx ekfState)
+  dy' = if init then 0 else (dy ekfState)
+  dz' = if init then 0 else (dz ekfState)
+  e0' = if init then 0 else (e0 ekfState)
+  e1' = if init then 0 else (e1 ekfState)
+  e2' = if init then 0 else (e2 ekfState)
+
+------------------------------------------------------------------------------
+
 data Ekf = Ekf { 
 
-                 -- state
-                    z :: SFloat
-                 , dx :: SFloat
-                 , dy :: SFloat
-                 , dz :: SFloat
-                 , e0 :: SFloat
-                 , e1 :: SFloat
-                 , e2 :: SFloat
+    ekfState :: EkfState
 
-                 -- quaternion
-                 , quat :: Quat
+  , quat :: Quat
 
-                 -- misc
-                 , lastPredictionMsec :: SInt32
-                 , lastProcessNoiesUpdateMsec :: SInt32
-                 , isUpdated :: SBool
+    -- misc
+  , lastPredictionMsec :: SInt32
+  , lastProcessNoiesUpdateMsec :: SInt32
+  , isUpdated :: SBool
 
-                  -- third row (Z) of attitude as a rotation matrix for prediction
-                 , r20 :: SFloat
-                 , r21 :: SFloat
-                 , r22 :: SFloat
-               }
+  -- third row (Z) of attitude as a rotation matrix for prediction
+  , r20 :: SFloat
+  , r21 :: SFloat
+  , r22 :: SFloat
+}
+
+------------------------------------------------------------------------------
 
 runEkf :: SInt32 -> Ekf
 
-runEkf nowMsec = Ekf z dx dy dz e0 e1 e2
+runEkf nowMsec = Ekf ekfState
                      quat
                      lastPredictionMsec lastProcessNoiseUpdateMsec isUpdated 
                      r20 r21 r22
@@ -90,13 +114,7 @@ runEkf nowMsec = Ekf z dx dy dz e0 e1 e2
 
          init = ekfMode == mode_init
 
-         z = if init then 0 else z'
-         dx = if init then 0 else dx'
-         dy = if init then 0 else dy'
-         dz = if init then 0 else dz'
-         e0 = if init then 0 else e0' 
-         e1 = if init then 0 else e1'
-         e2 = if init then 0 else e2'
+         ekfState = initEkfState init (EkfState z' dx' dy' dz' e0' e1' e2')
 
          quat = initQuat init (Quat qw' qx' qy' qz')
 
@@ -116,13 +134,13 @@ runEkf nowMsec = Ekf z dx dy dz e0 e1 e2
          qy' = [0] ++ (qy quat)
          qz' = [0] ++ (qz quat)
 
-         z' = [0] ++ z
-         dx' = [0] ++ dx
-         dy' = [0] ++ dy
-         dz' = [0] ++ dz
-         e0' = [0] ++ e0
-         e1' = [0] ++ e1
-         e2' = [0] ++ e2
+         z'  = [0] ++ (z ekfState)
+         dx' = [0] ++ (dx ekfState)
+         dy' = [0] ++ (dy ekfState)
+         dz' = [0] ++ (dz ekfState)
+         e0' = [0] ++ (e0 ekfState)
+         e1' = [0] ++ (e1 ekfState)
+         e2' = [0] ++ (e2 ekfState)
 
          lastPredictionMsec' = [0] ++ lastPredictionMsec
 
@@ -138,6 +156,7 @@ runEkf nowMsec = Ekf z dx dy dz e0 e1 e2
          r21' = [0] ++ r21
          r22' = [1] ++ r22
 
+------------------------------------------------------------------------------
 
 spec = do
 
