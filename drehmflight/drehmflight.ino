@@ -395,15 +395,15 @@ void loop() {
   loopBlink(); //Indicate we are in main loop with short blink every 1.5 seconds
 
   //Print data at 100hz (uncomment one at a time for troubleshooting) - SELECT ONE:
-  //printRadioData();     //Prints radio pwm values (expected: 1000 to 2000)
-  //printDesiredState();  //Prints desired vehicle state commanded in either degrees or deg/sec (expected: +/- maxAXIS for roll, pitch, yaw; 0 to 1 for throttle)
-  //printGyroData();      //Prints filtered gyro data direct from IMU (expected: ~ -250 to 250, 0 at rest)
-  //printAccelData();     //Prints filtered accelerometer data direct from IMU (expected: ~ -2 to 2; x,y 0 when level, z 1 when level)
-  //printMagData();       //Prints filtered magnetometer data direct from IMU (expected: ~ -300 to 300)
-  printRollPitchYaw();  //Prints roll, pitch, and yaw angles in degrees from Madgwick filter (expected: degrees, 0 when level)
-  //printPIDoutput();     //Prints computed stabilized PID variables from controller and desired setpoint (expected: ~ -1 to 1)
-  //printMotorCommands(); //Prints the values being written to the motors (expected: 120 to 250)
-  //printServoCommands(); //Prints the values being written to the servos (expected: 0 to 180)
+  //debugRadioData();     //Prints radio pwm values (expected: 1000 to 2000)
+  //debugDesiredState();  //Prints desired vehicle state commanded in either degrees or deg/sec (expected: +/- maxAXIS for roll, pitch, yaw; 0 to 1 for throttle)
+  //debugGyroData();      //Prints filtered gyro data direct from IMU (expected: ~ -250 to 250, 0 at rest)
+  //debugAccelData();     //Prints filtered accelerometer data direct from IMU (expected: ~ -2 to 2; x,y 0 when level, z 1 when level)
+  //debugMagData();       //Prints filtered magnetometer data direct from IMU (expected: ~ -300 to 300)
+  debugRollPitchYaw();  //Prints roll, pitch, and yaw angles in degrees from Madgwick filter (expected: degrees, 0 when level)
+  //debugPIDoutput();     //Prints computed stabilized PID variables from controller and desired setpoint (expected: ~ -1 to 1)
+  //debugMotorCommands(); //Prints the values being written to the motors (expected: 120 to 250)
+  //debugServoCommands(); //Prints the values being written to the servos (expected: 0 to 180)
   //printLoopRate();      //Prints the time between loops in microseconds (expected: microseconds between loop iterations)
 
   // Get arming status
@@ -1373,7 +1373,7 @@ void calibrateESCs() {
       servo7.write(s7_command_PWM);
       commandMotors(); //Sends command pulses to each motor pin using OneShot125 protocol
       
-      //printRadioData(); //Radio pwm values (expected: 1000 to 2000)
+      //debugRadioData(); //Radio pwm values (expected: 1000 to 2000)
       
       loopRate(2000); //Do not exceed 2000Hz, all filter parameters tuned to 2000Hz by default
    }
@@ -1570,7 +1570,7 @@ void setupBlink(int numBlinks,int upTime, int downTime) {
   }
 }
 
-void printRadioData() {
+void debugRadioData() {
   if (current_time - print_counter > 10000) {
     print_counter = micros();
     Serial.print(F(" CH1:"));
@@ -1588,7 +1588,7 @@ void printRadioData() {
   }
 }
 
-void printDesiredState() {
+void debugDesiredState() {
   if (current_time - print_counter > 10000) {
     print_counter = micros();
     Serial.print(F("thro_des:"));
@@ -1602,7 +1602,7 @@ void printDesiredState() {
   }
 }
 
-void printGyroData() {
+void debugGyroData() {
   if (current_time - print_counter > 10000) {
     print_counter = micros();
     Serial.print(F("GyroX:"));
@@ -1614,7 +1614,7 @@ void printGyroData() {
   }
 }
 
-void printAccelData() {
+void debugAccelData() {
   if (current_time - print_counter > 10000) {
     print_counter = micros();
     Serial.print(F("AccX:"));
@@ -1626,7 +1626,7 @@ void printAccelData() {
   }
 }
 
-void printMagData() {
+void debugMagData() {
   if (current_time - print_counter > 10000) {
     print_counter = micros();
     Serial.print(F("MagX:"));
@@ -1638,7 +1638,7 @@ void printMagData() {
   }
 }
 
-void printRollPitchYaw() {
+void debugRollPitchYaw() {
   if (current_time - print_counter > 10000) {
     print_counter = micros();
     Serial.print(F("roll:"));
@@ -1650,7 +1650,7 @@ void printRollPitchYaw() {
   }
 }
 
-void printPIDoutput() {
+void debugPIDoutput() {
   if (current_time - print_counter > 10000) {
     print_counter = micros();
     Serial.print(F("roll_PID:"));
@@ -1662,7 +1662,7 @@ void printPIDoutput() {
   }
 }
 
-void printMotorCommands() {
+void debugMotorCommands() {
   if (current_time - print_counter > 10000) {
     print_counter = micros();
     Serial.print(F("m1_command:"));
@@ -1680,7 +1680,7 @@ void printMotorCommands() {
   }
 }
 
-void printServoCommands() {
+void debugServoCommands() {
   if (current_time - print_counter > 10000) {
     print_counter = micros();
     Serial.print(F("s1_command:"));
