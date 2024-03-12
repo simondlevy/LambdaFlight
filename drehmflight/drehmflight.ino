@@ -553,13 +553,9 @@ void getIMUdata() {
    * the readings. The filter parameters B_gyro and B_accel are set to be good for a 2kHz loop rate. Finally,
    * the constant errors found in calculate_IMU_error() on startup are subtracted from the accelerometer and gyro readings.
    */
-  int16_t AcX,AcY,AcZ,GyX,GyY,GyZ,MgX,MgY,MgZ;
+  int16_t AcX,AcY,AcZ,GyX,GyY,GyZ;
 
-  #if defined USE_MPU6050_I2C
-    mpu6050.getMotion6(&AcX, &AcY, &AcZ, &GyX, &GyY, &GyZ);
-  #elif defined USE_MPU9250_SPI
-    mpu9250.getMotion9(&AcX, &AcY, &AcZ, &GyX, &GyY, &GyZ, &MgX, &MgY, &MgZ);
-  #endif
+  mpu6050.getMotion6(&AcX, &AcY, &AcZ, &GyX, &GyY, &GyZ);
 
  //Accelerometer
   AccX = AcX / ACCEL_SCALE_FACTOR; //G's
@@ -592,22 +588,6 @@ void getIMUdata() {
   GyroX_prev = GyroX;
   GyroY_prev = GyroY;
   GyroZ_prev = GyroZ;
-
-  //Magnetometer
-  MagX = MgX/6.0; //uT
-  MagY = MgY/6.0;
-  MagZ = MgZ/6.0;
-  //Correct the outputs with the calculated error values
-  MagX = (MagX - MagErrorX)*MagScaleX;
-  MagY = (MagY - MagErrorY)*MagScaleY;
-  MagZ = (MagZ - MagErrorZ)*MagScaleZ;
-  //LP filter magnetometer data
-  MagX = (1.0 - B_mag)*MagX_prev + B_mag*MagX;
-  MagY = (1.0 - B_mag)*MagY_prev + B_mag*MagY;
-  MagZ = (1.0 - B_mag)*MagZ_prev + B_mag*MagZ;
-  MagX_prev = MagX;
-  MagY_prev = MagY;
-  MagZ_prev = MagZ;
 }
 
 void calculate_IMU_error() {
@@ -617,7 +597,7 @@ void calculate_IMU_error() {
    * accelerometer values AccX, AccY, AccZ, GyroX, GyroY, GyroZ in getIMUdata(). This eliminates drift in the
    * measurement. 
    */
-  int16_t AcX,AcY,AcZ,GyX,GyY,GyZ,MgX,MgY,MgZ;
+  int16_t AcX,AcY,AcZ,GyX,GyY,GyZ;
   AccErrorX = 0.0;
   AccErrorY = 0.0;
   AccErrorZ = 0.0;
@@ -628,28 +608,25 @@ void calculate_IMU_error() {
   //Read IMU values 12000 times
   int c = 0;
   while (c < 12000) {
-    #if defined USE_MPU6050_I2C
       mpu6050.getMotion6(&AcX, &AcY, &AcZ, &GyX, &GyY, &GyZ);
-    #elif defined USE_MPU9250_SPI
-      mpu9250.getMotion9(&AcX, &AcY, &AcZ, &GyX, &GyY, &GyZ, &MgX, &MgY, &MgZ);
-    #endif
-    
-    AccX  = AcX / ACCEL_SCALE_FACTOR;
-    AccY  = AcY / ACCEL_SCALE_FACTOR;
-    AccZ  = AcZ / ACCEL_SCALE_FACTOR;
-    GyroX = GyX / GYRO_SCALE_FACTOR;
-    GyroY = GyY / GYRO_SCALE_FACTOR;
-    GyroZ = GyZ / GYRO_SCALE_FACTOR;
-    
-    //Sum all readings
-    AccErrorX  = AccErrorX + AccX;
-    AccErrorY  = AccErrorY + AccY;
-    AccErrorZ  = AccErrorZ + AccZ;
-    GyroErrorX = GyroErrorX + GyroX;
-    GyroErrorY = GyroErrorY + GyroY;
-    GyroErrorZ = GyroErrorZ + GyroZ;
-    c++;
+
+      AccX  = AcX / ACCEL_SCALE_FACTOR;
+      AccY  = AcY / ACCEL_SCALE_FACTOR;
+      AccZ  = AcZ / ACCEL_SCALE_FACTOR;
+      GyroX = GyX / GYRO_SCALE_FACTOR;
+      GyroY = GyY / GYRO_SCALE_FACTOR;
+      GyroZ = GyZ / GYRO_SCALE_FACTOR;
+
+      //Sum all readings
+      AccErrorX  = AccErrorX + AccX;
+      AccErrorY  = AccErrorY + AccY;
+      AccErrorZ  = AccErrorZ + AccZ;
+      GyroErrorX = GyroErrorX + GyroX;
+      GyroErrorY = GyroErrorY + GyroY;
+      GyroErrorZ = GyroErrorZ + GyroZ;
+      c++;
   }
+
   //Divide the sum by 12000 to get the error value
   AccErrorX  = AccErrorX / c;
   AccErrorY  = AccErrorY / c;
@@ -667,7 +644,7 @@ void calculate_IMU_error() {
   Serial.print("float AccErrorZ = ");
   Serial.print(AccErrorZ);
   Serial.println(";");
-  
+
   Serial.print("float GyroErrorX = ");
   Serial.print(GyroErrorX);
   Serial.println(";");
@@ -682,56 +659,56 @@ void calculate_IMU_error() {
 }
 
 void calibrateAttitude() {
-  //DESCRIPTION: Used to warm up the main loop to allow the madwick filter to converge before commands can be sent to the actuators
-  //Assuming vehicle is powered up on level surface!
-  /*
-   * This function is used on startup to warm up the attitude estimation and is what causes startup to take a few seconds
-   * to boot. 
-   */
-  //Warm up IMU and madgwick filter in simulated main loop
-  for (int i = 0; i <= 10000; i++) {
-    prev_time = current_time;      
-    current_time = micros();      
-    dt = (current_time - prev_time)/1000000.0; 
-    getIMUdata();
-    Madgwick(GyroX, -GyroY, -GyroZ, -AccX, AccY, AccZ, MagY, -MagX, MagZ, dt);
-    loopRate(2000); //do not exceed 2000Hz
-  }
+    //DESCRIPTION: Used to warm up the main loop to allow the madwick filter to converge before commands can be sent to the actuators
+    //Assuming vehicle is powered up on level surface!
+    /*
+     * This function is used on startup to warm up the attitude estimation and is what causes startup to take a few seconds
+     * to boot. 
+     */
+    //Warm up IMU and madgwick filter in simulated main loop
+    for (int i = 0; i <= 10000; i++) {
+        prev_time = current_time;      
+        current_time = micros();      
+        dt = (current_time - prev_time)/1000000.0; 
+        getIMUdata();
+        Madgwick(GyroX, -GyroY, -GyroZ, -AccX, AccY, AccZ, MagY, -MagX, MagZ, dt);
+        loopRate(2000); //do not exceed 2000Hz
+    }
 }
 
 void Madgwick(float gx, float gy, float gz, float ax, float ay, float az, float mx, float my, float mz, float invSampleFreq) {
-  //DESCRIPTION: Attitude estimation through sensor fusion - 9DOF
-  /*
-   * This function fuses the accelerometer gyro, and magnetometer readings AccX, AccY, AccZ, GyroX, GyroY, GyroZ, MagX, MagY, and MagZ for attitude estimation.
-   * Don't worry about the math. There is a tunable parameter B_madgwick in the user specified variable section which basically
-   * adjusts the weight of gyro data in the state estimate. Higher beta leads to noisier estimate, lower 
-   * beta leads to slower to respond estimate. It is currently tuned for 2kHz loop rate. This function updates the roll_IMU,
-   * pitch_IMU, and yaw_IMU variables which are in degrees. If magnetometer data is not available, this function calls Madgwick6DOF() instead.
-   */
-  float recipNorm;
-  float s0, s1, s2, s3;
-  float qDot1, qDot2, qDot3, qDot4;
-  float hx, hy;
-  float _2q0mx, _2q0my, _2q0mz, _2q1mx, _2bx, _2bz, _4bx, _4bz, _2q0, _2q1, _2q2, _2q3, _2q0q2, _2q2q3, q0q0, q0q1, q0q2, q0q3, q1q1, q1q2, q1q3, q2q2, q2q3, q3q3;
+    //DESCRIPTION: Attitude estimation through sensor fusion - 9DOF
+    /*
+     * This function fuses the accelerometer gyro, and magnetometer readings AccX, AccY, AccZ, GyroX, GyroY, GyroZ, MagX, MagY, and MagZ for attitude estimation.
+     * Don't worry about the math. There is a tunable parameter B_madgwick in the user specified variable section which basically
+     * adjusts the weight of gyro data in the state estimate. Higher beta leads to noisier estimate, lower 
+     * beta leads to slower to respond estimate. It is currently tuned for 2kHz loop rate. This function updates the roll_IMU,
+     * pitch_IMU, and yaw_IMU variables which are in degrees. If magnetometer data is not available, this function calls Madgwick6DOF() instead.
+     */
+    float recipNorm;
+    float s0, s1, s2, s3;
+    float qDot1, qDot2, qDot3, qDot4;
+    float hx, hy;
+    float _2q0mx, _2q0my, _2q0mz, _2q1mx, _2bx, _2bz, _4bx, _4bz, _2q0, _2q1, _2q2, _2q3, _2q0q2, _2q2q3, q0q0, q0q1, q0q2, q0q3, q1q1, q1q2, q1q3, q2q2, q2q3, q3q3;
 
-  //use 6DOF algorithm if MPU6050 is being used
-  #if defined USE_MPU6050_I2C 
+    //use 6DOF algorithm if MPU6050 is being used
+#if defined USE_MPU6050_I2C 
     Madgwick6DOF(gx, gy, gz, ax, ay, az, invSampleFreq);
     return;
-  #endif
-  
-  //Use 6DOF algorithm if magnetometer measurement invalid (avoids NaN in magnetometer normalisation)
-  if((mx == 0.0f) && (my == 0.0f) && (mz == 0.0f)) {
-    Madgwick6DOF(gx, gy, gz, ax, ay, az, invSampleFreq);
-    return;
-  }
+#endif
 
-  //Convert gyroscope degrees/sec to radians/sec
-  gx *= 0.0174533f;
-  gy *= 0.0174533f;
-  gz *= 0.0174533f;
+    //Use 6DOF algorithm if magnetometer measurement invalid (avoids NaN in magnetometer normalisation)
+    if((mx == 0.0f) && (my == 0.0f) && (mz == 0.0f)) {
+        Madgwick6DOF(gx, gy, gz, ax, ay, az, invSampleFreq);
+        return;
+    }
 
-  //Rate of change of quaternion from gyroscope
+    //Convert gyroscope degrees/sec to radians/sec
+    gx *= 0.0174533f;
+    gy *= 0.0174533f;
+    gz *= 0.0174533f;
+
+    //Rate of change of quaternion from gyroscope
   qDot1 = 0.5f * (-q1 * gx - q2 * gy - q3 * gz);
   qDot2 = 0.5f * (q0 * gx + q2 * gz - q3 * gy);
   qDot3 = 0.5f * (q0 * gy - q1 * gz + q3 * gx);
