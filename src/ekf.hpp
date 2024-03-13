@@ -260,23 +260,6 @@ class Ekf {
                          0.1e-3f) && (fabsf(v0) < 10 && fabsf(v1) < 10 &&
                              fabsf(v2) < 10)) 
              {
-                 // Matrix to rotate the attitude covariances once updated
-                 static float A[KC_STATE_DIM][KC_STATE_DIM];
-                 static arm_matrix_instance_f32 Am = {
-                     KC_STATE_DIM, KC_STATE_DIM, (float *)A
-                 };
-
-                 // Temporary matrices for the covariance updates
-                 static float tmpNN1d[KC_STATE_DIM * KC_STATE_DIM];
-                 static arm_matrix_instance_f32 tmpNN1m = {
-                     KC_STATE_DIM, KC_STATE_DIM, tmpNN1d
-                 };
-
-                 static float tmpNN2d[KC_STATE_DIM * KC_STATE_DIM];
-                 static arm_matrix_instance_f32 tmpNN2m = {
-                     KC_STATE_DIM, KC_STATE_DIM, tmpNN2d
-                 }; 
-
                  auto angle = sqrt(v0*v0 + v1*v1 + v2*v2) + EPS;
                  auto ca = cos(angle / 2.0f);
                  auto sa = sin(angle / 2.0f);
@@ -321,6 +304,24 @@ class Ekf {
                  float e0 = v0/2; 
                  float e1 = v1/2; 
                  float e2 = v2/2;
+
+                 // Matrix to rotate the attitude covariances once updated
+                 static float A[KC_STATE_DIM][KC_STATE_DIM];
+                 static arm_matrix_instance_f32 Am = {
+                     KC_STATE_DIM, KC_STATE_DIM, (float *)A
+                 };
+
+                 // Temporary matrices for the covariance updates
+                 static float tmpNN1d[KC_STATE_DIM * KC_STATE_DIM];
+                 static arm_matrix_instance_f32 tmpNN1m = {
+                     KC_STATE_DIM, KC_STATE_DIM, tmpNN1d
+                 };
+
+                 static float tmpNN2d[KC_STATE_DIM * KC_STATE_DIM];
+                 static arm_matrix_instance_f32 tmpNN2m = {
+                     KC_STATE_DIM, KC_STATE_DIM, tmpNN2d
+                 }; 
+
 
                  A[KC_STATE_DX][KC_STATE_DX] = 1;
                  A[KC_STATE_DY][KC_STATE_DY] = 1;
