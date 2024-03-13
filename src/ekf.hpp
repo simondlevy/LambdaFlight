@@ -530,9 +530,70 @@ class Ekf {
               Attitude"
               * http://arc.aiaa.org/doi/abs/10.2514/1.G000848
               */
-             float e0 = gyro->x*dt/2;
-             float e1 = gyro->y*dt/2;
-             float e2 = gyro->z*dt/2;
+             const auto e0 = gyro->x*dt/2;
+             const auto e1 = gyro->y*dt/2;
+             const auto e2 = gyro->z*dt/2;
+
+             /*
+             const auto e00 =  1 - e1*e1/2 - e2*e2/2;
+             const auto e01 =  e2 + e0*e1/2;
+             const auto e02 = -e1 + e0*e2/2;
+
+             const auto e10 =  -e2 + e0*e1/2;
+             const auto e11 = 1 - e0*e0/2 - e2*e2/2;
+             const auto e12 = e0 + e1*e2/2;
+
+             const auto e20 = e1 + e0*e2/2;
+             const auto e21 = -e0 + e1*e2/2;
+             const auto e22 = 1 - e0*e0/2 - e1*e1/2;
+
+             const auto zdx = _r20*dt;
+             const auto zdy = _r21*dt;
+             const auto zdz = _r22*dt;
+
+             // altitude from attitude error
+             const auto ze0 = (_ekfState.dy*_r22 - _ekfState.dz*_r21)*dt;
+             const auto ze1 = (- _ekfState.dx*_r22 + _ekfState.dz*_r20)*dt;
+             const auto ze2 = (_ekfState.dx*_r21 - _ekfState.dy*_r20)*dt;
+
+             // body-frame velocity from body-frame velocity
+             const auto dxdx = 1; //drag negligible
+             const auto dydx =-gyro->z*dt;
+             const auto dzdx = gyro->y*dt;
+
+             const auto dxdy = gyro->z*dt;
+             const auto dydy = 1; //drag negligible
+             const auto dzdy =-gyro->x*dt;
+
+             const auto dxdz =-gyro->y*dt;
+             const auto dydz = gyro->x*dt;
+             const auto dzdz = 1; //drag negligible
+
+             // body-frame velocity from attitude error
+             const auto dxe0 =  0;
+             const auto dye0 = -GRAVITY_MAGNITUDE*_r22*dt;
+             const auto dze0 =  GRAVITY_MAGNITUDE*_r21*dt;
+
+             const auto dxe1 =  GRAVITY_MAGNITUDE*_r22*dt;
+             const auto dye1 =  0;
+             const auto dze1 = -GRAVITY_MAGNITUDE*_r20*dt;
+
+             const auto dxe2 = -GRAVITY_MAGNITUDE*_r21*dt;
+             const auto dye2 =  GRAVITY_MAGNITUDE*_r20*dt;
+             const auto dze2 =  0;
+
+             const auto e0e0 =  1 - e1*e1/2 - e2*e2/2;
+             const auto e0e1 =  e2 + e0*e1/2;
+             const auto e0e2 = -e1 + e0*e2/2;
+
+             const auto e1e0 = -e2 + e0*e1/2;
+             const auto e1e1 =  1 - e0*e0/2 - e2*e2/2;
+             const auto e1e2 =  e0 + e1*e2/2;
+
+             const auto e2e0 =  e1 + e0*e2/2;
+             const auto e2e1 = -e0 + e1*e2/2;
+             const auto e2e2 = 1 - e0*e0/2 - e1*e1/2;
+              */
 
              // altitude from body-frame velocity
              A[KC_STATE_Z][KC_STATE_DX] = _r20*dt;
