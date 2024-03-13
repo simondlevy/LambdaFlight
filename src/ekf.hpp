@@ -321,16 +321,16 @@ class Ekf {
 
                  // Matrix to rotate the attitude covariances once updated
                  const float A[KC_STATE_DIM][KC_STATE_DIM] = 
-                                 { 
-                                  // Z  DX DY DZ E0   E1   E2
-                                    {0, 0, 0, 0, 0,   0,   0},   // Z
-                                    {0, 1, 0, 0, 0,   0,   0},   // DX
-                                    {0, 0, 1, 0, 0,   0,   0},   // DY
-                                    {0, 0, 0, 1, 0,   0,   0},   // DZ
-                                    {0, 0, 0, 0, e00, e01, e02}, // E0
-                                    {0, 0, 0, 0, e10, e11, e12}, // E1
-                                    {0, 0, 0, 0, e20,e21,  e22}  // E2
-                                 };
+                 { 
+                     // Z  DX DY DZ E0   E1   E2
+                     {0, 0, 0, 0, 0,   0,   0},   // Z
+                     {0, 1, 0, 0, 0,   0,   0},   // DX
+                     {0, 0, 1, 0, 0,   0,   0},   // DY
+                     {0, 0, 0, 1, 0,   0,   0},   // DZ
+                     {0, 0, 0, 0, e00, e01, e02}, // E0
+                     {0, 0, 0, 0, e10, e11, e12}, // E1
+                     {0, 0, 0, 0, e20,e21,  e22}  // E2
+                 };
 
 
                  float At[KC_STATE_DIM][KC_STATE_DIM] = {};
@@ -339,27 +339,6 @@ class Ekf {
                  transpose(A, At);     // A'
                  multiply(A, _P, AP);  // AP
                  multiply(AP, At, _P); // APA'
-
-                 /*
-                 static arm_matrix_instance_f32 Am = {
-                     KC_STATE_DIM, KC_STATE_DIM, (float *)A
-                 };
-
-                 // Temporary matrices for the covariance updates
-                 static float tmpNN1d[KC_STATE_DIM * KC_STATE_DIM];
-                 static arm_matrix_instance_f32 At = {
-                     KC_STATE_DIM, KC_STATE_DIM, tmpNN1d
-                 };
-
-                 static float tmpNN2d[KC_STATE_DIM * KC_STATE_DIM];
-                 static arm_matrix_instance_f32 AP = {
-                     KC_STATE_DIM, KC_STATE_DIM, tmpNN2d
-                 }; 
-
-                 mat_trans(&Am, &At); // A'
-                 mat_mult(&Am, &_Pm, &AP); // AP
-                 mat_mult(&AP, &At, &_Pm); //APA'
-                 */
              }
 
              // Convert the new attitude to a rotation matrix, such that we can
@@ -391,53 +370,53 @@ class Ekf {
              _isUpdated = false;
 
              return isStateWithinBounds();
-         }
+        }
 
-         void update(const measurement_t & m, const uint32_t nowMs)
-         {
-             switch (m.type) {
+        void update(const measurement_t & m, const uint32_t nowMs)
+        {
+            switch (m.type) {
 
-                 case MeasurementTypeRange:
-                     updateWithRange(&m.data.range);
-                     break;
+                case MeasurementTypeRange:
+                    updateWithRange(&m.data.range);
+                    break;
 
-                 case MeasurementTypeFlow:
-                     updateWithFlow(&m.data.flow);
-                     break;
+                case MeasurementTypeFlow:
+                    updateWithFlow(&m.data.flow);
+                    break;
 
-                 case MeasurementTypeGyroscope:
-                     updateWithGyro(m);
-                     break;
+                case MeasurementTypeGyroscope:
+                    updateWithGyro(m);
+                    break;
 
-                 case MeasurementTypeAcceleration:
-                     updateWithAccel(m);
-                     break;
+                case MeasurementTypeAcceleration:
+                    updateWithAccel(m);
+                    break;
 
-                 default:
-                     break;
-             }
-         }
+                default:
+                    break;
+            }
+        }
 
-         void predict(
-                 const uint32_t nowMs, 
-                 const uint32_t nextPredictionMs,
-                 const bool isFlying) 
-         {
-             if (nowMs >= nextPredictionMs) {
+        void predict(
+                const uint32_t nowMs, 
+                const uint32_t nextPredictionMs,
+                const bool isFlying) 
+        {
+            if (nowMs >= nextPredictionMs) {
 
-                 predict(nowMs, isFlying); 
-             }
+                predict(nowMs, isFlying); 
+            }
 
-             // Add process noise every loop, rather than every prediction
-             addProcessNoise(nowMs);
-         }
+            // Add process noise every loop, rather than every prediction
+            addProcessNoise(nowMs);
+        }
 
-         void init(const uint32_t nowMs)
-         {
-             axis3fSubSamplerInit(&_accSubSampler, GRAVITY_MAGNITUDE);
-             axis3fSubSamplerInit(&_gyroSubSampler, DEGREES_TO_RADIANS);
+        void init(const uint32_t nowMs)
+        {
+            axis3fSubSamplerInit(&_accSubSampler, GRAVITY_MAGNITUDE);
+            axis3fSubSamplerInit(&_gyroSubSampler, DEGREES_TO_RADIANS);
 
-             // Reset all data to 0 (like upon system reset)
+            // Reset all data to 0 (like upon system reset)
 
              memset(&_ekfState, 0, sizeof(_ekfState));
              memset(&_P, 0, sizeof(_P));
@@ -497,102 +476,15 @@ class Ekf {
 
              // Temporary matrices for the covariance updates
              static float tmpNN1d[KC_STATE_DIM * KC_STATE_DIM];
-             static __attribute__((aligned(4))) arm_matrix_instance_f32 tmpNN1m = { 
+             static __attribute__((aligned(4))) arm_matrix_instance_f32 AP = { 
                  KC_STATE_DIM, KC_STATE_DIM, tmpNN1d
              };
 
              static float tmpNN2d[KC_STATE_DIM * KC_STATE_DIM];
-             static __attribute__((aligned(4))) arm_matrix_instance_f32 tmpNN2m = { 
+             static __attribute__((aligned(4))) arm_matrix_instance_f32 At = { 
                  KC_STATE_DIM, KC_STATE_DIM, tmpNN2d
              };
 
-             predictDt(A, &Am, &tmpNN1m, &tmpNN2m, acc, gyro, dt, quadIsFlying);
-         }
-
-         static void axis3fSubSamplerInit(Axis3fSubSampler_t* subSampler, const
-                 float conversionFactor) 
-         { 
-             memset(subSampler, 0, sizeof(Axis3fSubSampler_t));
-             subSampler->conversionFactor = conversionFactor;
-         }
-
-         static void axis3fSubSamplerAccumulate(Axis3fSubSampler_t* subSampler,
-                 const Axis3f* sample) 
-         {
-             subSampler->sum.x += sample->x;
-             subSampler->sum.y += sample->y;
-             subSampler->sum.z += sample->z;
-
-             subSampler->count++;
-         }
-
-         static Axis3f* axis3fSubSamplerFinalize(Axis3fSubSampler_t* subSampler) 
-         {
-             if (subSampler->count > 0) {
-                 subSampler->subSample.x = 
-                     subSampler->sum.x * subSampler->conversionFactor / subSampler->count;
-                 subSampler->subSample.y = 
-                     subSampler->sum.y * subSampler->conversionFactor / subSampler->count;
-                 subSampler->subSample.z = 
-                     subSampler->sum.z * subSampler->conversionFactor / subSampler->count;
-
-                 // Reset
-                 subSampler->count = 0;
-                 subSampler->sum = (Axis3f){.axis={0}};
-             }
-
-             return &subSampler->subSample;
-         }
-
-         void addProcessNoiseDt(float dt)
-         {
-             _P[KC_STATE_Z][KC_STATE_Z] += 
-                 powf(PROC_NOISE_ACC_Z*dt*dt + PROC_NOISE_VEL*dt + 
-                         PROC_NOISE_POS, 2);  // add process noise on position
-
-             _P[KC_STATE_DX][KC_STATE_DX] += 
-                 powf(PROC_NOISE_ACC_XY*dt + 
-                         PROC_NOISE_VEL, 2); // add process noise on velocity
-
-             _P[KC_STATE_DY][KC_STATE_DY] += 
-                 powf(PROC_NOISE_ACC_XY*dt + 
-                         PROC_NOISE_VEL, 2); // add process noise on velocity
-
-             _P[KC_STATE_DZ][KC_STATE_DZ] += 
-                 powf(PROC_NOISE_ACC_Z*dt + 
-                         PROC_NOISE_VEL, 2); // add process noise on velocity
-
-             _P[KC_STATE_E0][KC_STATE_E0] += 
-                 powf(MEAS_NOISE_GYRO_ROLL_PITCH * dt + PROC_NOISE_ATT, 2);
-             _P[KC_STATE_E1][KC_STATE_E1] += 
-                 powf(MEAS_NOISE_GYRO_ROLL_PITCH * dt + PROC_NOISE_ATT, 2);
-             _P[KC_STATE_E2][KC_STATE_E2] += 
-                 powf(MEAS_NOISE_GYRO_ROLL_YAW * dt + PROC_NOISE_ATT, 2);
-
-             for (int i=0; i<KC_STATE_DIM; i++) {
-                 for (int j=i; j<KC_STATE_DIM; j++) {
-                     float p = 0.5f*_P[i][j] + 0.5f*_P[j][i];
-                     if (isnan(p) || p > MAX_COVARIANCE) {
-                         _P[i][j] = _P[j][i] = MAX_COVARIANCE;
-                     } else if ( i==j && p < MIN_COVARIANCE ) {
-                         _P[i][j] = _P[j][i] = MIN_COVARIANCE;
-                     } else {
-                         _P[i][j] = _P[j][i] = p;
-                     }
-                 }
-             }
-         }
-
-         void predictDt(
-                 float A[KC_STATE_DIM][KC_STATE_DIM],
-                 arm_matrix_instance_f32 * Am,
-                 arm_matrix_instance_f32 * tmpNN1m,
-                 arm_matrix_instance_f32 * tmpNN2m,
-                 Axis3f *acc, 
-                 Axis3f *gyro, 
-                 float dt, 
-                 bool quadIsFlying)
-         {
              /* Here we discretize (euler forward) and linearise the quadrocopter
               * dynamics in order to push the covariance forward.
               *
@@ -615,14 +507,32 @@ class Ekf {
               * since error information is incorporated into R after each Kalman update.
               */
 
-             // ====== DYNAMICS LINEARIZATION ======
-             // Initialize as the identity
-             A[KC_STATE_DX][KC_STATE_DX] = 1;
-             A[KC_STATE_DY][KC_STATE_DY] = 1;
-             A[KC_STATE_DZ][KC_STATE_DZ] = 1;
-             A[KC_STATE_E0][KC_STATE_E0] = 1;
-             A[KC_STATE_E1][KC_STATE_E1] = 1;
-             A[KC_STATE_E2][KC_STATE_E2] = 1;
+
+             // attitude error from attitude error
+             /**
+              * At first glance, it may not be clear where the next values come from,
+              * since they do not appear directly in the dynamics. In this prediction
+              * step, we skip the step of first updating attitude-error, and then
+              * incorporating the
+              * new error into the current attitude (which requires a rotation of the
+              * attitude-error covariance). Instead, we directly update the body attitude,
+              * however still need to rotate the covariance, which is what you see below.
+              *
+              * This comes from a second order approximation to:
+              * Sigma_post = exps(-d) Sigma_pre exps(-d)'
+              *            ~ (I + [[-d]] + [[-d]]^2 / 2) Sigma_pre (I + [[-d]] + 
+              *             [[-d]]^2 / 2)'
+              * where d is the attitude error expressed as Rodriges parameters, ie. e0 =
+              * 1/2*gyro.x*dt under the assumption that d = [0,0,0] at the beginning of
+              * each prediction step and that gyro.x is constant over the sampling period
+              *
+              * As derived in "Covariance Correction Step for Kalman Filtering with an 
+              Attitude"
+              * http://arc.aiaa.org/doi/abs/10.2514/1.G000848
+              */
+             float e0 = gyro->x*dt/2;
+             float e1 = gyro->y*dt/2;
+             float e2 = gyro->z*dt/2;
 
              // altitude from body-frame velocity
              A[KC_STATE_Z][KC_STATE_DX] = _r20*dt;
@@ -663,33 +573,6 @@ class Ekf {
              A[KC_STATE_DY][KC_STATE_E2] =  GRAVITY_MAGNITUDE*_r20*dt;
              A[KC_STATE_DZ][KC_STATE_E2] =  0;
 
-
-             // attitude error from attitude error
-             /**
-              * At first glance, it may not be clear where the next values come from,
-              * since they do not appear directly in the dynamics. In this prediction
-              * step, we skip the step of first updating attitude-error, and then
-              * incorporating the
-              * new error into the current attitude (which requires a rotation of the
-              * attitude-error covariance). Instead, we directly update the body attitude,
-              * however still need to rotate the covariance, which is what you see below.
-              *
-              * This comes from a second order approximation to:
-              * Sigma_post = exps(-d) Sigma_pre exps(-d)'
-              *            ~ (I + [[-d]] + [[-d]]^2 / 2) Sigma_pre (I + [[-d]] + 
-              *             [[-d]]^2 / 2)'
-              * where d is the attitude error expressed as Rodriges parameters, ie. e0 =
-              * 1/2*gyro.x*dt under the assumption that d = [0,0,0] at the beginning of
-              * each prediction step and that gyro.x is constant over the sampling period
-              *
-              * As derived in "Covariance Correction Step for Kalman Filtering with an 
-              Attitude"
-              * http://arc.aiaa.org/doi/abs/10.2514/1.G000848
-              */
-             float e0 = gyro->x*dt/2;
-             float e1 = gyro->y*dt/2;
-             float e2 = gyro->z*dt/2;
-
              A[KC_STATE_E0][KC_STATE_E0] =  1 - e1*e1/2 - e2*e2/2;
              A[KC_STATE_E0][KC_STATE_E1] =  e2 + e0*e1/2;
              A[KC_STATE_E0][KC_STATE_E2] = -e1 + e0*e2/2;
@@ -703,9 +586,9 @@ class Ekf {
              A[KC_STATE_E2][KC_STATE_E2] = 1 - e0*e0/2 - e1*e1/2;
 
              // ====== COVARIANCE UPDATE ======
-             mat_mult(Am, &_Pm, tmpNN1m); // A P
-             mat_trans(Am, tmpNN2m); // A'
-             mat_mult(tmpNN1m, tmpNN2m, &_Pm); // A P A'
+             mat_trans(&Am, &At);      // A'
+             mat_mult(&Am, &_Pm, &AP); // AP
+             mat_mult(&AP, &At, &_Pm); // APA'
              // Process noise is added after the return from the prediction step
 
              // ====== PREDICTION STEP ======
@@ -822,6 +705,82 @@ class Ekf {
 
 
              _isUpdated = true;
+ 
+
+         }
+
+         static void axis3fSubSamplerInit(Axis3fSubSampler_t* subSampler, const
+                 float conversionFactor) 
+         { 
+             memset(subSampler, 0, sizeof(Axis3fSubSampler_t));
+             subSampler->conversionFactor = conversionFactor;
+         }
+
+         static void axis3fSubSamplerAccumulate(Axis3fSubSampler_t* subSampler,
+                 const Axis3f* sample) 
+         {
+             subSampler->sum.x += sample->x;
+             subSampler->sum.y += sample->y;
+             subSampler->sum.z += sample->z;
+
+             subSampler->count++;
+         }
+
+         static Axis3f* axis3fSubSamplerFinalize(Axis3fSubSampler_t* subSampler) 
+         {
+             if (subSampler->count > 0) {
+                 subSampler->subSample.x = 
+                     subSampler->sum.x * subSampler->conversionFactor / subSampler->count;
+                 subSampler->subSample.y = 
+                     subSampler->sum.y * subSampler->conversionFactor / subSampler->count;
+                 subSampler->subSample.z = 
+                     subSampler->sum.z * subSampler->conversionFactor / subSampler->count;
+
+                 // Reset
+                 subSampler->count = 0;
+                 subSampler->sum = (Axis3f){.axis={0}};
+             }
+
+             return &subSampler->subSample;
+         }
+
+         void addProcessNoiseDt(float dt)
+         {
+             _P[KC_STATE_Z][KC_STATE_Z] += 
+                 powf(PROC_NOISE_ACC_Z*dt*dt + PROC_NOISE_VEL*dt + 
+                         PROC_NOISE_POS, 2);  // add process noise on position
+
+             _P[KC_STATE_DX][KC_STATE_DX] += 
+                 powf(PROC_NOISE_ACC_XY*dt + 
+                         PROC_NOISE_VEL, 2); // add process noise on velocity
+
+             _P[KC_STATE_DY][KC_STATE_DY] += 
+                 powf(PROC_NOISE_ACC_XY*dt + 
+                         PROC_NOISE_VEL, 2); // add process noise on velocity
+
+             _P[KC_STATE_DZ][KC_STATE_DZ] += 
+                 powf(PROC_NOISE_ACC_Z*dt + 
+                         PROC_NOISE_VEL, 2); // add process noise on velocity
+
+             _P[KC_STATE_E0][KC_STATE_E0] += 
+                 powf(MEAS_NOISE_GYRO_ROLL_PITCH * dt + PROC_NOISE_ATT, 2);
+             _P[KC_STATE_E1][KC_STATE_E1] += 
+                 powf(MEAS_NOISE_GYRO_ROLL_PITCH * dt + PROC_NOISE_ATT, 2);
+             _P[KC_STATE_E2][KC_STATE_E2] += 
+                 powf(MEAS_NOISE_GYRO_ROLL_YAW * dt + PROC_NOISE_ATT, 2);
+
+             for (int i=0; i<KC_STATE_DIM; i++) {
+                 for (int j=i; j<KC_STATE_DIM; j++) {
+                     float p = 0.5f*_P[i][j] + 0.5f*_P[j][i];
+                     if (isnan(p) || p > MAX_COVARIANCE) {
+                         _P[i][j] = _P[j][i] = MAX_COVARIANCE;
+                     } else if ( i==j && p < MIN_COVARIANCE ) {
+                         _P[i][j] = _P[j][i] = MIN_COVARIANCE;
+                     } else {
+                         _P[i][j] = _P[j][i] = p;
+                     }
+                 }
+             }
          }
 
          void scalarUpdate(
