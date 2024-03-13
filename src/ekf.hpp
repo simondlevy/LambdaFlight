@@ -69,6 +69,8 @@
 
 #include <arm_math.h>
 
+#include "linalg.h"
+
 static inline void mat_trans(const arm_matrix_instance_f32 * pSrc, 
         arm_matrix_instance_f32 * pDst) 
 {
@@ -301,47 +303,63 @@ class Ekf {
 
                  // the attitude error vector (v0,v1,v2) is small,
                  // so we use a first order approximation to e0 = tan(|v0|/2)*v0/|v0|
-                 float e0 = v0/2; 
-                 float e1 = v1/2; 
-                 float e2 = v2/2;
+                 const float e0 = v0/2; 
+                 const float e1 = v1/2; 
+                 const float e2 = v2/2;
+
+                 const auto e00 =  1 - e1*e1/2 - e2*e2/2;
+                 const auto e01 =  e2 + e0*e1/2;
+                 const auto e02 = -e1 + e0*e2/2;
+
+                 const auto e10 =  -e2 + e0*e1/2;
+                 const auto e11 = 1 - e0*e0/2 - e2*e2/2;
+                 const auto e12 = e0 + e1*e2/2;
+
+                 const auto e20 = e1 + e0*e2/2;
+                 const auto e21 = -e0 + e1*e2/2;
+                 const auto e22 = 1 - e0*e0/2 - e1*e1/2;
 
                  // Matrix to rotate the attitude covariances once updated
-                 static float A[KC_STATE_DIM][KC_STATE_DIM];
+                 const float A[KC_STATE_DIM][KC_STATE_DIM] = 
+                                 { 
+                                  // Z  DX DY DZ E0   E1   E2
+                                    {0, 0, 0, 0, 0,   0,   0},   // Z
+                                    {0, 1, 0, 0, 0,   0,   0},   // DX
+                                    {0, 0, 1, 0, 0,   0,   0},   // DY
+                                    {0, 0, 0, 1, 0,   0,   0},   // DZ
+                                    {0, 0, 0, 0, e00, e01, e02}, // E0
+                                    {0, 0, 0, 0, e10, e11, e12}, // E1
+                                    {0, 0, 0, 0, e20,e21,  e22}  // E2
+                                 };
+
+
+                 float At[KC_STATE_DIM][KC_STATE_DIM] = {};
+                 float AP[KC_STATE_DIM][KC_STATE_DIM] = {};
+
+                 transpose(A, At);     // A'
+                 multiply(A, _P, AP);  // AP
+                 multiply(AP, At, _P); // APA'
+
+                 /*
                  static arm_matrix_instance_f32 Am = {
                      KC_STATE_DIM, KC_STATE_DIM, (float *)A
                  };
 
                  // Temporary matrices for the covariance updates
                  static float tmpNN1d[KC_STATE_DIM * KC_STATE_DIM];
-                 static arm_matrix_instance_f32 tmpNN1m = {
+                 static arm_matrix_instance_f32 At = {
                      KC_STATE_DIM, KC_STATE_DIM, tmpNN1d
                  };
 
                  static float tmpNN2d[KC_STATE_DIM * KC_STATE_DIM];
-                 static arm_matrix_instance_f32 tmpNN2m = {
+                 static arm_matrix_instance_f32 AP = {
                      KC_STATE_DIM, KC_STATE_DIM, tmpNN2d
                  }; 
 
-
-                 A[KC_STATE_DX][KC_STATE_DX] = 1;
-                 A[KC_STATE_DY][KC_STATE_DY] = 1;
-                 A[KC_STATE_DZ][KC_STATE_DZ] = 1;
-
-                 A[KC_STATE_E0][KC_STATE_E0] =  1 - e1*e1/2 - e2*e2/2;
-                 A[KC_STATE_E0][KC_STATE_E1] =  e2 + e0*e1/2;
-                 A[KC_STATE_E0][KC_STATE_E2] = -e1 + e0*e2/2;
-
-                 A[KC_STATE_E1][KC_STATE_E0] = -e2 + e0*e1/2;
-                 A[KC_STATE_E1][KC_STATE_E1] =  1 - e0*e0/2 - e2*e2/2;
-                 A[KC_STATE_E1][KC_STATE_E2] =  e0 + e1*e2/2;
-
-                 A[KC_STATE_E2][KC_STATE_E0] =  e1 + e0*e2/2;
-                 A[KC_STATE_E2][KC_STATE_E1] = -e0 + e1*e2/2;
-                 A[KC_STATE_E2][KC_STATE_E2] = 1 - e0*e0/2 - e1*e1/2;
-
-                 mat_trans(&Am, &tmpNN1m); // A'
-                 mat_mult(&Am, &_Pm, &tmpNN2m); // AP
-                 mat_mult(&tmpNN2m, &tmpNN1m, &_Pm); //APA'
+                 mat_trans(&Am, &At); // A'
+                 mat_mult(&Am, &_Pm, &AP); // AP
+                 mat_mult(&AP, &At, &_Pm); //APA'
+                 */
              }
 
              // Convert the new attitude to a rotation matrix, such that we can
