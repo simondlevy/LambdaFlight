@@ -771,9 +771,6 @@ class Ekf {
                 const float error, 
                 const float stdMeasNoise)
         {
-            // The Kalman gain as a column vector
-            static float K[KC_STATE_DIM];
-
             static float HTd[KC_STATE_DIM * 1];
             static arm_matrix_instance_f32 HTm = {KC_STATE_DIM, 1, HTd};
 
@@ -793,6 +790,9 @@ class Ekf {
                 // this obviously only works if the update is scalar (as in this function)
                 HPHR += Hm->pData[i]*PHTd[i]; 
             }
+
+            // The Kalman gain as a column vector
+            static float K[KC_STATE_DIM];
 
             // ====== MEASUREMENT UPDATE ======
             // Calculate the Kalman gain and perform the state update
