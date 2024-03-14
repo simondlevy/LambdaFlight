@@ -774,10 +774,6 @@ class Ekf {
             // The Kalman gain as a column vector
             static float K[KC_STATE_DIM];
 
-            static float tmpNN2d[KC_STATE_DIM * KC_STATE_DIM];
-
-            static float tmpNN3d[KC_STATE_DIM * KC_STATE_DIM];
-
             static float HTd[KC_STATE_DIM * 1];
             static arm_matrix_instance_f32 HTm = {KC_STATE_DIM, 1, HTd};
 
@@ -819,6 +815,9 @@ class Ekf {
                 KC_STATE_DIM, KC_STATE_DIM, tmpNN1d
             };
 
+            static float tmpNN2d[KC_STATE_DIM * KC_STATE_DIM];
+
+            static float tmpNN3d[KC_STATE_DIM * KC_STATE_DIM];
 
             static arm_matrix_instance_f32 KHIP = {
                 KC_STATE_DIM, KC_STATE_DIM, tmpNN3d
