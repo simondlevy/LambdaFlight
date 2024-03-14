@@ -774,12 +774,6 @@ class Ekf {
             // The Kalman gain as a column vector
             static float K[KC_STATE_DIM];
 
-            // Temporary matrices for the covariance updates
-            static float tmpNN1d[KC_STATE_DIM * KC_STATE_DIM];
-            static arm_matrix_instance_f32 KH = {
-                KC_STATE_DIM, KC_STATE_DIM, tmpNN1d
-            };
-
             static float tmpNN2d[KC_STATE_DIM * KC_STATE_DIM];
 
             static float tmpNN3d[KC_STATE_DIM * KC_STATE_DIM];
@@ -818,6 +812,13 @@ class Ekf {
             _ekfState.e2 += K[6] * error;
 
             static arm_matrix_instance_f32 Km = {KC_STATE_DIM, 1, (float *)K};
+
+            // Temporary matrices for the covariance updates
+            static float tmpNN1d[KC_STATE_DIM * KC_STATE_DIM];
+            static arm_matrix_instance_f32 KH = {
+                KC_STATE_DIM, KC_STATE_DIM, tmpNN1d
+            };
+
 
             static arm_matrix_instance_f32 KHIP = {
                 KC_STATE_DIM, KC_STATE_DIM, tmpNN3d
