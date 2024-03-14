@@ -891,7 +891,6 @@ class Ekf {
             // ~~~ X velocity prediction and update ~~~
             // predicts the number of accumulated pixels in the x-direction
             float hx[KC_STATE_DIM] = {};
-            arm_matrix_instance_f32 Hx = {1, KC_STATE_DIM, hx};
             auto predictedNX = (flow->dt * Npix / thetapix ) * 
                 ((dx_g * _r22 / z_g) - omegay_b);
             auto measuredNX = flow->dpixelx*FLOW_RESOLUTION;
@@ -903,6 +902,7 @@ class Ekf {
                 (_r22 / z_g);
 
             //First update
+            arm_matrix_instance_f32 Hx = {1, KC_STATE_DIM, hx};
             scalarUpdate(&Hx, (measuredNX-predictedNX), 
                     flow->stdDevX*FLOW_RESOLUTION);
 
