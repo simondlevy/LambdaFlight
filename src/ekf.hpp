@@ -779,9 +779,9 @@ class Ekf {
         }
 
         void scalarUpdate(
-                arm_matrix_instance_f32 *Hm, 
-                float error, 
-                float stdMeasNoise)
+                const arm_matrix_instance_f32 *Hm, 
+                const float error, 
+                const float stdMeasNoise)
         {
             // The Kalman gain as a column vector
             static float K[KC_STATE_DIM];
@@ -789,17 +789,17 @@ class Ekf {
 
             // Temporary matrices for the covariance updates
             static float tmpNN1d[KC_STATE_DIM * KC_STATE_DIM];
-            static arm_matrix_instance_f32 tmpNN1m = {
+            static arm_matrix_instance_f32 KH = {
                 KC_STATE_DIM, KC_STATE_DIM, tmpNN1d
             };
 
             static float tmpNN2d[KC_STATE_DIM * KC_STATE_DIM];
-            static arm_matrix_instance_f32 tmpNN2m = {
+            static arm_matrix_instance_f32 KHt = {
                 KC_STATE_DIM, KC_STATE_DIM, tmpNN2d
             };
 
             static float tmpNN3d[KC_STATE_DIM * KC_STATE_DIM];
-            static arm_matrix_instance_f32 tmpNN3m = {
+            static arm_matrix_instance_f32 KHIP = {
                 KC_STATE_DIM, KC_STATE_DIM, tmpNN3d
             };
 
@@ -809,29 +809,10 @@ class Ekf {
             static float PHTd[KC_STATE_DIM * 1];
             static arm_matrix_instance_f32 PHTm = {KC_STATE_DIM, 1, PHTd};
 
-            scalarUpdate(Hm, &HTm, &Km, PHTd,
-                    K, tmpNN1d, &PHTm, &tmpNN1m, &tmpNN2m, &tmpNN3m, 
-                    error, stdMeasNoise);
-        }
-
-        void scalarUpdate(
-                arm_matrix_instance_f32 *Hm, 
-                arm_matrix_instance_f32 *HTm, 
-                arm_matrix_instance_f32 *Km, 
-                float * PHTd, 
-                float * K, 
-                float * tmpNN1d, 
-                arm_matrix_instance_f32 *PHTm, 
-                arm_matrix_instance_f32 *tmpNN1m, 
-                arm_matrix_instance_f32 *tmpNN2m, 
-                arm_matrix_instance_f32 *tmpNN3m, 
-                float error, 
-                float stdMeasNoise)
-        {
             // ====== INNOVATION COVARIANCE ======
 
-            mat_trans(Hm, HTm);
-            mat_mult(&_Pm, HTm, PHTm); // PH'
+            mat_trans(Hm, &HTm);
+            mat_mult(&_Pm, &HTm, &PHTm); // PH'
             float R = stdMeasNoise*stdMeasNoise;
             float HPHR = R; // HPH' + R
             for (int i=0; i<KC_STATE_DIM; i++) { 
@@ -856,13 +837,13 @@ class Ekf {
             _ekfState.e2 += K[6] * error;
 
             // ====== COVARIANCE UPDATE ======
-            mat_mult(Km, Hm, tmpNN1m); // KH
+            mat_mult(&Km, Hm, &KH); // KH
             for (int i=0; i<KC_STATE_DIM; i++) { 
                 tmpNN1d[KC_STATE_DIM*i+i] -= 1; 
             } // KH - I
-            mat_trans(tmpNN1m, tmpNN2m); // (KH - I)'
-            mat_mult(tmpNN1m, &_Pm, tmpNN3m); // (KH - I)*P
-            mat_mult(tmpNN3m, tmpNN2m, &_Pm); // (KH - I)*P*(KH - I)'
+            mat_trans(&KH, &KHt);        // (KH - I)'
+            mat_mult(&KH, &_Pm, &KHIP);  // (KH - I)*P
+            mat_mult(&KHIP, &KHt, &_Pm); // (KH - I)*P*(KH - I)'
 
             // add the measurement variance and ensure boundedness and symmetry
             // TODO: Why would it hit these bounds? Needs to be investigated.
