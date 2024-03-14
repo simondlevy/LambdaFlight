@@ -67,21 +67,9 @@
 #include <datatypes.h>
 #include <streams.h>
 
-#include <arm_math.h>
-
 #include "linalg.h"
 
-static inline void mat_trans(const arm_matrix_instance_f32 * pSrc, 
-        arm_matrix_instance_f32 * pDst) 
-{
-  arm_mat_trans_f32(pSrc, pDst);
-}
 
-static inline void mat_mult(const arm_matrix_instance_f32 * pSrcA, 
-        const arm_matrix_instance_f32 * pSrcB, arm_matrix_instance_f32 * pDst) 
-{
-  arm_mat_mult_f32(pSrcA, pSrcB, pDst);
-}
 
 // Quaternion used for initial orientation
 static const float QW_INIT = 1;
@@ -785,7 +773,6 @@ class Ekf {
         {
             // The Kalman gain as a column vector
             static float K[KC_STATE_DIM];
-            static arm_matrix_instance_f32 Km = {KC_STATE_DIM, 1, (float *)K};
 
             // Temporary matrices for the covariance updates
             static float tmpNN1d[KC_STATE_DIM * KC_STATE_DIM];
@@ -794,14 +781,8 @@ class Ekf {
             };
 
             static float tmpNN2d[KC_STATE_DIM * KC_STATE_DIM];
-            static arm_matrix_instance_f32 KHt = {
-                KC_STATE_DIM, KC_STATE_DIM, tmpNN2d
-            };
 
             static float tmpNN3d[KC_STATE_DIM * KC_STATE_DIM];
-            static arm_matrix_instance_f32 KHIP = {
-                KC_STATE_DIM, KC_STATE_DIM, tmpNN3d
-            };
 
             static float HTd[KC_STATE_DIM * 1];
             static arm_matrix_instance_f32 HTm = {KC_STATE_DIM, 1, HTd};
@@ -835,6 +816,15 @@ class Ekf {
             _ekfState.e0 += K[4] * error;
             _ekfState.e1 += K[5] * error;
             _ekfState.e2 += K[6] * error;
+
+            static arm_matrix_instance_f32 Km = {KC_STATE_DIM, 1, (float *)K};
+
+            static arm_matrix_instance_f32 KHIP = {
+                KC_STATE_DIM, KC_STATE_DIM, tmpNN3d
+            };
+            static arm_matrix_instance_f32 KHt = {
+                KC_STATE_DIM, KC_STATE_DIM, tmpNN2d
+            };
 
             // ====== COVARIANCE UPDATE ======
             mat_mult(&Km, Hm, &KH); // KH
