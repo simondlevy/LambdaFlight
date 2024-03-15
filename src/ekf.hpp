@@ -62,14 +62,15 @@
 
 #pragma once
 
+#include <string.h>
+
 #include <math3d.h>
 #include <m_pi.h>
 #include <datatypes.h>
 #include <streams.h>
 
 #include "linalg.h"
-
-
+#include "m_pi.h"
 
 // Quaternion used for initial orientation
 static const float QW_INIT = 1;
@@ -94,8 +95,8 @@ static const float MEAS_NOISE_GYRO_ROLL_YAW = 0.1;   // radians per second
 
 static const float GRAVITY_MAGNITUDE = 9.81;
 
-static const float DEGREES_TO_RADIANS = PI / 180.0f;
-static const float RADIANS_TO_DEGREES = 180.0f / PI;
+static const float DEGREES_TO_RADIANS = M_PI / 180.0f;
+static const float RADIANS_TO_DEGREES = 180.0f / M_PI;
 
 //We do get the measurements in 10x the motion pixels (experimentally measured)
 static const float FLOW_RESOLUTION = 0.1;
@@ -221,7 +222,6 @@ class Ekf {
 
         // The covariance matrix
         __attribute__((aligned(4))) float _P[KC_STATE_DIM][KC_STATE_DIM];
-        arm_matrix_instance_f32 _Pm;
 
         // Tracks whether an update to the state has been made, and the state
         // therefore requires finalization
@@ -408,7 +408,6 @@ class Ekf {
 
             memset(&_ekfState, 0, sizeof(_ekfState));
             memset(&_P, 0, sizeof(_P));
-            memset(&_Pm, 0, sizeof(_Pm));
 
             _ekfState.z = 0;
 
@@ -444,10 +443,6 @@ class Ekf {
             _P[KC_STATE_E0][KC_STATE_E0] = powf(STDEV_INITIAL_ATTITUDE_ROLL_PITCH, 2);
             _P[KC_STATE_E1][KC_STATE_E1] = powf(STDEV_INITIAL_ATTITUDE_ROLL_PITCH, 2);
             _P[KC_STATE_E2][KC_STATE_E2] = powf(STDEV_INITIAL_ATTITUDE_YAW, 2);
-
-            _Pm.numRows = KC_STATE_DIM;
-            _Pm.numCols = KC_STATE_DIM;
-            _Pm.pData = (float*)_P;
 
             _isUpdated = false;
             _lastPredictionMs = nowMs;
