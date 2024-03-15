@@ -235,14 +235,15 @@ class Ekf {
         bool finalize(void)
         {
              // Only finalize if data is updated
-             if (! _isUpdated) {
-                 return isStateWithinBounds();
-             }
+            return _isUpdated ? doFinalize() : isStateWithinBounds();
+        }
 
+        bool doFinalize(void)
+        {
              // Incorporate the attitude error (Kalman filter state) with the attitude
-             auto v0 = _ekfState.e0;
-             auto v1 = _ekfState.e1;
-             auto v2 = _ekfState.e2;
+             const auto v0 = _ekfState.e0;
+             const auto v1 = _ekfState.e1;
+             const auto v2 = _ekfState.e2;
 
              // Move attitude error into attitude if any of the angle errors are
              // large enough
@@ -337,23 +338,21 @@ class Ekf {
              _r21 = 2 * _qy * _qz + 2 * _qw * _qx;
              _r22 = _qw * _qw - _qx * _qx - _qy * _qy + _qz * _qz;
 
-             // reset the attitude error
+             // Reset the attitude error
              _ekfState.e0 = 0;
              _ekfState.e1 = 0;
              _ekfState.e2 = 0;
 
-             // enforce symmetry of the covariance matrix, and ensure the values
-             // stay bounded
+             // Enforce symmetry of the covariance matrix, and ensure the
+             // values stay bounded
              for (int i=0; i<KC_STATE_DIM; i++) {
                  for (int j=i; j<KC_STATE_DIM; j++) {
                      const auto p = 0.5f*_P[i][j] + 0.5f*_P[j][i];
-                     if (isnan(p) || p > MAX_COVARIANCE) {
-                         _P[i][j] = _P[j][i] = MAX_COVARIANCE;
-                     } else if ( i==j && p < MIN_COVARIANCE ) {
-                         _P[i][j] = _P[j][i] = MIN_COVARIANCE;
-                     } else {
-                         _P[i][j] = _P[j][i] = p;
-                     }
+                     _P[i][j] = 
+                         (isnan(p) || p > MAX_COVARIANCE) ?  MAX_COVARIANCE :
+                         (i==j && p < MIN_COVARIANCE) ?  MIN_COVARIANCE :
+                         p;
+                     _P[j][i] = _P[i][j];
                  }
              }
 
