@@ -767,6 +767,7 @@ class Ekf {
         }
 
         void scalarUpdate(
+                const float h[KC_STATE_DIM],
                 const arm_matrix_instance_f32 *Hm, 
                 const float error, 
                 const float stdMeasNoise)
@@ -903,7 +904,7 @@ class Ekf {
 
             //First update
             arm_matrix_instance_f32 Hx = {1, KC_STATE_DIM, hx};
-            scalarUpdate(&Hx, (measuredNX-predictedNX), 
+            scalarUpdate(hx, &Hx, (measuredNX-predictedNX), 
                     flow->stdDevX*FLOW_RESOLUTION);
 
             // ~~~ Y velocity prediction and update ~~~
@@ -919,9 +920,7 @@ class Ekf {
             hy[KC_STATE_DY] = (Npix * flow->dt / thetapix) * (_r22 / z_g);
 
             // Second update
-            scalarUpdate(
-                    &Hy, 
-                    (measuredNY-predictedNY), 
+            scalarUpdate(hy, &Hy, (measuredNY-predictedNY), 
                     flow->stdDevY*FLOW_RESOLUTION);
         }
 
@@ -964,8 +963,8 @@ class Ekf {
                 h[KC_STATE_Z] = 1 / cosf(angle); 
 
                 // Scalar update
-                scalarUpdate(
-                        &H, measuredDistance-predictedDistance, range->stdDev);
+                scalarUpdate(h, &H, measuredDistance-predictedDistance, 
+                        range->stdDev);
             }
         }
 
