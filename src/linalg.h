@@ -1,3 +1,5 @@
+#pragma once
+
 #include <arm_math.h>
 
 static inline void mat_trans(const arm_matrix_instance_f32 * pSrc, 
@@ -33,6 +35,16 @@ static void multiply(const float a[N][N], const float b[N][N], float c[N][N])
             for (uint8_t k=0; k<N; k++) {
                 c[i][j] += a[i][k] * b[k][j];
             }
+        }
+    }
+}
+
+static void multiply(const float a[N][N], const float x[N], float y[N])
+{
+    for (uint8_t i=0; i<N; i++) {
+        y[i] = 0;
+        for (uint8_t j=0; j<N; j++) {
+            y[i] += a[i][j] * x[j];
         }
     }
 }

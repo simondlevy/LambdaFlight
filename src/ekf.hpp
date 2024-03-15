@@ -772,16 +772,19 @@ class Ekf {
                 const float error, 
                 const float stdMeasNoise)
         {
-            static float HTd[KC_STATE_DIM * 1];
-            static arm_matrix_instance_f32 HTm = {KC_STATE_DIM, 1, HTd};
+            //static float HTd[KC_STATE_DIM];
+            //static arm_matrix_instance_f32 HTm = {KC_STATE_DIM, 1, HTd};
 
-            static float PHTd[KC_STATE_DIM * 1];
-            static arm_matrix_instance_f32 PHTm = {KC_STATE_DIM, 1, PHTd};
+            static float PHTd[KC_STATE_DIM];
+            //static arm_matrix_instance_f32 PHTm = {KC_STATE_DIM, 1, PHTd};
 
             // ====== INNOVATION COVARIANCE ======
 
-            mat_trans(Hm, &HTm);
-            mat_mult(&_Pm, &HTm, &PHTm); // PH'
+            //mat_trans(Hm, &HTm);
+            //mat_mult(&_Pm, &HTm, &PHTm); // PH'
+
+            multiply(_P, h, PHTd);
+
             float R = stdMeasNoise*stdMeasNoise;
             float HPHR = R; // HPH' + R
             for (int i=0; i<KC_STATE_DIM; i++) { 
