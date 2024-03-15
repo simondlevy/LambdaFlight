@@ -250,24 +250,24 @@ class Ekf {
                          0.1e-3f) && (fabsf(v0) < 10 && fabsf(v1) < 10 &&
                              fabsf(v2) < 10)) 
              {
-                 auto angle = sqrt(v0*v0 + v1*v1 + v2*v2) + EPS;
-                 auto ca = cos(angle / 2.0f);
-                 auto sa = sin(angle / 2.0f);
+                 const auto angle = sqrt(v0*v0 + v1*v1 + v2*v2) + EPS;
+                 const auto ca = cos(angle / 2.0f);
+                 const auto sa = sin(angle / 2.0f);
 
-                 auto dqw = ca;
-                 auto dqx = sa * v0 / angle;
-                 auto dqy = sa * v1 / angle;
-                 auto dqz = sa * v2 / angle;
+                 const auto dqw = ca;
+                 const auto dqx = sa * v0 / angle;
+                 const auto dqy = sa * v1 / angle;
+                 const auto dqz = sa * v2 / angle;
 
                  // Rotate the quad's attitude by the delta quaternion vector
                  // computed above
-                 auto tmpq0 = dqw * _qw - dqx * _qx - dqy * _qy - dqz * _qz;
-                 auto tmpq1 = dqx * _qw + dqw * _qx + dqz * _qy - dqy * _qz;
-                 auto tmpq2 = dqy * _qw - dqz * _qx + dqw * _qy + dqx * _qz;
-                 auto tmpq3 = dqz * _qw + dqy * _qx - dqx * _qy + dqw * _qz;
+                 const auto tmpq0 = dqw * _qw - dqx * _qx - dqy * _qy - dqz * _qz;
+                 const auto tmpq1 = dqx * _qw + dqw * _qx + dqz * _qy - dqy * _qz;
+                 const auto tmpq2 = dqy * _qw - dqz * _qx + dqw * _qy + dqx * _qz;
+                 const auto tmpq3 = dqz * _qw + dqy * _qx - dqx * _qy + dqw * _qz;
 
                  // normalize and store the result
-                 auto norm = sqrt(tmpq0 * tmpq0 + tmpq1 * tmpq1 + tmpq2 * tmpq2 + 
+                 const auto norm = sqrt(tmpq0 * tmpq0 + tmpq1 * tmpq1 + tmpq2 * tmpq2 + 
                          tmpq3 * tmpq3) + EPS;
 
                  _qw = tmpq0 / norm;
@@ -291,9 +291,9 @@ class Ekf {
 
                  // the attitude error vector (v0,v1,v2) is small,
                  // so we use a first order approximation to e0 = tan(|v0|/2)*v0/|v0|
-                 const float e0 = v0/2; 
-                 const float e1 = v1/2; 
-                 const float e2 = v2/2;
+                 const auto e0 = v0/2; 
+                 const auto e1 = v1/2; 
+                 const auto e2 = v2/2;
 
                  const auto e0e0 =  1 - e1*e1/2 - e2*e2/2;
                  const auto e0e1 =  e2 + e0*e1/2;
@@ -322,10 +322,12 @@ class Ekf {
 
 
                  float At[KC_STATE_DIM][KC_STATE_DIM] = {};
-                 float AP[KC_STATE_DIM][KC_STATE_DIM] = {};
-
                  transpose(A, At);     // A'
+
+
+                 float AP[KC_STATE_DIM][KC_STATE_DIM] = {};
                  multiply(A, _P, AP);  // AP
+
                  multiply(AP, At, _P); // APA'
              }
 
@@ -344,7 +346,7 @@ class Ekf {
              // stay bounded
              for (int i=0; i<KC_STATE_DIM; i++) {
                  for (int j=i; j<KC_STATE_DIM; j++) {
-                     float p = 0.5f*_P[i][j] + 0.5f*_P[j][i];
+                     const auto p = 0.5f*_P[i][j] + 0.5f*_P[j][i];
                      if (isnan(p) || p > MAX_COVARIANCE) {
                          _P[i][j] = _P[j][i] = MAX_COVARIANCE;
                      } else if ( i==j && p < MIN_COVARIANCE ) {
@@ -443,7 +445,11 @@ class Ekf {
             _lastProcessNoiseUpdateMs = nowMs;
         }
 
-        void predictDt(Axis3f *acc, Axis3f *gyro, float dt, bool quadIsFlying)
+        void predictDt(
+                const Axis3f *acc, 
+                const Axis3f *gyro, 
+                const float dt, 
+                const bool quadIsFlying)
         {
             /* Here we discretize (euler forward) and linearise the quadrocopter
              * dynamics in order to push the covariance forward.
@@ -555,10 +561,13 @@ class Ekf {
             };
 
             // ====== COVARIANCE UPDATE ======
+
             float At[KC_STATE_DIM][KC_STATE_DIM] = {};
-            float AP[KC_STATE_DIM][KC_STATE_DIM] = {};
             transpose(A, At);     // A'
+
+            float AP[KC_STATE_DIM][KC_STATE_DIM] = {};
             multiply(A, _P, AP);  // AP
+
             multiply(AP, At, _P); // APA'
 
             // Process noise is added after the return from the prediction step
@@ -568,22 +577,18 @@ class Ekf {
             // When flying, the accelerometer directly measures thrust (hence is useless
             // to estimate body angle while flying)
 
-            float dx, dy, dz;
-            float tmpSDX, tmpSDY, tmpSDZ;
-            float zacc;
-
-            float dt2 = dt*dt;
+            const auto dt2 = dt * dt;
 
             if (quadIsFlying) { // only acceleration in z direction
 
                 // Use accelerometer and not commanded thrust, as this has
                 // proper physical units
-                zacc = acc->z;
+                const auto zacc = acc->z;
 
                 // position updates in the body frame (will be rotated to inertial frame)
-                dx = _ekfState.dx * dt;
-                dy = _ekfState.dy * dt;
-                dz = _ekfState.dz * dt + zacc * dt2 / 2.0f; 
+                const auto dx = _ekfState.dx * dt;
+                const auto dy = _ekfState.dy * dt;
+                const auto dz = _ekfState.dz * dt + zacc * dt2 / 2.0f; 
                 // thrust can only be produced in the body's Z direction
 
                 // position update
@@ -591,9 +596,9 @@ class Ekf {
                     GRAVITY_MAGNITUDE * dt2 / 2.0f;
 
                 // keep previous time step's state for the update
-                tmpSDX = _ekfState.dx;
-                tmpSDY = _ekfState.dy;
-                tmpSDZ = _ekfState.dz;
+                const auto tmpSDX = _ekfState.dx;
+                const auto tmpSDY = _ekfState.dy;
+                const auto tmpSDZ = _ekfState.dz;
 
                 // body-velocity update: accelerometers - gyros cross velocity
                 // - gravity in body frame
@@ -609,9 +614,9 @@ class Ekf {
                 // accelerometer. This occurs, eg. in freefall or while being carried.
 
                 // position updates in the body frame (will be rotated to inertial frame)
-                dx = _ekfState.dx * dt + acc->x * dt2 / 2.0f;
-                dy = _ekfState.dy * dt + acc->y * dt2 / 2.0f;
-                dz = _ekfState.dz * dt + acc->z * dt2 / 2.0f; 
+                const auto dx = _ekfState.dx * dt + acc->x * dt2 / 2.0f;
+                const auto dy = _ekfState.dy * dt + acc->y * dt2 / 2.0f;
+                const auto dz = _ekfState.dz * dt + acc->z * dt2 / 2.0f; 
                 // thrust can only be produced in the body's Z direction
 
                 // altitude update
@@ -619,9 +624,9 @@ class Ekf {
                     GRAVITY_MAGNITUDE * dt2 / 2.0f;
 
                 // keep previous time step's state for the update
-                tmpSDX = _ekfState.dx;
-                tmpSDY = _ekfState.dy;
-                tmpSDZ = _ekfState.dz;
+                const auto tmpSDX = _ekfState.dx;
+                const auto tmpSDY = _ekfState.dy;
+                const auto tmpSDZ = _ekfState.dz;
 
                 // body-velocity update: accelerometers - gyros cross velocity
                 // - gravity in body frame
@@ -635,18 +640,18 @@ class Ekf {
 
             // attitude update (rotate by gyroscope), we do this in quaternions
             // this is the gyroscope angular velocity integrated over the sample period
-            auto dtwx = dt*gyro->x;
-            auto dtwy = dt*gyro->y;
-            auto dtwz = dt*gyro->z;
+            const auto dtwx = dt*gyro->x;
+            const auto dtwy = dt*gyro->y;
+            const auto dtwz = dt*gyro->z;
 
             // compute the quaternion values in [w,x,y,z] order
-            auto angle = sqrt(dtwx*dtwx + dtwy*dtwy + dtwz*dtwz) + EPS;
-            auto ca = cos(angle/2.0f);
-            auto sa = sin(angle/2.0f);
-            auto dqw = ca;
-            auto dqx = sa*dtwx/angle;
-            auto dqy = sa*dtwy/angle;
-            auto dqz = sa*dtwz/angle;
+            const auto angle = sqrt(dtwx*dtwx + dtwy*dtwy + dtwz*dtwz) + EPS;
+            const auto ca = cos(angle/2.0f);
+            const auto sa = sin(angle/2.0f);
+            const auto dqw = ca;
+            const auto dqx = sa*dtwx/angle;
+            const auto dqy = sa*dtwy/angle;
+            const auto dqz = sa*dtwz/angle;
 
             // rotate the quad's attitude by the delta quaternion vector computed above
 
@@ -657,7 +662,7 @@ class Ekf {
 
             if (! quadIsFlying) {
 
-                float keep = 1.0f - ROLLPITCH_ZERO_REVERSION;
+                const auto keep = 1.0f - ROLLPITCH_ZERO_REVERSION;
 
                 tmpq0 = keep * tmpq0 + ROLLPITCH_ZERO_REVERSION * QW_INIT;
                 tmpq1 = keep * tmpq1 + ROLLPITCH_ZERO_REVERSION * QX_INIT;
@@ -666,7 +671,7 @@ class Ekf {
             }
 
             // normalize and store the result
-            float norm = 
+            const auto norm = 
                 sqrt(tmpq0*tmpq0 + tmpq1*tmpq1 + tmpq2*tmpq2 + tmpq3*tmpq3) + 
                 EPS;
 
@@ -846,12 +851,12 @@ class Ekf {
 
             //~~~ Body rates ~~~
             // TODO check if this is feasible or if some filtering has to be done
-            float omegax_b = gyro->x * DEGREES_TO_RADIANS;
-            float omegay_b = gyro->y * DEGREES_TO_RADIANS;
+            const auto omegax_b = gyro->x * DEGREES_TO_RADIANS;
+            const auto omegay_b = gyro->y * DEGREES_TO_RADIANS;
 
-            float dx_g = _ekfState.dx;
-            float dy_g = _ekfState.dy;
-            float z_g = 0.0;
+            const auto dx_g = _ekfState.dx;
+            const auto dy_g = _ekfState.dy;
+            auto z_g = 0.0f;
             // Saturate elevation in prediction and correction to avoid singularities
             if ( _ekfState.z < 0.1f ) {
                 z_g = 0.1;
@@ -897,14 +902,14 @@ class Ekf {
             // Only update the filter if the measurement is reliable 
             // (\hat{h} -> infty when R[2][2] -> 0)
             if (fabs(_r22) > 0.1f && _r22 > 0) {
-                float angle = 
+                auto angle = 
                     fabsf(acosf(_r22)) - 
                     DEGREES_TO_RADIANS * (15.0f / 2.0f);
                 if (angle < 0.0f) {
                     angle = 0.0f;
                 }
-                float predictedDistance = _ekfState.z / cosf(angle);
-                float measuredDistance = range->distance; // [m]
+                const auto predictedDistance = _ekfState.z / cosf(angle);
+                const auto measuredDistance = range->distance; // [m]
 
 
                 // The sensor model (Pg.95-96,
@@ -945,7 +950,7 @@ class Ekf {
             axis3fSubSamplerFinalize(&_accSubSampler);
             axis3fSubSamplerFinalize(&_gyroSubSampler);
 
-            float dt = (nowMs - _lastPredictionMs) / 1000.0f;
+            const auto dt = (nowMs - _lastPredictionMs) / 1000.0f;
 
             predictDt(&_accSubSampler.subSample, &_gyroSubSampler.subSample, dt,
                     quadIsFlying);
@@ -955,7 +960,7 @@ class Ekf {
 
         void addProcessNoise(const uint32_t nowMs) 
         {
-            float dt = (nowMs - _lastProcessNoiseUpdateMs) / 1000.0f;
+            const auto dt = (nowMs - _lastProcessNoiseUpdateMs) / 1000.0f;
 
             if (dt > 0.0f) {
                 addProcessNoiseDt(dt);
