@@ -449,7 +449,7 @@ class Ekf {
                 const Axis3f *acc, 
                 const Axis3f *gyro, 
                 const float dt, 
-                const bool quadIsFlying)
+                const bool isFlying)
         {
             /* Here we discretize (euler forward) and linearise the quadrocopter
              * dynamics in order to push the covariance forward.
@@ -579,7 +579,7 @@ class Ekf {
 
             const auto dt2 = dt * dt;
 
-            if (quadIsFlying) { // only acceleration in z direction
+            if (isFlying) { // only acceleration in z direction
 
                 // Use accelerometer and not commanded thrust, as this has
                 // proper physical units
@@ -655,20 +655,17 @@ class Ekf {
 
             // rotate the quad's attitude by the delta quaternion vector computed above
 
-            auto tmpq0 = dqw*_qw - dqx*_qx - dqy*_qy - dqz*_qz;
-            auto tmpq1 = dqx*_qw + dqw*_qx + dqz*_qy - dqy*_qz;
-            auto tmpq2 = dqy*_qw - dqz*_qx + dqw*_qy + dqx*_qz;
-            auto tmpq3 = dqz*_qw + dqy*_qx - dqx*_qy + dqw*_qz;
+            const auto tmpq0 = rotateQuat(
+                    dqw*_qw - dqx*_qx - dqy*_qy - dqz*_qz, QW_INIT, isFlying);
 
-            if (! quadIsFlying) {
+            const auto tmpq1 = rotateQuat(
+                    dqx*_qw + dqw*_qx + dqz*_qy - dqy*_qz, QX_INIT, isFlying);
 
-                const auto keep = 1.0f - ROLLPITCH_ZERO_REVERSION;
+            const auto tmpq2 = rotateQuat(
+                    dqy*_qw - dqz*_qx + dqw*_qy + dqx*_qz, QY_INIT, isFlying);
 
-                tmpq0 = keep * tmpq0 + ROLLPITCH_ZERO_REVERSION * QW_INIT;
-                tmpq1 = keep * tmpq1 + ROLLPITCH_ZERO_REVERSION * QX_INIT;
-                tmpq2 = keep * tmpq2 + ROLLPITCH_ZERO_REVERSION * QY_INIT;
-                tmpq3 = keep * tmpq3 + ROLLPITCH_ZERO_REVERSION * QZ_INIT;
-            }
+            const auto tmpq3 = rotateQuat(
+                    dqz*_qw + dqy*_qx - dqx*_qy + dqw*_qz, QZ_INIT, isFlying);
 
             // normalize and store the result
             const auto norm = 
@@ -682,6 +679,17 @@ class Ekf {
 
 
             _isUpdated = true;
+        }
+
+        static float rotateQuat(
+                const float val, 
+                const float initVal,
+                const bool isFlying)
+        {
+            const auto keep = 1.0f - ROLLPITCH_ZERO_REVERSION;
+
+            return (val * (isFlying ? 1: keep)) +
+                (isFlying ? 0 : ROLLPITCH_ZERO_REVERSION * initVal);
         }
 
         static void axis3fSubSamplerInit(Axis3fSubSampler_t* subSampler, const
@@ -945,7 +953,7 @@ class Ekf {
             _gyroLatest = m.data.gyroscope.gyro;
         }
 
-        void predict(const uint32_t nowMs, bool quadIsFlying) 
+        void predict(const uint32_t nowMs, bool isFlying) 
         {
             axis3fSubSamplerFinalize(&_accSubSampler);
             axis3fSubSamplerFinalize(&_gyroSubSampler);
@@ -953,7 +961,7 @@ class Ekf {
             const auto dt = (nowMs - _lastPredictionMs) / 1000.0f;
 
             predictDt(&_accSubSampler.subSample, &_gyroSubSampler.subSample, dt,
-                    quadIsFlying);
+                    isFlying);
 
             _lastPredictionMs = nowMs;
         }
