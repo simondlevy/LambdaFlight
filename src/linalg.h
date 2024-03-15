@@ -48,3 +48,12 @@ static void multiply(const float a[N][N], const float x[N], float y[N])
         }
     }
 }
+
+static void multiply(const float x[N], const float y[N], float a[N][N])
+{
+    for (uint8_t i=0; i<N; i++) {
+        for (uint8_t j=0; j<N; j++) {
+            a[i][j] = x[i] * y[j];
+        }
+    }
+}

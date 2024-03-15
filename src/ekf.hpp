@@ -768,7 +768,6 @@ class Ekf {
 
         void scalarUpdate(
                 const float h[KC_STATE_DIM],
-                const arm_matrix_instance_f32 *Hm, 
                 const float error, 
                 const float stdMeasNoise)
         {
@@ -803,33 +802,24 @@ class Ekf {
             _ekfState.e1 += K[5] * error;
             _ekfState.e2 += K[6] * error;
 
-            static arm_matrix_instance_f32 Km = {KC_STATE_DIM, 1, (float *)K};
 
-            // Temporary matrices for the covariance updates
-            static float tmpNN1d[KC_STATE_DIM * KC_STATE_DIM];
-            static arm_matrix_instance_f32 KH = {
-                KC_STATE_DIM, KC_STATE_DIM, tmpNN1d
-            };
-
-            static float tmpNN2d[KC_STATE_DIM * KC_STATE_DIM];
-
-            static float tmpNN3d[KC_STATE_DIM * KC_STATE_DIM];
-
-            static arm_matrix_instance_f32 KHIP = {
-                KC_STATE_DIM, KC_STATE_DIM, tmpNN3d
-            };
-            static arm_matrix_instance_f32 KHt = {
-                KC_STATE_DIM, KC_STATE_DIM, tmpNN2d
-            };
 
             // ====== COVARIANCE UPDATE ======
-            mat_mult(&Km, Hm, &KH); // KH
+
+            float KH[KC_STATE_DIM][KC_STATE_DIM] = {};
+            multiply(K, h, KH); // KH
+
             for (int i=0; i<KC_STATE_DIM; i++) { 
-                tmpNN1d[KC_STATE_DIM*i+i] -= 1; 
+                KH[i][i] -= 1;
             } // KH - I
-            mat_trans(&KH, &KHt);        // (KH - I)'
-            mat_mult(&KH, &_Pm, &KHIP);  // (KH - I)*P
-            mat_mult(&KHIP, &KHt, &_Pm); // (KH - I)*P*(KH - I)'
+
+            float KHt[KC_STATE_DIM][KC_STATE_DIM] = {};
+            transpose(KH, KHt);      // (KH - I)'
+
+            float KHIP[KC_STATE_DIM][KC_STATE_DIM] = {};
+            multiply(KH, _P, KHIP);  // (KH - I)*P
+
+            multiply(KHIP, KHt, _P); // (KH - I)*P*(KH - I)'
 
             // add the measurement variance and ensure boundedness and symmetry
             // TODO: Why would it hit these bounds? Needs to be investigated.
@@ -898,13 +888,11 @@ class Ekf {
                 (_r22 / z_g);
 
             //First update
-            arm_matrix_instance_f32 Hx = {1, KC_STATE_DIM, hx};
-            scalarUpdate(hx, &Hx, (measuredNX-predictedNX), 
+            scalarUpdate(hx, (measuredNX-predictedNX), 
                     flow->stdDevX*FLOW_RESOLUTION);
 
             // ~~~ Y velocity prediction and update ~~~
             float hy[KC_STATE_DIM] = {};
-            arm_matrix_instance_f32 Hy = {1, KC_STATE_DIM, hy};
             auto predictedNY = (flow->dt * Npix / thetapix ) * 
                 ((dy_g * _r22 / z_g) + omegax_b);
             auto measuredNY = flow->dpixely*FLOW_RESOLUTION;
@@ -915,16 +903,12 @@ class Ekf {
             hy[KC_STATE_DY] = (Npix * flow->dt / thetapix) * (_r22 / z_g);
 
             // Second update
-            scalarUpdate(hy, &Hy, (measuredNY-predictedNY), 
+            scalarUpdate(hy, (measuredNY-predictedNY), 
                     flow->stdDevY*FLOW_RESOLUTION);
         }
 
         void updateWithRange(const rangeMeasurement_t *range)
         {
-            // Updates the filter with a measured distance in the zb direction using the
-            float h[KC_STATE_DIM] = {};
-            arm_matrix_instance_f32 H = {1, KC_STATE_DIM, h};
-
             // Only update the filter if the measurement is reliable 
             // (\hat{h} -> infty when R[2][2] -> 0)
             if (fabs(_r22) > 0.1f && _r22 > 0) {
@@ -953,12 +937,16 @@ class Ekf {
                 // alpha = angle between [line made by measured point <---> sensor] 
                 // and [the intertial z-axis] 
 
+                // Updates the filter with a measured distance in the zb
+                // direction using the
+                float h[KC_STATE_DIM] = {};
+
                 // This just acts like a gain for the sensor model. Further
                 // updates are done in the scalar update function below
                 h[KC_STATE_Z] = 1 / cosf(angle); 
 
                 // Scalar update
-                scalarUpdate(h, &H, measuredDistance-predictedDistance, 
+                scalarUpdate(h, measuredDistance-predictedDistance, 
                         range->stdDev);
             }
         }
