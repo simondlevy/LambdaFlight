@@ -221,7 +221,7 @@ class Ekf {
         float _r22;
 
         // The covariance matrix
-        __attribute__((aligned(4))) float _P[KC_STATE_DIM][KC_STATE_DIM];
+        float _P[KC_STATE_DIM][KC_STATE_DIM];
 
         // Tracks whether an update to the state has been made, and the state
         // therefore requires finalization
@@ -425,13 +425,7 @@ class Ekf {
 
             // set covariances to zero (diagonals will be changed from
             // zero in the next section)
-            for (int i=0; i< KC_STATE_DIM; i++) {
-
-                for (int j=0; j < KC_STATE_DIM; j++) {
-
-                    _P[i][j] = 0; 
-                }
-            }
+            memset(_P, 0, sizeof(_P));
 
             // initialize state variances
             _P[KC_STATE_Z][KC_STATE_Z] = powf(STDEV_INITIAL_POSITION_Z, 2);
@@ -683,8 +677,6 @@ class Ekf {
 
 
             _isUpdated = true;
-
-
         }
 
         static void axis3fSubSamplerInit(Axis3fSubSampler_t* subSampler, const
@@ -787,7 +779,7 @@ class Ekf {
             // ====== MEASUREMENT UPDATE ======
             // Calculate the Kalman gain and perform the state update
             for (int i=0; i<KC_STATE_DIM; i++) {
-                K[i] = Ph[i]/HPHR; // kalman gain = (PH' (HPH' + R )^-1)
+                K[i] = Ph[i] / HPHR; // kalman gain = (PH' (HPH' + R )^-1)
             }
             _ekfState.z  += K[0] * error;
             _ekfState.dx += K[1] * error;
@@ -796,8 +788,6 @@ class Ekf {
             _ekfState.e0 += K[4] * error;
             _ekfState.e1 += K[5] * error;
             _ekfState.e2 += K[6] * error;
-
-
 
             // ====== COVARIANCE UPDATE ======
 
@@ -932,15 +922,8 @@ class Ekf {
                 // alpha = angle between [line made by measured point <---> sensor] 
                 // and [the intertial z-axis] 
 
-                // Updates the filter with a measured distance in the zb
-                // direction using the
-                float h[KC_STATE_DIM] = {};
+                const float h[KC_STATE_DIM] = {1 / cosf(angle), 0, 0, 0, 0, 0, 0};
 
-                // This just acts like a gain for the sensor model. Further
-                // updates are done in the scalar update function below
-                h[KC_STATE_Z] = 1 / cosf(angle); 
-
-                // Scalar update
                 scalarUpdate(h, measuredDistance-predictedDistance, 
                         range->stdDev);
             }
