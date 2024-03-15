@@ -14,12 +14,11 @@ static inline void mat_mult(const arm_matrix_instance_f32 * pSrcA,
   arm_mat_mult_f32(pSrcA, pSrcB, pDst);
 }
 
-static void multiply(const float a[N][N], const float x[N], float y[N])
+static void multiply(const float x[N], const float y[N], float a[N][N])
 {
     for (uint8_t i=0; i<N; i++) {
-        y[i] = 0;
         for (uint8_t j=0; j<N; j++) {
-            y[i] += a[i][j] * x[j];
+            a[i][j] = x[i] * y[j];
         }
     }
 }
@@ -31,34 +30,34 @@ void setup()
 
 void loop() 
 {
-    float h[N] = {10, 11, 12};
+    float K[N] = {1, 2, 3};
 
-    float P[N][N] = { {1, 2, 3}, {4, 5, 6}, {7, 8, 9} };
+    float H[N] = {4, 5, 6};
 
-    arm_matrix_instance_f32 Pm;
-    Pm.numRows = N;
-    Pm.numCols = N;
-    Pm.pData = (float*)P;
+    arm_matrix_instance_f32 Hm = {1, N, H};
+    arm_matrix_instance_f32 Km = {N, 1, K};
+    float tmpNN1d[N*N] = {};
+    arm_matrix_instance_f32 KH = {N, N, tmpNN1d };
 
-    arm_matrix_instance_f32 Hm = {1, 3, h};
+    mat_mult(&Km, &Hm, &KH); // KH
 
-    float HTd[N] = {};
-    arm_matrix_instance_f32 HTm = {N, 1, HTd};
-
-    float PHTd[N] = {};
-    arm_matrix_instance_f32 PHTm = {N, 1, PHTd};
-
-    mat_trans(&Hm, &HTm);
-    mat_mult(&Pm, &HTm, &PHTm);
-
-    Serial.printf("%f %f %f\n", PHTd[0], PHTd[1], PHTd[2]);
-
-    float y[3] = {};
-    multiply(P, h, y);
+    Serial.printf("%f %f %f\n%f %f %f\n%f %f %f\n\n", 
+            tmpNN1d[0], tmpNN1d[1], tmpNN1d[2],
+            tmpNN1d[3], tmpNN1d[4], tmpNN1d[5],
+            tmpNN1d[6], tmpNN1d[7], tmpNN1d[8]);
 
     delay(100);
 
-    Serial.printf("%f %f %f\n\n", y[0], y[1], y[2]);
+    float a[N][N] = {};
+
+    multiply(K, H, a);
+
+    Serial.printf("%f %f %f\n%f %f %f\n%f %f %f\n\n\n", 
+            a[0][0], a[0][1], a[0][2],
+            a[1][0], a[1][1], a[1][2],
+            a[2][0], a[2][1], a[2][2]);
+
+    multiply(K, H, a);
 
     delay(500);
 

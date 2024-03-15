@@ -772,18 +772,10 @@ class Ekf {
                 const float error, 
                 const float stdMeasNoise)
         {
-            //static float HTd[KC_STATE_DIM];
-            //static arm_matrix_instance_f32 HTm = {KC_STATE_DIM, 1, HTd};
-
-            static float PHTd[KC_STATE_DIM];
-            //static arm_matrix_instance_f32 PHTm = {KC_STATE_DIM, 1, PHTd};
+            float Ph[KC_STATE_DIM] = {};
 
             // ====== INNOVATION COVARIANCE ======
-
-            //mat_trans(Hm, &HTm);
-            //mat_mult(&_Pm, &HTm, &PHTm); // PH'
-
-            multiply(_P, h, PHTd);
+            multiply(_P, h, Ph);
 
             float R = stdMeasNoise*stdMeasNoise;
             float HPHR = R; // HPH' + R
@@ -792,16 +784,16 @@ class Ekf {
                 // Add the element of HPH' to the above
 
                 // this obviously only works if the update is scalar (as in this function)
-                HPHR += Hm->pData[i]*PHTd[i]; 
+                HPHR += h[i]*Ph[i]; 
             }
 
             // The Kalman gain as a column vector
-            static float K[KC_STATE_DIM];
+            float K[KC_STATE_DIM] = {};
 
             // ====== MEASUREMENT UPDATE ======
             // Calculate the Kalman gain and perform the state update
             for (int i=0; i<KC_STATE_DIM; i++) {
-                K[i] = PHTd[i]/HPHR; // kalman gain = (PH' (HPH' + R )^-1)
+                K[i] = Ph[i]/HPHR; // kalman gain = (PH' (HPH' + R )^-1)
             }
             _ekfState.z  += K[0] * error;
             _ekfState.dx += K[1] * error;
