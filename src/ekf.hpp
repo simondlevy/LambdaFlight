@@ -343,18 +343,7 @@ class Ekf {
              _ekfState.e1 = 0;
              _ekfState.e2 = 0;
 
-             // Enforce symmetry of the covariance matrix, and ensure the
-             // values stay bounded
-             for (int i=0; i<KC_STATE_DIM; i++) {
-                 for (int j=i; j<KC_STATE_DIM; j++) {
-                     const auto p = 0.5f*_P[i][j] + 0.5f*_P[j][i];
-                     _P[i][j] = 
-                         (isnan(p) || p > MAX_COVARIANCE) ?  MAX_COVARIANCE :
-                         (i==j && p < MIN_COVARIANCE) ?  MIN_COVARIANCE :
-                         p;
-                     _P[j][i] = _P[i][j];
-                 }
-             }
+             updateCovarianceMatrix();
 
              _isUpdated = false;
 
@@ -751,16 +740,21 @@ class Ekf {
             _P[KC_STATE_E2][KC_STATE_E2] += 
                 powf(MEAS_NOISE_GYRO_ROLL_YAW * dt + PROC_NOISE_ATT, 2);
 
+            updateCovarianceMatrix();
+        }
+
+        void updateCovarianceMatrix(void)
+        {
+            // Enforce symmetry of the covariance matrix, and ensure the
+            // values stay bounded
             for (int i=0; i<KC_STATE_DIM; i++) {
                 for (int j=i; j<KC_STATE_DIM; j++) {
-                    float p = 0.5f*_P[i][j] + 0.5f*_P[j][i];
-                    if (isnan(p) || p > MAX_COVARIANCE) {
-                        _P[i][j] = _P[j][i] = MAX_COVARIANCE;
-                    } else if ( i==j && p < MIN_COVARIANCE ) {
-                        _P[i][j] = _P[j][i] = MIN_COVARIANCE;
-                    } else {
-                        _P[i][j] = _P[j][i] = p;
-                    }
+                    const auto p = 0.5f*_P[i][j] + 0.5f*_P[j][i];
+                    _P[i][j] = 
+                        (isnan(p) || p > MAX_COVARIANCE) ?  MAX_COVARIANCE :
+                        (i==j && p < MIN_COVARIANCE) ?  MIN_COVARIANCE :
+                        p;
+                    _P[j][i] = _P[i][j];
                 }
             }
         }
