@@ -176,24 +176,6 @@ static const int m4Pin = 3;
 static const int m5Pin = 4;
 static const int m6Pin = 5;
 
-//PWM servo or ESC outputs:
-static const int servo1Pin = 6;
-static const int servo2Pin = 7;
-static const int servo3Pin = 8;
-static const int servo4Pin = 9;
-static const int servo5Pin = 10;
-static const int servo6Pin = 11;
-static const int servo7Pin = 12;
-
-static PWMServo servo1;  //Create servo objects to control a servo or ESC with static PWM
-static PWMServo servo2;
-static PWMServo servo3;
-static PWMServo servo4;
-static PWMServo servo5;
-static PWMServo servo6;
-static PWMServo servo7;
-
-
 //========================================================================================================================//
 
 
@@ -960,13 +942,6 @@ void setup()
     pinMode(m4Pin, OUTPUT);
     pinMode(m5Pin, OUTPUT);
     pinMode(m6Pin, OUTPUT);
-    servo1.attach(servo1Pin, 900, 2100); //Pin, min PWM value, max PWM value
-    servo2.attach(servo2Pin, 900, 2100);
-    servo3.attach(servo3Pin, 900, 2100);
-    servo4.attach(servo4Pin, 900, 2100);
-    servo5.attach(servo5Pin, 900, 2100);
-    servo6.attach(servo6Pin, 900, 2100);
-    servo7.attach(servo7Pin, 900, 2100);
 
     //Set built in LED to turn on to signal startup
     digitalWrite(13, HIGH);
@@ -986,17 +961,6 @@ void setup()
 
     //Initialize IMU communication
     IMUinit();
-
-    delay(5);
-
-    //Arm servo channels
-    servo1.write(0); //Command servo angle from 0-180 degrees (1000 to 2000 PWM)
-    servo2.write(0); //Set these to 90 for servos if you do not want them to briefly max out on startup
-    servo3.write(0); //Keep these at 0 if you are using servo outputs for motors
-    servo4.write(0);
-    servo5.write(0);
-    servo6.write(0);
-    servo7.write(0);
 
     delay(5);
 
