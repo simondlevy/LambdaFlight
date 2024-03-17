@@ -568,21 +568,17 @@ class Ekf {
 
             const auto dt2 = dt * dt;
 
+            // Position updates in the body frame (will be rotated to inertial frame);
+            // thrust can only be produced in the body's Z direction
+            const auto dx = _ekfState.dx * dt + isFlying ? 0 : acc->x * dt2 / 2;
+            const auto dy = _ekfState.dy * dt + isFlying ? 0 : acc->y * dt2 / 2;
+            const auto dz = _ekfState.dz * dt + acc->z * dt2 / 2; 
+
             if (isFlying) { // only acceleration in z direction
 
-                // Use accelerometer and not commanded thrust, as this has
-                // proper physical units
-                const auto zacc = acc->z;
-
-                // position updates in the body frame (will be rotated to inertial frame)
-                const auto dx = _ekfState.dx * dt;
-                const auto dy = _ekfState.dy * dt;
-                const auto dz = _ekfState.dz * dt + zacc * dt2 / 2.0f; 
-                // thrust can only be produced in the body's Z direction
-
-                // position update
+                // altitude update
                 _ekfState.z += _r20 * dx + _r21 * dy + _r22 * dz - 
-                    GRAVITY_MAGNITUDE * dt2 / 2.0f;
+                    GRAVITY_MAGNITUDE * dt2 / 2;
 
                 // keep previous time step's state for the update
                 const auto tmpSDX = _ekfState.dx;
@@ -595,22 +591,14 @@ class Ekf {
                         tmpSDZ - GRAVITY_MAGNITUDE * _r20);
                 _ekfState.dy += dt * (-gyro->z * tmpSDX + gyro->x * tmpSDZ - 
                         GRAVITY_MAGNITUDE * _r21);
-                _ekfState.dz += dt * (zacc + gyro->y * tmpSDX - gyro->x * 
+                _ekfState.dz += dt * (acc->z + gyro->y * tmpSDX - gyro->x * 
                         tmpSDY - GRAVITY_MAGNITUDE * _r22);
             }
             else {
-                // Acceleration can be in any direction, as measured by the
-                // accelerometer. This occurs, eg. in freefall or while being carried.
-
-                // position updates in the body frame (will be rotated to inertial frame)
-                const auto dx = _ekfState.dx * dt + acc->x * dt2 / 2.0f;
-                const auto dy = _ekfState.dy * dt + acc->y * dt2 / 2.0f;
-                const auto dz = _ekfState.dz * dt + acc->z * dt2 / 2.0f; 
-                // thrust can only be produced in the body's Z direction
 
                 // altitude update
                 _ekfState.z += _r20 * dx + _r21 * dy + _r22 * dz - 
-                    GRAVITY_MAGNITUDE * dt2 / 2.0f;
+                    GRAVITY_MAGNITUDE * dt2 / 2;
 
                 // keep previous time step's state for the update
                 const auto tmpSDX = _ekfState.dx;
@@ -635,8 +623,8 @@ class Ekf {
 
             // compute the quaternion values in [w,x,y,z] order
             const auto angle = sqrt(dtwx*dtwx + dtwy*dtwy + dtwz*dtwz) + EPS;
-            const auto ca = cos(angle/2.0f);
-            const auto sa = sin(angle/2.0f);
+            const auto ca = cos(angle/2);
+            const auto sa = sin(angle/2);
             const auto dqw = ca;
             const auto dqx = sa*dtwx/angle;
             const auto dqy = sa*dtwy/angle;
@@ -665,7 +653,6 @@ class Ekf {
             _qx = tmpq1/norm; 
             _qy = tmpq2/norm; 
             _qz = tmpq3/norm;
-
 
             _isUpdated = true;
         }
