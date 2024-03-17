@@ -123,8 +123,6 @@ static const int m1Pin = 0;
 static const int m2Pin = 1;
 static const int m3Pin = 2;
 static const int m4Pin = 3;
-static const int m5Pin = 4;
-static const int m6Pin = 5;
 
 //========================================================================================================================//
 
@@ -167,8 +165,8 @@ static float error_pitch, integral_pitch, integral_pitch_prev, derivative_pitch,
 static float error_yaw, error_yaw_prev, integral_yaw, integral_yaw_prev, derivative_yaw, yaw_PID;
 
 //Mixer
-static float m1_command_scaled, m2_command_scaled, m3_command_scaled, m4_command_scaled, m5_command_scaled, m6_command_scaled;
-static int m1_command_PWM, m2_command_PWM, m3_command_PWM, m4_command_PWM, m5_command_PWM, m6_command_PWM;
+static float m1_command_scaled, m2_command_scaled, m3_command_scaled, m4_command_scaled;
+static int m1_command_PWM, m2_command_PWM, m3_command_PWM, m4_command_PWM;
 
 //Flight status
 static bool armedFly = false;
@@ -203,8 +201,6 @@ static void controlMixer() {
     m2_command_scaled = thro_des - pitch_PID - roll_PID - yaw_PID; //Front Right
     m3_command_scaled = thro_des + pitch_PID - roll_PID + yaw_PID; //Back Right
     m4_command_scaled = thro_des + pitch_PID + roll_PID - yaw_PID; //Back Left
-    m5_command_scaled = 0;
-    m6_command_scaled = 0;
 }
 
 static void armedStatus() {
@@ -471,15 +467,12 @@ static void scaleCommands() {
     m2_command_PWM = m2_command_scaled*125 + 125;
     m3_command_PWM = m3_command_scaled*125 + 125;
     m4_command_PWM = m4_command_scaled*125 + 125;
-    m5_command_PWM = m5_command_scaled*125 + 125;
-    m6_command_PWM = m6_command_scaled*125 + 125;
+    
     //Constrain commands to motors within oneshot125 bounds
     m1_command_PWM = constrain(m1_command_PWM, 125, 250);
     m2_command_PWM = constrain(m2_command_PWM, 125, 250);
     m3_command_PWM = constrain(m3_command_PWM, 125, 250);
     m4_command_PWM = constrain(m4_command_PWM, 125, 250);
-    m5_command_PWM = constrain(m5_command_PWM, 125, 250);
-    m6_command_PWM = constrain(m6_command_PWM, 125, 250);
 }
 
 static void getCommands() {
@@ -566,20 +559,16 @@ static void commandMotors() {
     int flagM2 = 0;
     int flagM3 = 0;
     int flagM4 = 0;
-    int flagM5 = 0;
-    int flagM6 = 0;
 
     //Write all motor pins high
     digitalWrite(m1Pin, HIGH);
     digitalWrite(m2Pin, HIGH);
     digitalWrite(m3Pin, HIGH);
     digitalWrite(m4Pin, HIGH);
-    digitalWrite(m5Pin, HIGH);
-    digitalWrite(m6Pin, HIGH);
     pulseStart = micros();
 
     //Write each motor pin low as correct pulse length is reached
-    while (wentLow < 6 ) { //Keep going until final (6th) pulse is finished, then done
+    while (wentLow < 4 ) { //Keep going until final (6th) pulse is finished, then done
         timer = micros();
         if ((m1_command_PWM <= timer - pulseStart) && (flagM1==0)) {
             digitalWrite(m1Pin, LOW);
@@ -600,16 +589,6 @@ static void commandMotors() {
             digitalWrite(m4Pin, LOW);
             wentLow = wentLow + 1;
             flagM4 = 1;
-        } 
-        if ((m5_command_PWM <= timer - pulseStart) && (flagM5==0)) {
-            digitalWrite(m5Pin, LOW);
-            wentLow = wentLow + 1;
-            flagM5 = 1;
-        } 
-        if ((m6_command_PWM <= timer - pulseStart) && (flagM6==0)) {
-            digitalWrite(m6Pin, LOW);
-            wentLow = wentLow + 1;
-            flagM6 = 1;
         } 
     }
 }
@@ -644,8 +623,6 @@ static void throttleCut() {
         m2_command_PWM = 120;
         m3_command_PWM = 120;
         m4_command_PWM = 120;
-        m5_command_PWM = 120;
-        m6_command_PWM = 120;
     }
 }
 
@@ -800,10 +777,6 @@ void debugMotorCommands() {
         Serial.print(m3_command_PWM);
         Serial.print(F(" m4_command:"));
         Serial.print(m4_command_PWM);
-        Serial.print(F(" m5_command:"));
-        Serial.print(m5_command_PWM);
-        Serial.print(F(" m6_command:"));
-        Serial.println(m6_command_PWM);
     }
 }
 
@@ -852,8 +825,6 @@ void setup()
     pinMode(m2Pin, OUTPUT);
     pinMode(m3Pin, OUTPUT);
     pinMode(m4Pin, OUTPUT);
-    pinMode(m5Pin, OUTPUT);
-    pinMode(m6Pin, OUTPUT);
 
     //Set built in LED to turn on to signal startup
     digitalWrite(13, HIGH);
@@ -881,8 +852,6 @@ void setup()
     m2_command_PWM = 125;
     m3_command_PWM = 125;
     m4_command_PWM = 125;
-    m5_command_PWM = 125;
-    m6_command_PWM = 125;
     armMotors(); //Loop over commandMotors() until ESCs happily arm
 
     //Indicate entering main loop with 3 quick blinks
