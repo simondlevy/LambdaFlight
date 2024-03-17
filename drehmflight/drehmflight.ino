@@ -148,7 +148,6 @@ static float AccX, AccY, AccZ;
 static float AccX_prev, AccY_prev, AccZ_prev;
 static float GyroX, GyroY, GyroZ;
 static float GyroX_prev, GyroY_prev, GyroZ_prev;
-static float MagX, MagY, MagZ;
 static float roll_IMU, pitch_IMU, yaw_IMU;
 static float q0 = 1.0f; //Initialize quaternion for madgwick filter
 static float q1 = 0.0f;
@@ -234,16 +233,8 @@ static void IMUinit() {
 
 }
 
-static void getIMUdata() {
-    //DESCRIPTION: Request full dataset from IMU and LP filter gyro, accelerometer, and magnetometer data
-    /*
-     * Reads accelerometer, gyro, and magnetometer data from IMU as AccX, AccY, AccZ, GyroX, GyroY, GyroZ, MagX, MagY, MagZ. 
-     * These values are scaled according to the IMU datasheet to put them into correct units of g's, deg/sec, and uT. A simple first-order
-     * low-pass filter is used to get rid of high frequency noise in these raw signals. Generally you want to cut
-     * off everything past 80Hz, but if your loop rate is not fast enough, the low pass filter will cause a lag in
-     * the readings. The filter parameters B_gyro and B_accel are set to be good for a 2kHz loop rate. Finally,
-     * the constant errors found in calculate_IMU_error() on startup are subtracted from the accelerometer and gyro readings.
-     */
+static void getIMUdata() 
+{
     int16_t AcX,AcY,AcZ,GyX,GyY,GyZ;
 
     mpu6050.getMotion6(&AcX, &AcY, &AcZ, &GyX, &GyY, &GyZ);
@@ -279,18 +270,6 @@ static void getIMUdata() {
     GyroX_prev = GyroX;
     GyroY_prev = GyroY;
     GyroZ_prev = GyroZ;
-}
-
-static void Madgwick(float gx, float gy, float gz, float ax, float ay, float az, float mx, float my, float mz, float invSampleFreq) {
-    //DESCRIPTION: Attitude estimation through sensor fusion - 9DOF
-    /*
-     * This function fuses the accelerometer gyro, and magnetometer readings AccX, AccY, AccZ, GyroX, GyroY, GyroZ, MagX, MagY, and MagZ for attitude estimation.
-     * Don't worry about the math. There is a tunable parameter B_madgwick in the user specified variable section which basically
-     * adjusts the weight of gyro data in the state estimate. Higher beta leads to noisier estimate, lower 
-     * beta leads to slower to respond estimate. It is currently tuned for 2kHz loop rate. This function updates the roll_IMU,
-     * pitch_IMU, and yaw_IMU variables which are in degrees. If magnetometer data is not available, this function calls Madgwick6DOF() instead.
-     */
-    Madgwick6DOF(gx, gy, gz, ax, ay, az, invSampleFreq);
 }
 
 static void Madgwick6DOF(float gx, float gy, float gz, float ax, float ay, float az, float invSampleFreq) {
@@ -730,18 +709,6 @@ void debugAccelData() {
     }
 }
 
-void debugMagData() {
-    if (current_time - print_counter > 10000) {
-        print_counter = micros();
-        Serial.print(F("MagX:"));
-        Serial.print(MagX);
-        Serial.print(F(" MagY:"));
-        Serial.print(MagY);
-        Serial.print(F(" MagZ:"));
-        Serial.println(MagZ);
-    }
-}
-
 void debugRollPitchYaw() {
     if (current_time - print_counter > 10000) {
         print_counter = micros();
@@ -874,7 +841,6 @@ void loop()
     //debugDesiredState();  //Prints desired vehicle state commanded in either degrees or deg/sec (expected: +/- maxAXIS for roll, pitch, yaw; 0 to 1 for throttle)
     //debugGyroData();      //Prints filtered gyro data direct from IMU (expected: ~ -250 to 250, 0 at rest)
     //debugAccelData();     //Prints filtered accelerometer data direct from IMU (expected: ~ -2 to 2; x,y 0 when level, z 1 when level)
-    //debugMagData();       //Prints filtered magnetometer data direct from IMU (expected: ~ -300 to 300)
     //debugRollPitchYaw();  //Prints roll, pitch, and yaw angles in degrees from Madgwick filter (expected: degrees, 0 when level)
     //debugPIDoutput();     //Prints computed stabilized PID variables from controller and desired setpoint (expected: ~ -1 to 1)
     //debugMotorCommands(); //Prints the values being written to the motors (expected: 120 to 250)
@@ -886,7 +852,7 @@ void loop()
 
     //Get vehicle state
     getIMUdata(); //Pulls raw gyro, accelerometer, and magnetometer data from IMU and LP filters to remove noise
-    Madgwick(GyroX, -GyroY, -GyroZ, -AccX, AccY, AccZ, MagY, -MagX, MagZ, dt); //Updates roll_IMU, pitch_IMU, and yaw_IMU angle estimates (degrees)
+    Madgwick6DOF(GyroX, -GyroY, -GyroZ, -AccX, AccY, AccZ, dt); //Updates roll_IMU, pitch_IMU, and yaw_IMU angle estimates (degrees)
 
     //Compute desired state
     getDesState(); //Convert raw commands to normalized values based on saturated control limits
