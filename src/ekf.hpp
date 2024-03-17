@@ -320,7 +320,6 @@ class Ekf {
                 (isErrorLarge(v0) || isErrorLarge(v1) || isErrorLarge(v2)) &&
                     isErrorInBounds(v0) && isErrorInBounds(v1) && isErrorInBounds(v2);
 
-
             _qw = isErrorSufficient ? tmpq0 / norm : _qw;
             _qx = isErrorSufficient ? tmpq1 / norm : _qx;
             _qy = isErrorSufficient ? tmpq2 / norm : _qy;
@@ -670,18 +669,24 @@ class Ekf {
 
         static Axis3f* axis3fSubSamplerFinalize(Axis3fSubSampler_t* subSampler) 
         {
-            if (subSampler->count > 0) {
-                subSampler->subSample.x = 
-                    subSampler->sum.x * subSampler->conversionFactor / subSampler->count;
-                subSampler->subSample.y = 
-                    subSampler->sum.y * subSampler->conversionFactor / subSampler->count;
-                subSampler->subSample.z = 
-                    subSampler->sum.z * subSampler->conversionFactor / subSampler->count;
+            const auto count  = subSampler->count; 
+            const auto isCountNonzero = count > 0;
 
-                // Reset
-                subSampler->count = 0;
-                subSampler->sum = (Axis3f){.axis={0}};
-            }
+            subSampler->subSample.x = isCountNonzero ? 
+                subSampler->sum.x * subSampler->conversionFactor / count :
+                subSampler->subSample.x;
+
+            subSampler->subSample.y = isCountNonzero ?
+                subSampler->sum.y * subSampler->conversionFactor / count :
+                subSampler->subSample.y;
+
+            subSampler->subSample.z = isCountNonzero ?
+                subSampler->sum.z * subSampler->conversionFactor / count :
+                subSampler->subSample.z;
+
+            // Reset
+            subSampler->count = 0;
+            subSampler->sum = (Axis3f){.axis={0}};
 
             return &subSampler->subSample;
         }
