@@ -678,43 +678,6 @@ static void armMotors() {
     }
 }
 
-void calibrateESCs() {
-    //DESCRIPTION: Used in void setup() to allow standard ESC calibration procedure with the radio to take place.
-    /*  
-     *  Simulates the void loop(), but only for the purpose of providing throttle pass through to the motors, so that you can
-     *  power up with throttle at full, let ESCs begin arming sequence, and lower throttle to zero. This function should only be
-     *  uncommented when performing an ESC calibration.
-     */
-    while (true) {
-        prev_time = current_time;      
-        current_time = micros();      
-        dt = (current_time - prev_time)/1000000.0;
-
-        digitalWrite(13, HIGH); //LED on to indicate we are not in main loop
-
-        getCommands(); //Pulls current available radio commands
-        failSafe(); //Prevent failures in event of bad receiver connection, defaults to failsafe values assigned in setup
-        getDesState(); //Convert raw commands to normalized values based on saturated control limits
-        getIMUdata(); //Pulls raw gyro, accelerometer, and magnetometer data from IMU and LP filters to remove noise
-        Madgwick(GyroX, -GyroY, -GyroZ, -AccX, AccY, AccZ, MagY, -MagX, MagZ, dt); //Updates roll_IMU, pitch_IMU, and yaw_IMU (degrees)
-        getDesState(); //Convert raw commands to normalized values based on saturated control limits
-
-        m1_command_scaled = thro_des;
-        m2_command_scaled = thro_des;
-        m3_command_scaled = thro_des;
-        m4_command_scaled = thro_des;
-        m5_command_scaled = thro_des;
-        m6_command_scaled = thro_des;
-        scaleCommands(); //Scales motor commands to 125 to 250 range (oneshot125 protocol) and servo PWM commands to 0 to 180 (for servo library)
-
-        //throttleCut(); //Directly sets motor commands to low based on state of ch5
-
-        commandMotors(); //Sends command pulses to each motor pin using OneShot125 protocol
-
-        loopRate(2000); //Do not exceed 2000Hz, all filter parameters tuned to 2000Hz by default
-    }
-}
-
 static void throttleCut() {
     //DESCRIPTION: Directly set actuator outputs to minimum value if triggered
     /*
@@ -963,9 +926,6 @@ void setup()
     IMUinit();
 
     delay(5);
-
-    //calibrateESCs(); //PROPS OFF. Uncomment this to calibrate your ESCs by setting throttle stick to max, powering on, and lowering throttle to zero after the beeps
-    //Code will not proceed past here if this function is uncommented!
 
     //Arm OneShot125 motors
     m1_command_PWM = 125; //Command OneShot125 ESC from 125 to 250us pulse length
