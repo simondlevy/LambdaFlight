@@ -574,46 +574,29 @@ class Ekf {
             const auto dy = _ekfState.dy * dt + isFlying ? 0 : acc->y * dt2 / 2;
             const auto dz = _ekfState.dz * dt + acc->z * dt2 / 2; 
 
-            if (isFlying) { // only acceleration in z direction
+            // keep previous time step's state for the update
+            const auto tmpSDX = _ekfState.dx;
+            const auto tmpSDY = _ekfState.dy;
+            const auto tmpSDZ = _ekfState.dz;
 
-                // altitude update
-                _ekfState.z += _r20 * dx + _r21 * dy + _r22 * dz - 
-                    GRAVITY_MAGNITUDE * dt2 / 2;
+            const auto accx = isFlying ? 0 : acc->x;
+            const auto accy = isFlying ? 0 : acc->y;
 
-                // keep previous time step's state for the update
-                const auto tmpSDX = _ekfState.dx;
-                const auto tmpSDY = _ekfState.dy;
-                const auto tmpSDZ = _ekfState.dz;
+            // altitude update
+            _ekfState.z += _r20 * dx + _r21 * dy + _r22 * dz - 
+                GRAVITY_MAGNITUDE * dt2 / 2;
 
-                // body-velocity update: accelerometers - gyros cross velocity
-                // - gravity in body frame
-                _ekfState.dx += dt * (gyro->z * tmpSDY - gyro->y *
-                        tmpSDZ - GRAVITY_MAGNITUDE * _r20);
-                _ekfState.dy += dt * (-gyro->z * tmpSDX + gyro->x * tmpSDZ - 
-                        GRAVITY_MAGNITUDE * _r21);
-                _ekfState.dz += dt * (acc->z + gyro->y * tmpSDX - gyro->x * 
-                        tmpSDY - GRAVITY_MAGNITUDE * _r22);
-            }
-            else {
+            // body-velocity update: accelerometers - gyros cross velocity
+            // - gravity in body frame
 
-                // altitude update
-                _ekfState.z += _r20 * dx + _r21 * dy + _r22 * dz - 
-                    GRAVITY_MAGNITUDE * dt2 / 2;
+            _ekfState.dx += dt * (accx + gyro->z * tmpSDY - 
+                    gyro->y * tmpSDZ - GRAVITY_MAGNITUDE * _r20);
 
-                // keep previous time step's state for the update
-                const auto tmpSDX = _ekfState.dx;
-                const auto tmpSDY = _ekfState.dy;
-                const auto tmpSDZ = _ekfState.dz;
+            _ekfState.dy += dt * (accy - gyro->z * tmpSDX + gyro->x * tmpSDZ - 
+                    GRAVITY_MAGNITUDE * _r21);
 
-                // body-velocity update: accelerometers - gyros cross velocity
-                // - gravity in body frame
-                _ekfState.dx += dt * (acc->x + gyro->z * tmpSDY -
-                        gyro->y * tmpSDZ - GRAVITY_MAGNITUDE * _r20);
-                _ekfState.dy += dt * (acc->y - gyro->z * tmpSDX + gyro->x * 
-                        tmpSDZ - GRAVITY_MAGNITUDE * _r21);
-                _ekfState.dz += dt * (acc->z + gyro->y * tmpSDX - gyro->x * 
-                        tmpSDY - GRAVITY_MAGNITUDE * _r22);
-            }
+            _ekfState.dz += dt * (acc->z + gyro->y * tmpSDX - gyro->x * 
+                    tmpSDY - GRAVITY_MAGNITUDE * _r22);
 
             // attitude update (rotate by gyroscope), we do this in quaternions
             // this is the gyroscope angular velocity integrated over the sample period
