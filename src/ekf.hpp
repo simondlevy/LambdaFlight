@@ -749,12 +749,7 @@ class Ekf {
             // values stay bounded
             for (int i=0; i<KC_STATE_DIM; i++) {
                 for (int j=i; j<KC_STATE_DIM; j++) {
-                    const auto p = 0.5f*_P[i][j] + 0.5f*_P[j][i];
-                    _P[i][j] = 
-                        (isnan(p) || p > MAX_COVARIANCE) ?  MAX_COVARIANCE :
-                        (i==j && p < MIN_COVARIANCE) ?  MIN_COVARIANCE :
-                        p;
-                    _P[j][i] = _P[i][j];
+                    updateCovarianceCell(i, j, 0);
                 }
             }
         }
@@ -816,21 +811,23 @@ class Ekf {
             // TODO: Why would it hit these bounds? Needs to be investigated.
             for (int i=0; i<KC_STATE_DIM; i++) {
                 for (int j=i; j<KC_STATE_DIM; j++) {
-                    float v = K[i] * R * K[j];
 
-                    // add measurement noise
-                    float p = 0.5f*_P[i][j] + 0.5f*_P[j][i] + v; 
-                    if (isnan(p) || p > MAX_COVARIANCE) {
-                        _P[i][j] = _P[j][i] = MAX_COVARIANCE;
-                    } else if ( i==j && p < MIN_COVARIANCE ) {
-                        _P[i][j] = _P[j][i] = MIN_COVARIANCE;
-                    } else {
-                        _P[i][j] = _P[j][i] = p;
-                    }
+                    updateCovarianceCell(i, j, K[i] * R * K[j]);
                 }
             }
 
             _isUpdated = true;
+        }
+
+        void updateCovarianceCell(const int i, const int j, const float variance)
+        {
+            const auto p = (_P[i][j] + _P[j][i]) / 2 + variance;
+
+            _P[i][j] = 
+                (isnan(p) || p > MAX_COVARIANCE) ?  MAX_COVARIANCE :
+                (i==j && p < MIN_COVARIANCE) ?  MIN_COVARIANCE :
+                p;
+            _P[j][i] = _P[i][j];
         }
 
         void updateWithFlow(const flowMeasurement_t *flow) 
