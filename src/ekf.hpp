@@ -310,22 +310,25 @@ class Ekf {
                 /*E2*/  {0, 0, 0, 0, e2e0, e2e1, e2e2}
             };
 
+            float At[KC_STATE_DIM][KC_STATE_DIM] = {};
+            transpose(A, At);     // A'
+
+            float AP[KC_STATE_DIM][KC_STATE_DIM] = {};
+            multiply(A, _P, AP);  // AP
+
+            const auto isErrorSufficient  = 
+                (isErrorLarge(v0) || isErrorLarge(v1) || isErrorLarge(v2)) &&
+                    isErrorInBounds(v0) && isErrorInBounds(v1) && isErrorInBounds(v2);
+
+
+            _qw = isErrorSufficient ? tmpq0 / norm : _qw;
+            _qx = isErrorSufficient ? tmpq1 / norm : _qx;
+            _qy = isErrorSufficient ? tmpq2 / norm : _qy;
+            _qz = isErrorSufficient ? tmpq3 / norm : _qz;
+
             // Move attitude error into attitude if any of the angle errors are
             // large enough
-            if ((fabsf(v0) > 0.1e-3f || fabsf(v1) > 0.1e-3f || fabsf(v2) >
-                        0.1e-3f) && (fabsf(v0) < 10 && fabsf(v1) < 10 &&
-                            fabsf(v2) < 10)) 
-            {
-                _qw = tmpq0 / norm;
-                _qx = tmpq1 / norm;
-                _qy = tmpq2 / norm;
-                _qz = tmpq3 / norm;
-
-                float At[KC_STATE_DIM][KC_STATE_DIM] = {};
-                transpose(A, At);     // A'
-
-                float AP[KC_STATE_DIM][KC_STATE_DIM] = {};
-                multiply(A, _P, AP);  // AP
+            if (isErrorSufficient) {
 
                 multiply(AP, At, _P); // APA'
             }
@@ -750,6 +753,16 @@ class Ekf {
                     updateCovarianceCell(i, j, 0);
                 }
             }
+        }
+
+        static bool isErrorLarge(const float v)
+        {
+            return fabs(v) > 0.1e-3f;
+        }
+
+        static bool isErrorInBounds(const float v)
+        {
+            return fabs(v) < 10;
         }
 
         void scalarUpdate(
