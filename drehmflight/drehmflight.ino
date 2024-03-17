@@ -57,7 +57,7 @@ Everyone that sends me pictures and videos of your flying creations! -Nick
 #include <SPI.h>      //SPI communication
 #include <PWMServo.h> //Commanding any extra actuators, installed with teensyduino installer
 
-#include "src/SBUS/SBUS.h"   //sBus interface
+#include <sbus.h>
 
 #include <I2Cdev.h>
 #include <MPU6050.h>
@@ -167,6 +167,7 @@ static const int ch4Pin = 20; //rudd
 static const int ch5Pin = 21; //gear (throttle cut)
 static const int ch6Pin = 22; //aux1 (free aux channel)
 static const int PPM_Pin = 23;
+
 //OneShot125 ESC pin outputs:
 static const int m1Pin = 0;
 static const int m2Pin = 1;
@@ -174,6 +175,7 @@ static const int m3Pin = 2;
 static const int m4Pin = 3;
 static const int m5Pin = 4;
 static const int m6Pin = 5;
+
 //PWM servo or ESC outputs:
 static const int servo1Pin = 6;
 static const int servo2Pin = 7;
@@ -209,10 +211,8 @@ static bool blinkAlternate;
 static unsigned long channel_1_pwm, channel_2_pwm, channel_3_pwm, channel_4_pwm, channel_5_pwm, channel_6_pwm;
 static unsigned long channel_1_pwm_prev, channel_2_pwm_prev, channel_3_pwm_prev, channel_4_pwm_prev;
 
-SBUS sbus(Serial5);
+bfs::SbusRx sbus(&Serial5);
 uint16_t sbusChannels[16];
-static bool sbusFailSafe;
-static bool sbusLostFrame;
 
 //IMU:
 static float AccX, AccY, AccZ;
@@ -560,17 +560,18 @@ static void getCommands() {
      * The raw radio commands are filtered with a first order low-pass filter to eliminate any really high frequency noise. 
      */
 
-    if (sbus.read(&sbusChannels[0], &sbusFailSafe, &sbusLostFrame))
-    {
+    if (sbus.Read()) {
+
         //sBus scaling below is for Taranis-Plus and X4R-SB
         float scale = 0.615;  
         float bias  = 895.0; 
-        channel_1_pwm = sbusChannels[0] * scale + bias;
-        channel_2_pwm = sbusChannels[1] * scale + bias;
-        channel_3_pwm = sbusChannels[2] * scale + bias;
-        channel_4_pwm = sbusChannels[3] * scale + bias;
-        channel_5_pwm = sbusChannels[4] * scale + bias;
-        channel_6_pwm = sbusChannels[5] * scale + bias; 
+
+        channel_1_pwm = sbus.data().ch[0] * scale + bias;
+        channel_2_pwm = sbus.data().ch[1] * scale + bias;
+        channel_3_pwm = sbus.data().ch[2] * scale + bias;
+        channel_4_pwm = sbus.data().ch[3] * scale + bias;
+        channel_5_pwm = sbus.data().ch[4] * scale + bias;
+        channel_6_pwm = sbus.data().ch[5] * scale + bias; 
     }
 
     //Low-pass the critical commands and update previous values
@@ -727,8 +728,6 @@ void calibrateESCs() {
         //throttleCut(); //Directly sets motor commands to low based on state of ch5
 
         commandMotors(); //Sends command pulses to each motor pin using OneShot125 protocol
-
-        //debugRadioData(); //Radio pwm values (expected: 1000 to 2000)
 
         loopRate(2000); //Do not exceed 2000Hz, all filter parameters tuned to 2000Hz by default
     }
@@ -975,7 +974,7 @@ void setup()
     delay(5);
 
     //Initialize radio communication
-    radioSetup();
+    sbus.Begin();
 
     //Set radio channels to default (safe) values before entering main loop
     channel_1_pwm = channel_1_fs;
