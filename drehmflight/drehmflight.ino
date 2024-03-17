@@ -9,6 +9,9 @@
 #include <I2Cdev.h>
 #include <MPU6050.h>
 
+#include <oneshot125.hpp>
+#include <vector>
+
 //Uncomment only one full scale gyro range (deg/sec)
 #define GYRO_250DPS //Default
 //#define GYRO_500DPS
@@ -108,6 +111,11 @@ static const int m1Pin = 0;
 static const int m2Pin = 1;
 static const int m3Pin = 2;
 static const int m4Pin = 3;
+
+static const std::vector<uint8_t> MOTOR_PINS = {0, 1, 2, 3};
+
+static auto motors = OneShot125(MOTOR_PINS);
+
 
 //////////////////////////////////////////////////////////////////
 
@@ -549,13 +557,14 @@ static void failSafe()
 
 static void commandMotors() 
 {
-    //DESCRIPTION: Send pulses to motor pins, oneshot125 protocol
+    motors.set(0, m1_command_PWM);
+    motors.set(1, m2_command_PWM);
+    motors.set(2, m3_command_PWM);
+    motors.set(3, m4_command_PWM);
+
+    motors.run();
+
     /*
-     * My crude implimentation of OneShot125 protocol which sends 125 - 250us
-     * pulses to the ESCs (mXPin). The pulselengths being sent are
-     * mX_command_PWM, computed in scaleCommands(). This may be replaced by
-     * something more efficient in the future.
-     */
     int wentLow = 0;
     int pulseStart, timer;
     int flagM1 = 0;
@@ -593,7 +602,7 @@ static void commandMotors()
             wentLow = wentLow + 1;
             flagM4 = 1;
         } 
-    }
+    }*/
 }
 
 static void armMotors() 
@@ -607,10 +616,11 @@ static void armMotors()
      *  some delays for other processes that sometimes prevent motors from
      *  arming.
      */
-    for (int i = 0; i <= 50; i++) {
-        commandMotors();
-        delay(2);
-    }
+    //for (int i = 0; i <= 50; i++) {
+    //    commandMotors();
+    //    delay(2);
+    //
+    motors.arm();
 }
 
 static void throttleCut() 
