@@ -1,38 +1,15 @@
-//Arduino/Teensy Flight Controller - dRehmFlight
-//Author: Nicholas Rehm
-//Project Start: 1/6/2020
-//Last Updated: 7/29/2022
-//Version: Beta 1.3
-
-//========================================================================================================================//
-
-//CREDITS + SPECIAL THANKS
 /*
-   Some elements inspired by:
-http://www.brokking.net/ymfc-32_main.html
+   Based on https://github.com/nickrehm/dRehmFlight
+*/
 
-Madgwick filter function adapted from:
-https://github.com/arduino-libraries/MadgwickAHRS
+#include <Wire.h>     //I2c communication
+#include <SPI.h>      //SPI communication
+#include <PWMServo.h> //Commanding any extra actuators, installed with teensyduino installer
 
-MPU9250 implementation based on MPU9250 library by:
-brian.taylor@bolderflight.com
-http://www.bolderflight.com
+#include <sbus.h>
 
-Thank you to:
-RcGroups 'jihlein' - IMU implementation overhaul + SBUS implementation.
-Everyone that sends me pictures and videos of your flying creations! -Nick
-
- */
-
-
-//========================================================================================================================//
-//                                                 USER-SPECIFIED DEFINES                                                 //                                                                 
-//========================================================================================================================//
-
-#define USE_SBUS_RX
-
-//Uncomment only one IMU
-#define USE_MPU6050_I2C //Default
+#include <I2Cdev.h>
+#include <MPU6050.h>
 
 //Uncomment only one full scale gyro range (deg/sec)
 #define GYRO_250DPS //Default
@@ -46,27 +23,11 @@ Everyone that sends me pictures and videos of your flying creations! -Nick
 //#define ACCEL_8G
 //#define ACCEL_16G
 
+static MPU6050 mpu6050;
+
+bfs::SbusRx sbus(&Serial5);
 
 //========================================================================================================================//
-
-
-
-//REQUIRED LIBRARIES (included with download in main sketch folder)
-
-#include <Wire.h>     //I2c communication
-#include <SPI.h>      //SPI communication
-#include <PWMServo.h> //Commanding any extra actuators, installed with teensyduino installer
-
-#include <sbus.h>
-
-#include <I2Cdev.h>
-#include <MPU6050.h>
-MPU6050 mpu6050;
-
-
-//========================================================================================================================//
-
-
 
 //Setup gyro and accel full scale value selection and scale factor
 
@@ -106,8 +67,6 @@ MPU6050 mpu6050;
 #define ACCEL_SCALE ACCEL_FS_SEL_16
 #define ACCEL_SCALE_FACTOR 2048.0
 #endif
-
-
 
 //========================================================================================================================//
 //                                               USER-SPECIFIED VARIABLES                                                 //                           
@@ -158,15 +117,6 @@ static float Kd_yaw = 0.00015;       //Yaw D-gain (be careful when increasing to
 //========================================================================================================================//                                          
 
 //NOTE: Pin 13 is reserved for onboard LED, pins 18 and 19 are reserved for the MPU6050 IMU for default setup
-//Radio:
-//Note: If using SBUS, connect to pin 21 (RX5), if using DSM, connect to pin 15 (RX3)
-static const int ch1Pin = 15; //throttle
-static const int ch2Pin = 16; //ail
-static const int ch3Pin = 17; //ele
-static const int ch4Pin = 20; //rudd
-static const int ch5Pin = 21; //gear (throttle cut)
-static const int ch6Pin = 22; //aux1 (free aux channel)
-static const int PPM_Pin = 23;
 
 //OneShot125 ESC pin outputs:
 static const int m1Pin = 0;
@@ -193,7 +143,6 @@ static bool blinkAlternate;
 static unsigned long channel_1_pwm, channel_2_pwm, channel_3_pwm, channel_4_pwm, channel_5_pwm, channel_6_pwm;
 static unsigned long channel_1_pwm_prev, channel_2_pwm_prev, channel_3_pwm_prev, channel_4_pwm_prev;
 
-bfs::SbusRx sbus(&Serial5);
 uint16_t sbusChannels[16];
 
 //IMU:
