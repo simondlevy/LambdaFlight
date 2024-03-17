@@ -59,7 +59,8 @@ Everyone that sends me pictures and videos of your flying creations! -Nick
 
 #include "src/SBUS/SBUS.h"   //sBus interface
 
-#include "src/MPU6050/MPU6050.h"
+#include <I2Cdev.h>
+#include <MPU6050.h>
 MPU6050 mpu6050;
 
 
@@ -947,7 +948,8 @@ static float invSqrt(float x) {
     return 1.0/sqrtf(x); //Teensy is fast enough to just take the compute penalty lol suck it arduino nano
 }
 
-void setup() {
+void setup() 
+{
     Serial.begin(500000); //USB serial
     delay(500);
 
@@ -1017,11 +1019,8 @@ void setup() {
 
 
 
-//========================================================================================================================//
-//                                                       MAIN LOOP                                                        //                           
-//========================================================================================================================//
-
-void loop() {
+void loop() 
+{
     //Keep track of what time it is and how much time has elapsed since the last loop
     prev_time = current_time;      
     current_time = micros();      
@@ -1071,5 +1070,3 @@ void loop() {
     //Regulate loop rate
     loopRate(2000); //Do not exceed 2000Hz, all filter parameters tuned to 2000Hz by default
 }
-
-
