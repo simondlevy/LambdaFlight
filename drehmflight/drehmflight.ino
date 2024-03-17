@@ -528,20 +528,14 @@ static void failSafe()
      */
     unsigned minVal = 800;
     unsigned maxVal = 2200;
-    int check1 = 0;
-    int check2 = 0;
-    int check3 = 0;
-    int check4 = 0;
-    int check5 = 0;
-    int check6 = 0;
 
     //Triggers for failure criteria
-    if (channel_1_pwm > maxVal || channel_1_pwm < minVal) check1 = 1;
-    if (channel_2_pwm > maxVal || channel_2_pwm < minVal) check2 = 1;
-    if (channel_3_pwm > maxVal || channel_3_pwm < minVal) check3 = 1;
-    if (channel_4_pwm > maxVal || channel_4_pwm < minVal) check4 = 1;
-    if (channel_5_pwm > maxVal || channel_5_pwm < minVal) check5 = 1;
-    if (channel_6_pwm > maxVal || channel_6_pwm < minVal) check6 = 1;
+    int check1 = (channel_1_pwm > maxVal || channel_1_pwm < minVal) ? 1 : 0;
+    int check2 = (channel_2_pwm > maxVal || channel_2_pwm < minVal) ? 1 : 0;
+    int check3 = (channel_3_pwm > maxVal || channel_3_pwm < minVal) ? 1 : 0;
+    int check4 = (channel_4_pwm > maxVal || channel_4_pwm < minVal) ? 1 : 0;
+    int check5 = (channel_5_pwm > maxVal || channel_5_pwm < minVal) ? 1 : 0;
+    int check6 = (channel_6_pwm > maxVal || channel_6_pwm < minVal) ? 1 : 0;
 
     //If any failures, set to default failsafe values
     if ((check1 + check2 + check3 + check4 + check5 + check6) > 0) {
