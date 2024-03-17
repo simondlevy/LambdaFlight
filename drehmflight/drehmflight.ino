@@ -237,8 +237,6 @@ static float error_yaw, error_yaw_prev, integral_yaw, integral_yaw_prev, derivat
 //Mixer
 static float m1_command_scaled, m2_command_scaled, m3_command_scaled, m4_command_scaled, m5_command_scaled, m6_command_scaled;
 static int m1_command_PWM, m2_command_PWM, m3_command_PWM, m4_command_PWM, m5_command_PWM, m6_command_PWM;
-static float s1_command_scaled, s2_command_scaled, s3_command_scaled, s4_command_scaled, s5_command_scaled, s6_command_scaled, s7_command_scaled;
-static int s1_command_PWM, s2_command_PWM, s3_command_PWM, s4_command_PWM, s5_command_PWM, s6_command_PWM, s7_command_PWM;
 
 //Flight status
 static bool armedFly = false;
@@ -275,16 +273,6 @@ static void controlMixer() {
     m4_command_scaled = thro_des + pitch_PID + roll_PID - yaw_PID; //Back Left
     m5_command_scaled = 0;
     m6_command_scaled = 0;
-
-    //0.5 is centered servo, 0.0 is zero throttle if connecting to ESC for conventional PWM, 1.0 is max throttle
-    s1_command_scaled = 0;
-    s2_command_scaled = 0;
-    s3_command_scaled = 0;
-    s4_command_scaled = 0;
-    s5_command_scaled = 0;
-    s6_command_scaled = 0;
-    s7_command_scaled = 0;
-
 }
 
 static void armedStatus() {
@@ -560,24 +548,6 @@ static void scaleCommands() {
     m4_command_PWM = constrain(m4_command_PWM, 125, 250);
     m5_command_PWM = constrain(m5_command_PWM, 125, 250);
     m6_command_PWM = constrain(m6_command_PWM, 125, 250);
-
-    //Scaled to 0-180 for servo library
-    s1_command_PWM = s1_command_scaled*180;
-    s2_command_PWM = s2_command_scaled*180;
-    s3_command_PWM = s3_command_scaled*180;
-    s4_command_PWM = s4_command_scaled*180;
-    s5_command_PWM = s5_command_scaled*180;
-    s6_command_PWM = s6_command_scaled*180;
-    s7_command_PWM = s7_command_scaled*180;
-    //Constrain commands to servos within servo library bounds
-    s1_command_PWM = constrain(s1_command_PWM, 0, 180);
-    s2_command_PWM = constrain(s2_command_PWM, 0, 180);
-    s3_command_PWM = constrain(s3_command_PWM, 0, 180);
-    s4_command_PWM = constrain(s4_command_PWM, 0, 180);
-    s5_command_PWM = constrain(s5_command_PWM, 0, 180);
-    s6_command_PWM = constrain(s6_command_PWM, 0, 180);
-    s7_command_PWM = constrain(s7_command_PWM, 0, 180);
-
 }
 
 static void getCommands() {
@@ -751,24 +721,10 @@ void calibrateESCs() {
         m4_command_scaled = thro_des;
         m5_command_scaled = thro_des;
         m6_command_scaled = thro_des;
-        s1_command_scaled = thro_des;
-        s2_command_scaled = thro_des;
-        s3_command_scaled = thro_des;
-        s4_command_scaled = thro_des;
-        s5_command_scaled = thro_des;
-        s6_command_scaled = thro_des;
-        s7_command_scaled = thro_des;
         scaleCommands(); //Scales motor commands to 125 to 250 range (oneshot125 protocol) and servo PWM commands to 0 to 180 (for servo library)
 
         //throttleCut(); //Directly sets motor commands to low based on state of ch5
 
-        servo1.write(s1_command_PWM); 
-        servo2.write(s2_command_PWM);
-        servo3.write(s3_command_PWM);
-        servo4.write(s4_command_PWM);
-        servo5.write(s5_command_PWM);
-        servo6.write(s6_command_PWM);
-        servo7.write(s7_command_PWM);
         commandMotors(); //Sends command pulses to each motor pin using OneShot125 protocol
 
         //debugRadioData(); //Radio pwm values (expected: 1000 to 2000)
@@ -957,26 +913,6 @@ void debugMotorCommands() {
     }
 }
 
-void debugServoCommands() {
-    if (current_time - print_counter > 10000) {
-        print_counter = micros();
-        Serial.print(F("s1_command:"));
-        Serial.print(s1_command_PWM);
-        Serial.print(F(" s2_command:"));
-        Serial.print(s2_command_PWM);
-        Serial.print(F(" s3_command:"));
-        Serial.print(s3_command_PWM);
-        Serial.print(F(" s4_command:"));
-        Serial.print(s4_command_PWM);
-        Serial.print(F(" s5_command:"));
-        Serial.print(s5_command_PWM);
-        Serial.print(F(" s6_command:"));
-        Serial.print(s6_command_PWM);
-        Serial.print(F(" s7_command:"));
-        Serial.println(s7_command_PWM);
-    }
-}
-
 void debugLoopRate() {
     if (current_time - print_counter > 10000) {
         print_counter = micros();
@@ -1127,13 +1063,6 @@ void loop() {
 
     //Command actuators
     commandMotors(); //Sends command pulses to each motor pin using OneShot125 protocol
-    servo1.write(s1_command_PWM); //Writes PWM value to servo object
-    servo2.write(s2_command_PWM);
-    servo3.write(s3_command_PWM);
-    servo4.write(s4_command_PWM);
-    servo5.write(s5_command_PWM);
-    servo6.write(s6_command_PWM);
-    servo7.write(s7_command_PWM);
 
     //Get vehicle commands for next loop iteration
     getCommands(); //Pulls current available radio commands
