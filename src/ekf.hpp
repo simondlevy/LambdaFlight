@@ -840,13 +840,9 @@ class Ekf {
 
             const auto dx_g = _ekfState.dx;
             const auto dy_g = _ekfState.dy;
-            auto z_g = 0.0f;
+
             // Saturate elevation in prediction and correction to avoid singularities
-            if ( _ekfState.z < 0.1f ) {
-                z_g = 0.1;
-            } else {
-                z_g = _ekfState.z;
-            }
+            const auto z_g = _ekfState.z < 0.1f ? 0.1f : _ekfState.z;
 
             // ~~~ X velocity prediction and update ~~~
             // predicts the number of accumulated pixels in the x-direction
@@ -881,20 +877,19 @@ class Ekf {
                     flow->stdDevY*FLOW_RESOLUTION);
         }
 
+        static const float max(const float val, const float maxval)
+        {
+            return val > maxval ? maxval : val;
+        }
+
         void updateWithRange(const rangeMeasurement_t *range)
         {
-            // Only update the filter if the measurement is reliable 
-            // (\hat{h} -> infty when R[2][2] -> 0)
-            if (fabs(_r22) > 0.1f && _r22 > 0) {
-                auto angle = 
-                    fabsf(acosf(_r22)) - 
-                    DEGREES_TO_RADIANS * (15.0f / 2.0f);
-                if (angle < 0.0f) {
-                    angle = 0.0f;
-                }
+                const auto angle = max( 0, 
+                        fabsf(acosf(_r22)) - 
+                        DEGREES_TO_RADIANS * (15.0f / 2.0f));
+
                 const auto predictedDistance = _ekfState.z / cosf(angle);
                 const auto measuredDistance = range->distance; // [m]
-
 
                 // The sensor model (Pg.95-96,
                 // https://lup.lub.lu.se/student-papers/search/publication/8905295)
@@ -913,9 +908,13 @@ class Ekf {
 
                 const float h[KC_STATE_DIM] = {1 / cosf(angle), 0, 0, 0, 0, 0, 0};
 
-                scalarUpdate(h, measuredDistance-predictedDistance, 
-                        range->stdDev);
-            }
+                // Only update the filter if the measurement is reliable 
+                // (\hat{h} -> infty when R[2][2] -> 0)
+                if (fabs(_r22) > 0.1f && _r22 > 0) {
+
+                    scalarUpdate(h, measuredDistance-predictedDistance, 
+                            range->stdDev);
+                }
         }
 
         void updateWithAccel(const measurement_t & m)
@@ -946,7 +945,7 @@ class Ekf {
         {
             const auto dt = (nowMs - _lastProcessNoiseUpdateMs) / 1000.0f;
 
-            if (dt > 0.0f) {
+            if (dt > 0) {
                 addProcessNoiseDt(dt);
                 _lastProcessNoiseUpdateMs = nowMs;
             }
