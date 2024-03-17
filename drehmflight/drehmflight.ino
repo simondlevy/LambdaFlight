@@ -116,7 +116,6 @@ static const std::vector<uint8_t> MOTOR_PINS = {0, 1, 2, 3};
 
 static auto motors = OneShot125(MOTOR_PINS);
 
-
 //////////////////////////////////////////////////////////////////
 
 //General stuff
@@ -563,64 +562,6 @@ static void commandMotors()
     motors.set(3, m4_command_PWM);
 
     motors.run();
-
-    /*
-    int wentLow = 0;
-    int pulseStart, timer;
-    int flagM1 = 0;
-    int flagM2 = 0;
-    int flagM3 = 0;
-    int flagM4 = 0;
-
-    //Write all motor pins high
-    digitalWrite(m1Pin, HIGH);
-    digitalWrite(m2Pin, HIGH);
-    digitalWrite(m3Pin, HIGH);
-    digitalWrite(m4Pin, HIGH);
-    pulseStart = micros();
-
-    //Write each motor pin low as correct pulse length is reached
-    while (wentLow < 4 ) { //Keep going until final (6th) pulse is finished, then done
-        timer = micros();
-        if ((m1_command_PWM <= timer - pulseStart) && (flagM1==0)) {
-            digitalWrite(m1Pin, LOW);
-            wentLow = wentLow + 1;
-            flagM1 = 1;
-        }
-        if ((m2_command_PWM <= timer - pulseStart) && (flagM2==0)) {
-            digitalWrite(m2Pin, LOW);
-            wentLow = wentLow + 1;
-            flagM2 = 1;
-        }
-        if ((m3_command_PWM <= timer - pulseStart) && (flagM3==0)) {
-            digitalWrite(m3Pin, LOW);
-            wentLow = wentLow + 1;
-            flagM3 = 1;
-        }
-        if ((m4_command_PWM <= timer - pulseStart) && (flagM4==0)) {
-            digitalWrite(m4Pin, LOW);
-            wentLow = wentLow + 1;
-            flagM4 = 1;
-        } 
-    }*/
-}
-
-static void armMotors() 
-{
-    //DESCRIPTION: Sends many command pulses to the motors, to be used to arm
-    //motors in the void setup()
-    /*  
-     *  Loops over the commandMotors() function 50 times with a delay in
-     *  between, simulating how the commandMotors() function is used in the
-     *  main loop. Ensures motors arm within the void setup() where there are
-     *  some delays for other processes that sometimes prevent motors from
-     *  arming.
-     */
-    //for (int i = 0; i <= 50; i++) {
-    //    commandMotors();
-    //    delay(2);
-    //
-    motors.arm();
 }
 
 static void throttleCut() 
@@ -875,13 +816,11 @@ void setup()
     m2_command_PWM = 125;
     m3_command_PWM = 125;
     m4_command_PWM = 125;
-    armMotors(); //Loop over commandMotors() until ESCs happily arm
+    motors.arm();
 
     //Indicate entering main loop with 3 quick blinks
     setupBlink(3,160,70); //numBlinks, upTime (ms), downTime (ms)
 }
-
-
 
 void loop() 
 {
