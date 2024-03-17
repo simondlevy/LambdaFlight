@@ -492,7 +492,7 @@ void controlMixer() {
 
 void armedStatus() {
   //DESCRIPTION: Check if the throttle cut is off and the throttle input is low to prepare for flight.
-  if ((channel_5_pwm < 1500) && (channel_1_pwm < 1050)) {
+  if ((channel_5_pwm > 1500) && (channel_1_pwm < 1050)) {
     armedFly = true;
   }
 }
@@ -1429,10 +1429,10 @@ void throttleCut() {
       called before commandMotors() is called so that the last thing checked is if the user is giving permission to command
       the motors to anything other than minimum value. Safety first.
 
-      channel_5_pwm is LOW then throttle cut is OFF and throttle value can change. (ThrottleCut is DEACTIVATED)
-      channel_5_pwm is HIGH then throttle cut is ON and throttle value = 120 only. (ThrottleCut is ACTIVATED), (drone is DISARMED)
+      channel_5_pwm is HIGH then throttle cut is OFF and throttle value can change. (ThrottleCut is DEACTIVATED)
+      channel_5_pwm is LOW then throttle cut is ON and throttle value = 120 only. (ThrottleCut is ACTIVATED), (drone is DISARMED)
   */
-  if ((channel_5_pwm > 1500) || (armedFly == false)) {
+  if ((channel_5_pwm < 1500) || (armedFly == false)) {
     armedFly = false;
     m1_command_PWM = 120;
     m2_command_PWM = 120;
