@@ -9,7 +9,7 @@ static float constrain(const float val, const float minval, const float maxval)
     return val < minval ? minval : val > maxval ? maxval : val;
 }
 
-void new_controlANGLE() 
+void controlANGLE() 
 {
     //DESCRIPTION: Computes control commands based on state error (angle)
     /*
@@ -53,7 +53,7 @@ void new_controlANGLE()
 
     extern float dt;
 
-    extern uint16_t channel_1_pwm;
+    extern bool throttle_is_down;
 
     extern float GyroX;
     extern float GyroY;
@@ -71,8 +71,7 @@ void new_controlANGLE()
     auto error_roll = roll_des - roll_IMU;
 
     // Don't let integrator build if throttle is too low
-    auto integral_roll = channel_1_pwm < 1060 ? 0 :
-
+    auto integral_roll = throttle_is_down ? 0 :
 
         //Saturate integrator to prevent unsafe buildup
         constrain(_integral_roll_prev + error_roll * dt, -i_limit, i_limit);
@@ -90,7 +89,7 @@ void new_controlANGLE()
     auto error_pitch = pitch_des - pitch_IMU;
 
     //Don't let integrator build if throttle is too low
-    auto integral_pitch = channel_1_pwm < 1060 ? 0 :
+    auto integral_pitch = throttle_is_down ? 0 :
 
         //Saturate integrator to prevent unsafe buildup
         constrain(_integral_pitch_prev + error_pitch * dt, -i_limit, i_limit);
@@ -108,7 +107,7 @@ void new_controlANGLE()
     auto error_yaw = yaw_des - GyroZ;
 
     // Don't let integrator build if throttle is too low
-    auto integral_yaw = channel_1_pwm < 1060 ? 0 :
+    auto integral_yaw = throttle_is_down ? 0 :
 
         // Saturate integrator to prevent unsafe buildup
         constrain(_integral_yaw_prev + error_yaw * dt, -i_limit, i_limit);
@@ -123,4 +122,7 @@ void new_controlANGLE()
     _integral_pitch_prev = integral_pitch;
     _error_yaw_prev = error_yaw;
     _integral_yaw_prev = integral_yaw;
+
+    void setPids(const float roll, const float pitch, const float yaw);
+    setPids(roll_PID, pitch_PID, yaw_PID);
 }

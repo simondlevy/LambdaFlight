@@ -67,23 +67,32 @@ static MPU6050 mpu6050;
 
 bfs::SbusRx sbus(&Serial5);
 
+// Streams
+float thro_des, roll_des, pitch_des, yaw_des;
+float GyroX, GyroY, GyroZ;
+float roll_IMU, pitch_IMU, yaw_IMU;
+float dt;
+bool throttle_is_down;
+
 //General stuff
-static float dt;
 static uint32_t current_time;
 static uint32_t print_counter;
-static uint32_t blink_counter, blink_delay;
+static uint32_t blink_counter;
+static uint32_t blink_delay;
 static bool blinkAlternate;
 
 //Radio communication:
-static uint16_t channel_1_pwm, channel_2_pwm, channel_3_pwm,
-                     channel_4_pwm, channel_5_pwm, channel_6_pwm;
+static uint16_t channel_1_pwm;
+static uint16_t channel_2_pwm;
+static uint16_t channel_3_pwm;
+static uint16_t channel_4_pwm;
+static uint16_t channel_5_pwm;
+static uint16_t channel_6_pwm;
 
 //IMU:
 static float AccX, AccY, AccZ;
 static float AccX_prev, AccY_prev, AccZ_prev;
-static float GyroX, GyroY, GyroZ;
 static float GyroX_prev, GyroY_prev, GyroZ_prev;
-static float roll_IMU, pitch_IMU, yaw_IMU;
 
 static float q0 = 1.0f; //Initialize quaternion for madgwick filter
 static float q1 = 0.0f;
@@ -91,15 +100,12 @@ static float q2 = 0.0f;
 static float q3 = 0.0f;
 
 //Normalized desired state:
-static float thro_des, roll_des, pitch_des, yaw_des;
 static float roll_passthru, pitch_passthru, yaw_passthru;
 
 //Controller:
 static float roll_PID;
-static float error_pitch, integral_pitch, integral_pitch_prev,
-             derivative_pitch, pitch_PID; 
-static float error_yaw, error_yaw_prev, integral_yaw, integral_yaw_prev,
-             derivative_yaw, yaw_PID;
+static float pitch_PID;
+static float yaw_PID;
 
 //Mixer
 static float m1_command_scaled, m2_command_scaled, m3_command_scaled, m4_command_scaled;
@@ -324,90 +330,6 @@ static void getDesState()
     roll_passthru = constrain(roll_passthru, -0.5, 0.5);
     pitch_passthru = constrain(pitch_passthru, -0.5, 0.5);
     yaw_passthru = constrain(yaw_passthru, -0.5, 0.5);
-}
-
-static void controlANGLE() 
-{
-    //DESCRIPTION: Computes control commands based on state error (angle)
-    /*
-     * Basic PID control to stablize on angle setpoint based on desired states
-     * roll_des, pitch_des, and yaw_des computed in getDesState(). Error is
-     * simply the desired state minus the actual state (ex. roll_des -
-     * roll_IMU). Two safety features are implimented here regarding the I
-     * terms. The I terms are saturated within specified limits on startup to
-     * prevent excessive buildup. This can be seen by holding the vehicle at an
-     * angle and seeing the motors ramp up on one side until they've maxed out
-     * throttle...saturating I to a specified limit fixes this. The second
-     * feature defaults the I terms to 0 if the throttle is at the minimum
-     * setting. This means the motors will not start spooling up on the ground,
-     * and the I terms will always start from 0 on takeoff. This function
-     * updates the variables roll_PID, pitch_PID, and yaw_PID which can be
-     * thought of as 1-D stablized signals. They are mixed to the configuration
-     * of the vehicle in controlMixer().
-     */
-
-    static float _integral_roll_prev;
-
-    //Roll
-    auto error_roll = roll_des - roll_IMU;
-    auto integral_roll = _integral_roll_prev + error_roll*dt;
-    if (channel_1_pwm < 1060) {   //Don't let integrator build if throttle is too low
-        integral_roll = 0;
-    }
-
-    //Saturate integrator to prevent unsafe buildup
-    integral_roll = constrain(integral_roll, -i_limit, i_limit); 
-
-    auto derivative_roll = GyroX;
-
-    //Scaled by .01 to bring within -1 to 1 range
-    roll_PID = 0.01*(Kp_roll_angle*error_roll + Ki_roll_angle*integral_roll - 
-            Kd_roll_angle*derivative_roll); 
-
-    //Pitch
-    error_pitch = pitch_des - pitch_IMU;
-    integral_pitch = integral_pitch_prev + error_pitch*dt;
-
-    //Don't let integrator build if throttle is too low
-    if (channel_1_pwm < 1060) {   
-        integral_pitch = 0;
-    }
-
-    //Saturate integrator to prevent unsafe buildup
-    integral_pitch = constrain(integral_pitch, -i_limit, i_limit); 
-
-    derivative_pitch = GyroY;
-
-    //Scaled by .01 to bring within -1 to 1 range
-    pitch_PID = .01*(Kp_pitch_angle*error_pitch + Ki_pitch_angle*integral_pitch - 
-            Kd_pitch_angle*derivative_pitch); 
-
-    //Yaw, stablize on rate from GyroZ
-    error_yaw = yaw_des - GyroZ;
-    integral_yaw = integral_yaw_prev + error_yaw*dt;
-
-    //Don't let integrator build if throttle is too low
-    if (channel_1_pwm < 1060) {   
-        integral_yaw = 0;
-    }
-
-    //Saturate integrator to prevent unsafe buildup
-    integral_yaw = constrain(integral_yaw, -i_limit, i_limit); 
-
-    derivative_yaw = (error_yaw - error_yaw_prev)/dt; 
-
-    //Scaled by .01 to bring within -1 to 1 range
-    yaw_PID = .01*(Kp_yaw*error_yaw + Ki_yaw*integral_yaw + Kd_yaw*derivative_yaw); 
-
-    //Update roll variables
-    _integral_roll_prev = integral_roll;
-
-    //Update pitch variables
-    integral_pitch_prev = integral_pitch;
-
-    //Update yaw variables
-    error_yaw_prev = error_yaw;
-    integral_yaw_prev = integral_yaw;
 }
 
 static void scaleCommands() {
@@ -788,32 +710,43 @@ void loop()
     // Get arming status
     armedStatus(); //Check if the throttle cut is off and throttle is low.
 
-    //Get vehicle state
+    // Get vehicle state
     getIMUdata(); 
 
     Madgwick6DOF(GyroX, -GyroY, -GyroZ, -AccX, AccY, AccZ, dt); 
 
-    //Compute desired state
+    // Compute desired state
     getDesState(); 
 
-    //PID Controller - SELECT ONE:
-    controlANGLE(); //Stabilize on angle setpoint
+    // PID Controller
+    void controlANGLE(void);
+    controlANGLE(); 
 
-    //Actuator mixing and scaling to PWM values
+    // Actuator mixing and scaling to PWM values
     controlMixer(); 
 
     scaleCommands(); 
 
-    //Throttle cut check
+    // Throttle cut check
     throttleCut(); //Directly sets motor commands to low based on state of ch5
 
-    //Command actuators
+    // Command actuators
     commandMotors(); //Sends command pulses to each motor pin using OneShot125 protocol
 
-    //Get vehicle commands for next loop iteration
+    // Get vehicle commands for next loop iteration
     getCommands();
     failSafe(); 
 
-    //Regulate loop rate
+    // Flag for resetting PIDs
+    throttle_is_down = channel_1_pwm < 1060;
+
+    // Regulate loop rate
     loopRate(2000); //Do not exceed 2000Hz, all filter paras tuned to 2000Hz by default
+}
+
+void setPids(const float roll, const float pitch, const float yaw)
+{
+    roll_PID = roll;
+    pitch_PID = pitch;
+    yaw_PID = yaw;
 }
