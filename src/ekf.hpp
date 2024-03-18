@@ -761,13 +761,19 @@ class Ekf {
             }
 
             // The Kalman gain as a column vector
-            float K[KC_STATE_DIM] = {};
+            float K[KC_STATE_DIM] = {
 
-            // ====== MEASUREMENT UPDATE ======
-            // Calculate the Kalman gain and perform the state update
-            for (int i=0; i<KC_STATE_DIM; i++) {
-                K[i] = Ph[i] / HPHR; // kalman gain = (PH' (HPH' + R )^-1)
-            }
+                // kalman gain = (PH' (HPH' + R )^-1)
+               Ph[0] / HPHR, 
+               Ph[1] / HPHR, 
+               Ph[2] / HPHR, 
+               Ph[3] / HPHR, 
+               Ph[4] / HPHR, 
+               Ph[5] / HPHR, 
+               Ph[6] / HPHR
+            };
+
+            // Perform the state update
             _ekfState.z  += K[0] * error;
             _ekfState.dx += K[1] * error;
             _ekfState.dy += K[2] * error;
