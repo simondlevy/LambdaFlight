@@ -380,13 +380,57 @@ class Ekf {
                 const uint32_t nextPredictionMs,
                 const bool isFlying) 
         {
-            if (nowMs >= nextPredictionMs) {
+            const bool isTimeToPredict = nowMs >= nextPredictionMs;
 
-                predict(nowMs, isFlying); 
+            if (isTimeToPredict) {
+
+                axis3fSubSamplerFinalize(&_accSubSampler);
+
+                axis3fSubSamplerFinalize(&_gyroSubSampler);
+
+                predictDt(&_accSubSampler.subSample, 
+                        &_gyroSubSampler.subSample, 
+                        (nowMs - _lastPredictionMs) / 1000.0f,
+                        isFlying);
             }
 
-            // Add process noise every loop, rather than every prediction
-            addProcessNoise(nowMs);
+            _lastPredictionMs = isTimeToPredict ? nowMs : _lastPredictionMs;
+
+            const auto dt = (nowMs - _lastProcessNoiseUpdateMs) / 1000.0f;
+
+            const auto isDtPositive = dt > 0;
+
+            if (isDtPositive) {
+
+                _P[KC_STATE_Z][KC_STATE_Z] += 
+                    powf(PROC_NOISE_ACC_Z*dt*dt + PROC_NOISE_VEL*dt + 
+                            PROC_NOISE_POS, 2);  // add process noise on position
+
+                _P[KC_STATE_DX][KC_STATE_DX] += 
+                    powf(PROC_NOISE_ACC_XY*dt + 
+                            PROC_NOISE_VEL, 2); // add process noise on velocity
+
+                _P[KC_STATE_DY][KC_STATE_DY] += 
+                    powf(PROC_NOISE_ACC_XY*dt + 
+                            PROC_NOISE_VEL, 2); // add process noise on velocity
+
+                _P[KC_STATE_DZ][KC_STATE_DZ] += 
+                    powf(PROC_NOISE_ACC_Z*dt + 
+                            PROC_NOISE_VEL, 2); // add process noise on velocity
+
+                _P[KC_STATE_E0][KC_STATE_E0] += 
+                    powf(MEAS_NOISE_GYRO_ROLL_PITCH * dt + PROC_NOISE_ATT, 2);
+                _P[KC_STATE_E1][KC_STATE_E1] += 
+                    powf(MEAS_NOISE_GYRO_ROLL_PITCH * dt + PROC_NOISE_ATT, 2);
+                _P[KC_STATE_E2][KC_STATE_E2] += 
+                    powf(MEAS_NOISE_GYRO_ROLL_YAW * dt + PROC_NOISE_ATT, 2);
+
+                updateCovarianceMatrix();
+            }
+
+            _lastProcessNoiseUpdateMs = isDtPositive ? 
+                nowMs : 
+                _lastProcessNoiseUpdateMs;
         }
 
         void init(const uint32_t nowMs)
@@ -691,34 +735,6 @@ class Ekf {
             return &subSampler->subSample;
         }
 
-        void addProcessNoiseDt(float dt)
-        {
-            _P[KC_STATE_Z][KC_STATE_Z] += 
-                powf(PROC_NOISE_ACC_Z*dt*dt + PROC_NOISE_VEL*dt + 
-                        PROC_NOISE_POS, 2);  // add process noise on position
-
-            _P[KC_STATE_DX][KC_STATE_DX] += 
-                powf(PROC_NOISE_ACC_XY*dt + 
-                        PROC_NOISE_VEL, 2); // add process noise on velocity
-
-            _P[KC_STATE_DY][KC_STATE_DY] += 
-                powf(PROC_NOISE_ACC_XY*dt + 
-                        PROC_NOISE_VEL, 2); // add process noise on velocity
-
-            _P[KC_STATE_DZ][KC_STATE_DZ] += 
-                powf(PROC_NOISE_ACC_Z*dt + 
-                        PROC_NOISE_VEL, 2); // add process noise on velocity
-
-            _P[KC_STATE_E0][KC_STATE_E0] += 
-                powf(MEAS_NOISE_GYRO_ROLL_PITCH * dt + PROC_NOISE_ATT, 2);
-            _P[KC_STATE_E1][KC_STATE_E1] += 
-                powf(MEAS_NOISE_GYRO_ROLL_PITCH * dt + PROC_NOISE_ATT, 2);
-            _P[KC_STATE_E2][KC_STATE_E2] += 
-                powf(MEAS_NOISE_GYRO_ROLL_YAW * dt + PROC_NOISE_ATT, 2);
-
-            updateCovarianceMatrix();
-        }
-
         void updateCovarianceMatrix(void)
         {
             // Enforce symmetry of the covariance matrix, and ensure the
@@ -760,7 +776,7 @@ class Ekf {
                 HPHR += h[i]*Ph[i]; 
             }
 
-            // The Kalman gain as a column vector
+            // Compute the Kalman gain as a column vector
             float K[KC_STATE_DIM] = {
 
                 // kalman gain = (PH' (HPH' + R )^-1)
@@ -799,7 +815,7 @@ class Ekf {
 
             multiply(KHIP, KHt, _P); // (KH - I)*P*(KH - I)'
 
-            // add the measurement variance and ensure boundedness and symmetry
+            // Add the measurement variance and ensure boundedness and symmetry
             // TODO: Why would it hit these bounds? Needs to be investigated.
             for (int i=0; i<KC_STATE_DIM; i++) {
                 for (int j=i; j<KC_STATE_DIM; j++) {
@@ -932,29 +948,6 @@ class Ekf {
         {
             axis3fSubSamplerAccumulate(&_gyroSubSampler, &m.data.gyroscope.gyro);
             _gyroLatest = m.data.gyroscope.gyro;
-        }
-
-        void predict(const uint32_t nowMs, bool isFlying) 
-        {
-            axis3fSubSamplerFinalize(&_accSubSampler);
-            axis3fSubSamplerFinalize(&_gyroSubSampler);
-
-            const auto dt = (nowMs - _lastPredictionMs) / 1000.0f;
-
-            predictDt(&_accSubSampler.subSample, &_gyroSubSampler.subSample, dt,
-                    isFlying);
-
-            _lastPredictionMs = nowMs;
-        }
-
-        void addProcessNoise(const uint32_t nowMs) 
-        {
-            const auto dt = (nowMs - _lastProcessNoiseUpdateMs) / 1000.0f;
-
-            if (dt > 0) {
-                addProcessNoiseDt(dt);
-                _lastProcessNoiseUpdateMs = nowMs;
-            }
         }
 
         bool isStateWithinBounds(void) 
