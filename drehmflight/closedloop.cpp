@@ -29,6 +29,8 @@ void new_controlANGLE()
      * of the vehicle in controlMixer().
      */
 
+    // Constants --------------------------------------------------------------
+
     static const float Kp_cyclic = 0.2;  
     static const float Ki_cyclic = 0.3;
     static const float Kd_cyclic = 0.05;  
@@ -40,16 +42,24 @@ void new_controlANGLE()
     //Integrator saturation level, mostly for safety (default 25.0)
     static const float i_limit = 25.0;     
 
+    // Streams ----------------------------------------------------------------
+
     extern float roll_des;
-    extern float roll_IMU;
     extern float pitch_des;
-    extern float pitch_IMU;
     extern float yaw_des;
+
+    extern float roll_IMU;
+    extern float pitch_IMU;
+
     extern float dt;
+
     extern uint16_t channel_1_pwm;
+
     extern float GyroX;
     extern float GyroY;
     extern float GyroZ;
+
+    // State variables --------------------------------------------------------
 
     static float _integral_roll_prev;
     static float _integral_pitch_prev;
