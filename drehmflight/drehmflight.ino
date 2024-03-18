@@ -12,61 +12,14 @@
 #include <oneshot125.hpp>
 #include <vector>
 
-//Uncomment only one full scale gyro range (deg/sec)
-#define GYRO_250DPS //Default
-//#define GYRO_500DPS
-//#define GYRO_1000DPS
-//#define GYRO_2000DPS
-
-//Uncomment only one full scale accelerometer range (G's)
-#define ACCEL_2G //Default
-//#define ACCEL_4G
-//#define ACCEL_8G
-//#define ACCEL_16G
-
-static MPU6050 mpu6050;
-
-bfs::SbusRx sbus(&Serial5);
 
 //Setup gyro and accel full scale value selection and scale factor
 
-#define GYRO_FS_SEL_250    MPU6050_GYRO_FS_250
-#define GYRO_FS_SEL_500    MPU6050_GYRO_FS_500
-#define GYRO_FS_SEL_1000   MPU6050_GYRO_FS_1000
-#define GYRO_FS_SEL_2000   MPU6050_GYRO_FS_2000
-#define ACCEL_FS_SEL_2     MPU6050_ACCEL_FS_2
-#define ACCEL_FS_SEL_4     MPU6050_ACCEL_FS_4
-#define ACCEL_FS_SEL_8     MPU6050_ACCEL_FS_8
-#define ACCEL_FS_SEL_16    MPU6050_ACCEL_FS_16
+static const uint8_t GYRO_SCALE = MPU6050_GYRO_FS_250;
+static const float GYRO_SCALE_FACTOR = 131;
 
-#if defined GYRO_250DPS
-#define GYRO_SCALE GYRO_FS_SEL_250
-#define GYRO_SCALE_FACTOR 131.0
-#elif defined GYRO_500DPS
-#define GYRO_SCALE GYRO_FS_SEL_500
-#define GYRO_SCALE_FACTOR 65.5
-#elif defined GYRO_1000DPS
-#define GYRO_SCALE GYRO_FS_SEL_1000
-#define GYRO_SCALE_FACTOR 32.8
-#elif defined GYRO_2000DPS
-#define GYRO_SCALE GYRO_FS_SEL_2000
-#define GYRO_SCALE_FACTOR 16.4
-#endif
-
-#if defined ACCEL_2G
-#define ACCEL_SCALE ACCEL_FS_SEL_2
-#define ACCEL_SCALE_FACTOR 16384.0
-#elif defined ACCEL_4G
-#define ACCEL_SCALE ACCEL_FS_SEL_4
-#define ACCEL_SCALE_FACTOR 8192.0
-#elif defined ACCEL_8G
-#define ACCEL_SCALE ACCEL_FS_SEL_8
-#define ACCEL_SCALE_FACTOR 4096.0
-#elif defined ACCEL_16G
-#define ACCEL_SCALE ACCEL_FS_SEL_16
-#define ACCEL_SCALE_FACTOR 2048.0
-#endif
-
+static const uint8_t ACCEL_SCALE = MPU6050_ACCEL_FS_2;
+static const float ACCEL_SCALE_FACTOR = 16384;
 
 //Radio failsafe values for every channel in the event that bad reciever data is detected. Recommended defaults:
 static const unsigned long channel_1_fs = 1000; //thro
@@ -107,16 +60,18 @@ static const float Ki_yaw = 0.05;          //Yaw I-gain
 static const float Kd_yaw = 0.00015;       //Yaw D-gain (be careful when increasing too high, motors will begin to overheat!)
 
 
-static const int m1Pin = 0;
-static const int m2Pin = 1;
-static const int m3Pin = 2;
-static const int m4Pin = 3;
+//static const int m1Pin = 0;
+//static const int m2Pin = 1;
+//static const int m3Pin = 2;
+//static const int m4Pin = 3;
 
 static const std::vector<uint8_t> MOTOR_PINS = {0, 1, 2, 3};
 
 static auto motors = OneShot125(MOTOR_PINS);
 
-//////////////////////////////////////////////////////////////////
+static MPU6050 mpu6050;
+
+bfs::SbusRx sbus(&Serial5);
 
 //General stuff
 static float dt;
@@ -779,10 +734,11 @@ void setup()
 
     //Initialize all pins
     pinMode(13, OUTPUT); //Pin 13 LED blinker on board, do not modify 
-    pinMode(m1Pin, OUTPUT);
-    pinMode(m2Pin, OUTPUT);
-    pinMode(m3Pin, OUTPUT);
-    pinMode(m4Pin, OUTPUT);
+
+    //pinMode(m1Pin, OUTPUT);
+    //pinMode(m2Pin, OUTPUT);
+    //pinMode(m3Pin, OUTPUT);
+    //pinMode(m4Pin, OUTPUT);
 
     //Set built in LED to turn on to signal startup
     digitalWrite(13, HIGH);
