@@ -48,17 +48,6 @@ static const float maxRoll = 30.0;     //Max roll angle in degrees for angle mod
 static const float maxPitch = 30.0;    //Max pitch angle in degrees for angle mode (maximum ~70 degrees), deg/sec for rate mode
 static const float maxYaw = 160.0;     //Max yaw rate in deg/sec
 
-static const float Kp_roll_angle = 0.2;    //Roll P-gain - angle mode 
-static const float Ki_roll_angle = 0.3;    //Roll I-gain - angle mode
-static const float Kd_roll_angle = 0.05;   //Roll D-gain - angle mode (has no effect on controlANGLE2)
-static const float Kp_pitch_angle = 0.2;   //Pitch P-gain - angle mode
-static const float Ki_pitch_angle = 0.3;   //Pitch I-gain - angle mode
-static const float Kd_pitch_angle = 0.05;  //Pitch D-gain - angle mode (has no effect on controlANGLE2)
-
-static const float Kp_yaw = 0.3;           //Yaw P-gain
-static const float Ki_yaw = 0.05;          //Yaw I-gain
-static const float Kd_yaw = 0.00015;       //Yaw D-gain (be careful when increasing too high, motors will begin to overheat!)
-
 static const std::vector<uint8_t> MOTOR_PINS = {0, 1, 2, 3};
 
 static auto motors = OneShot125(MOTOR_PINS);
@@ -308,6 +297,7 @@ static void scaleCommands() {
      * motors in commandMotors(). sX_command_PWM are updated which are used to
      * command the servos.
      */
+
     //Scaled to 125us - 250us for oneshot125 protocol
     m1_command_PWM = m1_command_scaled*125 + 125;
     m2_command_PWM = m2_command_scaled*125 + 125;
@@ -693,6 +683,7 @@ void loop()
     loopRate(2000); //Do not exceed 2000Hz, all filter paras tuned to 2000Hz by default
 }
 
+// Called by Copilot
 void setMotors(const float m1, const float m2, const float m3, const float m4)
 
 {
