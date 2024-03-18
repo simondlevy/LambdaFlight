@@ -22,12 +22,12 @@ static const uint8_t ACCEL_SCALE = MPU6050_ACCEL_FS_2;
 static const float ACCEL_SCALE_FACTOR = 16384;
 
 //Radio failsafe values for every channel in the event that bad reciever data is detected. Recommended defaults:
-static const unsigned long channel_1_failsafe = 1000; //thro
-static const unsigned long channel_2_failsafe = 1500; //ail
-static const unsigned long channel_3_failsafe = 1500; //elev
-static const unsigned long channel_4_failsafe = 1500; //rudd
-static const unsigned long channel_5_failsafe = 2000; //gear, greater than 1500 = throttle cut
-static const unsigned long channel_6_failsafe = 2000; //aux1
+static const uint16_t channel_1_failsafe = 1000; //thro
+static const uint16_t channel_2_failsafe = 1500; //ail
+static const uint16_t channel_3_failsafe = 1500; //elev
+static const uint16_t channel_4_failsafe = 1500; //rudd
+static const uint16_t channel_5_failsafe = 2000; //gear, greater than 1500 = throttle cut
+static const uint16_t channel_6_failsafe = 2000; //aux1
 
 //Filter parameters - Defaults tuned for 2kHz loop rate; Do not touch unless you know what you are doing:
 static const float B_madgwick = 0.04;  //Madgwick filter parameter
@@ -69,13 +69,13 @@ bfs::SbusRx sbus(&Serial5);
 
 //General stuff
 static float dt;
-static unsigned long current_time;
-static unsigned long print_counter;
-static unsigned long blink_counter, blink_delay;
+static uint32_t current_time;
+static uint32_t print_counter;
+static uint32_t blink_counter, blink_delay;
 static bool blinkAlternate;
 
 //Radio communication:
-static unsigned long channel_1_pwm, channel_2_pwm, channel_3_pwm,
+static uint16_t channel_1_pwm, channel_2_pwm, channel_3_pwm,
                      channel_4_pwm, channel_5_pwm, channel_6_pwm;
 
 //IMU:
@@ -346,42 +346,65 @@ static void controlANGLE()
      * of the vehicle in controlMixer().
      */
 
-    static float integral_roll_prev;
+    static float _integral_roll_prev;
 
     //Roll
     auto error_roll = roll_des - roll_IMU;
-    auto integral_roll = integral_roll_prev + error_roll*dt;
+    auto integral_roll = _integral_roll_prev + error_roll*dt;
     if (channel_1_pwm < 1060) {   //Don't let integrator build if throttle is too low
         integral_roll = 0;
     }
-    integral_roll = constrain(integral_roll, -i_limit, i_limit); //Saturate integrator to prevent unsafe buildup
+
+    //Saturate integrator to prevent unsafe buildup
+    integral_roll = constrain(integral_roll, -i_limit, i_limit); 
+
     auto derivative_roll = GyroX;
-    roll_PID = 0.01*(Kp_roll_angle*error_roll + Ki_roll_angle*integral_roll - Kd_roll_angle*derivative_roll); //Scaled by .01 to bring within -1 to 1 range
+
+    //Scaled by .01 to bring within -1 to 1 range
+    roll_PID = 0.01*(Kp_roll_angle*error_roll + Ki_roll_angle*integral_roll - 
+            Kd_roll_angle*derivative_roll); 
 
     //Pitch
     error_pitch = pitch_des - pitch_IMU;
     integral_pitch = integral_pitch_prev + error_pitch*dt;
-    if (channel_1_pwm < 1060) {   //Don't let integrator build if throttle is too low
+
+    //Don't let integrator build if throttle is too low
+    if (channel_1_pwm < 1060) {   
         integral_pitch = 0;
     }
-    integral_pitch = constrain(integral_pitch, -i_limit, i_limit); //Saturate integrator to prevent unsafe buildup
+
+    //Saturate integrator to prevent unsafe buildup
+    integral_pitch = constrain(integral_pitch, -i_limit, i_limit); 
+
     derivative_pitch = GyroY;
-    pitch_PID = .01*(Kp_pitch_angle*error_pitch + Ki_pitch_angle*integral_pitch - Kd_pitch_angle*derivative_pitch); //Scaled by .01 to bring within -1 to 1 range
+
+    //Scaled by .01 to bring within -1 to 1 range
+    pitch_PID = .01*(Kp_pitch_angle*error_pitch + Ki_pitch_angle*integral_pitch - 
+            Kd_pitch_angle*derivative_pitch); 
 
     //Yaw, stablize on rate from GyroZ
     error_yaw = yaw_des - GyroZ;
     integral_yaw = integral_yaw_prev + error_yaw*dt;
-    if (channel_1_pwm < 1060) {   //Don't let integrator build if throttle is too low
+
+    //Don't let integrator build if throttle is too low
+    if (channel_1_pwm < 1060) {   
         integral_yaw = 0;
     }
-    integral_yaw = constrain(integral_yaw, -i_limit, i_limit); //Saturate integrator to prevent unsafe buildup
+
+    //Saturate integrator to prevent unsafe buildup
+    integral_yaw = constrain(integral_yaw, -i_limit, i_limit); 
+
     derivative_yaw = (error_yaw - error_yaw_prev)/dt; 
-    yaw_PID = .01*(Kp_yaw*error_yaw + Ki_yaw*integral_yaw + Kd_yaw*derivative_yaw); //Scaled by .01 to bring within -1 to 1 range
+
+    //Scaled by .01 to bring within -1 to 1 range
+    yaw_PID = .01*(Kp_yaw*error_yaw + Ki_yaw*integral_yaw + Kd_yaw*derivative_yaw); 
 
     //Update roll variables
-    integral_roll_prev = integral_roll;
+    _integral_roll_prev = integral_roll;
+
     //Update pitch variables
     integral_pitch_prev = integral_pitch;
+
     //Update yaw variables
     error_yaw_prev = error_yaw;
     integral_yaw_prev = integral_yaw;
@@ -439,7 +462,7 @@ static void getCommands()
         channel_6_pwm = sbus.data().ch[5] * scale + bias; 
     }
 
-    static unsigned long channel_1_pwm_prev, channel_2_pwm_prev,
+    static uint16_t channel_1_pwm_prev, channel_2_pwm_prev,
                          channel_3_pwm_prev, channel_4_pwm_prev;
 
     //Low-pass the critical commands and update previous values
@@ -542,7 +565,7 @@ static void loopRate(int freq)
      * parameters.
      */
     float invFreq = 1.0/freq*1000000.0;
-    unsigned long checker = micros();
+    uint32_t checker = micros();
 
     //Sit in loop until appropriate time has passed
     while (invFreq > (checker - current_time)) {
@@ -694,24 +717,6 @@ void debugLoopRate()
 
 static float invSqrt(float x) 
 {
-    //Fast inverse sqrt for madgwick filter
-    /*
-       float halfx = 0.5f * x;
-       float y = x;
-       long i = *(long*)&y;
-       i = 0x5f3759df - (i>>1);
-       y = *(float*)&i;
-       y = y * (1.5f - (halfx * y * y));
-       y = y * (1.5f - (halfx * y * y));
-       return y;
-     */
-    /*
-    //alternate form:
-    unsigned int i = 0x5F1F1412 - (*(unsigned int*)&x >> 1);
-    float tmp = *(float*)&i;
-    float y = tmp * (1.69000231f - 0.714158168f * x * tmp * tmp);
-    return y;
-     */
     return 1.0/sqrtf(x); 
 }
 
@@ -769,12 +774,12 @@ void setup()
 
 void loop() 
 {
-    static unsigned long prev_time;
+    static uint32_t _prev_time;
 
     //Keep track of what time it is and how much time has elapsed since the last loop
-    prev_time = current_time;      
+    _prev_time = current_time;      
     current_time = micros();      
-    dt = (current_time - prev_time)/1e6;
+    dt = (current_time - _prev_time)/1e6;
 
     loopBlink(); //Indicate we are in main loop with short blink every 1.5 seconds
 
