@@ -9,7 +9,7 @@ static float constrain(const float val, const float minval, const float maxval)
     return val < minval ? minval : val > maxval ? maxval : val;
 }
 
-void controlANGLE() 
+void step(void) 
 {
     //DESCRIPTION: Computes control commands based on state error (angle)
     /*
@@ -44,6 +44,7 @@ void controlANGLE()
 
     // Streams ----------------------------------------------------------------
 
+    extern float thro_des;
     extern float roll_des;
     extern float pitch_des;
     extern float yaw_des;
@@ -117,12 +118,18 @@ void controlANGLE()
     // Scaled by .01 to bring within -1 to 1 range
     auto yaw_PID = .01*(Kp_yaw*error_yaw + Ki_yaw*integral_yaw + Kd_yaw*derivative_yaw); 
 
+    auto m1 = thro_des - pitch_PID + roll_PID + yaw_PID; //Front Left
+    auto m2 = thro_des - pitch_PID - roll_PID - yaw_PID; //Front Right
+    auto m3 = thro_des + pitch_PID - roll_PID + yaw_PID; //Back Right
+    auto m4 = thro_des + pitch_PID + roll_PID - yaw_PID; //Back Left
+
+    void setMotors(
+            const float m1, const float m2, const float m3, const float m4);
+    setMotors(m1, m2, m3, m4);
+
     // Update state variables
     _integral_roll_prev = integral_roll;
     _integral_pitch_prev = integral_pitch;
     _error_yaw_prev = error_yaw;
     _integral_yaw_prev = integral_yaw;
-
-    void setPids(const float roll, const float pitch, const float yaw);
-    setPids(roll_PID, pitch_PID, yaw_PID);
 }

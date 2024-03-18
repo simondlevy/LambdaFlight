@@ -74,14 +74,14 @@ float roll_IMU, pitch_IMU, yaw_IMU;
 float dt;
 bool throttle_is_down;
 
-//General stuff
+// General stuff
 static uint32_t current_time;
 static uint32_t print_counter;
 static uint32_t blink_counter;
 static uint32_t blink_delay;
 static bool blinkAlternate;
 
-//Radio communication:
+// Radio communication:
 static uint16_t channel_1_pwm;
 static uint16_t channel_2_pwm;
 static uint16_t channel_3_pwm;
@@ -89,7 +89,7 @@ static uint16_t channel_4_pwm;
 static uint16_t channel_5_pwm;
 static uint16_t channel_6_pwm;
 
-//IMU:
+// IMU:
 static float AccX, AccY, AccZ;
 static float AccX_prev, AccY_prev, AccZ_prev;
 static float GyroX_prev, GyroY_prev, GyroZ_prev;
@@ -99,50 +99,15 @@ static float q1 = 0.0f;
 static float q2 = 0.0f;
 static float q3 = 0.0f;
 
-//Normalized desired state:
+// Normalized desired state:
 static float roll_passthru, pitch_passthru, yaw_passthru;
 
-//Controller:
-static float roll_PID;
-static float pitch_PID;
-static float yaw_PID;
-
-//Mixer
+// Mixer
 static float m1_command_scaled, m2_command_scaled, m3_command_scaled, m4_command_scaled;
 static int m1_command_PWM, m2_command_PWM, m3_command_PWM, m4_command_PWM;
 
 //Flight status
 static bool armedFly = false;
-
-static void controlMixer() 
-{
-    //DESCRIPTION: Mixes scaled commands from PID controller to actuator
-    //outputs based on vehicle configuration
-    /*
-     * Takes roll_PID, pitch_PID, and yaw_PID computed from the PID controller
-     * and appropriately mixes them for the desired vehicle configuration. For
-     * example on a quadcopter, the left two motors should have +roll_PID while
-     * the right two motors should have -roll_PID. Front two should have
-     * -pitch_PID and the back two should have +pitch_PID etc... every motor
-     * has normalized (0 to 1) thro_des command for throttle control. Can also
-     * apply direct unstabilized commands from the transmitter with
-     * roll_passthru, pitch_passthru, and yaw_passthu. mX_command_scaled and
-     * sX_command scaled variables are used in scaleCommands() in preparation
-     * to be sent to the motor ESCs and servos.
-     * 
-     *Relevant variables: *thro_des - direct thottle control *roll_PID,
-     pitch_PID, yaw_PID - stabilized axis variables *roll_passthru,
-     pitch_passthru, yaw_passthru - direct unstabilized command passthrough
-     *channel_6_pwm - free auxillary channel, can be used to toggle things with
-     an 'if' statement
-     */
-
-    //Quad mixing - EXAMPLE
-    m1_command_scaled = thro_des - pitch_PID + roll_PID + yaw_PID; //Front Left
-    m2_command_scaled = thro_des - pitch_PID - roll_PID - yaw_PID; //Front Right
-    m3_command_scaled = thro_des + pitch_PID - roll_PID + yaw_PID; //Back Right
-    m4_command_scaled = thro_des + pitch_PID + roll_PID - yaw_PID; //Back Left
-}
 
 static void armedStatus() 
 {
@@ -600,18 +565,6 @@ void debugRollPitchYaw()
     }
 }
 
-void debugPIDoutput() 
-{
-    if (current_time - print_counter > 10000) {
-        print_counter = micros();
-        Serial.print(F("roll_PID:"));
-        Serial.print(roll_PID);
-        Serial.print(F(" pitch_PID:"));
-        Serial.print(pitch_PID);
-        Serial.print(F(" yaw_PID:"));
-        Serial.println(yaw_PID);
-    }
-}
 
 void debugMotorCommands() 
 {
@@ -650,7 +603,6 @@ static void debug(void)
     //debugGyroData();      
     //debugAccelData();     
     //debugRollPitchYaw();  
-    //debugPIDoutput();     
     //debugMotorCommands(); 
     //debugServoCommands(); 
     //debugLoopRate();      
@@ -718,12 +670,9 @@ void loop()
     // Compute desired state
     getDesState(); 
 
-    // PID Controller
-    void controlANGLE(void);
-    controlANGLE(); 
-
-    // Actuator mixing and scaling to PWM values
-    controlMixer(); 
+    // Copilot
+    void step(void);
+    step(); 
 
     scaleCommands(); 
 
@@ -744,9 +693,13 @@ void loop()
     loopRate(2000); //Do not exceed 2000Hz, all filter paras tuned to 2000Hz by default
 }
 
-void setPids(const float roll, const float pitch, const float yaw)
+void setMotors(const float m1, const float m2, const float m3, const float m4)
+
 {
-    roll_PID = roll;
-    pitch_PID = pitch;
-    yaw_PID = yaw;
+    m1_command_scaled = m1;
+    m2_command_scaled = m2;
+    m3_command_scaled = m3;
+    m4_command_scaled = m4;
 }
+
+
