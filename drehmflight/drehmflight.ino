@@ -22,12 +22,12 @@ static const uint8_t ACCEL_SCALE = MPU6050_ACCEL_FS_2;
 static const float ACCEL_SCALE_FACTOR = 16384;
 
 //Radio failsafe values for every channel in the event that bad reciever data is detected. Recommended defaults:
-static const unsigned long channel_1_fs = 1000; //thro
-static const unsigned long channel_2_fs = 1500; //ail
-static const unsigned long channel_3_fs = 1500; //elev
-static const unsigned long channel_4_fs = 1500; //rudd
-static const unsigned long channel_5_fs = 2000; //gear, greater than 1500 = throttle cut
-static const unsigned long channel_6_fs = 2000; //aux1
+static const unsigned long channel_1_failsafe = 1000; //thro
+static const unsigned long channel_2_failsafe = 1500; //ail
+static const unsigned long channel_3_failsafe = 1500; //elev
+static const unsigned long channel_4_failsafe = 1500; //rudd
+static const unsigned long channel_5_failsafe = 2000; //gear, greater than 1500 = throttle cut
+static const unsigned long channel_6_failsafe = 2000; //aux1
 
 //Filter parameters - Defaults tuned for 2kHz loop rate; Do not touch unless you know what you are doing:
 static const float B_madgwick = 0.04;  //Madgwick filter parameter
@@ -58,12 +58,6 @@ static const float Kd_pitch_angle = 0.05;  //Pitch D-gain - angle mode (has no e
 static const float Kp_yaw = 0.3;           //Yaw P-gain
 static const float Ki_yaw = 0.05;          //Yaw I-gain
 static const float Kd_yaw = 0.00015;       //Yaw D-gain (be careful when increasing too high, motors will begin to overheat!)
-
-
-//static const int m1Pin = 0;
-//static const int m2Pin = 1;
-//static const int m3Pin = 2;
-//static const int m4Pin = 3;
 
 static const std::vector<uint8_t> MOTOR_PINS = {0, 1, 2, 3};
 
@@ -494,12 +488,12 @@ static void failSafe()
 
     //If any failures, set to default failsafe values
     if ((check1 + check2 + check3 + check4 + check5 + check6) > 0) {
-        channel_1_pwm = channel_1_fs;
-        channel_2_pwm = channel_2_fs;
-        channel_3_pwm = channel_3_fs;
-        channel_4_pwm = channel_4_fs;
-        channel_5_pwm = channel_5_fs;
-        channel_6_pwm = channel_6_fs;
+        channel_1_pwm = channel_1_failsafe;
+        channel_2_pwm = channel_2_failsafe;
+        channel_3_pwm = channel_3_failsafe;
+        channel_4_pwm = channel_4_failsafe;
+        channel_5_pwm = channel_5_failsafe;
+        channel_6_pwm = channel_6_failsafe;
     }
 }
 
@@ -727,20 +721,27 @@ static float invSqrt(float x)
     return 1.0/sqrtf(x); 
 }
 
+static void debug(void)
+{
+    //Print data at 100hz (uncomment one at a time for troubleshooting) - SELECT ONE:
+    //debugRadioData();     
+    //debugDesiredState();  
+    //debugGyroData();      
+    //debugAccelData();     
+    //debugRollPitchYaw();  
+    //debugPIDoutput();     
+    //debugMotorCommands(); 
+    //debugServoCommands(); 
+    //debugLoopRate();      
+}
+
 void setup() 
 {
     Serial.begin(500000); //USB serial
     delay(500);
 
-    //Initialize all pins
-    pinMode(13, OUTPUT); //Pin 13 LED blinker on board, do not modify 
-
-    //pinMode(m1Pin, OUTPUT);
-    //pinMode(m2Pin, OUTPUT);
-    //pinMode(m3Pin, OUTPUT);
-    //pinMode(m4Pin, OUTPUT);
-
-    //Set built in LED to turn on to signal startup
+    //Pin 13 LED blinker on board, do not modify     
+    pinMode(13, OUTPUT); 
     digitalWrite(13, HIGH);
 
     delay(5);
@@ -749,12 +750,12 @@ void setup()
     sbus.Begin();
 
     //Set radio channels to default (safe) values before entering main loop
-    channel_1_pwm = channel_1_fs;
-    channel_2_pwm = channel_2_fs;
-    channel_3_pwm = channel_3_fs;
-    channel_4_pwm = channel_4_fs;
-    channel_5_pwm = channel_5_fs;
-    channel_6_pwm = channel_6_fs;
+    channel_1_pwm = channel_1_failsafe;
+    channel_2_pwm = channel_2_failsafe;
+    channel_3_pwm = channel_3_failsafe;
+    channel_4_pwm = channel_4_failsafe;
+    channel_5_pwm = channel_5_failsafe;
+    channel_6_pwm = channel_6_failsafe;
 
     //Initialize IMU communication
     IMUinit();
@@ -779,20 +780,11 @@ void loop()
     //Keep track of what time it is and how much time has elapsed since the last loop
     prev_time = current_time;      
     current_time = micros();      
-    dt = (current_time - prev_time)/1000000.0;
+    dt = (current_time - prev_time)/1e6;
 
     loopBlink(); //Indicate we are in main loop with short blink every 1.5 seconds
 
-    //Print data at 100hz (uncomment one at a time for troubleshooting) - SELECT ONE:
-    //debugRadioData();     
-    //debugDesiredState();  
-    //debugGyroData();      
-    //debugAccelData();     
-    //debugRollPitchYaw();  
-    //debugPIDoutput();     
-    //debugMotorCommands(); 
-    //debugServoCommands(); 
-    //debugLoopRate();      
+    debug();
 
     // Get arming status
     armedStatus(); //Check if the throttle cut is off and throttle is low.
