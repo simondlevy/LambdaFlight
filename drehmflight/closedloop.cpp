@@ -2,6 +2,13 @@
    Based on https://github.com/nickrehm/dRehmFlight
 */
 
+#include <stdint.h>
+
+static float constrain(const float val, const float minval, const float maxval)
+{
+    return val < minval ? minval : val > maxval ? maxval : val;
+}
+
 void new_controlANGLE() 
 {
     //DESCRIPTION: Computes control commands based on state error (angle)
@@ -22,72 +29,88 @@ void new_controlANGLE()
      * of the vehicle in controlMixer().
      */
 
-    /*
+    static const float Kp_cyclic = 0.2;  
+    static const float Ki_cyclic = 0.3;
+    static const float Kd_cyclic = 0.05;  
+
+    static const float Kp_yaw = 0.3;       
+    static const float Ki_yaw = 0.05;      
+    static const float Kd_yaw = 0.00015;
+
+    //Integrator saturation level, mostly for safety (default 25.0)
+    static const float i_limit = 25.0;     
+
     extern float roll_des;
     extern float roll_IMU;
+    extern float pitch_des;
+    extern float pitch_IMU;
+    extern float yaw_des;
     extern float dt;
+    extern uint16_t channel_1_pwm;
+    extern float GyroX;
+    extern float GyroY;
+    extern float GyroZ;
 
     static float _integral_roll_prev;
+    static float _integral_pitch_prev;
+    static float _integral_yaw_prev;
+    static float _error_yaw_prev;
 
-    //Roll
+    // Roll ------------------------------------------------------------------
+
     auto error_roll = roll_des - roll_IMU;
-    auto integral_roll = _integral_roll_prev + error_roll * dt;
-    if (channel_1_pwm < 1060) {   //Don't let integrator build if throttle is too low
-        integral_roll = 0;
-    }
 
-    //Saturate integrator to prevent unsafe buildup
-    integral_roll = constrain(integral_roll, -i_limit, i_limit); 
+    // Don't let integrator build if throttle is too low
+    auto integral_roll = channel_1_pwm < 1060 ? 0 :
+
+
+        //Saturate integrator to prevent unsafe buildup
+        constrain(_integral_roll_prev + error_roll * dt, -i_limit, i_limit);
+
 
     auto derivative_roll = GyroX;
 
-    //Scaled by .01 to bring within -1 to 1 range
-    roll_PID = 0.01*(Kp_roll_angle*error_roll + Ki_roll_angle*integral_roll - 
-            Kd_roll_angle*derivative_roll); 
+    // Scaled by .01 to bring within -1 to 1 range
+    auto roll_PID = 0.01*(Kp_cyclic*error_roll + 
+            Ki_cyclic * integral_roll - 
+            Kd_cyclic * derivative_roll); 
 
-    //Pitch
-    error_pitch = pitch_des - pitch_IMU;
-    integral_pitch = integral_pitch_prev + error_pitch*dt;
+    // Pitch -----------------------------------------------------------------
 
-    //Don't let integrator build if throttle is too low
-    if (channel_1_pwm < 1060) {   
-        integral_pitch = 0;
-    }
-
-    //Saturate integrator to prevent unsafe buildup
-    integral_pitch = constrain(integral_pitch, -i_limit, i_limit); 
-
-    derivative_pitch = GyroY;
-
-    //Scaled by .01 to bring within -1 to 1 range
-    pitch_PID = .01*(Kp_pitch_angle*error_pitch + Ki_pitch_angle*integral_pitch - 
-            Kd_pitch_angle*derivative_pitch); 
-
-    //Yaw, stablize on rate from GyroZ
-    error_yaw = yaw_des - GyroZ;
-    integral_yaw = integral_yaw_prev + error_yaw*dt;
+    auto error_pitch = pitch_des - pitch_IMU;
 
     //Don't let integrator build if throttle is too low
-    if (channel_1_pwm < 1060) {   
-        integral_yaw = 0;
-    }
+    auto integral_pitch = channel_1_pwm < 1060 ? 0 :
 
-    //Saturate integrator to prevent unsafe buildup
-    integral_yaw = constrain(integral_yaw, -i_limit, i_limit); 
+        //Saturate integrator to prevent unsafe buildup
+        constrain(_integral_pitch_prev + error_pitch * dt, -i_limit, i_limit);
 
-    derivative_yaw = (error_yaw - error_yaw_prev)/dt; 
+
+    auto derivative_pitch = GyroY;
 
     //Scaled by .01 to bring within -1 to 1 range
-    yaw_PID = .01*(Kp_yaw*error_yaw + Ki_yaw*integral_yaw + Kd_yaw*derivative_yaw); 
+    auto pitch_PID = .01 * (Kp_cyclic * error_pitch + 
+            Ki_cyclic * integral_pitch - 
+            Kd_cyclic*derivative_pitch); 
 
-    //Update roll variables
+    // Yaw, stablize on rate from GyroZ --------------------------------------
+
+    auto error_yaw = yaw_des - GyroZ;
+
+    // Don't let integrator build if throttle is too low
+    auto integral_yaw = channel_1_pwm < 1060 ? 0 :
+
+        // Saturate integrator to prevent unsafe buildup
+        constrain(_integral_yaw_prev + error_yaw * dt, -i_limit, i_limit);
+
+    auto derivative_yaw = (error_yaw - _error_yaw_prev)/dt; 
+
+    // Scaled by .01 to bring within -1 to 1 range
+    auto yaw_PID = .01*(Kp_yaw*error_yaw + Ki_yaw*integral_yaw + Kd_yaw*derivative_yaw); 
+
+    // Update state variables
     _integral_roll_prev = integral_roll;
-
-    //Update pitch variables
-    integral_pitch_prev = integral_pitch;
-
-    //Update yaw variables
-    error_yaw_prev = error_yaw;
-    integral_yaw_prev = integral_yaw;
-    */
+    _integral_pitch_prev = integral_pitch;
+    _error_yaw_prev = error_yaw;
+    _integral_yaw_prev = integral_yaw;
 }
