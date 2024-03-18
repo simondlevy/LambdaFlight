@@ -178,14 +178,11 @@ static void getIMUdata()
 
     mpu6050.getMotion6(&AcX, &AcY, &AcZ, &GyX, &GyY, &GyZ);
 
-    //Accelerometer
-    AccX = AcX / ACCEL_SCALE_FACTOR; //G's
-    AccY = AcY / ACCEL_SCALE_FACTOR;
-    AccZ = AcZ / ACCEL_SCALE_FACTOR;
-    //Correct the outputs with the calculated error values
-    AccX = AccX - AccErrorX;
-    AccY = AccY - AccErrorY;
-    AccZ = AccZ - AccErrorZ;
+    //Accelerometer (Gs), corrected with the calculated error values
+    AccX = AcX / ACCEL_SCALE_FACTOR - AccErrorX;
+    AccY = AcY / ACCEL_SCALE_FACTOR - AccErrorY;
+    AccZ = AcZ / ACCEL_SCALE_FACTOR - AccErrorZ;
+
     //LP filter accelerometer data
     AccX = (1.0 - B_accel)*AccX_prev + B_accel*AccX;
     AccY = (1.0 - B_accel)*AccY_prev + B_accel*AccY;
@@ -194,14 +191,11 @@ static void getIMUdata()
     AccY_prev = AccY;
     AccZ_prev = AccZ;
 
-    //Gyro
-    GyroX = GyX / GYRO_SCALE_FACTOR; //deg/sec
-    GyroY = GyY / GYRO_SCALE_FACTOR;
-    GyroZ = GyZ / GYRO_SCALE_FACTOR;
-    //Correct the outputs with the calculated error values
-    GyroX = GyroX - GyroErrorX;
-    GyroY = GyroY - GyroErrorY;
-    GyroZ = GyroZ - GyroErrorZ;
+    //Gyro (DPS),  corrected with the calculated error values
+    GyroX = GyX / GYRO_SCALE_FACTOR - GyroErrorX; 
+    GyroY = GyY / GYRO_SCALE_FACTOR - GyroErrorY;
+    GyroZ = GyZ / GYRO_SCALE_FACTOR - GyroErrorZ;
+
     //LP filter gyro data
     GyroX = (1.0 - B_gyro)*GyroX_prev + B_gyro*GyroX;
     GyroY = (1.0 - B_gyro)*GyroY_prev + B_gyro*GyroY;
