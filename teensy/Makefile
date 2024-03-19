@@ -6,7 +6,7 @@ BOARD = teensy:avr:teensy40
 
 LIBS = $(HOME)/Documents/Arduino/libraries/
 
-build: $(SKETCH).ino
+build: $(SKETCH).ino copilot_core.cpp
 	arduino-cli compile  --libraries $(LIBS) --fqbn $(BOARD) $(SKETCH).ino
 
 copilot_core.cpp : copilot_core.c

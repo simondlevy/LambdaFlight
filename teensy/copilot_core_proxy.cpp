@@ -6,7 +6,7 @@
 
 #include "utils.hpp"
 
-void copilot_step_core(void) 
+void copilot_proxy_step_core(void) 
 {
     // Constants --------------------------------------------------------------
 
@@ -102,9 +102,9 @@ void copilot_step_core(void)
     const auto m3 = thro_des + pitch_PID - roll_PID + yaw_PID; //Back Right
     const auto m4 = thro_des + pitch_PID + roll_PID - yaw_PID; //Back Left
 
-    void setMotors(
+    void setMotorsProxy(
             const float m1, const float m2, const float m3, const float m4);
-    setMotors(m1, m2, m3, m4);
+    setMotorsProxy(m1, m2, m3, m4);
 
     // Update state variables
     _integral_roll_prev = integral_roll;

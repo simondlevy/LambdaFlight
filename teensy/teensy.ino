@@ -568,6 +568,9 @@ void loop()
     getDesState(); 
 
     // Copilot core
+    void copilot_proxy_step_core(void);
+    copilot_proxy_step_core(); 
+
     void copilot_step_core(void);
     copilot_step_core(); 
 
@@ -592,7 +595,7 @@ void loop()
 
 // Called by Copilot ---------------------------------------------------------
 
-void setMotors(const float m1, const float m2, const float m3, const float m4)
+void setMotorsProxy(const float m1, const float m2, const float m3, const float m4)
 
 {
     m1_command_scaled = m1;
@@ -600,6 +603,11 @@ void setMotors(const float m1, const float m2, const float m3, const float m4)
     m3_command_scaled = m3;
     m4_command_scaled = m4;
 }
+void setMotors(const float m1, const float m2, const float m3, const float m4)
+
+{
+}
+
 
 void setState(const float phi, const float theta, const float psi)
 {
