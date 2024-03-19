@@ -25,6 +25,7 @@ import Language.Copilot
 import Copilot.Compile.C99
 
 import Imu
+-- import LinAlg
 import Quaternion
 import Utils
 
