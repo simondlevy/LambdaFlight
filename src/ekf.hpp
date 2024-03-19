@@ -502,17 +502,13 @@ class Ekf {
                 sqrt(tmpq0*tmpq0 + tmpq1*tmpq1 + tmpq2*tmpq2 + tmpq3*tmpq3) + 
                 EPS;
 
+            // ====== COVARIANCE UPDATE ======
 
-            if (shouldPredict) {
-
-                // ====== COVARIANCE UPDATE ======
-
-                float At[KC_STATE_DIM][KC_STATE_DIM] = {};
-                transpose(A, At);     // A'
-                float AP[KC_STATE_DIM][KC_STATE_DIM] = {};
-                multiply(A, _P, AP, true);  // AP
-                multiply(AP, At, _P, shouldPredict); // APA'
-            }
+            float At[KC_STATE_DIM][KC_STATE_DIM] = {};
+            transpose(A, At);     // A'
+            float AP[KC_STATE_DIM][KC_STATE_DIM] = {};
+            multiply(A, _P, AP, true);  // AP
+            multiply(AP, At, _P, shouldPredict); // APA'
 
             // Process noise is added after the return from the prediction step
 
