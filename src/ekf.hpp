@@ -512,38 +512,37 @@ class Ekf {
                 float AP[KC_STATE_DIM][KC_STATE_DIM] = {};
                 multiply(A, _P, AP, true);  // AP
                 multiply(AP, At, _P, shouldPredict); // APA'
-
-                // Process noise is added after the return from the prediction step
-
-                // ====== PREDICTION STEP ======
-                // The prediction depends on whether we're on the ground, or in flight.
-                // When flying, the accelerometer directly measures thrust (hence is useless
-                // to estimate body angle while flying)
-
-                // altitude update
-                _ekfState.z += shouldPredict ? _r20 * dx + _r21 * dy + _r22 * dz - 
-                    GRAVITY_MAGNITUDE * dt2 / 2 :
-                    0;
-
-                // body-velocity update: accelerometers - gyros cross velocity
-                // - gravity in body frame
-
-                _ekfState.dx += shouldPredict ? 
-                    dt * (accx + gyro->z * tmpSDY - 
-                            gyro->y * tmpSDZ - GRAVITY_MAGNITUDE * _r20) : 
-                    0;
-
-                _ekfState.dy += shouldPredict ?
-                    dt * (accy - gyro->z * tmpSDX + gyro->x * tmpSDZ - 
-                            GRAVITY_MAGNITUDE * _r21) : 
-                    0;
-
-                _ekfState.dz += shouldPredict ?
-                    dt * (acc->z + gyro->y * tmpSDX - gyro->x * 
-                            tmpSDY - GRAVITY_MAGNITUDE * _r22) :
-                    0;
-
             }
+
+            // Process noise is added after the return from the prediction step
+
+            // ====== PREDICTION STEP ======
+            // The prediction depends on whether we're on the ground, or in flight.
+            // When flying, the accelerometer directly measures thrust (hence is useless
+            // to estimate body angle while flying)
+
+            // altitude update
+            _ekfState.z += shouldPredict ? _r20 * dx + _r21 * dy + _r22 * dz - 
+                GRAVITY_MAGNITUDE * dt2 / 2 :
+                0;
+
+            // body-velocity update: accelerometers - gyros cross velocity
+            // - gravity in body frame
+
+            _ekfState.dx += shouldPredict ? 
+                dt * (accx + gyro->z * tmpSDY - 
+                        gyro->y * tmpSDZ - GRAVITY_MAGNITUDE * _r20) : 
+                0;
+
+            _ekfState.dy += shouldPredict ?
+                dt * (accy - gyro->z * tmpSDX + gyro->x * tmpSDZ - 
+                        GRAVITY_MAGNITUDE * _r21) : 
+                0;
+
+            _ekfState.dz += shouldPredict ?
+                dt * (acc->z + gyro->y * tmpSDX - gyro->x * 
+                        tmpSDY - GRAVITY_MAGNITUDE * _r22) :
+                0;
 
             _qw = shouldPredict ? tmpq0/norm : _qw;
             _qx = shouldPredict ? tmpq1/norm : _qx; 
