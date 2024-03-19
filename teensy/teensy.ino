@@ -497,7 +497,7 @@ static void debug(void)
     //debugDesiredState();  
     //debugGyroData();      
     //debugAccelData();     
-    debugRollPitchYaw();  
+    //debugRollPitchYaw();  
     //debugMotorCommands(); 
     //debugServoCommands(); 
     //debugLoopRate();      

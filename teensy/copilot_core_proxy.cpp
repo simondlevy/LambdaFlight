@@ -59,7 +59,7 @@ void copilot_proxy_step_core(void)
 
     const auto derivative_roll = gyroX;
 
-    // Scaled by .01 to bring within -1 to 1 range
+    // Scale by .01 to bring within -1 to 1 range
     const auto roll_PID = 0.01*(Kp_cyclic*error_roll + 
             Ki_cyclic * integral_roll - 
             Kd_cyclic * derivative_roll); 
@@ -77,12 +77,12 @@ void copilot_proxy_step_core(void)
 
     const auto derivative_pitch = gyroY;
 
-    //Scaled by .01 to bring within -1 to 1 range
+    //Scale by .01 to bring within -1 to 1 range
     const auto pitch_PID = .01 * (Kp_cyclic * error_pitch + 
             Ki_cyclic * integral_pitch - 
             Kd_cyclic*derivative_pitch); 
 
-    // Yaw, stablize on rate from gyroZ --------------------------------------
+    // Yaw: stablize on rate from gyroZ --------------------------------------
 
     const auto error_yaw = yaw_des - gyroZ;
 
