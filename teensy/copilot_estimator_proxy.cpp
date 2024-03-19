@@ -66,17 +66,17 @@ static void Madgwick6DOF(
     const auto s3 = 4.0f * q1q1 * q3 - _2q1 * aax + 4.0f * q2q2 * q3 - _2q2 * aay;
     const auto recipNorm1 = invSqrt(s0 * s0 + s1 * s1 + s2 * s2 + s3 * s3); 
 
-    const auto nonzero = !(ax == 0 && ay == 0 && az == 0);
+    const auto isAccelOkay = !(ax == 0 && ay == 0 && az == 0);
 
     // Compute feedback only if accelerometer measurement valid (avoids NaN in
     // accelerometer normalisation)
-    if (nonzero) {
+    if (isAccelOkay) {
 
         //Apply feedback step
-        qDot1 = qDot1 - B_madgwick * s0 * recipNorm1;
-        qDot2 = qDot2 - B_madgwick * s1 * recipNorm1;
-        qDot3 = qDot3 - B_madgwick * s2 * recipNorm1;
-        qDot4 = qDot4 - B_madgwick * s3 * recipNorm1;
+        qDot1 = qDot1 - (isAccelOkay ? B_madgwick * s0 * recipNorm1 : 0);
+        qDot2 = qDot2 - (isAccelOkay ? B_madgwick * s1 * recipNorm1 : 0);
+        qDot3 = qDot3 - (isAccelOkay ? B_madgwick * s2 * recipNorm1 : 0);
+        qDot4 = qDot4 - (isAccelOkay ? B_madgwick * s3 * recipNorm1 : 0);
     }
 
     //Integrate rate of change of quaternion to yield quaternion
