@@ -48,19 +48,19 @@ void copilot_step_core(void)
 
     // Roll ------------------------------------------------------------------
 
-    auto error_roll = roll_des - roll_IMU;
+    const auto error_roll = roll_des - roll_IMU;
 
     // Don't let integrator build if throttle is too low
-    auto integral_roll = throttle_is_down ? 0 :
+    const auto integral_roll = throttle_is_down ? 0 :
 
         //Saturate integrator to prevent unsafe buildup
         constrain(_integral_roll_prev + error_roll * dt, -i_limit, i_limit);
 
 
-    auto derivative_roll = GyroX;
+    const auto derivative_roll = GyroX;
 
     // Scaled by .01 to bring within -1 to 1 range
-    auto roll_PID = 0.01*(Kp_cyclic*error_roll + 
+    const auto roll_PID = 0.01*(Kp_cyclic*error_roll + 
             Ki_cyclic * integral_roll - 
             Kd_cyclic * derivative_roll); 
 
@@ -69,38 +69,38 @@ void copilot_step_core(void)
     auto error_pitch = pitch_des - pitch_IMU;
 
     //Don't let integrator build if throttle is too low
-    auto integral_pitch = throttle_is_down ? 0 :
+    const auto integral_pitch = throttle_is_down ? 0 :
 
         //Saturate integrator to prevent unsafe buildup
         constrain(_integral_pitch_prev + error_pitch * dt, -i_limit, i_limit);
 
 
-    auto derivative_pitch = GyroY;
+    const auto derivative_pitch = GyroY;
 
     //Scaled by .01 to bring within -1 to 1 range
-    auto pitch_PID = .01 * (Kp_cyclic * error_pitch + 
+    const auto pitch_PID = .01 * (Kp_cyclic * error_pitch + 
             Ki_cyclic * integral_pitch - 
             Kd_cyclic*derivative_pitch); 
 
     // Yaw, stablize on rate from GyroZ --------------------------------------
 
-    auto error_yaw = yaw_des - GyroZ;
+    const auto error_yaw = yaw_des - GyroZ;
 
     // Don't let integrator build if throttle is too low
-    auto integral_yaw = throttle_is_down ? 0 :
+    const auto integral_yaw = throttle_is_down ? 0 :
 
         // Saturate integrator to prevent unsafe buildup
         constrain(_integral_yaw_prev + error_yaw * dt, -i_limit, i_limit);
 
-    auto derivative_yaw = (error_yaw - _error_yaw_prev)/dt; 
+    const auto derivative_yaw = (error_yaw - _error_yaw_prev)/dt; 
 
     // Scaled by .01 to bring within -1 to 1 range
-    auto yaw_PID = .01*(Kp_yaw*error_yaw + Ki_yaw*integral_yaw + Kd_yaw*derivative_yaw); 
+    const auto yaw_PID = .01*(Kp_yaw*error_yaw + Ki_yaw*integral_yaw + Kd_yaw*derivative_yaw); 
 
-    auto m1 = thro_des - pitch_PID + roll_PID + yaw_PID; //Front Left
-    auto m2 = thro_des - pitch_PID - roll_PID - yaw_PID; //Front Right
-    auto m3 = thro_des + pitch_PID - roll_PID + yaw_PID; //Back Right
-    auto m4 = thro_des + pitch_PID + roll_PID - yaw_PID; //Back Left
+    const auto m1 = thro_des - pitch_PID + roll_PID + yaw_PID; //Front Left
+    const auto m2 = thro_des - pitch_PID - roll_PID - yaw_PID; //Front Right
+    const auto m3 = thro_des + pitch_PID - roll_PID + yaw_PID; //Back Right
+    const auto m4 = thro_des + pitch_PID + roll_PID - yaw_PID; //Back Left
 
     void setMotors(
             const float m1, const float m2, const float m3, const float m4);
