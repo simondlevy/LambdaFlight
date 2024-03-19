@@ -452,6 +452,23 @@ class Ekf {
             };
 
 
+            const auto dt2 = dt * dt;
+
+            // Position updates in the body frame (will be rotated to inertial frame);
+            // thrust can only be produced in the body's Z direction
+            const auto dx = _ekfState.dx * dt + isFlying ? 0 : acc->x * dt2 / 2;
+            const auto dy = _ekfState.dy * dt + isFlying ? 0 : acc->y * dt2 / 2;
+            const auto dz = _ekfState.dz * dt + acc->z * dt2 / 2; 
+
+            // keep previous time step's state for the update
+            const auto tmpSDX = _ekfState.dx;
+            const auto tmpSDY = _ekfState.dy;
+            const auto tmpSDZ = _ekfState.dz;
+
+            const auto accx = isFlying ? 0 : acc->x;
+            const auto accy = isFlying ? 0 : acc->y;
+
+
             if (shouldPredict) {
 
                 // ====== COVARIANCE UPDATE ======
@@ -468,22 +485,6 @@ class Ekf {
                 // The prediction depends on whether we're on the ground, or in flight.
                 // When flying, the accelerometer directly measures thrust (hence is useless
                 // to estimate body angle while flying)
-
-                const auto dt2 = dt * dt;
-
-                // Position updates in the body frame (will be rotated to inertial frame);
-                // thrust can only be produced in the body's Z direction
-                const auto dx = _ekfState.dx * dt + isFlying ? 0 : acc->x * dt2 / 2;
-                const auto dy = _ekfState.dy * dt + isFlying ? 0 : acc->y * dt2 / 2;
-                const auto dz = _ekfState.dz * dt + acc->z * dt2 / 2; 
-
-                // keep previous time step's state for the update
-                const auto tmpSDX = _ekfState.dx;
-                const auto tmpSDY = _ekfState.dy;
-                const auto tmpSDZ = _ekfState.dz;
-
-                const auto accx = isFlying ? 0 : acc->x;
-                const auto accy = isFlying ? 0 : acc->y;
 
                 // altitude update
                 _ekfState.z += _r20 * dx + _r21 * dy + _r22 * dz - 
