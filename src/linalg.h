@@ -13,18 +13,32 @@ static void transpose(const float a[N][N], float at[N][N])
     }
 }
 
-static void multiply(const float a[N][N], const float b[N][N], float c[N][N])
+static float dot(const float a[N][N], const float b[N][N], 
+        const uint8_t i, const uint8_t j)
+{
+    float d = 0;
+
+    for (uint8_t k=0; k<N; k++) {
+        d += a[i][k] * b[k][j];
+    }
+
+    return d;
+}
+
+// Matrix * Matrix
+static void multiply(const float a[N][N], const float b[N][N], float c[N][N],
+        const bool shouldMultiply)
 {
     for (uint8_t i=0; i<N; i++) {
+
         for (uint8_t j=0; j<N; j++) {
-            c[i][j] = 0;
-            for (uint8_t k=0; k<N; k++) {
-                c[i][j] += a[i][k] * b[k][j];
-            }
+
+            c[i][j] = shouldMultiply ? dot(a, b, i, j) : c[i][j];
         }
     }
 }
 
+// Matrix * Vector
 static void multiply(const float a[N][N], const float x[N], float y[N])
 {
     for (uint8_t i=0; i<N; i++) {
@@ -35,6 +49,7 @@ static void multiply(const float a[N][N], const float x[N], float y[N])
     }
 }
 
+// Outer product
 static void multiply(const float x[N], const float y[N], float a[N][N])
 {
     for (uint8_t i=0; i<N; i++) {

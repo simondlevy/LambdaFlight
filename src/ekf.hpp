@@ -314,7 +314,7 @@ class Ekf {
             transpose(A, At);     // A'
 
             float AP[KC_STATE_DIM][KC_STATE_DIM] = {};
-            multiply(A, _P, AP);  // AP
+            multiply(A, _P, AP, true);  // AP
 
             const auto isErrorSufficient  = 
                 (isErrorLarge(v0) || isErrorLarge(v1) || isErrorLarge(v2)) &&
@@ -327,10 +327,7 @@ class Ekf {
 
             // Move attitude error into attitude if any of the angle errors are
             // large enough
-            if (isErrorSufficient) {
-
-                multiply(AP, At, _P); // APA'
-            }
+            multiply(AP, At, _P, isErrorSufficient); // APA'
 
             // Convert the new attitude to a rotation matrix, such that we can
             // rotate body-frame velocity and acc
@@ -598,11 +595,9 @@ class Ekf {
 
             float At[KC_STATE_DIM][KC_STATE_DIM] = {};
             transpose(A, At);     // A'
-
             float AP[KC_STATE_DIM][KC_STATE_DIM] = {};
-            multiply(A, _P, AP);  // AP
-
-            multiply(AP, At, _P); // APA'
+            multiply(A, _P, AP, true);  // AP
+            multiply(AP, At, _P, true); // APA'
 
             // Process noise is added after the return from the prediction step
 
@@ -763,11 +758,10 @@ class Ekf {
                 const float error, 
                 const float stdMeasNoise)
         {
-            float Ph[KC_STATE_DIM] = {};
 
             // ====== INNOVATION COVARIANCE ======
+            float Ph[KC_STATE_DIM] = {};
             multiply(_P, h, Ph);
-
             float R = stdMeasNoise*stdMeasNoise;
             float HPHR = R; // HPH' + R
             for (int i=0; i<KC_STATE_DIM; i++) { 
@@ -813,9 +807,9 @@ class Ekf {
             transpose(KH, KHt);      // (KH - I)'
 
             float KHIP[KC_STATE_DIM][KC_STATE_DIM] = {};
-            multiply(KH, _P, KHIP);  // (KH - I)*P
+            multiply(KH, _P, KHIP, true);  // (KH - I)*P
 
-            multiply(KHIP, KHt, _P); // (KH - I)*P*(KH - I)'
+            multiply(KHIP, KHt, _P, true); // (KH - I)*P*(KH - I)'
 
             // Add the measurement variance and ensure boundedness and symmetry
             for (int i=0; i<KC_STATE_DIM; i++) {
