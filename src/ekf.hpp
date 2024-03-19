@@ -890,11 +890,8 @@ class Ekf {
             // Only update the filter if the measurement is reliable 
             // (\hat{h} -> infty when R[2][2] -> 0)
             const auto shouldUpdate = fabs(_r22) > 0.1f && _r22 > 0;
-            if (shouldUpdate) {
-
-                scalarUpdate(h, measuredDistance-predictedDistance, 
-                        range->stdDev, shouldUpdate);
-            }
+            scalarUpdate(h, measuredDistance-predictedDistance, 
+                    range->stdDev, shouldUpdate);
         }
 
         void updateWithAccel(const measurement_t & m)
