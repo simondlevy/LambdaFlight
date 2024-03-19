@@ -25,68 +25,18 @@ module Core where
 import Language.Copilot
 import Copilot.Compile.C99
 
-import Clock
-import Motors
-
-import Constants
-
-import Clock
 import Demands
 import Mixers
 import Motors
-import Sensors
-import State
 import Utils
-
-import Constants
-
--- PID controllers
-import Altitude
-import ClimbRate
-import PitchRollAngle
-import PitchRollRate
-import Position
-import YawAngle
-import YawRate
 
 -- Streams from C++ ----------------------------------------------------------
 
-demandsStruct :: Stream DemandsStruct
-demandsStruct = extern "stream_openLoopDemands" Nothing
-
-stateStruct :: Stream StateStruct
-stateStruct = extern "stream_vehicleState" Nothing
-
-inHoverMode :: SBool
-inHoverMode = extern "stream_inHoverMode" Nothing
-
-resetPids :: SBool
-resetPids = extern "stream_resetPids" Nothing
+-----------------------------------------------------------------------------
 
 step = motors where
 
-  vehicleState = liftState stateStruct
-
-  openLoopDemands = liftDemands demandsStruct
-
-  dt = rateToPeriod clock_rate
-
-  pids = [positionPid resetPids inHoverMode dt,
-          pitchRollAnglePid resetPids inHoverMode dt,
-          pitchRollRatePid resetPids inHoverMode dt,
-          altitudePid inHoverMode dt,
-          climbRatePid inHoverMode dt,
-          yawAnglePid dt,
-          yawRatePid dt]
-
-  demands' = foldl (\demand pid -> pid vehicleState demand) openLoopDemands pids
-
-  thrust'' = if inHoverMode then ((thrust demands') * tscale + tbase) else tmin
-
-  motors = quadCFMixer $ Demands thrust''
-                                 ((roll demands') * prscale)
-                                 ((pitch demands') * prscale)
-                                 ((yaw demands') * yscale)
+  motors = quadCFMixer $ Demands 0 0 0 0
 
 ------------------------------------------------------------------------------
  

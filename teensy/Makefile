@@ -6,8 +6,14 @@ BOARD = teensy:avr:teensy40
 
 LIBS = $(HOME)/Documents/Arduino/libraries/
 
-build:
+build: $(SKETCH).ino
 	arduino-cli compile  --libraries $(LIBS) --fqbn $(BOARD) $(SKETCH).ino
+
+copilot_core.cpp : copilot_core.c
+	mv copilot_core.c copilot_core.cpp
+
+copilot_core.c : Core.hs
+	runhaskell -i../haskell Core.hs
 
 flash:
 	arduino-cli upload -p $(PORT) --fqbn $(BOARD) .
@@ -20,3 +26,6 @@ edit:
 
 listen:
 	miniterm $(PORT) 115200
+
+clean:
+	rm -f copilot_core.*
