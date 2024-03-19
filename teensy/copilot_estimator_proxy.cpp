@@ -70,14 +70,11 @@ static void Madgwick6DOF(
 
     // Compute feedback only if accelerometer measurement valid (avoids NaN in
     // accelerometer normalisation)
-    if (isAccelOkay) {
-
-        //Apply feedback step
-        qDot1 = qDot1 - (isAccelOkay ? B_madgwick * s0 * recipNorm1 : 0);
-        qDot2 = qDot2 - (isAccelOkay ? B_madgwick * s1 * recipNorm1 : 0);
-        qDot3 = qDot3 - (isAccelOkay ? B_madgwick * s2 * recipNorm1 : 0);
-        qDot4 = qDot4 - (isAccelOkay ? B_madgwick * s3 * recipNorm1 : 0);
-    }
+    //Apply feedback step
+    qDot1 = qDot1 - (isAccelOkay ? B_madgwick * s0 * recipNorm1 : 0);
+    qDot2 = qDot2 - (isAccelOkay ? B_madgwick * s1 * recipNorm1 : 0);
+    qDot3 = qDot3 - (isAccelOkay ? B_madgwick * s2 * recipNorm1 : 0);
+    qDot4 = qDot4 - (isAccelOkay ? B_madgwick * s3 * recipNorm1 : 0);
 
     //Integrate rate of change of quaternion to yield quaternion
     q0 += qDot1 * invSampleFreq;
