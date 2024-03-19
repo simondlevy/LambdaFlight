@@ -343,7 +343,7 @@ class Ekf {
             _ekfState.e1 = 0;
             _ekfState.e2 = 0;
 
-            updateCovarianceMatrix();
+            updateCovarianceMatrix(true);
 
             _isUpdated = false;
 
@@ -400,36 +400,38 @@ class Ekf {
 
             const auto isDtPositive = dt > 0;
 
-            if (isDtPositive) {
+            // add process noise on position
+            _P[KC_STATE_Z][KC_STATE_Z] += isDtPositive ?
+                powf(PROC_NOISE_ACC_Z*dt*dt + PROC_NOISE_VEL*dt + 
+                        PROC_NOISE_POS, 2) : 0;  
 
-                _P[KC_STATE_Z][KC_STATE_Z] += 
-                    powf(PROC_NOISE_ACC_Z*dt*dt + PROC_NOISE_VEL*dt + 
-                            PROC_NOISE_POS, 2);  // add process noise on position
+            // add process noise on velocity
+            _P[KC_STATE_DX][KC_STATE_DX] += isDtPositive ? 
+                powf(PROC_NOISE_ACC_XY*dt + 
+                        PROC_NOISE_VEL, 2) : 0; 
 
-                _P[KC_STATE_DX][KC_STATE_DX] += 
-                    powf(PROC_NOISE_ACC_XY*dt + 
-                            PROC_NOISE_VEL, 2); // add process noise on velocity
+            // add process noise on velocity
+            _P[KC_STATE_DY][KC_STATE_DY] += isDtPositive ?
+                powf(PROC_NOISE_ACC_XY*dt + 
+                        PROC_NOISE_VEL, 2) : 0; 
 
-                _P[KC_STATE_DY][KC_STATE_DY] += 
-                    powf(PROC_NOISE_ACC_XY*dt + 
-                            PROC_NOISE_VEL, 2); // add process noise on velocity
+            // add process noise on velocity
+            _P[KC_STATE_DZ][KC_STATE_DZ] += isDtPositive ?
+                powf(PROC_NOISE_ACC_Z*dt + 
+                        PROC_NOISE_VEL, 2) : 0; 
 
-                _P[KC_STATE_DZ][KC_STATE_DZ] += 
-                    powf(PROC_NOISE_ACC_Z*dt + 
-                            PROC_NOISE_VEL, 2); // add process noise on velocity
+            _P[KC_STATE_E0][KC_STATE_E0] += isDtPositive ?
+                powf(MEAS_NOISE_GYRO_ROLL_PITCH * dt + PROC_NOISE_ATT, 2) : 0;
 
-                _P[KC_STATE_E0][KC_STATE_E0] += 
-                    powf(MEAS_NOISE_GYRO_ROLL_PITCH * dt + PROC_NOISE_ATT, 2);
-                _P[KC_STATE_E1][KC_STATE_E1] += 
-                    powf(MEAS_NOISE_GYRO_ROLL_PITCH * dt + PROC_NOISE_ATT, 2);
-                _P[KC_STATE_E2][KC_STATE_E2] += 
-                    powf(MEAS_NOISE_GYRO_ROLL_YAW * dt + PROC_NOISE_ATT, 2);
+            _P[KC_STATE_E1][KC_STATE_E1] += isDtPositive ?
+                powf(MEAS_NOISE_GYRO_ROLL_PITCH * dt + PROC_NOISE_ATT, 2) : 0;
 
-                updateCovarianceMatrix();
-            }
+            _P[KC_STATE_E2][KC_STATE_E2] += isDtPositive ?
+                powf(MEAS_NOISE_GYRO_ROLL_YAW * dt + PROC_NOISE_ATT, 2) : 0;
 
-            _lastProcessNoiseUpdateMs = isDtPositive ? 
-                nowMs : 
+            updateCovarianceMatrix(isDtPositive);
+
+            _lastProcessNoiseUpdateMs = isDtPositive ?  nowMs : 
                 _lastProcessNoiseUpdateMs;
         }
 
@@ -735,13 +737,13 @@ class Ekf {
             return &subSampler->subSample;
         }
 
-        void updateCovarianceMatrix(void)
+        void updateCovarianceMatrix(const bool shouldUpdate)
         {
             // Enforce symmetry of the covariance matrix, and ensure the
             // values stay bounded
             for (int i=0; i<KC_STATE_DIM; i++) {
                 for (int j=i; j<KC_STATE_DIM; j++) {
-                    updateCovarianceCell(i, j, 0);
+                    updateCovarianceCell(i, j, 0, shouldUpdate);
                 }
             }
         }
@@ -816,26 +818,30 @@ class Ekf {
             multiply(KHIP, KHt, _P); // (KH - I)*P*(KH - I)'
 
             // Add the measurement variance and ensure boundedness and symmetry
-            // TODO: Why would it hit these bounds? Needs to be investigated.
             for (int i=0; i<KC_STATE_DIM; i++) {
                 for (int j=i; j<KC_STATE_DIM; j++) {
 
-                    updateCovarianceCell(i, j, K[i] * R * K[j]);
+                    updateCovarianceCell(i, j, K[i] * R * K[j], true);
                 }
             }
 
             _isUpdated = true;
         }
 
-        void updateCovarianceCell(const int i, const int j, const float variance)
+        void updateCovarianceCell(
+                const int i, 
+                const int j, 
+                const float variance,
+                const bool shouldUpdate)
         {
             const auto p = (_P[i][j] + _P[j][i]) / 2 + variance;
 
-            _P[i][j] = 
+            _P[i][j] = !shouldUpdate ? _P[i][j] :
                 (isnan(p) || p > MAX_COVARIANCE) ?  MAX_COVARIANCE :
                 (i==j && p < MIN_COVARIANCE) ?  MIN_COVARIANCE :
                 p;
-            _P[j][i] = _P[i][j];
+
+            _P[j][i] = shouldUpdate ? _P[i][j] : _P[j][i];
         }
 
         void updateWithFlow(const flowMeasurement_t *flow) 
