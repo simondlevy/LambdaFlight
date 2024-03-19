@@ -35,9 +35,9 @@ void copilot_proxy_step_core(void)
 
     extern bool throttle_is_down;
 
-    extern float GyroX;
-    extern float GyroY;
-    extern float GyroZ;
+    extern float gyroX;
+    extern float gyroY;
+    extern float gyroZ;
 
     // State variables --------------------------------------------------------
 
@@ -57,7 +57,7 @@ void copilot_proxy_step_core(void)
         constrain(_integral_roll_prev + error_roll * dt, -i_limit, i_limit);
 
 
-    const auto derivative_roll = GyroX;
+    const auto derivative_roll = gyroX;
 
     // Scaled by .01 to bring within -1 to 1 range
     const auto roll_PID = 0.01*(Kp_cyclic*error_roll + 
@@ -75,16 +75,16 @@ void copilot_proxy_step_core(void)
         constrain(_integral_pitch_prev + error_pitch * dt, -i_limit, i_limit);
 
 
-    const auto derivative_pitch = GyroY;
+    const auto derivative_pitch = gyroY;
 
     //Scaled by .01 to bring within -1 to 1 range
     const auto pitch_PID = .01 * (Kp_cyclic * error_pitch + 
             Ki_cyclic * integral_pitch - 
             Kd_cyclic*derivative_pitch); 
 
-    // Yaw, stablize on rate from GyroZ --------------------------------------
+    // Yaw, stablize on rate from gyroZ --------------------------------------
 
-    const auto error_yaw = yaw_des - GyroZ;
+    const auto error_yaw = yaw_des - gyroZ;
 
     // Don't let integrator build if throttle is too low
     const auto integral_yaw = throttle_is_down ? 0 :

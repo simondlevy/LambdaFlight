@@ -57,8 +57,8 @@ bfs::SbusRx sbus(&Serial5);
 
 // Streams
 float thro_des, roll_des, pitch_des, yaw_des;
-float GyroX, GyroY, GyroZ;
-float AccX, AccY, AccZ;
+float gyroX, gyroY, gyroZ;
+float accX, accY, accZ;
 float roll_IMU, pitch_IMU, yaw_IMU;
 float dt;
 bool throttle_is_down;
@@ -130,38 +130,38 @@ static void IMUinit()
 
 static void getIMUdata() 
 {
-    static float AccX_prev, AccY_prev, AccZ_prev;
-    static float GyroX_prev, GyroY_prev, GyroZ_prev;
+    static float accX_prev, accY_prev, accZ_prev;
+    static float gyroX_prev, gyroY_prev, gyroZ_prev;
 
     int16_t AcX = 0, AcY = 0, AcZ = 0, GyX = 0, GyY = 0, GyZ = 0;
 
     mpu6050.getMotion6(&AcX, &AcY, &AcZ, &GyX, &GyY, &GyZ);
 
     //Accelerometer (Gs), corrected with the calculated error values
-    AccX = AcX / ACCEL_SCALE_FACTOR - AccErrorX;
-    AccY = AcY / ACCEL_SCALE_FACTOR - AccErrorY;
-    AccZ = AcZ / ACCEL_SCALE_FACTOR - AccErrorZ;
+    accX = AcX / ACCEL_SCALE_FACTOR - AccErrorX;
+    accY = AcY / ACCEL_SCALE_FACTOR - AccErrorY;
+    accZ = AcZ / ACCEL_SCALE_FACTOR - AccErrorZ;
 
     //LP filter accelerometer data
-    AccX = (1.0 - B_accel)*AccX_prev + B_accel*AccX;
-    AccY = (1.0 - B_accel)*AccY_prev + B_accel*AccY;
-    AccZ = (1.0 - B_accel)*AccZ_prev + B_accel*AccZ;
-    AccX_prev = AccX;
-    AccY_prev = AccY;
-    AccZ_prev = AccZ;
+    accX = (1.0 - B_accel)*accX_prev + B_accel*accX;
+    accY = (1.0 - B_accel)*accY_prev + B_accel*accY;
+    accZ = (1.0 - B_accel)*accZ_prev + B_accel*accZ;
+    accX_prev = accX;
+    accY_prev = accY;
+    accZ_prev = accZ;
 
     //Gyro (DPS),  corrected with the calculated error values
-    GyroX = GyX / GYRO_SCALE_FACTOR - GyroErrorX; 
-    GyroY = GyY / GYRO_SCALE_FACTOR - GyroErrorY;
-    GyroZ = GyZ / GYRO_SCALE_FACTOR - GyroErrorZ;
+    gyroX = GyX / GYRO_SCALE_FACTOR - GyroErrorX; 
+    gyroY = GyY / GYRO_SCALE_FACTOR - GyroErrorY;
+    gyroZ = GyZ / GYRO_SCALE_FACTOR - GyroErrorZ;
 
     //LP filter gyro data
-    GyroX = (1.0 - B_gyro)*GyroX_prev + B_gyro*GyroX;
-    GyroY = (1.0 - B_gyro)*GyroY_prev + B_gyro*GyroY;
-    GyroZ = (1.0 - B_gyro)*GyroZ_prev + B_gyro*GyroZ;
-    GyroX_prev = GyroX;
-    GyroY_prev = GyroY;
-    GyroZ_prev = GyroZ;
+    gyroX = (1.0 - B_gyro)*gyroX_prev + B_gyro*gyroX;
+    gyroY = (1.0 - B_gyro)*gyroY_prev + B_gyro*gyroY;
+    gyroZ = (1.0 - B_gyro)*gyroZ_prev + B_gyro*gyroZ;
+    gyroX_prev = gyroX;
+    gyroY_prev = gyroY;
+    gyroZ_prev = gyroZ;
 }
 
 static void getDesState() 
@@ -430,12 +430,12 @@ void debugGyroData()
 {
     if (current_time - print_counter > 10000) {
         print_counter = micros();
-        Serial.print(F("GyroX:"));
-        Serial.print(GyroX);
-        Serial.print(F(" GyroY:"));
-        Serial.print(GyroY);
-        Serial.print(F(" GyroZ:"));
-        Serial.println(GyroZ);
+        Serial.print(F("gyroX:"));
+        Serial.print(gyroX);
+        Serial.print(F(" gyroY:"));
+        Serial.print(gyroY);
+        Serial.print(F(" gyroZ:"));
+        Serial.println(gyroZ);
     }
 }
 
@@ -443,12 +443,12 @@ void debugAccelData()
 {
     if (current_time - print_counter > 10000) {
         print_counter = micros();
-        Serial.print(F("AccX:"));
-        Serial.print(AccX);
-        Serial.print(F(" AccY:"));
-        Serial.print(AccY);
-        Serial.print(F(" AccZ:"));
-        Serial.println(AccZ);
+        Serial.print(F("accX:"));
+        Serial.print(accX);
+        Serial.print(F(" accY:"));
+        Serial.print(accY);
+        Serial.print(F(" accZ:"));
+        Serial.println(accZ);
     }
 }
 

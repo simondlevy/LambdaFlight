@@ -32,6 +32,39 @@ import Utils
 
 -- Streams from C++ ----------------------------------------------------------
 
+thro_des :: SFloat
+thro_des = extern "thro_des" Nothing
+
+roll_des :: SFloat
+roll_des = extern "roll_des" Nothing
+
+pitch_des :: SFloat
+pitch_des = extern "pitch_des" Nothing
+
+yaw_des :: SFloat
+yaw_des = extern "yaw_des" Nothing
+
+roll_IMU :: SFloat
+roll_IMU = extern "roll_IMU" Nothing
+
+pitch_IMU :: SFloat
+pitch_IMU = extern "pitch_IMU" Nothing
+
+dt :: SFloat
+dt = extern "dt" Nothing
+
+throttle_is_down :: SBool
+throttle_is_down = extern "throttle_is_down" Nothing
+
+gyroX :: SFloat
+gyroX = extern "gyroX" Nothing
+
+gyroY :: SFloat
+gyroY = extern "gyroY" Nothing
+
+gyroZ :: SFloat
+gyroZ = extern "gyroZ" Nothing
+
 -----------------------------------------------------------------------------
 
 step = motors where
@@ -39,16 +72,16 @@ step = motors where
   motors = quadCFMixer $ Demands 0 0 0 0
 
 ------------------------------------------------------------------------------
- 
+
 spec = do
 
-    let motors = step
+  let motors = step
 
-    trigger "setMotors" true [
-        arg $ Motors.qm1 motors, 
-        arg $ Motors.qm2 motors, 
-        arg $ Motors.qm3 motors, 
-        arg $ Motors.qm4 motors] 
+  trigger "setMotors" true [
+      arg $ Motors.qm1 motors, 
+      arg $ Motors.qm2 motors, 
+      arg $ Motors.qm3 motors, 
+      arg $ Motors.qm4 motors] 
 
 -- Compile the spec
 main = reify spec >>= 

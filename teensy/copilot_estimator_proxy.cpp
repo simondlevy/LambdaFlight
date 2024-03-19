@@ -104,13 +104,13 @@ static void Madgwick6DOF(
 void copilot_step_estimator(void) 
 {
     // Streams
-    extern float GyroX;
-    extern float GyroY;
-    extern float GyroZ;
-    extern float AccX;
-    extern float AccY;
-    extern float AccZ;
+    extern float gyroX;
+    extern float gyroY;
+    extern float gyroZ;
+    extern float accX;
+    extern float accY;
+    extern float accZ;
     extern float dt;
 
-    Madgwick6DOF(GyroX, -GyroY, -GyroZ, -AccX, AccY, AccZ, dt); 
+    Madgwick6DOF(gyroX, -gyroY, -gyroZ, -accX, accY, accZ, dt); 
 }
