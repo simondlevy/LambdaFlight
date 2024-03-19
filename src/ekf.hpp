@@ -712,14 +712,15 @@ class Ekf {
         void scalarUpdate(
                 const float h[KC_STATE_DIM],
                 const float error, 
-                const float stdMeasNoise)
+                const float stdMeasNoise,
+                const bool shouldUpdate)
         {
 
             // ====== INNOVATION COVARIANCE ======
             float Ph[KC_STATE_DIM] = {};
             multiply(_P, h, Ph);
-            float R = stdMeasNoise*stdMeasNoise;
-            float HPHR = R; // HPH' + R
+            const auto R = stdMeasNoise * stdMeasNoise;
+            auto HPHR = R; // HPH' + R
             for (int i=0; i<KC_STATE_DIM; i++) { 
 
                 // Add the element of HPH' to the above
@@ -729,7 +730,7 @@ class Ekf {
             }
 
             // Compute the Kalman gain as a column vector
-            float K[KC_STATE_DIM] = {
+            const float K[KC_STATE_DIM] = {
 
                 // kalman gain = (PH' (HPH' + R )^-1)
                 Ph[0] / HPHR, 
@@ -742,13 +743,13 @@ class Ekf {
             };
 
             // Perform the state update
-            _ekfState.z  += K[0] * error;
-            _ekfState.dx += K[1] * error;
-            _ekfState.dy += K[2] * error;
-            _ekfState.dz += K[3] * error;
-            _ekfState.e0 += K[4] * error;
-            _ekfState.e1 += K[5] * error;
-            _ekfState.e2 += K[6] * error;
+            _ekfState.z  += shouldUpdate ? K[0] * error: 0;
+            _ekfState.dx += shouldUpdate ? K[1] * error: 0;
+            _ekfState.dy += shouldUpdate ? K[2] * error: 0;
+            _ekfState.dz += shouldUpdate ? K[3] * error: 0;
+            _ekfState.e0 += shouldUpdate ? K[4] * error: 0;
+            _ekfState.e1 += shouldUpdate ? K[5] * error: 0;
+            _ekfState.e2 += shouldUpdate ? K[6] * error: 0;
 
             // ====== COVARIANCE UPDATE ======
 
@@ -765,17 +766,17 @@ class Ekf {
             float KHIP[KC_STATE_DIM][KC_STATE_DIM] = {};
             multiply(KH, _P, KHIP, true);  // (KH - I)*P
 
-            multiply(KHIP, KHt, _P, true); // (KH - I)*P*(KH - I)'
+            multiply(KHIP, KHt, _P, shouldUpdate); // (KH - I)*P*(KH - I)'
 
             // Add the measurement variance and ensure boundedness and symmetry
             for (int i=0; i<KC_STATE_DIM; i++) {
                 for (int j=i; j<KC_STATE_DIM; j++) {
 
-                    updateCovarianceCell(i, j, K[i] * R * K[j], true);
+                    updateCovarianceCell(i, j, K[i] * R * K[j], shouldUpdate);
                 }
             }
 
-            _isUpdated = true;
+            _isUpdated = shouldUpdate ? true : _isUpdated;
         }
 
         void updateCovarianceCell(
@@ -837,7 +838,7 @@ class Ekf {
 
             //First update
             scalarUpdate(hx, (measuredNX-predictedNX), 
-                    flow->stdDevX*FLOW_RESOLUTION);
+                    flow->stdDevX*FLOW_RESOLUTION, true);
 
             // ~~~ Y velocity prediction and update ~~~
             float hy[KC_STATE_DIM] = {};
@@ -852,7 +853,7 @@ class Ekf {
 
             // Second update
             scalarUpdate(hy, (measuredNY-predictedNY), 
-                    flow->stdDevY*FLOW_RESOLUTION);
+                    flow->stdDevY*FLOW_RESOLUTION, true);
         }
 
         static const float max(const float val, const float maxval)
@@ -888,10 +889,11 @@ class Ekf {
 
             // Only update the filter if the measurement is reliable 
             // (\hat{h} -> infty when R[2][2] -> 0)
-            if (fabs(_r22) > 0.1f && _r22 > 0) {
+            const auto shouldUpdate = fabs(_r22) > 0.1f && _r22 > 0;
+            if (shouldUpdate) {
 
                 scalarUpdate(h, measuredDistance-predictedDistance, 
-                        range->stdDev);
+                        range->stdDev, shouldUpdate);
             }
         }
 
