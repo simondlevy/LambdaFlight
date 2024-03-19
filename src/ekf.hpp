@@ -379,16 +379,16 @@ class Ekf {
         {
             const bool isTimeToPredict = nowMs >= nextPredictionMs;
 
+            axis3fSubSamplerFinalize(&_accSubSampler, isTimeToPredict);
+
+            axis3fSubSamplerFinalize(&_gyroSubSampler, isTimeToPredict);
+
             if (isTimeToPredict) {
-
-                axis3fSubSamplerFinalize(&_accSubSampler);
-
-                axis3fSubSamplerFinalize(&_gyroSubSampler);
 
                 predictDt(&_accSubSampler.subSample, 
                         &_gyroSubSampler.subSample, 
                         (nowMs - _lastPredictionMs) / 1000.0f,
-                        isFlying);
+                        isFlying, isTimeToPredict);
             }
 
             _lastPredictionMs = isTimeToPredict ? nowMs : _lastPredictionMs;
@@ -480,7 +480,8 @@ class Ekf {
                 const Axis3f *acc, 
                 const Axis3f *gyro, 
                 const float dt, 
-                const bool isFlying)
+                const bool isFlying,
+                const bool shouldPredict)
         {
             /* Here we discretize (euler forward) and linearise the quadrocopter
              * dynamics in order to push the covariance forward.
@@ -597,7 +598,7 @@ class Ekf {
             transpose(A, At);     // A'
             float AP[KC_STATE_DIM][KC_STATE_DIM] = {};
             multiply(A, _P, AP, true);  // AP
-            multiply(AP, At, _P, true); // APA'
+            multiply(AP, At, _P, shouldPredict); // APA'
 
             // Process noise is added after the return from the prediction step
 
@@ -629,14 +630,20 @@ class Ekf {
             // body-velocity update: accelerometers - gyros cross velocity
             // - gravity in body frame
 
-            _ekfState.dx += dt * (accx + gyro->z * tmpSDY - 
-                    gyro->y * tmpSDZ - GRAVITY_MAGNITUDE * _r20);
+            _ekfState.dx += shouldPredict ? 
+                dt * (accx + gyro->z * tmpSDY - 
+                    gyro->y * tmpSDZ - GRAVITY_MAGNITUDE * _r20) : 
+                0;
 
-            _ekfState.dy += dt * (accy - gyro->z * tmpSDX + gyro->x * tmpSDZ - 
-                    GRAVITY_MAGNITUDE * _r21);
+            _ekfState.dy += shouldPredict ?
+                dt * (accy - gyro->z * tmpSDX + gyro->x * tmpSDZ - 
+                    GRAVITY_MAGNITUDE * _r21) : 
+                0;
 
-            _ekfState.dz += dt * (acc->z + gyro->y * tmpSDX - gyro->x * 
-                    tmpSDY - GRAVITY_MAGNITUDE * _r22);
+            _ekfState.dz += shouldPredict ?
+                dt * (acc->z + gyro->y * tmpSDX - gyro->x * 
+                    tmpSDY - GRAVITY_MAGNITUDE * _r22) :
+                0;
 
             // attitude update (rotate by gyroscope), we do this in quaternions
             // this is the gyroscope angular velocity integrated over the sample period
@@ -672,12 +679,12 @@ class Ekf {
                 sqrt(tmpq0*tmpq0 + tmpq1*tmpq1 + tmpq2*tmpq2 + tmpq3*tmpq3) + 
                 EPS;
 
-            _qw = tmpq0/norm; 
-            _qx = tmpq1/norm; 
-            _qy = tmpq2/norm; 
-            _qz = tmpq3/norm;
+            _qw = shouldPredict ? tmpq0/norm : _qw;
+            _qx = shouldPredict ? tmpq1/norm : _qx; 
+            _qy = shouldPredict ? tmpq2/norm : _qy; 
+            _qz = shouldPredict ? tmpq3/norm : _qz;
 
-            _isUpdated = true;
+            _isUpdated = shouldPredict ? true : _isUpdated;
         }
 
         static float rotateQuat(
@@ -708,20 +715,23 @@ class Ekf {
             subSampler->count++;
         }
 
-        static Axis3f* axis3fSubSamplerFinalize(Axis3fSubSampler_t* subSampler) 
+        static Axis3f* axis3fSubSamplerFinalize(
+                Axis3fSubSampler_t* subSampler,
+                const bool isTimeToPredict) 
         {
             const auto count  = subSampler->count; 
             const auto isCountNonzero = count > 0;
+            const auto shouldFinalize = isTimeToPredict && isCountNonzero;
 
-            subSampler->subSample.x = isCountNonzero ? 
+            subSampler->subSample.x = shouldFinalize ? 
                 subSampler->sum.x * subSampler->conversionFactor / count :
                 subSampler->subSample.x;
 
-            subSampler->subSample.y = isCountNonzero ?
+            subSampler->subSample.y = shouldFinalize ?
                 subSampler->sum.y * subSampler->conversionFactor / count :
                 subSampler->subSample.y;
 
-            subSampler->subSample.z = isCountNonzero ?
+            subSampler->subSample.z = shouldFinalize ?
                 subSampler->sum.z * subSampler->conversionFactor / count :
                 subSampler->subSample.z;
 
