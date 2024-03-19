@@ -318,7 +318,7 @@ class Ekf {
 
             const auto isErrorSufficient  = 
                 (isErrorLarge(v0) || isErrorLarge(v1) || isErrorLarge(v2)) &&
-                    isErrorInBounds(v0) && isErrorInBounds(v1) && isErrorInBounds(v2);
+                isErrorInBounds(v0) && isErrorInBounds(v1) && isErrorInBounds(v2);
 
             _qw = isErrorSufficient ? tmpq0 / norm : _qw;
             _qx = isErrorSufficient ? tmpq1 / norm : _qx;
@@ -383,122 +383,76 @@ class Ekf {
 
             axis3fSubSamplerFinalize(&_gyroSubSampler, shouldPredict);
 
+            const Axis3f * acc = &_accSubSampler.subSample; 
+            const Axis3f * gyro = &_gyroSubSampler.subSample; 
+            const float dt = (nowMs - _lastPredictionMs) / 1000.0f;
+
+            const auto e0 = gyro->x*dt/2;
+            const auto e1 = gyro->y*dt/2;
+            const auto e2 = gyro->z*dt/2;
+
+            // altitude from body-frame velocity
+            const auto zdx = _r20*dt;
+            const auto zdy = _r21*dt;
+            const auto zdz = _r22*dt;
+
+            // altitude from attitude error
+            const auto ze0 = (_ekfState.dy*_r22 - _ekfState.dz*_r21)*dt;
+            const auto ze1 = (- _ekfState.dx*_r22 + _ekfState.dz*_r20)*dt;
+            const auto ze2 = (_ekfState.dx*_r21 - _ekfState.dy*_r20)*dt;
+
+            // body-frame velocity from body-frame velocity
+            const auto dxdx = 1; //drag negligible
+            const auto dydx =-gyro->z*dt;
+            const auto dzdx = gyro->y*dt;
+
+            const auto dxdy = gyro->z*dt;
+            const auto dydy = 1; //drag negligible
+            const auto dzdy =-gyro->x*dt;
+
+            const auto dxdz =-gyro->y*dt;
+            const auto dydz = gyro->x*dt;
+            const auto dzdz = 1; //drag negligible
+
+            // body-frame velocity from attitude error
+            const auto dxe0 =  0;
+            const auto dye0 = -GRAVITY_MAGNITUDE*_r22*dt;
+            const auto dze0 =  GRAVITY_MAGNITUDE*_r21*dt;
+
+            const auto dxe1 =  GRAVITY_MAGNITUDE*_r22*dt;
+            const auto dye1 =  0;
+            const auto dze1 = -GRAVITY_MAGNITUDE*_r20*dt;
+
+            const auto dxe2 = -GRAVITY_MAGNITUDE*_r21*dt;
+            const auto dye2 =  GRAVITY_MAGNITUDE*_r20*dt;
+            const auto dze2 =  0;
+
+            const auto e0e0 =  1 - e1*e1/2 - e2*e2/2;
+            const auto e0e1 =  e2 + e0*e1/2;
+            const auto e0e2 = -e1 + e0*e2/2;
+
+            const auto e1e0 = -e2 + e0*e1/2;
+            const auto e1e1 =  1 - e0*e0/2 - e2*e2/2;
+            const auto e1e2 =  e0 + e1*e2/2;
+
+            const auto e2e0 =  e1 + e0*e2/2;
+            const auto e2e1 = -e0 + e1*e2/2;
+            const auto e2e2 = 1 - e0*e0/2 - e1*e1/2;
+
+            const float A[KC_STATE_DIM][KC_STATE_DIM] = 
+            { 
+                //        Z  DX    DY    DZ    E0    E1    E2
+                /*Z*/    {0, zdx,  zdy,  zdz,  ze0,  ze1,  ze2}, 
+                /*DX*/   {0, dxdx, dxdy, dxdz, dxe0, dxe1, dxe2}, 
+                /*DY*/   {0, dydx, dydy, dydz, dye0, dye1, dye2},
+                /*DZ*/   {0, dzdx, dzdy, dzdz, dze0, dze1, dze2},
+                /*E0*/   {0, 0,    0,    0,    e0e0, e0e1, e0e2}, 
+                /*E1*/   {0, 0,    0,    0,    e1e0, e1e1, e1e2}, 
+                /*E2*/   {0, 0,    0,    0,    e2e0, e2e1, e2e2}  
+            };
+
+
             if (shouldPredict) {
-
-                const Axis3f * acc = &_accSubSampler.subSample; 
-                const Axis3f * gyro = &_gyroSubSampler.subSample; 
-                const float dt = (nowMs - _lastPredictionMs) / 1000.0f;
-
-                /* Here we discretize (euler forward) and linearise the quadrocopter
-                 * dynamics in order to push the covariance forward.
-                 *
-                 * QUADROCOPTER DYNAMICS (see paper):
-                 *
-                 * \dot{x} = R(I + [[d]])p
-                 * \dot{p} = f/m * e3 - [[\omega]]p - g(I - [[d]])R^-1 e3 //drag negligible
-                 * \dot{d} = \omega
-                 *
-                 * where [[.]] is the cross-product matrix of .
-                 *       \omega are the gyro measurements
-                 *       e3 is the column vector [0 0 1]'
-                 *       I is the identity
-                 *       R is the current attitude as a rotation matrix
-                 *       f/m is the mass-normalized motor force (acceleration
-                 *       in the body's z direction)
-                 *       g is gravity
-                 *       x, p, d are the quad's states
-                 * note that d (attitude error) is zero at the beginning of each iteration,
-                 * since error information is incorporated into R after each Kalman update.
-                 */
-
-
-                // attitude error from attitude error
-                /**
-                 * At first glance, it may not be clear where the next values come from,
-                 * since they do not appear directly in the dynamics. In this prediction
-                 * step, we skip the step of first updating attitude-error, and then
-                 * incorporating the
-                 * new error into the current attitude (which requires a rotation of the
-                 * attitude-error covariance). Instead, we directly update the
-                 * body attitude, however still need to rotate the covariance,
-                 * which is what you see below.
-                 *
-                 * This comes from a second order approximation to:
-                 * Sigma_post = exps(-d) Sigma_pre exps(-d)'
-                 *            ~ (I + [[-d]] + [[-d]]^2 / 2) Sigma_pre (I + [[-d]] + 
-                 *             [[-d]]^2 / 2)'
-                 * where d is the attitude error expressed as Rodriges parameters, ie. e0 =
-                 * 1/2*gyro.x*dt under the assumption that d = [0,0,0] at the beginning of
-                 * each prediction step and that gyro.x is constant over the
-                 * sampling period
-                 *
-                 * As derived in "Covariance Correction Step for Kalman Filtering with an 
-                 Attitude"
-                 * http://arc.aiaa.org/doi/abs/10.2514/1.G000848
-                 */
-                const auto e0 = gyro->x*dt/2;
-                const auto e1 = gyro->y*dt/2;
-                const auto e2 = gyro->z*dt/2;
-
-                // altitude from body-frame velocity
-                const auto zdx = _r20*dt;
-                const auto zdy = _r21*dt;
-                const auto zdz = _r22*dt;
-
-                // altitude from attitude error
-                const auto ze0 = (_ekfState.dy*_r22 - _ekfState.dz*_r21)*dt;
-                const auto ze1 = (- _ekfState.dx*_r22 + _ekfState.dz*_r20)*dt;
-                const auto ze2 = (_ekfState.dx*_r21 - _ekfState.dy*_r20)*dt;
-
-                // body-frame velocity from body-frame velocity
-                const auto dxdx = 1; //drag negligible
-                const auto dydx =-gyro->z*dt;
-                const auto dzdx = gyro->y*dt;
-
-                const auto dxdy = gyro->z*dt;
-                const auto dydy = 1; //drag negligible
-                const auto dzdy =-gyro->x*dt;
-
-                const auto dxdz =-gyro->y*dt;
-                const auto dydz = gyro->x*dt;
-                const auto dzdz = 1; //drag negligible
-
-                // body-frame velocity from attitude error
-                const auto dxe0 =  0;
-                const auto dye0 = -GRAVITY_MAGNITUDE*_r22*dt;
-                const auto dze0 =  GRAVITY_MAGNITUDE*_r21*dt;
-
-                const auto dxe1 =  GRAVITY_MAGNITUDE*_r22*dt;
-                const auto dye1 =  0;
-                const auto dze1 = -GRAVITY_MAGNITUDE*_r20*dt;
-
-                const auto dxe2 = -GRAVITY_MAGNITUDE*_r21*dt;
-                const auto dye2 =  GRAVITY_MAGNITUDE*_r20*dt;
-                const auto dze2 =  0;
-
-                const auto e0e0 =  1 - e1*e1/2 - e2*e2/2;
-                const auto e0e1 =  e2 + e0*e1/2;
-                const auto e0e2 = -e1 + e0*e2/2;
-
-                const auto e1e0 = -e2 + e0*e1/2;
-                const auto e1e1 =  1 - e0*e0/2 - e2*e2/2;
-                const auto e1e2 =  e0 + e1*e2/2;
-
-                const auto e2e0 =  e1 + e0*e2/2;
-                const auto e2e1 = -e0 + e1*e2/2;
-                const auto e2e2 = 1 - e0*e0/2 - e1*e1/2;
-
-                const float A[KC_STATE_DIM][KC_STATE_DIM] = 
-                { 
-                    //        Z  DX    DY    DZ    E0    E1    E2
-                    /*Z*/    {0, zdx,  zdy,  zdz,  ze0,  ze1,  ze2}, 
-                    /*DX*/   {0, dxdx, dxdy, dxdz, dxe0, dxe1, dxe2}, 
-                    /*DY*/   {0, dydx, dydy, dydz, dye0, dye1, dye2},
-                    /*DZ*/   {0, dzdx, dzdy, dzdz, dze0, dze1, dze2},
-                    /*E0*/   {0, 0,    0,    0,    e0e0, e0e1, e0e2}, 
-                    /*E1*/   {0, 0,    0,    0,    e1e0, e1e1, e1e2}, 
-                    /*E2*/   {0, 0,    0,    0,    e2e0, e2e1, e2e2}  
-                };
 
                 // ====== COVARIANCE UPDATE ======
 
@@ -597,42 +551,43 @@ class Ekf {
 
             _lastPredictionMs = shouldPredict ? nowMs : _lastPredictionMs;
 
-            const auto dt = (nowMs - _lastProcessNoiseUpdateMs) / 1000.0f;
+            const auto dt1 = (nowMs - _lastProcessNoiseUpdateMs) / 1000.0f;
 
-            const auto isDtPositive = dt > 0;
+            const auto isDtPositive = dt1 > 0;
 
             // add process noise on position
             _P[KC_STATE_Z][KC_STATE_Z] += isDtPositive ?
-                powf(PROC_NOISE_ACC_Z*dt*dt + PROC_NOISE_VEL*dt + 
+                powf(PROC_NOISE_ACC_Z*dt1*dt1 + PROC_NOISE_VEL*dt1 + 
                         PROC_NOISE_POS, 2) : 0;  
 
             // add process noise on velocity
             _P[KC_STATE_DX][KC_STATE_DX] += isDtPositive ? 
-                powf(PROC_NOISE_ACC_XY*dt + 
+                powf(PROC_NOISE_ACC_XY*dt1 + 
                         PROC_NOISE_VEL, 2) : 0; 
 
             // add process noise on velocity
             _P[KC_STATE_DY][KC_STATE_DY] += isDtPositive ?
-                powf(PROC_NOISE_ACC_XY*dt + 
+                powf(PROC_NOISE_ACC_XY*dt1 + 
                         PROC_NOISE_VEL, 2) : 0; 
 
             // add process noise on velocity
             _P[KC_STATE_DZ][KC_STATE_DZ] += isDtPositive ?
-                powf(PROC_NOISE_ACC_Z*dt + 
+                powf(PROC_NOISE_ACC_Z*dt1 + 
                         PROC_NOISE_VEL, 2) : 0; 
 
             _P[KC_STATE_E0][KC_STATE_E0] += isDtPositive ?
-                powf(MEAS_NOISE_GYRO_ROLL_PITCH * dt + PROC_NOISE_ATT, 2) : 0;
+                powf(MEAS_NOISE_GYRO_ROLL_PITCH * dt1 + PROC_NOISE_ATT, 2) : 0;
 
             _P[KC_STATE_E1][KC_STATE_E1] += isDtPositive ?
-                powf(MEAS_NOISE_GYRO_ROLL_PITCH * dt + PROC_NOISE_ATT, 2) : 0;
+                powf(MEAS_NOISE_GYRO_ROLL_PITCH * dt1 + PROC_NOISE_ATT, 2) : 0;
 
             _P[KC_STATE_E2][KC_STATE_E2] += isDtPositive ?
-                powf(MEAS_NOISE_GYRO_ROLL_YAW * dt + PROC_NOISE_ATT, 2) : 0;
+                powf(MEAS_NOISE_GYRO_ROLL_YAW * dt1 + PROC_NOISE_ATT, 2) : 0;
 
             updateCovarianceMatrix(isDtPositive);
 
             _lastProcessNoiseUpdateMs = isDtPositive ?  nowMs : 
+
                 _lastProcessNoiseUpdateMs;
         }
 
