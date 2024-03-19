@@ -377,21 +377,225 @@ class Ekf {
                 const uint32_t nextPredictionMs,
                 const bool isFlying) 
         {
-            const bool isTimeToPredict = nowMs >= nextPredictionMs;
+            const bool shouldPredict = nowMs >= nextPredictionMs;
 
-            axis3fSubSamplerFinalize(&_accSubSampler, isTimeToPredict);
+            axis3fSubSamplerFinalize(&_accSubSampler, shouldPredict);
 
-            axis3fSubSamplerFinalize(&_gyroSubSampler, isTimeToPredict);
+            axis3fSubSamplerFinalize(&_gyroSubSampler, shouldPredict);
 
-            if (isTimeToPredict) {
+            if (shouldPredict) {
 
-                predictDt(&_accSubSampler.subSample, 
-                        &_gyroSubSampler.subSample, 
-                        (nowMs - _lastPredictionMs) / 1000.0f,
-                        isFlying, isTimeToPredict);
+                const Axis3f * acc = &_accSubSampler.subSample; 
+                const Axis3f * gyro = &_gyroSubSampler.subSample; 
+                const float dt = (nowMs - _lastPredictionMs) / 1000.0f;
+
+                /* Here we discretize (euler forward) and linearise the quadrocopter
+                 * dynamics in order to push the covariance forward.
+                 *
+                 * QUADROCOPTER DYNAMICS (see paper):
+                 *
+                 * \dot{x} = R(I + [[d]])p
+                 * \dot{p} = f/m * e3 - [[\omega]]p - g(I - [[d]])R^-1 e3 //drag negligible
+                 * \dot{d} = \omega
+                 *
+                 * where [[.]] is the cross-product matrix of .
+                 *       \omega are the gyro measurements
+                 *       e3 is the column vector [0 0 1]'
+                 *       I is the identity
+                 *       R is the current attitude as a rotation matrix
+                 *       f/m is the mass-normalized motor force (acceleration
+                 *       in the body's z direction)
+                 *       g is gravity
+                 *       x, p, d are the quad's states
+                 * note that d (attitude error) is zero at the beginning of each iteration,
+                 * since error information is incorporated into R after each Kalman update.
+                 */
+
+
+                // attitude error from attitude error
+                /**
+                 * At first glance, it may not be clear where the next values come from,
+                 * since they do not appear directly in the dynamics. In this prediction
+                 * step, we skip the step of first updating attitude-error, and then
+                 * incorporating the
+                 * new error into the current attitude (which requires a rotation of the
+                 * attitude-error covariance). Instead, we directly update the
+                 * body attitude, however still need to rotate the covariance,
+                 * which is what you see below.
+                 *
+                 * This comes from a second order approximation to:
+                 * Sigma_post = exps(-d) Sigma_pre exps(-d)'
+                 *            ~ (I + [[-d]] + [[-d]]^2 / 2) Sigma_pre (I + [[-d]] + 
+                 *             [[-d]]^2 / 2)'
+                 * where d is the attitude error expressed as Rodriges parameters, ie. e0 =
+                 * 1/2*gyro.x*dt under the assumption that d = [0,0,0] at the beginning of
+                 * each prediction step and that gyro.x is constant over the
+                 * sampling period
+                 *
+                 * As derived in "Covariance Correction Step for Kalman Filtering with an 
+                 Attitude"
+                 * http://arc.aiaa.org/doi/abs/10.2514/1.G000848
+                 */
+                const auto e0 = gyro->x*dt/2;
+                const auto e1 = gyro->y*dt/2;
+                const auto e2 = gyro->z*dt/2;
+
+                // altitude from body-frame velocity
+                const auto zdx = _r20*dt;
+                const auto zdy = _r21*dt;
+                const auto zdz = _r22*dt;
+
+                // altitude from attitude error
+                const auto ze0 = (_ekfState.dy*_r22 - _ekfState.dz*_r21)*dt;
+                const auto ze1 = (- _ekfState.dx*_r22 + _ekfState.dz*_r20)*dt;
+                const auto ze2 = (_ekfState.dx*_r21 - _ekfState.dy*_r20)*dt;
+
+                // body-frame velocity from body-frame velocity
+                const auto dxdx = 1; //drag negligible
+                const auto dydx =-gyro->z*dt;
+                const auto dzdx = gyro->y*dt;
+
+                const auto dxdy = gyro->z*dt;
+                const auto dydy = 1; //drag negligible
+                const auto dzdy =-gyro->x*dt;
+
+                const auto dxdz =-gyro->y*dt;
+                const auto dydz = gyro->x*dt;
+                const auto dzdz = 1; //drag negligible
+
+                // body-frame velocity from attitude error
+                const auto dxe0 =  0;
+                const auto dye0 = -GRAVITY_MAGNITUDE*_r22*dt;
+                const auto dze0 =  GRAVITY_MAGNITUDE*_r21*dt;
+
+                const auto dxe1 =  GRAVITY_MAGNITUDE*_r22*dt;
+                const auto dye1 =  0;
+                const auto dze1 = -GRAVITY_MAGNITUDE*_r20*dt;
+
+                const auto dxe2 = -GRAVITY_MAGNITUDE*_r21*dt;
+                const auto dye2 =  GRAVITY_MAGNITUDE*_r20*dt;
+                const auto dze2 =  0;
+
+                const auto e0e0 =  1 - e1*e1/2 - e2*e2/2;
+                const auto e0e1 =  e2 + e0*e1/2;
+                const auto e0e2 = -e1 + e0*e2/2;
+
+                const auto e1e0 = -e2 + e0*e1/2;
+                const auto e1e1 =  1 - e0*e0/2 - e2*e2/2;
+                const auto e1e2 =  e0 + e1*e2/2;
+
+                const auto e2e0 =  e1 + e0*e2/2;
+                const auto e2e1 = -e0 + e1*e2/2;
+                const auto e2e2 = 1 - e0*e0/2 - e1*e1/2;
+
+                const float A[KC_STATE_DIM][KC_STATE_DIM] = 
+                { 
+                    //        Z  DX    DY    DZ    E0    E1    E2
+                    /*Z*/    {0, zdx,  zdy,  zdz,  ze0,  ze1,  ze2}, 
+                    /*DX*/   {0, dxdx, dxdy, dxdz, dxe0, dxe1, dxe2}, 
+                    /*DY*/   {0, dydx, dydy, dydz, dye0, dye1, dye2},
+                    /*DZ*/   {0, dzdx, dzdy, dzdz, dze0, dze1, dze2},
+                    /*E0*/   {0, 0,    0,    0,    e0e0, e0e1, e0e2}, 
+                    /*E1*/   {0, 0,    0,    0,    e1e0, e1e1, e1e2}, 
+                    /*E2*/   {0, 0,    0,    0,    e2e0, e2e1, e2e2}  
+                };
+
+                // ====== COVARIANCE UPDATE ======
+
+                float At[KC_STATE_DIM][KC_STATE_DIM] = {};
+                transpose(A, At);     // A'
+                float AP[KC_STATE_DIM][KC_STATE_DIM] = {};
+                multiply(A, _P, AP, true);  // AP
+                multiply(AP, At, _P, shouldPredict); // APA'
+
+                // Process noise is added after the return from the prediction step
+
+                // ====== PREDICTION STEP ======
+                // The prediction depends on whether we're on the ground, or in flight.
+                // When flying, the accelerometer directly measures thrust (hence is useless
+                // to estimate body angle while flying)
+
+                const auto dt2 = dt * dt;
+
+                // Position updates in the body frame (will be rotated to inertial frame);
+                // thrust can only be produced in the body's Z direction
+                const auto dx = _ekfState.dx * dt + isFlying ? 0 : acc->x * dt2 / 2;
+                const auto dy = _ekfState.dy * dt + isFlying ? 0 : acc->y * dt2 / 2;
+                const auto dz = _ekfState.dz * dt + acc->z * dt2 / 2; 
+
+                // keep previous time step's state for the update
+                const auto tmpSDX = _ekfState.dx;
+                const auto tmpSDY = _ekfState.dy;
+                const auto tmpSDZ = _ekfState.dz;
+
+                const auto accx = isFlying ? 0 : acc->x;
+                const auto accy = isFlying ? 0 : acc->y;
+
+                // altitude update
+                _ekfState.z += _r20 * dx + _r21 * dy + _r22 * dz - 
+                    GRAVITY_MAGNITUDE * dt2 / 2;
+
+                // body-velocity update: accelerometers - gyros cross velocity
+                // - gravity in body frame
+
+                _ekfState.dx += shouldPredict ? 
+                    dt * (accx + gyro->z * tmpSDY - 
+                            gyro->y * tmpSDZ - GRAVITY_MAGNITUDE * _r20) : 
+                    0;
+
+                _ekfState.dy += shouldPredict ?
+                    dt * (accy - gyro->z * tmpSDX + gyro->x * tmpSDZ - 
+                            GRAVITY_MAGNITUDE * _r21) : 
+                    0;
+
+                _ekfState.dz += shouldPredict ?
+                    dt * (acc->z + gyro->y * tmpSDX - gyro->x * 
+                            tmpSDY - GRAVITY_MAGNITUDE * _r22) :
+                    0;
+
+                // attitude update (rotate by gyroscope), we do this in quaternions
+                // this is the gyroscope angular velocity integrated over the sample period
+                const auto dtwx = dt*gyro->x;
+                const auto dtwy = dt*gyro->y;
+                const auto dtwz = dt*gyro->z;
+
+                // compute the quaternion values in [w,x,y,z] order
+                const auto angle = sqrt(dtwx*dtwx + dtwy*dtwy + dtwz*dtwz) + EPS;
+                const auto ca = cos(angle/2);
+                const auto sa = sin(angle/2);
+                const auto dqw = ca;
+                const auto dqx = sa*dtwx/angle;
+                const auto dqy = sa*dtwy/angle;
+                const auto dqz = sa*dtwz/angle;
+
+                // rotate the quad's attitude by the delta quaternion vector computed above
+
+                const auto tmpq0 = rotateQuat(
+                        dqw*_qw - dqx*_qx - dqy*_qy - dqz*_qz, QW_INIT, isFlying);
+
+                const auto tmpq1 = rotateQuat(
+                        dqx*_qw + dqw*_qx + dqz*_qy - dqy*_qz, QX_INIT, isFlying);
+
+                const auto tmpq2 = rotateQuat(
+                        dqy*_qw - dqz*_qx + dqw*_qy + dqx*_qz, QY_INIT, isFlying);
+
+                const auto tmpq3 = rotateQuat(
+                        dqz*_qw + dqy*_qx - dqx*_qy + dqw*_qz, QZ_INIT, isFlying);
+
+                // normalize and store the result
+                const auto norm = 
+                    sqrt(tmpq0*tmpq0 + tmpq1*tmpq1 + tmpq2*tmpq2 + tmpq3*tmpq3) + 
+                    EPS;
+
+                _qw = shouldPredict ? tmpq0/norm : _qw;
+                _qx = shouldPredict ? tmpq1/norm : _qx; 
+                _qy = shouldPredict ? tmpq2/norm : _qy; 
+                _qz = shouldPredict ? tmpq3/norm : _qz;
+
+                _isUpdated = shouldPredict ? true : _isUpdated;
             }
 
-            _lastPredictionMs = isTimeToPredict ? nowMs : _lastPredictionMs;
+            _lastPredictionMs = shouldPredict ? nowMs : _lastPredictionMs;
 
             const auto dt = (nowMs - _lastProcessNoiseUpdateMs) / 1000.0f;
 
@@ -476,217 +680,6 @@ class Ekf {
             _lastProcessNoiseUpdateMs = nowMs;
         }
 
-        void predictDt(
-                const Axis3f *acc, 
-                const Axis3f *gyro, 
-                const float dt, 
-                const bool isFlying,
-                const bool shouldPredict)
-        {
-            /* Here we discretize (euler forward) and linearise the quadrocopter
-             * dynamics in order to push the covariance forward.
-             *
-             * QUADROCOPTER DYNAMICS (see paper):
-             *
-             * \dot{x} = R(I + [[d]])p
-             * \dot{p} = f/m * e3 - [[\omega]]p - g(I - [[d]])R^-1 e3 //drag negligible
-             * \dot{d} = \omega
-             *
-             * where [[.]] is the cross-product matrix of .
-             *       \omega are the gyro measurements
-             *       e3 is the column vector [0 0 1]'
-             *       I is the identity
-             *       R is the current attitude as a rotation matrix
-             *       f/m is the mass-normalized motor force (acceleration in the body's z 
-             direction)
-             *       g is gravity
-             *       x, p, d are the quad's states
-             * note that d (attitude error) is zero at the beginning of each iteration,
-             * since error information is incorporated into R after each Kalman update.
-             */
-
-
-            // attitude error from attitude error
-            /**
-             * At first glance, it may not be clear where the next values come from,
-             * since they do not appear directly in the dynamics. In this prediction
-             * step, we skip the step of first updating attitude-error, and then
-             * incorporating the
-             * new error into the current attitude (which requires a rotation of the
-             * attitude-error covariance). Instead, we directly update the body attitude,
-             * however still need to rotate the covariance, which is what you see below.
-             *
-             * This comes from a second order approximation to:
-             * Sigma_post = exps(-d) Sigma_pre exps(-d)'
-             *            ~ (I + [[-d]] + [[-d]]^2 / 2) Sigma_pre (I + [[-d]] + 
-             *             [[-d]]^2 / 2)'
-             * where d is the attitude error expressed as Rodriges parameters, ie. e0 =
-             * 1/2*gyro.x*dt under the assumption that d = [0,0,0] at the beginning of
-             * each prediction step and that gyro.x is constant over the sampling period
-             *
-             * As derived in "Covariance Correction Step for Kalman Filtering with an 
-             Attitude"
-             * http://arc.aiaa.org/doi/abs/10.2514/1.G000848
-             */
-            const auto e0 = gyro->x*dt/2;
-            const auto e1 = gyro->y*dt/2;
-            const auto e2 = gyro->z*dt/2;
-
-            // altitude from body-frame velocity
-            const auto zdx = _r20*dt;
-            const auto zdy = _r21*dt;
-            const auto zdz = _r22*dt;
-
-            // altitude from attitude error
-            const auto ze0 = (_ekfState.dy*_r22 - _ekfState.dz*_r21)*dt;
-            const auto ze1 = (- _ekfState.dx*_r22 + _ekfState.dz*_r20)*dt;
-            const auto ze2 = (_ekfState.dx*_r21 - _ekfState.dy*_r20)*dt;
-
-            // body-frame velocity from body-frame velocity
-            const auto dxdx = 1; //drag negligible
-            const auto dydx =-gyro->z*dt;
-            const auto dzdx = gyro->y*dt;
-
-            const auto dxdy = gyro->z*dt;
-            const auto dydy = 1; //drag negligible
-            const auto dzdy =-gyro->x*dt;
-
-            const auto dxdz =-gyro->y*dt;
-            const auto dydz = gyro->x*dt;
-            const auto dzdz = 1; //drag negligible
-
-            // body-frame velocity from attitude error
-            const auto dxe0 =  0;
-            const auto dye0 = -GRAVITY_MAGNITUDE*_r22*dt;
-            const auto dze0 =  GRAVITY_MAGNITUDE*_r21*dt;
-
-            const auto dxe1 =  GRAVITY_MAGNITUDE*_r22*dt;
-            const auto dye1 =  0;
-            const auto dze1 = -GRAVITY_MAGNITUDE*_r20*dt;
-
-            const auto dxe2 = -GRAVITY_MAGNITUDE*_r21*dt;
-            const auto dye2 =  GRAVITY_MAGNITUDE*_r20*dt;
-            const auto dze2 =  0;
-
-            const auto e0e0 =  1 - e1*e1/2 - e2*e2/2;
-            const auto e0e1 =  e2 + e0*e1/2;
-            const auto e0e2 = -e1 + e0*e2/2;
-
-            const auto e1e0 = -e2 + e0*e1/2;
-            const auto e1e1 =  1 - e0*e0/2 - e2*e2/2;
-            const auto e1e2 =  e0 + e1*e2/2;
-
-            const auto e2e0 =  e1 + e0*e2/2;
-            const auto e2e1 = -e0 + e1*e2/2;
-            const auto e2e2 = 1 - e0*e0/2 - e1*e1/2;
-
-            const float A[KC_STATE_DIM][KC_STATE_DIM] = 
-            { 
-                //        Z  DX    DY    DZ    E0    E1    E2
-                /*Z*/    {0, zdx,  zdy,  zdz,  ze0,  ze1,  ze2}, 
-                /*DX*/   {0, dxdx, dxdy, dxdz, dxe0, dxe1, dxe2}, 
-                /*DY*/   {0, dydx, dydy, dydz, dye0, dye1, dye2},
-                /*DZ*/   {0, dzdx, dzdy, dzdz, dze0, dze1, dze2},
-                /*E0*/   {0, 0,    0,    0,    e0e0, e0e1, e0e2}, 
-                /*E1*/   {0, 0,    0,    0,    e1e0, e1e1, e1e2}, 
-                /*E2*/   {0, 0,    0,    0,    e2e0, e2e1, e2e2}  
-            };
-
-            // ====== COVARIANCE UPDATE ======
-
-            float At[KC_STATE_DIM][KC_STATE_DIM] = {};
-            transpose(A, At);     // A'
-            float AP[KC_STATE_DIM][KC_STATE_DIM] = {};
-            multiply(A, _P, AP, true);  // AP
-            multiply(AP, At, _P, shouldPredict); // APA'
-
-            // Process noise is added after the return from the prediction step
-
-            // ====== PREDICTION STEP ======
-            // The prediction depends on whether we're on the ground, or in flight.
-            // When flying, the accelerometer directly measures thrust (hence is useless
-            // to estimate body angle while flying)
-
-            const auto dt2 = dt * dt;
-
-            // Position updates in the body frame (will be rotated to inertial frame);
-            // thrust can only be produced in the body's Z direction
-            const auto dx = _ekfState.dx * dt + isFlying ? 0 : acc->x * dt2 / 2;
-            const auto dy = _ekfState.dy * dt + isFlying ? 0 : acc->y * dt2 / 2;
-            const auto dz = _ekfState.dz * dt + acc->z * dt2 / 2; 
-
-            // keep previous time step's state for the update
-            const auto tmpSDX = _ekfState.dx;
-            const auto tmpSDY = _ekfState.dy;
-            const auto tmpSDZ = _ekfState.dz;
-
-            const auto accx = isFlying ? 0 : acc->x;
-            const auto accy = isFlying ? 0 : acc->y;
-
-            // altitude update
-            _ekfState.z += _r20 * dx + _r21 * dy + _r22 * dz - 
-                GRAVITY_MAGNITUDE * dt2 / 2;
-
-            // body-velocity update: accelerometers - gyros cross velocity
-            // - gravity in body frame
-
-            _ekfState.dx += shouldPredict ? 
-                dt * (accx + gyro->z * tmpSDY - 
-                    gyro->y * tmpSDZ - GRAVITY_MAGNITUDE * _r20) : 
-                0;
-
-            _ekfState.dy += shouldPredict ?
-                dt * (accy - gyro->z * tmpSDX + gyro->x * tmpSDZ - 
-                    GRAVITY_MAGNITUDE * _r21) : 
-                0;
-
-            _ekfState.dz += shouldPredict ?
-                dt * (acc->z + gyro->y * tmpSDX - gyro->x * 
-                    tmpSDY - GRAVITY_MAGNITUDE * _r22) :
-                0;
-
-            // attitude update (rotate by gyroscope), we do this in quaternions
-            // this is the gyroscope angular velocity integrated over the sample period
-            const auto dtwx = dt*gyro->x;
-            const auto dtwy = dt*gyro->y;
-            const auto dtwz = dt*gyro->z;
-
-            // compute the quaternion values in [w,x,y,z] order
-            const auto angle = sqrt(dtwx*dtwx + dtwy*dtwy + dtwz*dtwz) + EPS;
-            const auto ca = cos(angle/2);
-            const auto sa = sin(angle/2);
-            const auto dqw = ca;
-            const auto dqx = sa*dtwx/angle;
-            const auto dqy = sa*dtwy/angle;
-            const auto dqz = sa*dtwz/angle;
-
-            // rotate the quad's attitude by the delta quaternion vector computed above
-
-            const auto tmpq0 = rotateQuat(
-                    dqw*_qw - dqx*_qx - dqy*_qy - dqz*_qz, QW_INIT, isFlying);
-
-            const auto tmpq1 = rotateQuat(
-                    dqx*_qw + dqw*_qx + dqz*_qy - dqy*_qz, QX_INIT, isFlying);
-
-            const auto tmpq2 = rotateQuat(
-                    dqy*_qw - dqz*_qx + dqw*_qy + dqx*_qz, QY_INIT, isFlying);
-
-            const auto tmpq3 = rotateQuat(
-                    dqz*_qw + dqy*_qx - dqx*_qy + dqw*_qz, QZ_INIT, isFlying);
-
-            // normalize and store the result
-            const auto norm = 
-                sqrt(tmpq0*tmpq0 + tmpq1*tmpq1 + tmpq2*tmpq2 + tmpq3*tmpq3) + 
-                EPS;
-
-            _qw = shouldPredict ? tmpq0/norm : _qw;
-            _qx = shouldPredict ? tmpq1/norm : _qx; 
-            _qy = shouldPredict ? tmpq2/norm : _qy; 
-            _qz = shouldPredict ? tmpq3/norm : _qz;
-
-            _isUpdated = shouldPredict ? true : _isUpdated;
-        }
-
         static float rotateQuat(
                 const float val, 
                 const float initVal,
@@ -717,11 +710,11 @@ class Ekf {
 
         static Axis3f* axis3fSubSamplerFinalize(
                 Axis3fSubSampler_t* subSampler,
-                const bool isTimeToPredict) 
+                const bool shouldPredict) 
         {
             const auto count  = subSampler->count; 
             const auto isCountNonzero = count > 0;
-            const auto shouldFinalize = isTimeToPredict && isCountNonzero;
+            const auto shouldFinalize = shouldPredict && isCountNonzero;
 
             subSampler->subSample.x = shouldFinalize ? 
                 subSampler->sum.x * subSampler->conversionFactor / count :
@@ -786,13 +779,13 @@ class Ekf {
             float K[KC_STATE_DIM] = {
 
                 // kalman gain = (PH' (HPH' + R )^-1)
-               Ph[0] / HPHR, 
-               Ph[1] / HPHR, 
-               Ph[2] / HPHR, 
-               Ph[3] / HPHR, 
-               Ph[4] / HPHR, 
-               Ph[5] / HPHR, 
-               Ph[6] / HPHR
+                Ph[0] / HPHR, 
+                Ph[1] / HPHR, 
+                Ph[2] / HPHR, 
+                Ph[3] / HPHR, 
+                Ph[4] / HPHR, 
+                Ph[5] / HPHR, 
+                Ph[6] / HPHR
             };
 
             // Perform the state update
@@ -916,37 +909,37 @@ class Ekf {
 
         void updateWithRange(const rangeMeasurement_t *range)
         {
-                const auto angle = max( 0, 
-                        fabsf(acosf(_r22)) - 
-                        DEGREES_TO_RADIANS * (15.0f / 2.0f));
+            const auto angle = max( 0, 
+                    fabsf(acosf(_r22)) - 
+                    DEGREES_TO_RADIANS * (15.0f / 2.0f));
 
-                const auto predictedDistance = _ekfState.z / cosf(angle);
-                const auto measuredDistance = range->distance; // [m]
+            const auto predictedDistance = _ekfState.z / cosf(angle);
+            const auto measuredDistance = range->distance; // [m]
 
-                // The sensor model (Pg.95-96,
-                // https://lup.lub.lu.se/student-papers/search/publication/8905295)
-                //
-                // h = z/((R*z_b).z_b) = z/cos(alpha)
-                //
-                // Here,
-                // h (Measured variable)[m] = Distance given by TOF sensor. This is the 
-                // closest point from any surface to the sensor in the measurement cone
-                // z (Estimated variable)[m] = THe actual elevation of the crazyflie
-                // z_b = Basis vector in z direction of body coordinate system
-                // R = Rotation matrix made from ZYX Tait-Bryan angles. Assumed to be 
-                // stationary
-                // alpha = angle between [line made by measured point <---> sensor] 
-                // and [the intertial z-axis] 
+            // The sensor model (Pg.95-96,
+            // https://lup.lub.lu.se/student-papers/search/publication/8905295)
+            //
+            // h = z/((R*z_b).z_b) = z/cos(alpha)
+            //
+            // Here,
+            // h (Measured variable)[m] = Distance given by TOF sensor. This is the 
+            // closest point from any surface to the sensor in the measurement cone
+            // z (Estimated variable)[m] = THe actual elevation of the crazyflie
+            // z_b = Basis vector in z direction of body coordinate system
+            // R = Rotation matrix made from ZYX Tait-Bryan angles. Assumed to be 
+            // stationary
+            // alpha = angle between [line made by measured point <---> sensor] 
+            // and [the intertial z-axis] 
 
-                const float h[KC_STATE_DIM] = {1 / cosf(angle), 0, 0, 0, 0, 0, 0};
+            const float h[KC_STATE_DIM] = {1 / cosf(angle), 0, 0, 0, 0, 0, 0};
 
-                // Only update the filter if the measurement is reliable 
-                // (\hat{h} -> infty when R[2][2] -> 0)
-                if (fabs(_r22) > 0.1f && _r22 > 0) {
+            // Only update the filter if the measurement is reliable 
+            // (\hat{h} -> infty when R[2][2] -> 0)
+            if (fabs(_r22) > 0.1f && _r22 > 0) {
 
-                    scalarUpdate(h, measuredDistance-predictedDistance, 
-                            range->stdDev);
-                }
+                scalarUpdate(h, measuredDistance-predictedDistance, 
+                        range->stdDev);
+            }
         }
 
         void updateWithAccel(const measurement_t & m)
