@@ -521,8 +521,9 @@ class Ekf {
                 // to estimate body angle while flying)
 
                 // altitude update
-                _ekfState.z += _r20 * dx + _r21 * dy + _r22 * dz - 
-                    GRAVITY_MAGNITUDE * dt2 / 2;
+                _ekfState.z += shouldPredict ? _r20 * dx + _r21 * dy + _r22 * dz - 
+                    GRAVITY_MAGNITUDE * dt2 / 2 :
+                    0;
 
                 // body-velocity update: accelerometers - gyros cross velocity
                 // - gravity in body frame
@@ -542,13 +543,14 @@ class Ekf {
                             tmpSDY - GRAVITY_MAGNITUDE * _r22) :
                     0;
 
-                _qw = shouldPredict ? tmpq0/norm : _qw;
-                _qx = shouldPredict ? tmpq1/norm : _qx; 
-                _qy = shouldPredict ? tmpq2/norm : _qy; 
-                _qz = shouldPredict ? tmpq3/norm : _qz;
-
-                _isUpdated = shouldPredict ? true : _isUpdated;
             }
+
+            _qw = shouldPredict ? tmpq0/norm : _qw;
+            _qx = shouldPredict ? tmpq1/norm : _qx; 
+            _qy = shouldPredict ? tmpq2/norm : _qy; 
+            _qz = shouldPredict ? tmpq3/norm : _qz;
+
+            _isUpdated = shouldPredict ? true : _isUpdated;
 
             _lastPredictionMs = shouldPredict ? nowMs : _lastPredictionMs;
 
