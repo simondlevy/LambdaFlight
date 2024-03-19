@@ -1,4 +1,4 @@
-SKETCH = drehmflight
+SKETCH = teensy
 
 PORT = /dev/ttyACM0
 

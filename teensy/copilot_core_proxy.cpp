@@ -4,31 +4,10 @@
 
 #include <stdint.h>
 
-static float constrain(const float val, const float minval, const float maxval)
-{
-    return val < minval ? minval : val > maxval ? maxval : val;
-}
+#include "utils.hpp"
 
-void new_controlANGLE() 
+void copilot_step_core(void) 
 {
-    //DESCRIPTION: Computes control commands based on state error (angle)
-    /*
-     * Basic PID control to stablize on angle setpoint based on desired states
-     * roll_des, pitch_des, and yaw_des computed in getDesState(). Error is
-     * simply the desired state minus the actual state (ex. roll_des -
-     * roll_IMU). Two safety features are implimented here regarding the I
-     * terms. The I terms are saturated within specified limits on startup to
-     * prevent excessive buildup. This can be seen by holding the vehicle at an
-     * angle and seeing the motors ramp up on one side until they've maxed out
-     * throttle...saturating I to a specified limit fixes this. The second
-     * feature defaults the I terms to 0 if the throttle is at the minimum
-     * setting. This means the motors will not start spooling up on the ground,
-     * and the I terms will always start from 0 on takeoff. This function
-     * updates the variables roll_PID, pitch_PID, and yaw_PID which can be
-     * thought of as 1-D stablized signals. They are mixed to the configuration
-     * of the vehicle in controlMixer().
-     */
-
     // Constants --------------------------------------------------------------
 
     static const float Kp_cyclic = 0.2;  
@@ -44,6 +23,7 @@ void new_controlANGLE()
 
     // Streams ----------------------------------------------------------------
 
+    extern float thro_des;
     extern float roll_des;
     extern float pitch_des;
     extern float yaw_des;
@@ -53,7 +33,7 @@ void new_controlANGLE()
 
     extern float dt;
 
-    extern uint16_t channel_1_pwm;
+    extern bool throttle_is_down;
 
     extern float GyroX;
     extern float GyroY;
@@ -71,8 +51,7 @@ void new_controlANGLE()
     auto error_roll = roll_des - roll_IMU;
 
     // Don't let integrator build if throttle is too low
-    auto integral_roll = channel_1_pwm < 1060 ? 0 :
-
+    auto integral_roll = throttle_is_down ? 0 :
 
         //Saturate integrator to prevent unsafe buildup
         constrain(_integral_roll_prev + error_roll * dt, -i_limit, i_limit);
@@ -90,7 +69,7 @@ void new_controlANGLE()
     auto error_pitch = pitch_des - pitch_IMU;
 
     //Don't let integrator build if throttle is too low
-    auto integral_pitch = channel_1_pwm < 1060 ? 0 :
+    auto integral_pitch = throttle_is_down ? 0 :
 
         //Saturate integrator to prevent unsafe buildup
         constrain(_integral_pitch_prev + error_pitch * dt, -i_limit, i_limit);
@@ -108,7 +87,7 @@ void new_controlANGLE()
     auto error_yaw = yaw_des - GyroZ;
 
     // Don't let integrator build if throttle is too low
-    auto integral_yaw = channel_1_pwm < 1060 ? 0 :
+    auto integral_yaw = throttle_is_down ? 0 :
 
         // Saturate integrator to prevent unsafe buildup
         constrain(_integral_yaw_prev + error_yaw * dt, -i_limit, i_limit);
@@ -117,6 +96,15 @@ void new_controlANGLE()
 
     // Scaled by .01 to bring within -1 to 1 range
     auto yaw_PID = .01*(Kp_yaw*error_yaw + Ki_yaw*integral_yaw + Kd_yaw*derivative_yaw); 
+
+    auto m1 = thro_des - pitch_PID + roll_PID + yaw_PID; //Front Left
+    auto m2 = thro_des - pitch_PID - roll_PID - yaw_PID; //Front Right
+    auto m3 = thro_des + pitch_PID - roll_PID + yaw_PID; //Back Right
+    auto m4 = thro_des + pitch_PID + roll_PID - yaw_PID; //Back Left
+
+    void setMotors(
+            const float m1, const float m2, const float m3, const float m4);
+    setMotors(m1, m2, m3, m4);
 
     // Update state variables
     _integral_roll_prev = integral_roll;
