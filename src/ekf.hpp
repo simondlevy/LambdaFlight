@@ -468,6 +468,40 @@ class Ekf {
             const auto accx = isFlying ? 0 : acc->x;
             const auto accy = isFlying ? 0 : acc->y;
 
+            // attitude update (rotate by gyroscope), we do this in quaternions
+            // this is the gyroscope angular velocity integrated over the sample period
+            const auto dtwx = dt*gyro->x;
+            const auto dtwy = dt*gyro->y;
+            const auto dtwz = dt*gyro->z;
+
+            // compute the quaternion values in [w,x,y,z] order
+            const auto angle = sqrt(dtwx*dtwx + dtwy*dtwy + dtwz*dtwz) + EPS;
+            const auto ca = cos(angle/2);
+            const auto sa = sin(angle/2);
+            const auto dqw = ca;
+            const auto dqx = sa*dtwx/angle;
+            const auto dqy = sa*dtwy/angle;
+            const auto dqz = sa*dtwz/angle;
+
+            // rotate the quad's attitude by the delta quaternion vector computed above
+
+            const auto tmpq0 = rotateQuat(
+                    dqw*_qw - dqx*_qx - dqy*_qy - dqz*_qz, QW_INIT, isFlying);
+
+            const auto tmpq1 = rotateQuat(
+                    dqx*_qw + dqw*_qx + dqz*_qy - dqy*_qz, QX_INIT, isFlying);
+
+            const auto tmpq2 = rotateQuat(
+                    dqy*_qw - dqz*_qx + dqw*_qy + dqx*_qz, QY_INIT, isFlying);
+
+            const auto tmpq3 = rotateQuat(
+                    dqz*_qw + dqy*_qx - dqx*_qy + dqw*_qz, QZ_INIT, isFlying);
+
+            // normalize and store the result
+            const auto norm = 
+                sqrt(tmpq0*tmpq0 + tmpq1*tmpq1 + tmpq2*tmpq2 + tmpq3*tmpq3) + 
+                EPS;
+
 
             if (shouldPredict) {
 
@@ -507,40 +541,6 @@ class Ekf {
                     dt * (acc->z + gyro->y * tmpSDX - gyro->x * 
                             tmpSDY - GRAVITY_MAGNITUDE * _r22) :
                     0;
-
-                // attitude update (rotate by gyroscope), we do this in quaternions
-                // this is the gyroscope angular velocity integrated over the sample period
-                const auto dtwx = dt*gyro->x;
-                const auto dtwy = dt*gyro->y;
-                const auto dtwz = dt*gyro->z;
-
-                // compute the quaternion values in [w,x,y,z] order
-                const auto angle = sqrt(dtwx*dtwx + dtwy*dtwy + dtwz*dtwz) + EPS;
-                const auto ca = cos(angle/2);
-                const auto sa = sin(angle/2);
-                const auto dqw = ca;
-                const auto dqx = sa*dtwx/angle;
-                const auto dqy = sa*dtwy/angle;
-                const auto dqz = sa*dtwz/angle;
-
-                // rotate the quad's attitude by the delta quaternion vector computed above
-
-                const auto tmpq0 = rotateQuat(
-                        dqw*_qw - dqx*_qx - dqy*_qy - dqz*_qz, QW_INIT, isFlying);
-
-                const auto tmpq1 = rotateQuat(
-                        dqx*_qw + dqw*_qx + dqz*_qy - dqy*_qz, QX_INIT, isFlying);
-
-                const auto tmpq2 = rotateQuat(
-                        dqy*_qw - dqz*_qx + dqw*_qy + dqx*_qz, QY_INIT, isFlying);
-
-                const auto tmpq3 = rotateQuat(
-                        dqz*_qw + dqy*_qx - dqx*_qy + dqw*_qz, QZ_INIT, isFlying);
-
-                // normalize and store the result
-                const auto norm = 
-                    sqrt(tmpq0*tmpq0 + tmpq1*tmpq1 + tmpq2*tmpq2 + tmpq3*tmpq3) + 
-                    EPS;
 
                 _qw = shouldPredict ? tmpq0/norm : _qw;
                 _qx = shouldPredict ? tmpq1/norm : _qx; 
