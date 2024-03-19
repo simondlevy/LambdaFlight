@@ -30,16 +30,16 @@ static void Madgwick6DOF(
     const auto ggz = gz * 0.0174533f;
 
     //Rate of change of quaternion from gyroscope
-    auto qDot1 = 0.5f * (-_q1 * ggx - _q2 * ggy - _q3 * ggz);
-    auto qDot2 = 0.5f * (_q0 * ggx + _q2 * ggz - _q3 * ggy);
-    auto qDot3 = 0.5f * (_q0 * ggy - _q1 * ggz + _q3 * ggx);
-    auto qDot4 = 0.5f * (_q0 * ggz + _q1 * ggy - _q2 * ggx);
+    const auto qDot1 = 0.5f * (-_q1 * ggx - _q2 * ggy - _q3 * ggz);
+    const auto qDot2 = 0.5f * (_q0 * ggx + _q2 * ggz - _q3 * ggy);
+    const auto qDot3 = 0.5f * (_q0 * ggy - _q1 * ggz + _q3 * ggx);
+    const auto qDot4 = 0.5f * (_q0 * ggz + _q1 * ggy - _q2 * ggx);
 
     //Normalise accelerometer measurement
     const auto recipNorm = invSqrt(ax * ax + ay * ay + az * az);
-    auto aax = ax * recipNorm;
-    auto aay = ay * recipNorm;
-    auto aaz = az * recipNorm;
+    const auto aax = ax * recipNorm;
+    const auto aay = ay * recipNorm;
+    const auto aaz = az * recipNorm;
 
     //Auxiliary variables to avoid repeated arithmetic
     const auto _2q0 = 2 * _q0;
@@ -76,20 +76,20 @@ static void Madgwick6DOF(
     const auto qqDot3 = qDot3 - (isAccelOkay ? B_madgwick * s2 * recipNorm1 : 0);
     const auto qqDot4 = qDot4 - (isAccelOkay ? B_madgwick * s3 * recipNorm1 : 0);
 
-    //Integrate rate of change of quaternion to yield quaternion
-    _q0 = _q0 + qqDot1 * invSampleFreq;
-    _q1 = _q1 + qqDot2 * invSampleFreq;
-    _q2 = _q2 + qqDot3 * invSampleFreq;
-    _q3 = _q3 + qqDot4 * invSampleFreq;
+    // Integrate rate of change of quaternion to yield quaternion
+    const auto q0 = _q0 + qqDot1 * invSampleFreq;
+    const auto q1 = _q1 + qqDot2 * invSampleFreq;
+    const auto q2 = _q2 + qqDot3 * invSampleFreq;
+    const auto q3 = _q3 + qqDot4 * invSampleFreq;
 
-    //Normalise quaternion
-    const auto recipNorm2 = invSqrt(_q0 * _q0 + _q1 * _q1 + _q2 * _q2 + _q3 * _q3);
-    _q0 *= recipNorm2;
-    _q1 *= recipNorm2;
-    _q2 *= recipNorm2;
-    _q3 *= recipNorm2;
+    // Normalise quaternion
+    const auto recipNorm2 = invSqrt(q0 * q0 + q1 * q1 + q2 * q2 + q3 * q3);
+    _q0 = q0 * recipNorm2;
+    _q1 = q1 * recipNorm2;
+    _q2 = q2 * recipNorm2;
+    _q3 = q3 * recipNorm2;
 
-    //Compute angles in degrees
+    // Compute angles in degrees
     const auto phi = 
         atan2(_q0*_q1 + _q2*_q3, 0.5f - _q1*_q1 - _q2*_q2)*57.29577951; 
     const auto theta = 
