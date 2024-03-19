@@ -71,16 +71,16 @@ static void Madgwick6DOF(
     // Compute feedback only if accelerometer measurement valid (avoids NaN in
     // accelerometer normalisation)
     //Apply feedback step
-    qDot1 = qDot1 - (isAccelOkay ? B_madgwick * s0 * recipNorm1 : 0);
-    qDot2 = qDot2 - (isAccelOkay ? B_madgwick * s1 * recipNorm1 : 0);
-    qDot3 = qDot3 - (isAccelOkay ? B_madgwick * s2 * recipNorm1 : 0);
-    qDot4 = qDot4 - (isAccelOkay ? B_madgwick * s3 * recipNorm1 : 0);
+    const auto new_qDot1 = qDot1 - (isAccelOkay ? B_madgwick * s0 * recipNorm1 : 0);
+    const auto new_qDot2 = qDot2 - (isAccelOkay ? B_madgwick * s1 * recipNorm1 : 0);
+    const auto new_qDot3 = qDot3 - (isAccelOkay ? B_madgwick * s2 * recipNorm1 : 0);
+    const auto new_qDot4 = qDot4 - (isAccelOkay ? B_madgwick * s3 * recipNorm1 : 0);
 
     //Integrate rate of change of quaternion to yield quaternion
-    q0 += qDot1 * invSampleFreq;
-    q1 += qDot2 * invSampleFreq;
-    q2 += qDot3 * invSampleFreq;
-    q3 += qDot4 * invSampleFreq;
+    q0 += new_qDot1 * invSampleFreq;
+    q1 += new_qDot2 * invSampleFreq;
+    q2 += new_qDot3 * invSampleFreq;
+    q3 += new_qDot4 * invSampleFreq;
 
     //Normalise quaternion
     const auto recipNorm2 = invSqrt(q0 * q0 + q1 * q1 + q2 * q2 + q3 * q3);
