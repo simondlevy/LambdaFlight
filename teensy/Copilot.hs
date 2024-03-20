@@ -20,13 +20,12 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE RebindableSyntax #-}
 
-module Core where
+module Copilot where
 
 import Language.Copilot
 import Copilot.Compile.C99
 
-import Demands
-import Mixers
+import Madgwick
 import Motors
 import Utils
 
@@ -64,6 +63,15 @@ gyroY = extern "gyroY" Nothing
 
 gyroZ :: SFloat
 gyroZ = extern "gyroZ" Nothing
+
+accelX :: SFloat
+accelX = extern "accelX" Nothing
+
+accelY :: SFloat
+accelY = extern "accelY" Nothing
+
+accelZ :: SFloat
+accelZ = extern "accelZ" Nothing
 
 -- Tuning constants ---------------------------------------------------------
 
@@ -115,8 +123,6 @@ step = motors where
          ki_cyclic * integral_pitch - 
          kd_cyclic * derivative_pitch)
 
-  motors = quadCFMixer $ Demands 0 0 0 0
-
   -- Yaw: stablize on rate from gyroZ -------------------------------
 
   error_yaw = yaw_des - gyroZ
@@ -138,6 +144,8 @@ step = motors where
   m3 = thro_des + pitch_PID - roll_PID + yaw_PID --Back Right
   m4 = thro_des + pitch_PID + roll_PID - yaw_PID --Back Left
 
+  motors = QuadMotors m1 m2 m3 m4
+
   -- State variables ---------------------------------------------------------
 
   integral_roll' = [0] ++ integral_roll
@@ -149,6 +157,12 @@ step = motors where
 
 spec = do
 
+  let (phi, theta, psi) = madgwick6DOF (gyroX, (-gyroY), (-gyroZ)) 
+                                       ((-accelX), accelY, accelZ)
+                                       dt
+
+  trigger "setAngles" true [ arg phi, arg theta, arg psi ]
+
   let motors = step
 
   trigger "setMotors" true [
@@ -159,4 +173,4 @@ spec = do
 
 -- Compile the spec
 main = reify spec >>= 
-  compileWith (CSettings "copilot_step_core" ".") "copilot_core"
+  compileWith (CSettings "copilot_step" ".") "copilot"

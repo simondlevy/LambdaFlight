@@ -58,7 +58,7 @@ bfs::SbusRx sbus(&Serial5);
 // Streams
 float thro_des, roll_des, pitch_des, yaw_des;
 float gyroX, gyroY, gyroZ;
-float accX, accY, accZ;
+float accelX, accelY, accelZ;
 float roll_IMU, pitch_IMU, yaw_IMU;
 float dt;
 bool throttle_is_down;
@@ -130,7 +130,7 @@ static void IMUinit()
 
 static void getIMUdata() 
 {
-    static float accX_prev, accY_prev, accZ_prev;
+    static float accelX_prev, accelY_prev, accelZ_prev;
     static float gyroX_prev, gyroY_prev, gyroZ_prev;
 
     int16_t AcX = 0, AcY = 0, AcZ = 0, GyX = 0, GyY = 0, GyZ = 0;
@@ -138,17 +138,17 @@ static void getIMUdata()
     mpu6050.getMotion6(&AcX, &AcY, &AcZ, &GyX, &GyY, &GyZ);
 
     //Accelerometer (Gs), corrected with the calculated error values
-    accX = AcX / ACCEL_SCALE_FACTOR - AccErrorX;
-    accY = AcY / ACCEL_SCALE_FACTOR - AccErrorY;
-    accZ = AcZ / ACCEL_SCALE_FACTOR - AccErrorZ;
+    accelX = AcX / ACCEL_SCALE_FACTOR - AccErrorX;
+    accelY = AcY / ACCEL_SCALE_FACTOR - AccErrorY;
+    accelZ = AcZ / ACCEL_SCALE_FACTOR - AccErrorZ;
 
     //LP filter accelerometer data
-    accX = (1.0 - B_accel)*accX_prev + B_accel*accX;
-    accY = (1.0 - B_accel)*accY_prev + B_accel*accY;
-    accZ = (1.0 - B_accel)*accZ_prev + B_accel*accZ;
-    accX_prev = accX;
-    accY_prev = accY;
-    accZ_prev = accZ;
+    accelX = (1.0 - B_accel)*accelX_prev + B_accel*accelX;
+    accelY = (1.0 - B_accel)*accelY_prev + B_accel*accelY;
+    accelZ = (1.0 - B_accel)*accelZ_prev + B_accel*accelZ;
+    accelX_prev = accelX;
+    accelY_prev = accelY;
+    accelZ_prev = accelZ;
 
     //Gyro (DPS),  corrected with the calculated error values
     gyroX = GyX / GYRO_SCALE_FACTOR - GyroErrorX; 
@@ -392,103 +392,6 @@ static void setupBlink(int numBlinks,int upTime, int downTime)
     }
 }
 
-void debugRadioData() 
-{
-    if (current_time - print_counter > 10000) {
-        print_counter = micros();
-        Serial.print(F(" CH1:"));
-        Serial.print(channel_1_pwm);
-        Serial.print(F(" CH2:"));
-        Serial.print(channel_2_pwm);
-        Serial.print(F(" CH3:"));
-        Serial.print(channel_3_pwm);
-        Serial.print(F(" CH4:"));
-        Serial.print(channel_4_pwm);
-        Serial.print(F(" CH5:"));
-        Serial.print(channel_5_pwm);
-        Serial.print(F(" CH6:"));
-        Serial.println(channel_6_pwm);
-    }
-}
-
-void debugDesiredState() 
-{
-    if (current_time - print_counter > 10000) {
-        print_counter = micros();
-        Serial.print(F("thro_des:"));
-        Serial.print(thro_des);
-        Serial.print(F(" roll_des:"));
-        Serial.print(roll_des);
-        Serial.print(F(" pitch_des:"));
-        Serial.print(pitch_des);
-        Serial.print(F(" yaw_des:"));
-        Serial.println(yaw_des);
-    }
-}
-
-void debugGyroData() 
-{
-    if (current_time - print_counter > 10000) {
-        print_counter = micros();
-        Serial.print(F("gyroX:"));
-        Serial.print(gyroX);
-        Serial.print(F(" gyroY:"));
-        Serial.print(gyroY);
-        Serial.print(F(" gyroZ:"));
-        Serial.println(gyroZ);
-    }
-}
-
-void debugAccelData() 
-{
-    if (current_time - print_counter > 10000) {
-        print_counter = micros();
-        Serial.print(F("accX:"));
-        Serial.print(accX);
-        Serial.print(F(" accY:"));
-        Serial.print(accY);
-        Serial.print(F(" accZ:"));
-        Serial.println(accZ);
-    }
-}
-
-void debugRollPitchYaw() 
-{
-    if (current_time - print_counter > 10000) {
-        print_counter = micros();
-        Serial.print(F("roll:"));
-        Serial.print(roll_IMU);
-        Serial.print(F(" pitch:"));
-        Serial.print(pitch_IMU);
-        Serial.print(F(" yaw:"));
-        Serial.println(yaw_IMU);
-    }
-}
-
-
-void debugMotorCommands() 
-{
-    if (current_time - print_counter > 10000) {
-        print_counter = micros();
-        Serial.print(F("m1_command:"));
-        Serial.print(m1_command_PWM);
-        Serial.print(F(" m2_command:"));
-        Serial.print(m2_command_PWM);
-        Serial.print(F(" m3_command:"));
-        Serial.print(m3_command_PWM);
-        Serial.print(F(" m4_command:"));
-        Serial.print(m4_command_PWM);
-    }
-}
-
-void debugLoopRate() 
-{
-    if (current_time - print_counter > 10000) {
-        print_counter = micros();
-        Serial.print(F("dt:"));
-        Serial.println(dt*1000000.0);
-    }
-}
 
 static void debug(void)
 {
@@ -499,8 +402,72 @@ static void debug(void)
     //debugAccelData();     
     //debugRollPitchYaw();  
     //debugMotorCommands(); 
-    //debugServoCommands(); 
     //debugLoopRate();      
+}
+
+void debugRadioData() 
+{
+    if (current_time - print_counter > 10000) {
+        print_counter = micros();
+        Serial.printf("CH1:%d CH2:%d CH3:%d CH4:%d CH5:%d CH6:%d\n",
+                channel_1_pwm, channel_2_pwm, channel_3_pwm,
+                channel_4_pwm, channel_5_pwm, channel_6_pwm);
+    }
+}
+
+void debugDesiredState() 
+{
+    if (current_time - print_counter > 10000) {
+        print_counter = micros();
+        Serial.printf("thro_des:%f roll_des:%f yaw_des:%f\n",
+                thro_des, roll_des, yaw_des);
+    }
+}
+
+void debugGyroData() 
+{
+    if (current_time - print_counter > 10000) {
+        print_counter = micros();
+        Serial.printf("gyroX:%f gyroY:%f gyroZ:%f\n",
+                gyroX, gyroY, gyroZ);
+    }
+}
+
+void debugAccelData() 
+{
+    if (current_time - print_counter > 10000) {
+        print_counter = micros();
+        Serial.printf("accelX:%f accelY:%f accelZ:%f\n",
+                accelX, accelY, accelZ);
+    }
+}
+
+void debugRollPitchYaw() 
+{
+    if (current_time - print_counter > 10000) {
+        print_counter = micros();
+        Serial.printf("roll:%2.2f pitch:%2.2f yaw:%2.2f\n", 
+                roll_IMU, pitch_IMU, yaw_IMU);
+    }
+}
+
+void debugMotorCommands() 
+{
+    if (current_time - print_counter > 10000) {
+        print_counter = micros();
+        Serial.printf(
+                "m1_command:%d m2_command:%d m3_command:%d m4_command:%d\n",
+                m1_command_PWM, m2_command_PWM,
+                m3_command_PWM, m4_command_PWM);
+    }
+}
+
+void debugLoopRate() 
+{
+    if (current_time - print_counter > 10000) {
+        print_counter = micros();
+        Serial.printf("dt:%f\n", dt*1e6);
+    }
 }
 
 void setup() 
@@ -560,19 +527,11 @@ void loop()
     // Get vehicle state
     getIMUdata(); 
 
-    // Copilot state estimator
-    void copilot_step_estimator(void);
-    copilot_step_estimator(); 
-
     // Compute desired state
     getDesState(); 
 
-    // Copilot core
-    void copilot_proxy_step_core(void);
-    copilot_proxy_step_core(); 
-
-    void copilot_step_core(void);
-    copilot_step_core(); 
+    void copilot_step(void);
+    copilot_step(); 
 
     scaleCommands(); 
 
@@ -595,7 +554,7 @@ void loop()
 
 // Called by Copilot ---------------------------------------------------------
 
-void setMotorsProxy(const float m1, const float m2, const float m3, const float m4)
+void setMotors(const float m1, const float m2, const float m3, const float m4)
 
 {
     m1_command_scaled = m1;
@@ -603,13 +562,8 @@ void setMotorsProxy(const float m1, const float m2, const float m3, const float 
     m3_command_scaled = m3;
     m4_command_scaled = m4;
 }
-void setMotors(const float m1, const float m2, const float m3, const float m4)
 
-{
-}
-
-
-void setState(const float phi, const float theta, const float psi)
+void setAngles(const float phi, const float theta, const float psi)
 {
     roll_IMU = phi;
     pitch_IMU = theta;
