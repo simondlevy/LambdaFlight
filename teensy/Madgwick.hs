@@ -18,117 +18,83 @@
 
 module Madgwick where
 
-{--
-static float invSqrt(float x) 
-{
-    return 1.0/sqrtf(x); 
-}
+import Prelude hiding(atan2)
+import Utils
 
-static float _q0 = 1.0f; //Initialize quaternion for madgwick filter
-static float _q1 = 0.0f;
-static float _q2 = 0.0f;
-static float _q3 = 0.0f;
+invSqrt :: SFloat -> SFloat
+invSqrt x = 1 / (sqrt x)
 
-static void Madgwick6DOF(
-        const float gx, 
-        const float gy, 
-        const float gz, 
-        const float ax, 
-        const float ay, 
-        const float az, 
-        const float invSampleFreq) 
-{
-    static const float B_madgwick = 0.04;  
-     
-    //Convert gyroscope degrees/sec to radians/sec
-    const auto ggx = gx * 0.0174533f;
-    const auto ggy = gy * 0.0174533f;
-    const auto ggz = gz * 0.0174533f;
+madgwick6DOF :: (SFloat, SFloat, SFloat) -> (SFloat, SFloat, SFloat) -> SFloat ->
+  (SFloat, SFloat, SFloat)
 
-    //Rate of change of quaternion from gyroscope
-    const auto qDot1 = 0.5f * (-_q1 * ggx - _q2 * ggy - _q3 * ggz);
-    const auto qDot2 = 0.5f * (_q0 * ggx + _q2 * ggz - _q3 * ggy);
-    const auto qDot3 = 0.5f * (_q0 * ggy - _q1 * ggz + _q3 * ggx);
-    const auto qDot4 = 0.5f * (_q0 * ggz + _q1 * ggy - _q2 * ggx);
+madgwick6DOF (gx, gy, gz) (ax, ay, az) invSampFreq = (phi, theta, psi) where
 
-    //Normalise accelerometer measurement
-    const auto recipNorm = invSqrt(ax * ax + ay * ay + az * az);
-    const auto aax = ax * recipNorm;
-    const auto aay = ay * recipNorm;
-    const auto aaz = az * recipNorm;
+  b_madgwick = 0.04 :: SFloat
 
-    //Auxiliary variables to avoid repeated arithmetic
-    const auto _2q0 = 2 * _q0;
-    const auto _2q1 = 2 * _q1;
-    const auto _2q2 = 2 * _q2;
-    const auto _2q3 = 2 * _q3;
-    const auto _4q0 = 4 * _q0;
-    const auto _4q1 = 4 * _q1;
-    const auto _4q2 = 4 * _q2;
-    const auto _8q1 = 8 * _q1;
-    const auto _8q2 = 8 * _q2;
-    const auto q0q0 = _q0 * _q0;
-    const auto q1q1 = _q1 * _q1;
-    const auto q2q2 = _q2 * _q2;
-    const auto q3q3 = _q3 * _q3;
+  -- Convert gyroscope degrees/sec to radians/sec
+  ggx = gx * 0.0174533
+  ggy = gy * 0.0174533
+  ggz = gz * 0.0174533
 
-    //Gradient decent algorithm corrective step
-    const auto s0 = _4q0 * q2q2 + _2q2 * aax + _4q0 * q1q1 - _2q1 * aay;
-    const auto s1 = _4q1 * q3q3 - _2q3 * aax + 4.0f * q0q0 * _q1 - _2q0 * aay - _4q1 +
-        _8q1 * q1q1 + _8q1 * q2q2 + _4q1 * aaz; 
-    const auto s2 = 4.0f * q0q0 * _q2 + _2q0
-        * aax + _4q2 * q3q3 - _2q3 * aay - _4q2 + _8q2 * q1q1 + _8q2 * q2q2 +
-        _4q2 * aaz;
-    const auto s3 = 4.0f * q1q1 * _q3 - _2q1 * aax + 4.0f * q2q2 * _q3 - _2q2 * aay;
-    const auto recipNorm1 = invSqrt(s0 * s0 + s1 * s1 + s2 * s2 + s3 * s3); 
+  -- Normalise accelerometer measurement
+  recipNorm = invSqrt $ ax * ax + ay * ay + az * az
+  aax = ax * recipNorm
+  aay = ay * recipNorm
+  aaz = az * recipNorm
 
-    const auto isAccelOkay = !(ax == 0 && ay == 0 && az == 0);
+  -- Rate of change of quaternion from gyroscope
+  qDot1 = 0.5 * ((-q1') * ggx - q2' * ggy - q3' * ggz)
+  qDot2 = 0.5 * (q0' * ggx + q2' * ggz - q3' * ggy)
+  qDot3 = 0.5 * (q0' * ggy - q1' * ggz + q3' * ggx)
+  qDot4 = 0.5 * (q0' * ggz + q1' * ggy - q2' * ggx)
 
-    // Compute feedback only if accelerometer measurement valid (avoids NaN in
-    // accelerometer normalisation)
-    //Apply feedback step
-    const auto qqDot1 = qDot1 - (isAccelOkay ? B_madgwick * s0 * recipNorm1 : 0);
-    const auto qqDot2 = qDot2 - (isAccelOkay ? B_madgwick * s1 * recipNorm1 : 0);
-    const auto qqDot3 = qDot3 - (isAccelOkay ? B_madgwick * s2 * recipNorm1 : 0);
-    const auto qqDot4 = qDot4 - (isAccelOkay ? B_madgwick * s3 * recipNorm1 : 0);
+  --Auxiliary variables to avoid repeated arithmetic
+  _2q0 = 2 * q0'
+  _2q1 = 2 * q1'
+  _2q2 = 2 * q2'
+  _2q3 = 2 * q3'
+  _4q0 = 4 * q0'
+  _4q1 = 4 * q1'
+  _4q2 = 4 * q2'
+  _8q1 = 8 * q1'
+  _8q2 = 8 * q2'
+  q0q0 = q0' * q0'
+  q1q1 = q1' * q1'
+  q2q2 = q2' * q2'
+  q3q3 = q3' * q3'
 
-    // Integrate rate of change of quaternion to yield quaternion
-    const auto q0 = _q0 + qqDot1 * invSampleFreq;
-    const auto q1 = _q1 + qqDot2 * invSampleFreq;
-    const auto q2 = _q2 + qqDot3 * invSampleFreq;
-    const auto q3 = _q3 + qqDot4 * invSampleFreq;
+  -- Gradient decent algorithm corrective step
+  s0 = _4q0 * q2q2 + _2q2 * aax + _4q0 * q1q1 - _2q1 * aay
+  s1 = _4q1 * q3q3 - _2q3 * aax + 4 * q0q0 * q1' - _2q0 * aay - _4q1 +
+      _8q1 * q1q1 + _8q1 * q2q2 + _4q1 * aaz 
+  s2 = 4 * q0q0 * q2' + _2q0
+      * aax + _4q2 * q3q3 - _2q3 * aay - _4q2 + _8q2 * q1q1 + _8q2 * q2q2 +
+      _4q2 * aaz
+  s3 = 4 * q1q1 * q3' - _2q1 * aax + 4 * q2q2 * q3' - _2q2 * aay
 
-    // Normalise quaternion
-    const auto recipNorm2 = invSqrt(q0 * q0 + q1 * q1 + q2 * q2 + q3 * q3);
-    _q0 = q0 * recipNorm2;
-    _q1 = q1 * recipNorm2;
-    _q2 = q2 * recipNorm2;
-    _q3 = q3 * recipNorm2;
+  recipNorm1 = invSqrt $ s0 * s0 + s1 * s1 + s2 * s2 + s3 * s3
 
-    // Compute angles in degrees
-    const auto phi = 
-        atan2(_q0*_q1 + _q2*_q3, 0.5f - _q1*_q1 - _q2*_q2)*57.29577951; 
-    const auto theta = 
-        -asin(constrain(-2.0f * (_q1*_q3 - _q0*_q2),-0.999999,0.999999))*57.29577951;
-    const auto psi = 
-        -atan2(_q1*_q2 + _q0*_q3, 0.5f - _q2*_q2 - _q3*_q3)*57.29577951;
+  isAccelOkay = not (ax == 0 && ay == 0 && az == 0)
 
-    void setState(const float phi, const float theta, const float psi);
-    setState(phi, theta, psi);
-}
+  -- Compute feedback only if accelerometer measurement valid (avoids NaN in
+  -- accelerometer normalisation)
+  qqDot1 = qDot1 - (if isAccelOkay then b_madgwick * s0 * recipNorm1 else 0)
+  qqDot2 = qDot2 - (if isAccelOkay then b_madgwick * s1 * recipNorm1 else 0)
+  qqDot3 = qDot3 - (if isAccelOkay then b_madgwick * s2 * recipNorm1 else 0)
+  qqDot4 = qDot4 - (if isAccelOkay then b_madgwick * s3 * recipNorm1 else 0)
 
-void copilot_step_estimator(void) 
-{
-    // Streams
-    extern float gyroX;
-    extern float gyroY;
-    extern float gyroZ;
-    extern float accX;
-    extern float accY;
-    extern float accZ;
-    extern float dt;
+  -- Integrate rate of change of quaternion to yield quaternion
+  q0 = q0' + qqDot1 * invSampFreq
+  q1 = q1' + qqDot2 * invSampFreq
+  q2 = q2' + qqDot3 * invSampFreq
+  q3 = q3' + qqDot4 * invSampFreq
 
-    Madgwick6DOF(gyroX, -gyroY, -gyroZ, -accX, accY, accZ, dt); 
-}
+  q0' = 0
+  q1' = 0
+  q2' = 0
+  q3' = 0
 
---}
+  -- Compute angles in degrees
+  phi = (atan2 (q0'*q1' + q2'*q3') (0.5 - q1'*q1' - q2'*q2')) * 57.29577951
+  theta = (-asin (constrain ((-2.0) * (q1'*q3' - q0'*q2')) (-0.999999) 0.999999)) * 57.29577951
+  psi = (-atan2 (q1'*q2' + q0'*q3') (0.5 - q2'*q2' - q3'*q3')) * 57.29577951

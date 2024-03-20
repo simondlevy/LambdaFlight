@@ -25,7 +25,8 @@ module Core where
 import Language.Copilot
 import Copilot.Compile.C99
 
-import Madgwick
+-- import Madgwick
+import Quat
 import Motors
 import Utils
 
