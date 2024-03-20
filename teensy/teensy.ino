@@ -591,14 +591,6 @@ void loop()
 
 // Called by Copilot ---------------------------------------------------------
 
-void setMotorsProxy(const float m1, const float m2, const float m3, const float m4)
-
-{
-    //m1_command_scaled = m1;
-    //m2_command_scaled = m2;
-    //m3_command_scaled = m3;
-    //m4_command_scaled = m4;
-}
 void setMotors(const float m1, const float m2, const float m3, const float m4)
 
 {
