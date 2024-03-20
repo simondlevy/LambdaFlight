@@ -63,6 +63,10 @@ float roll_IMU, pitch_IMU, yaw_IMU;
 float dt;
 bool throttle_is_down;
 
+static float _phi;
+static float _theta;
+static float _psi;
+
 // General stuff
 static uint32_t current_time;
 static uint32_t print_counter;
@@ -392,6 +396,19 @@ static void setupBlink(int numBlinks,int upTime, int downTime)
     }
 }
 
+
+static void debug(void)
+{
+    //Print data at 100hz (uncomment one at a time for troubleshooting) - SELECT ONE:
+    //debugRadioData();     
+    //debugDesiredState();  
+    //debugGyroData();      
+    //debugAccelData();     
+    //debugRollPitchYaw();  
+    //debugMotorCommands(); 
+    //debugLoopRate();      
+}
+
 void debugRadioData() 
 {
     if (current_time - print_counter > 10000) {
@@ -455,18 +472,6 @@ void debugLoopRate()
         print_counter = micros();
         Serial.printf("dt:%f\n", dt*1e6);
     }
-}
-
-static void debug(void)
-{
-    //Print data at 100hz (uncomment one at a time for troubleshooting) - SELECT ONE:
-    //debugRadioData();     
-    //debugDesiredState();  
-    //debugGyroData();      
-    //debugAccelData();     
-    //debugRollPitchYaw();  
-    //debugMotorCommands(); 
-    //debugLoopRate();      
 }
 
 void setup() 
@@ -568,6 +573,9 @@ void setMotors(const float m1, const float m2, const float m3, const float m4)
 
 void setAngles(const float phi, const float theta, const float psi)
 {
+    _phi = phi;
+    _theta = theta;
+    _psi = psi;
 }
 
 void setState(const float phi, const float theta, const float psi)
