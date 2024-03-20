@@ -1,24 +1,12 @@
-{--
-  Madgwick algorithm in Haskell
- 
-  Copyright (C) 2024 Simon D. Levy
- 
-  This program is free software: you can redistribute it and/or modify
-  it under the terms of the GNU General Public License as published by
-  the Free Software Foundation, in version 3.
- 
-  This program is distributed in the hope that it will be useful,
-  but WITHOUT ANY WARRANTY without even the implied warranty of
-  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-  GNU General Public License for more details.
- 
-  You should have received a copy of the GNU General Public License
-  along with this program. If not, see <http:--www.gnu.org/licenses/>.
---} 
+{-# LANGUAGE DataKinds #-}
+{-# LANGUAGE RebindableSyntax #-}
 
 module Madgwick where
 
-import Prelude hiding(atan2)
+import Language.Copilot hiding(atan2)
+import Copilot.Compile.C99
+
+import Prelude hiding(atan2, (++), (&&), not, (==))
 import Utils
 
 invSqrt :: SFloat -> SFloat
@@ -36,7 +24,7 @@ madgwick6DOF (gx, gy, gz) (ax, ay, az) invSampFreq = (phi, theta, psi) where
   ggy = gy * 0.0174533
   ggz = gz * 0.0174533
 
-  -- Normalise accelerometer measurement
+  -- Normalize accelerometer measurement
   recipNorm = invSqrt $ ax * ax + ay * ay + az * az
   aax = ax * recipNorm
   aay = ay * recipNorm
@@ -83,18 +71,20 @@ madgwick6DOF (gx, gy, gz) (ax, ay, az) invSampFreq = (phi, theta, psi) where
   qqDot3 = qDot3 - (if isAccelOkay then b_madgwick * s2 * recipNorm1 else 0)
   qqDot4 = qDot4 - (if isAccelOkay then b_madgwick * s3 * recipNorm1 else 0)
 
-  -- Integrate rate of change of quaternion to yield quaternion
+
   q0 = q0' + qqDot1 * invSampFreq
   q1 = q1' + qqDot2 * invSampFreq
   q2 = q2' + qqDot3 * invSampFreq
   q3 = q3' + qqDot4 * invSampFreq
 
-  q0' = 0
-  q1' = 0
-  q2' = 0
-  q3' = 0
+  q0' = [1] ++ q0
+  q1' = [0] ++ q1
+  q2' = [0] ++ q2
+  q3' = [0] ++ q3
 
   -- Compute angles in degrees
-  phi = (atan2 (q0'*q1' + q2'*q3') (0.5 - q1'*q1' - q2'*q2')) * 57.29577951
-  theta = (-asin (constrain ((-2.0) * (q1'*q3' - q0'*q2')) (-0.999999) 0.999999)) * 57.29577951
-  psi = (-atan2 (q1'*q2' + q0'*q3') (0.5 - q2'*q2' - q3'*q3')) * 57.29577951
+  phi = (atan2 (q0*q1 + q2*q3) (0.5 - q1*q1 - q2*q2)) * 57.29577951
+
+  theta = (-asin (constrain ((-2.0) * (q1*q3 - q0*q2)) (-0.999999) 0.999999)) * 57.29577951
+
+  psi = (-atan2 (q1*q2 + q0*q3) (0.5 - q2*q2 - q3*q3)) * 57.29577951

@@ -26,7 +26,7 @@ import Language.Copilot
 import Copilot.Compile.C99
 
 -- import Madgwick
-import Quat
+import Madgwick
 import Motors
 import Utils
 
