@@ -567,10 +567,6 @@ void loop()
     // Compute desired state
     getDesState(); 
 
-    // Copilot core
-    //void copilot_proxy_step_core(void);
-    //copilot_proxy_step_core(); 
-
     void copilot_step_core(void);
     copilot_step_core(); 
 
