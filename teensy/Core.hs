@@ -65,6 +65,15 @@ gyroY = extern "gyroY" Nothing
 gyroZ :: SFloat
 gyroZ = extern "gyroZ" Nothing
 
+accelX :: SFloat
+accelX = extern "accelX" Nothing
+
+accelY :: SFloat
+accelY = extern "accelY" Nothing
+
+accelZ :: SFloat
+accelZ = extern "accelZ" Nothing
+
 -- Tuning constants ---------------------------------------------------------
 
 i_limit = 25 :: SFloat
@@ -148,6 +157,12 @@ step = motors where
 ------------------------------------------------------------------------------
 
 spec = do
+
+  let (phi, theta, psi) = madgwick6DOF (gyroX, (-gyroY), (-gyroZ)) 
+                                       ((-accelX), accelY, accelZ)
+                                       dt
+
+  trigger "setAngles" true [ arg phi, arg theta, arg psi ]
 
   let motors = step
 

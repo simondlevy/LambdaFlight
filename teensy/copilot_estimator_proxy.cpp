@@ -107,10 +107,10 @@ void copilot_step_estimator(void)
     extern float gyroX;
     extern float gyroY;
     extern float gyroZ;
-    extern float accX;
-    extern float accY;
-    extern float accZ;
+    extern float accelX;
+    extern float accelY;
+    extern float accelZ;
     extern float dt;
 
-    Madgwick6DOF(gyroX, -gyroY, -gyroZ, -accX, accY, accZ, dt); 
+    Madgwick6DOF(gyroX, -gyroY, -gyroZ, -accelX, accelY, accelZ, dt); 
 }
