@@ -20,12 +20,11 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE RebindableSyntax #-}
 
-module Core where
+module Copilot where
 
 import Language.Copilot
 import Copilot.Compile.C99
 
--- import Madgwick
 import Madgwick
 import Motors
 import Utils
@@ -174,4 +173,4 @@ spec = do
 
 -- Compile the spec
 main = reify spec >>= 
-  compileWith (CSettings "copilot_step_core" ".") "copilot_core"
+  compileWith (CSettings "copilot_step" ".") "copilot"
