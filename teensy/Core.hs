@@ -115,8 +115,6 @@ step = motors where
          ki_cyclic * integral_pitch - 
          kd_cyclic * derivative_pitch)
 
-  motors = quadCFMixer $ Demands 0 0 0 0
-
   -- Yaw: stablize on rate from gyroZ -------------------------------
 
   error_yaw = yaw_des - gyroZ
@@ -137,6 +135,8 @@ step = motors where
   m2 = thro_des - pitch_PID - roll_PID - yaw_PID --Front Right
   m3 = thro_des + pitch_PID - roll_PID + yaw_PID --Back Right
   m4 = thro_des + pitch_PID + roll_PID - yaw_PID --Back Left
+
+  motors = QuadMotors m1 m2 m3 m4
 
   -- State variables ---------------------------------------------------------
 
