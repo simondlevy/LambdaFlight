@@ -33,19 +33,12 @@ static const uint16_t channel_6_failsafe = 2000; //aux1
 static const float B_accel = 0.14;     //Accelerometer LP filter paramter, (MPU6050 default: 0.14. MPU9250 default: 0.2)
 static const float B_gyro = 0.1;       //Gyro LP filter paramter, (MPU6050 default: 0.1. MPU9250 default: 0.17)
 
-//IMU calibration parameters - calibrate IMU using calculate_IMU_error() in the void setup() to get these values, then comment out calculate_IMU_error()
-static const float AccErrorX = 0.0;
-static const float AccErrorY = 0.0;
-static const float AccErrorZ = 0.0;
-static const float GyroErrorX = 0.0;
-static const float GyroErrorY= 0.0;
-static const float GyroErrorZ = 0.0;
-
 //Controller parameters (take note of defaults before modifying!): 
-static const float i_limit = 25.0;     //Integrator saturation level, mostly for safety (default 25.0)
 static const float maxRoll = 30.0;     //Max roll angle in degrees for angle mode (maximum ~70 degrees), deg/sec for rate mode 
 static const float maxPitch = 30.0;    //Max pitch angle in degrees for angle mode (maximum ~70 degrees), deg/sec for rate mode
 static const float maxYaw = 160.0;     //Max yaw rate in deg/sec
+
+// ---------------------------------------------------------------------------
 
 static const std::vector<uint8_t> MOTOR_PINS = {0, 1, 2, 3};
 
@@ -55,13 +48,15 @@ static MPU6050 mpu6050;
 
 bfs::SbusRx sbus(&Serial5);
 
-// Streams
+// Streams read by Copilot.hs
 float thro_des, roll_des, pitch_des, yaw_des;
 float gyroX, gyroY, gyroZ;
 float accelX, accelY, accelZ;
-float roll_IMU, pitch_IMU, yaw_IMU;
 float dt;
 bool throttle_is_down;
+
+// Stream written and read by Copilot.hs
+float roll_IMU, pitch_IMU, yaw_IMU;
 
 // General stuff
 static uint32_t current_time;
@@ -77,9 +72,6 @@ static uint16_t channel_3_pwm;
 static uint16_t channel_4_pwm;
 static uint16_t channel_5_pwm;
 static uint16_t channel_6_pwm;
-
-// Normalized desired state:
-static float roll_passthru, pitch_passthru, yaw_passthru;
 
 // Motors
 static float m1_command_scaled;
@@ -138,9 +130,9 @@ static void getIMUdata()
     mpu6050.getMotion6(&AcX, &AcY, &AcZ, &GyX, &GyY, &GyZ);
 
     //Accelerometer (Gs), corrected with the calculated error values
-    accelX = AcX / ACCEL_SCALE_FACTOR - AccErrorX;
-    accelY = AcY / ACCEL_SCALE_FACTOR - AccErrorY;
-    accelZ = AcZ / ACCEL_SCALE_FACTOR - AccErrorZ;
+    accelX = AcX / ACCEL_SCALE_FACTOR;
+    accelY = AcY / ACCEL_SCALE_FACTOR;
+    accelZ = AcZ / ACCEL_SCALE_FACTOR;
 
     //LP filter accelerometer data
     accelX = (1.0 - B_accel)*accelX_prev + B_accel*accelX;
@@ -151,9 +143,9 @@ static void getIMUdata()
     accelZ_prev = accelZ;
 
     //Gyro (DPS),  corrected with the calculated error values
-    gyroX = GyX / GYRO_SCALE_FACTOR - GyroErrorX; 
-    gyroY = GyY / GYRO_SCALE_FACTOR - GyroErrorY;
-    gyroZ = GyZ / GYRO_SCALE_FACTOR - GyroErrorZ;
+    gyroX = GyX / GYRO_SCALE_FACTOR; 
+    gyroY = GyY / GYRO_SCALE_FACTOR;
+    gyroZ = GyZ / GYRO_SCALE_FACTOR;
 
     //LP filter gyro data
     gyroX = (1.0 - B_gyro)*gyroX_prev + B_gyro*gyroX;
@@ -166,34 +158,16 @@ static void getIMUdata()
 
 static void getDesState() 
 {
-    //DESCRIPTION: Normalizes desired control values to appropriate values
-    /*
-     * Updates the desired state variables thro_des, roll_des, pitch_des, and
-     * yaw_des. These are computed by using the raw RC pwm commands and scaling
-     * them to be within our limits defined in setup. thro_des stays within 0
-     * to 1 range.  roll_des and pitch_des are scaled to be within max
-     * roll/pitch amount in either degrees (angle mode) or degrees/sec (rate
-     * mode). yaw_des is scaled to be within max yaw in degrees/sec. Also
-     * creates roll_passthru, pitch_passthru, and yaw_passthru variables, to be
-     * used in commanding motors/servos with direct unstabilized commands in
-     * controlMixer().
-     */
     thro_des = (channel_1_pwm - 1000.0)/1000.0; //Between 0 and 1
     roll_des = (channel_2_pwm - 1500.0)/500.0; //Between -1 and 1
     pitch_des = (channel_3_pwm - 1500.0)/500.0; //Between -1 and 1
     yaw_des = -(channel_4_pwm - 1500.0)/500.0; //Between -1 and 1
-    roll_passthru = roll_des/2.0; //Between -0.5 and 0.5
-    pitch_passthru = pitch_des/2.0; //Between -0.5 and 0.5
-    yaw_passthru = yaw_des/2.0; //Between -0.5 and 0.5
 
     //Constrain within normalized bounds
     thro_des = constrain(thro_des, 0.0, 1.0); //Between 0 and 1
     roll_des = constrain(roll_des, -1.0, 1.0)*maxRoll; //Between -maxRoll and +maxRoll
     pitch_des = constrain(pitch_des, -1.0, 1.0)*maxPitch; //Between -maxPitch and +maxPitch
     yaw_des = constrain(yaw_des, -1.0, 1.0)*maxYaw; //Between -maxYaw and +maxYaw
-    roll_passthru = constrain(roll_passthru, -0.5, 0.5);
-    pitch_passthru = constrain(pitch_passthru, -0.5, 0.5);
-    yaw_passthru = constrain(yaw_passthru, -0.5, 0.5);
 }
 
 static void scaleCommands() {
