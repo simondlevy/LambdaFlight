@@ -54,9 +54,6 @@ pitch_IMU = extern "pitch_IMU" Nothing
 dt :: SFloat
 dt = extern "dt" Nothing
 
-throttle_is_down :: SBool
-throttle_is_down = extern "throttle_is_down" Nothing
-
 gyroX :: SFloat
 gyroX = extern "gyroX" Nothing
 
@@ -90,6 +87,8 @@ kd_yaw = 0.00015 :: SFloat
 -----------------------------------------------------------------------------
 
 step = motors where
+
+  throttle_is_down = thro_des < 0.06
 
   -- Roll --------------------------------------------------------
 
@@ -141,6 +140,7 @@ step = motors where
   yaw_PID = 0.01 * 
     (kp_yaw * error_yaw + ki_yaw * integral_yaw + kd_yaw * derivative_yaw) 
 
+  -- Run demands through motor mixer
   motors = quadDFMixer $ Demands thro_des roll_PID pitch_PID yaw_PID
 
   -- State variables ---------------------------------------------------------

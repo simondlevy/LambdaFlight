@@ -53,7 +53,6 @@ float thro_des, roll_des, pitch_des, yaw_des;
 float gyroX, gyroY, gyroZ;
 float accelX, accelY, accelZ;
 float dt;
-bool throttle_is_down;
 
 // Stream written and read by Copilot.hs
 float roll_IMU, pitch_IMU, yaw_IMU;
@@ -366,10 +365,10 @@ static void setupBlink(int numBlinks,int upTime, int downTime)
     }
 }
 
-
 static void debug(void)
 {
     //Print data at 100hz (uncomment one at a time for troubleshooting) - SELECT ONE:
+    //debugThrottle();
     //debugRadioData();     
     //debugDesiredState();  
     //debugGyroData();      
@@ -518,9 +517,6 @@ void loop()
     // Get vehicle commands for next loop iteration
     getCommands();
     failSafe(); 
-
-    // Flag for resetting PIDs
-    throttle_is_down = channel_1_pwm < 1060;
 
     // Regulate loop rate
     loopRate(2000); //Do not exceed 2000Hz, all filter paras tuned to 2000Hz by default
