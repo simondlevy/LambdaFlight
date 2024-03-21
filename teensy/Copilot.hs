@@ -25,6 +25,7 @@ module Copilot where
 import Language.Copilot
 import Copilot.Compile.C99
 
+import Demands
 import Madgwick
 import Mixers
 import Motors
@@ -140,12 +141,7 @@ step = motors where
   yaw_PID = 0.01 * 
     (kp_yaw * error_yaw + ki_yaw * integral_yaw + kd_yaw * derivative_yaw) 
 
-  m1 = thro_des + roll_PID - pitch_PID + yaw_PID --Front Left
-  m2 = thro_des - roll_PID - pitch_PID - yaw_PID --Front Right
-  m3 = thro_des - roll_PID + pitch_PID + yaw_PID --Back Right
-  m4 = thro_des + roll_PID + pitch_PID - yaw_PID --Back Left
-
-  motors = QuadMotors m1 m2 m3 m4
+  motors = quadDFMixer $ Demands thro_des roll_PID pitch_PID yaw_PID
 
   -- State variables ---------------------------------------------------------
 
