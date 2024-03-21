@@ -33,23 +33,23 @@ import Utils
 
 -- Streams from C++ ----------------------------------------------------------
 
-thro_des :: SFloat
-thro_des = extern "thro_des" Nothing
+demandThrottle :: SFloat
+demandThrottle = extern "demandThrottle" Nothing
 
-roll_des :: SFloat
-roll_des = extern "roll_des" Nothing
+demandRoll :: SFloat
+demandRoll = extern "demandRoll" Nothing
 
-pitch_des :: SFloat
-pitch_des = extern "pitch_des" Nothing
+demandPitch :: SFloat
+demandPitch = extern "demandPitch" Nothing
 
-yaw_des :: SFloat
-yaw_des = extern "yaw_des" Nothing
+demandYaw :: SFloat
+demandYaw = extern "demandYaw" Nothing
 
-roll_IMU :: SFloat
-roll_IMU = extern "roll_IMU" Nothing
+statePhi :: SFloat
+statePhi = extern "statePhi" Nothing
 
-pitch_IMU :: SFloat
-pitch_IMU = extern "pitch_IMU" Nothing
+stateTheta :: SFloat
+stateTheta = extern "stateTheta" Nothing
 
 dt :: SFloat
 dt = extern "dt" Nothing
@@ -88,11 +88,11 @@ kd_yaw = 0.00015 :: SFloat
 
 step = motors where
 
-  throttle_is_down = thro_des < 0.06
+  throttle_is_down = demandThrottle < 0.06
 
   -- Roll --------------------------------------------------------
 
-  error_roll = roll_des - roll_IMU
+  error_roll = demandRoll - statePhi
 
   -- Don't let integrator build if throttle is too low
   integral_roll = if throttle_is_down then 0 else
@@ -109,7 +109,7 @@ step = motors where
 
   -- Pitch -------------------------------------------------------
 
-  error_pitch = pitch_des - pitch_IMU
+  error_pitch = demandPitch - stateTheta
 
   -- Don't let integrator build if throttle is too low
   integral_pitch = if throttle_is_down then 0 else
@@ -126,7 +126,7 @@ step = motors where
 
   -- Yaw: stablize on rate from gyroZ -------------------------------
 
-  error_yaw = yaw_des - gyroZ
+  error_yaw = demandYaw - gyroZ
 
   -- Don't let integrator build if throttle is too low
   integral_yaw = if throttle_is_down then 0 else
@@ -141,7 +141,7 @@ step = motors where
     (kp_yaw * error_yaw + ki_yaw * integral_yaw + kd_yaw * derivative_yaw) 
 
   -- Run demands through motor mixer
-  motors = quadDFMixer $ Demands thro_des roll_PID pitch_PID yaw_PID
+  motors = quadDFMixer $ Demands demandThrottle roll_PID pitch_PID yaw_PID
 
   -- State variables ---------------------------------------------------------
 

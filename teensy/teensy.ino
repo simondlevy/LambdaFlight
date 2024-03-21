@@ -63,16 +63,18 @@ static MPU6050 mpu6050;
 bfs::SbusRx sbus(&Serial5);
 
 // Streams read by Copilot.hs
-float thro_des, roll_des, pitch_des, yaw_des;
+float demandThrottle, demandRoll, demandPitch, demandYaw;
 float gyroX, gyroY, gyroZ;
 float accelX, accelY, accelZ;
 float dt;
 
 // Stream written and read by Copilot.hs
-float roll_IMU, pitch_IMU, yaw_IMU;
+float statePhi, stateTheta, statePsi;
 
-// General stuff
+// Timing
 static uint32_t current_time;
+
+// LED control
 static uint32_t print_counter;
 static uint32_t blink_counter;
 static uint32_t blink_delay;
@@ -87,16 +89,12 @@ static uint16_t channel_5_pwm;
 static uint16_t channel_6_pwm;
 
 // Motors
-static float m1_command_scaled;
-static float m2_command_scaled;
-static float m3_command_scaled;
-static float m4_command_scaled;
 static int m1_command_PWM;
 static int m2_command_PWM;
 static int m3_command_PWM;
 static int m4_command_PWM;
 
-//Flight status
+// Safety
 static bool armedFly;
 
 static void armedStatus() 
@@ -171,41 +169,16 @@ static void getIMUdata()
 
 static void getDesState() 
 {
-    thro_des = (channel_1_pwm - 1000.0)/1000.0; //Between 0 and 1
-    roll_des = (channel_2_pwm - 1500.0)/500.0; //Between -1 and 1
-    pitch_des = (channel_3_pwm - 1500.0)/500.0; //Between -1 and 1
-    yaw_des = -(channel_4_pwm - 1500.0)/500.0; //Between -1 and 1
+    demandThrottle = (channel_1_pwm - 1000.0)/1000.0; //Between 0 and 1
+    demandRoll = (channel_2_pwm - 1500.0)/500.0; //Between -1 and 1
+    demandPitch = (channel_3_pwm - 1500.0)/500.0; //Between -1 and 1
+    demandYaw = -(channel_4_pwm - 1500.0)/500.0; //Between -1 and 1
 
     //Constrain within normalized bounds
-    thro_des = constrain(thro_des, 0.0, 1.0); //Between 0 and 1
-    roll_des = constrain(roll_des, -1.0, 1.0)*maxRoll; //Between -maxRoll and +maxRoll
-    pitch_des = constrain(pitch_des, -1.0, 1.0)*maxPitch; //Between -maxPitch and +maxPitch
-    yaw_des = constrain(yaw_des, -1.0, 1.0)*maxYaw; //Between -maxYaw and +maxYaw
-}
-
-static void scaleCommands() {
-    //DESCRIPTION: Scale normalized actuator commands to values for ESC/Servo
-    //protocol
-    /*
-     * mX_command_scaled variables from the mixer function are scaled to
-     * 125-250us for OneShot125 protocol. sX_command_scaled variables from the
-     * mixer function are scaled to 0-180 for the servo library using standard
-     * PWM.  mX_command_PWM are updated here which are used to command the
-     * motors in commandMotors(). sX_command_PWM are updated which are used to
-     * command the servos.
-     */
-
-    //Scaled to 125us - 250us for oneshot125 protocol
-    m1_command_PWM = m1_command_scaled*125 + 125;
-    m2_command_PWM = m2_command_scaled*125 + 125;
-    m3_command_PWM = m3_command_scaled*125 + 125;
-    m4_command_PWM = m4_command_scaled*125 + 125;
-
-    //Constrain commands to motors within oneshot125 bounds
-    m1_command_PWM = constrain(m1_command_PWM, 125, 250);
-    m2_command_PWM = constrain(m2_command_PWM, 125, 250);
-    m3_command_PWM = constrain(m3_command_PWM, 125, 250);
-    m4_command_PWM = constrain(m4_command_PWM, 125, 250);
+    demandThrottle = constrain(demandThrottle, 0.0, 1.0); //Between 0 and 1
+    demandRoll = constrain(demandRoll, -1.0, 1.0)*maxRoll; //Between -maxRoll and +maxRoll
+    demandPitch = constrain(demandPitch, -1.0, 1.0)*maxPitch; //Between -maxPitch and +maxPitch
+    demandYaw = constrain(demandYaw, -1.0, 1.0)*maxYaw; //Between -maxYaw and +maxYaw
 }
 
 static void getCommands() 
@@ -406,8 +379,8 @@ void debugDesiredState()
 {
     if (current_time - print_counter > 10000) {
         print_counter = micros();
-        Serial.printf("thro_des:%f roll_des:%f yaw_des:%f\n",
-                thro_des, roll_des, yaw_des);
+        Serial.printf("demandThrottle:%f demandRoll:%f demandYaw:%f\n",
+                demandThrottle, demandRoll, demandYaw);
     }
 }
 
@@ -434,7 +407,7 @@ void debugRollPitchYaw()
     if (current_time - print_counter > 10000) {
         print_counter = micros();
         Serial.printf("roll:%2.2f pitch:%2.2f yaw:%2.2f\n", 
-                roll_IMU, pitch_IMU, yaw_IMU);
+                statePhi, stateTheta, statePsi);
     }
 }
 
@@ -520,8 +493,6 @@ void loop()
     void copilot_step(void);
     copilot_step(); 
 
-    scaleCommands(); 
-
     // Throttle cut check
     throttleCut(); //Directly sets motor commands to low based on state of ch5
 
@@ -541,15 +512,22 @@ void loop()
 void setMotors(const float m1, const float m2, const float m3, const float m4)
 
 {
-    m1_command_scaled = m1;
-    m2_command_scaled = m2;
-    m3_command_scaled = m3;
-    m4_command_scaled = m4;
+    // Scaled to 125us - 250us for oneshot125 protocol
+    m1_command_PWM = m1 * 125 + 125;
+    m2_command_PWM = m2 * 125 + 125;
+    m3_command_PWM = m3 * 125 + 125;
+    m4_command_PWM = m4 * 125 + 125;
+
+    // Constrain commands to motors within oneshot125 bounds
+    m1_command_PWM = constrain(m1_command_PWM, 125, 250);
+    m2_command_PWM = constrain(m2_command_PWM, 125, 250);
+    m3_command_PWM = constrain(m3_command_PWM, 125, 250);
+    m4_command_PWM = constrain(m4_command_PWM, 125, 250);
 }
 
 void setAngles(const float phi, const float theta, const float psi)
 {
-    roll_IMU = phi;
-    pitch_IMU = theta;
-    yaw_IMU = psi;
+    statePhi = phi;
+    stateTheta = theta;
+    statePsi = psi;
 }
