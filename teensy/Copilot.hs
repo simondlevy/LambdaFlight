@@ -161,12 +161,14 @@ spec = do
   trigger "setAngles" true [ arg phi, arg theta, arg psi ]
 
   let motors = step
+ 
+  -- Scaled to 125us - 250us for oneshot125 protocol
+  let m1_pwm = constrain ((Motors.qm1 motors)* 125 + 125) 125 250
+  let m2_pwm = constrain ((Motors.qm2 motors)* 125 + 125) 125 250
+  let m3_pwm = constrain ((Motors.qm3 motors)* 125 + 125) 125 250
+  let m4_pwm = constrain ((Motors.qm4 motors)* 125 + 125) 125 250
 
-  trigger "setMotors" true [
-      arg $ Motors.qm1 motors, 
-      arg $ Motors.qm2 motors, 
-      arg $ Motors.qm3 motors, 
-      arg $ Motors.qm4 motors] 
+  trigger "setMotors" true [arg m1_pwm, arg m2_pwm, arg m3_pwm, arg m4_pwm] 
 
 -- Compile the spec
 main = reify spec >>= 

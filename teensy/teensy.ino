@@ -512,17 +512,10 @@ void loop()
 void setMotors(const float m1, const float m2, const float m3, const float m4)
 
 {
-    // Scaled to 125us - 250us for oneshot125 protocol
-    m1_command_PWM = m1 * 125 + 125;
-    m2_command_PWM = m2 * 125 + 125;
-    m3_command_PWM = m3 * 125 + 125;
-    m4_command_PWM = m4 * 125 + 125;
-
-    // Constrain commands to motors within oneshot125 bounds
-    m1_command_PWM = constrain(m1_command_PWM, 125, 250);
-    m2_command_PWM = constrain(m2_command_PWM, 125, 250);
-    m3_command_PWM = constrain(m3_command_PWM, 125, 250);
-    m4_command_PWM = constrain(m4_command_PWM, 125, 250);
+    m1_command_PWM = m1;
+    m2_command_PWM = m2;
+    m3_command_PWM = m3;
+    m4_command_PWM = m4;
 }
 
 void setAngles(const float phi, const float theta, const float psi)
