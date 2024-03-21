@@ -33,6 +33,21 @@ import Utils
 
 -- Streams from C++ ----------------------------------------------------------
 
+channel1 :: SInt16
+channel1 = extern "channel_1_pwm" Nothing
+
+channel2 :: SInt16
+channel2 = extern "channel_2_pwm" Nothing
+
+channel3 :: SInt16
+channel3 = extern "channel_3_pwm" Nothing
+
+channel4 :: SInt16
+channel4 = extern "channel_4_pwm" Nothing
+
+channel5 :: SInt16
+channel5 = extern "channel_5_pwm" Nothing
+
 demandThrottle :: SFloat
 demandThrottle = extern "demandThrottle" Nothing
 
@@ -86,7 +101,11 @@ kd_yaw = 0.00015 :: SFloat
 
 -----------------------------------------------------------------------------
 
-step = motors where
+step = motors' where
+
+  armed = if channel5 < 1500 then false
+              else if channel1 < 1050 then true
+              else armed'
 
   throttle_is_down = demandThrottle < 0.06
 
@@ -143,12 +162,24 @@ step = motors where
   -- Run demands through motor mixer
   motors = quadDFMixer $ Demands demandThrottle roll_PID pitch_PID yaw_PID
 
+  -- Convert motors to PWM interval, with safety check for arming
+
+  safeMotor m = if armed then constrain ((m motors) * 125 + 125) 125 250 else 120
+
+  m1_pwm = safeMotor Motors.qm1 
+  m2_pwm = safeMotor Motors.qm2 
+  m3_pwm = safeMotor Motors.qm3 
+  m4_pwm = safeMotor Motors.qm4 
+
+  motors' = (m1_pwm, m2_pwm, m3_pwm, m4_pwm)
+
   -- State variables ---------------------------------------------------------
 
   integral_roll' = [0] ++ integral_roll
   integral_pitch' = [0] ++ integral_pitch
   integral_yaw' = [0] ++ integral_yaw
   error_yaw' = [0] ++ error_yaw
+  armed' = [False] ++ armed
 
 ------------------------------------------------------------------------------
 
@@ -160,13 +191,7 @@ spec = do
 
   trigger "setAngles" true [ arg phi, arg theta, arg psi ]
 
-  let motors = step
- 
-  -- Scaled to 125us - 250us for oneshot125 protocol
-  let m1_pwm = constrain ((Motors.qm1 motors)* 125 + 125) 125 250
-  let m2_pwm = constrain ((Motors.qm2 motors)* 125 + 125) 125 250
-  let m3_pwm = constrain ((Motors.qm3 motors)* 125 + 125) 125 250
-  let m4_pwm = constrain ((Motors.qm4 motors)* 125 + 125) 125 250
+  let (m1_pwm, m2_pwm, m3_pwm, m4_pwm) = step
 
   trigger "setMotors" true [arg m1_pwm, arg m2_pwm, arg m3_pwm, arg m4_pwm] 
 

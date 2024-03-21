@@ -28,7 +28,6 @@ static const uint16_t channel_2_failsafe = 1500; //ail
 static const uint16_t channel_3_failsafe = 1500; //elev
 static const uint16_t channel_4_failsafe = 1500; //rudd
 static const uint16_t channel_5_failsafe = 2000; //gear, less than 1500 = throttle cut
-static const uint16_t channel_6_failsafe = 2000; //aux1
 
 //Filter parameters - Defaults tuned for 2kHz loop rate; Do not touch unless
 //you know what you are doing:
@@ -81,30 +80,17 @@ static uint32_t blink_delay;
 static bool blinkAlternate;
 
 // Radio communication:
-static uint16_t channel_1_pwm;
-static uint16_t channel_2_pwm;
-static uint16_t channel_3_pwm;
-static uint16_t channel_4_pwm;
-static uint16_t channel_5_pwm;
-static uint16_t channel_6_pwm;
+uint16_t channel_1_pwm;
+uint16_t channel_2_pwm;
+uint16_t channel_3_pwm;
+uint16_t channel_4_pwm;
+uint16_t channel_5_pwm;
 
 // Motors
 static int m1_command_PWM;
 static int m2_command_PWM;
 static int m3_command_PWM;
 static int m4_command_PWM;
-
-// Safety
-static bool armedFly;
-
-static void armedStatus() 
-{
-    //DESCRIPTION: Check if the throttle cut is off and the throttle input is
-    //low to prepare for flight.
-    if ((channel_5_pwm > 1500) && (channel_1_pwm < 1050)) {
-        armedFly = true;
-    }
-}
 
 static void IMUinit() 
 {
@@ -206,7 +192,6 @@ static void getCommands()
         channel_3_pwm = sbus.data().ch[2] * scale + bias;
         channel_4_pwm = sbus.data().ch[3] * scale + bias;
         channel_5_pwm = sbus.data().ch[4] * scale + bias;
-        channel_6_pwm = sbus.data().ch[5] * scale + bias; 
     }
 
     static uint16_t channel_1_pwm_prev, channel_2_pwm_prev,
@@ -248,16 +233,14 @@ static void failSafe()
     int check3 = (channel_3_pwm > maxVal || channel_3_pwm < minVal) ? 1 : 0;
     int check4 = (channel_4_pwm > maxVal || channel_4_pwm < minVal) ? 1 : 0;
     int check5 = (channel_5_pwm > maxVal || channel_5_pwm < minVal) ? 1 : 0;
-    int check6 = (channel_6_pwm > maxVal || channel_6_pwm < minVal) ? 1 : 0;
 
     //If any failures, set to default failsafe values
-    if ((check1 + check2 + check3 + check4 + check5 + check6) > 0) {
+    if ((check1 + check2 + check3 + check4 + check5) > 0) {
         channel_1_pwm = channel_1_failsafe;
         channel_2_pwm = channel_2_failsafe;
         channel_3_pwm = channel_3_failsafe;
         channel_4_pwm = channel_4_failsafe;
         channel_5_pwm = channel_5_failsafe;
-        channel_6_pwm = channel_6_failsafe;
     }
 }
 
@@ -269,32 +252,6 @@ static void commandMotors()
     motors.set(3, m4_command_PWM);
 
     motors.run();
-}
-
-static void throttleCut() 
-{
-    //DESCRIPTION: Directly set actuator outputs to minimum value if triggered
-    /*
-       Monitors the state of radio command channel_5_pwm and directly sets the
-       mx_command_PWM values to minimum (120 is minimum for oneshot125
-       protocol, 0 is minimum for standard PWM servo library used) if channel 5
-       is high. This is the last function called before commandMotors() is
-       called so that the last thing checked is if the user is giving
-       permission to command the motors to anything other than minimum value.
-       Safety first.
-
-       channel_5_pwm is HIGH then throttle cut is OFF and throttle value can
-       change. (ThrottleCut is DEACTIVATED) channel_5_pwm is LOW then throttle
-       cut is ON and throttle value = 120 only. (ThrottleCut is ACTIVATED),
-       (drone is DISARMED)
-     */
-    if ((channel_5_pwm < 1500) || (armedFly == false)) {
-        armedFly = false;
-        m1_command_PWM = 120;
-        m2_command_PWM = 120;
-        m3_command_PWM = 120;
-        m4_command_PWM = 120;
-    }
 }
 
 static void loopRate(int freq) 
@@ -369,9 +326,9 @@ void debugRadioData()
 {
     if (current_time - print_counter > 10000) {
         print_counter = micros();
-        Serial.printf("CH1:%d CH2:%d CH3:%d CH4:%d CH5:%d CH6:%d\n",
+        Serial.printf("CH1:%d CH2:%d CH3:%d CH4:%d CH5:%d\n",
                 channel_1_pwm, channel_2_pwm, channel_3_pwm,
-                channel_4_pwm, channel_5_pwm, channel_6_pwm);
+                channel_4_pwm, channel_5_pwm);
     }
 }
 
@@ -450,7 +407,6 @@ void setup()
     channel_3_pwm = channel_3_failsafe;
     channel_4_pwm = channel_4_failsafe;
     channel_5_pwm = channel_5_failsafe;
-    channel_6_pwm = channel_6_failsafe;
 
     //Initialize IMU communication
     IMUinit();
@@ -481,9 +437,6 @@ void loop()
 
     debug();
 
-    // Get arming status
-    armedStatus(); //Check if the throttle cut is off and throttle is low.
-
     // Get vehicle state
     getIMUdata(); 
 
@@ -492,9 +445,6 @@ void loop()
 
     void copilot_step(void);
     copilot_step(); 
-
-    // Throttle cut check
-    throttleCut(); //Directly sets motor commands to low based on state of ch5
 
     // Command actuators
     commandMotors(); //Sends command pulses to each motor pin using OneShot125 protocol
@@ -510,7 +460,6 @@ void loop()
 // Called by Copilot ---------------------------------------------------------
 
 void setMotors(const float m1, const float m2, const float m3, const float m4)
-
 {
     m1_command_PWM = m1;
     m2_command_PWM = m2;
