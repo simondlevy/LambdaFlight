@@ -27,6 +27,7 @@ import Copilot.Compile.C99
 type SFloat = Stream Float
 type SInt32 = Stream Int32
 type SInt8 = Stream Int8
+type SInt16 = Stream Int16
 type SBool = Stream Bool
 
 rescale :: SFloat -> SFloat -> SFloat -> SFloat -> SFloat -> SFloat

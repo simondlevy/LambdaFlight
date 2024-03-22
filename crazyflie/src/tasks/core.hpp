@@ -150,11 +150,11 @@ class CoreTask : public FreeRTOSTask {
                 if (Clock::rateDoExecute(PID_UPDATE_RATE, step)) {
 
                     uint32_t timestamp = 0;
-                    extern bool stream_inHoverMode;
+                    extern bool stream_inFlyingMode;
 
                     // Get open-loop demands in [-1,+1], as well as timestamp
                     // when they received, and whether hover mode is indicated
-                    _openLoopFun(stream_openLoopDemands, timestamp, stream_inHoverMode);
+                    _openLoopFun(stream_openLoopDemands, timestamp, stream_inFlyingMode);
 
                     // Use safety algorithm to modify demands based on sensor data
                     // and open-loop info

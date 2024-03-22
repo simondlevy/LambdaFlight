@@ -57,8 +57,8 @@ demandsStruct = extern "stream_openLoopDemands" Nothing
 stateStruct :: Stream StateStruct
 stateStruct = extern "stream_vehicleState" Nothing
 
-inHoverMode :: SBool
-inHoverMode = extern "stream_inHoverMode" Nothing
+inFlyingMode :: SBool
+inFlyingMode = extern "stream_inFlyingMode" Nothing
 
 resetPids :: SBool
 resetPids = extern "stream_resetPids" Nothing
@@ -71,17 +71,17 @@ step = motors where
 
   dt = rateToPeriod clock_rate
 
-  pids = [positionPid resetPids inHoverMode dt,
-          pitchRollAnglePid resetPids inHoverMode dt,
-          pitchRollRatePid resetPids inHoverMode dt,
-          altitudePid inHoverMode dt,
-          climbRatePid inHoverMode dt,
+  pids = [positionPid resetPids inFlyingMode dt,
+          pitchRollAnglePid resetPids dt,
+          pitchRollRatePid resetPids dt,
+          altitudePid inFlyingMode dt,
+          climbRatePid inFlyingMode dt,
           yawAnglePid dt,
           yawRatePid dt]
 
   demands' = foldl (\demand pid -> pid vehicleState demand) openLoopDemands pids
 
-  thrust'' = if inHoverMode then ((thrust demands') * tscale + tbase) else tmin
+  thrust'' = if inFlyingMode then ((thrust demands') * tscale + tbase) else tmin
 
   motors = quadCFMixer $ Demands thrust''
                                  ((roll demands') * prscale)

@@ -25,55 +25,60 @@ module Copilot where
 import Language.Copilot
 import Copilot.Compile.C99
 
+import Demands
 import Madgwick
+import Mixers
 import Motors
 import Utils
 
 -- Streams from C++ ----------------------------------------------------------
 
-thro_des :: SFloat
-thro_des = extern "thro_des" Nothing
+channel1_raw :: SFloat
+channel1_raw = extern "channel1_raw" Nothing
 
-roll_des :: SFloat
-roll_des = extern "roll_des" Nothing
+channel2_raw :: SFloat
+channel2_raw = extern "channel2_raw" Nothing
 
-pitch_des :: SFloat
-pitch_des = extern "pitch_des" Nothing
+channel3_raw :: SFloat
+channel3_raw = extern "channel3_raw" Nothing
 
-yaw_des :: SFloat
-yaw_des = extern "yaw_des" Nothing
+channel4_raw :: SFloat
+channel4_raw = extern "channel4_raw" Nothing
 
-roll_IMU :: SFloat
-roll_IMU = extern "roll_IMU" Nothing
+channel5_raw :: SFloat
+channel5_raw = extern "channel5_raw" Nothing
 
-pitch_IMU :: SFloat
-pitch_IMU = extern "pitch_IMU" Nothing
+radio_failsafe :: SBool
+radio_failsafe = extern "radio_failsafe" Nothing
+
+statePhi :: SFloat
+statePhi = extern "statePhi" Nothing
+
+stateTheta :: SFloat
+stateTheta = extern "stateTheta" Nothing
 
 dt :: SFloat
 dt = extern "dt" Nothing
 
-throttle_is_down :: SBool
-throttle_is_down = extern "throttle_is_down" Nothing
+gyX :: SFloat
+gyX = extern "GyX" Nothing
 
-gyroX :: SFloat
-gyroX = extern "gyroX" Nothing
+gyY :: SFloat
+gyY = extern "GyY" Nothing
 
-gyroY :: SFloat
-gyroY = extern "gyroY" Nothing
+gyZ :: SFloat
+gyZ = extern "GyZ" Nothing
 
-gyroZ :: SFloat
-gyroZ = extern "gyroZ" Nothing
+acX :: SFloat
+acX = extern "AcX" Nothing
 
-accelX :: SFloat
-accelX = extern "accelX" Nothing
+acY :: SFloat
+acY = extern "AcY" Nothing
 
-accelY :: SFloat
-accelY = extern "accelY" Nothing
+acZ :: SFloat
+acZ = extern "AcZ" Nothing
 
-accelZ :: SFloat
-accelZ = extern "accelZ" Nothing
-
--- Tuning constants ---------------------------------------------------------
+-- PID tuning constants -----------------------------------------------------
 
 i_limit = 25 :: SFloat
 
@@ -85,13 +90,84 @@ kp_yaw = 0.3 :: SFloat
 ki_yaw = 0.05 :: SFloat      
 kd_yaw = 0.00015 :: SFloat
 
+-- SBUS scaling -------------------------------------------------------------
+
+sbus_scale = 0.615  :: SFloat
+sbus_bias  = 895.0 :: SFloat
+
+pwm_min = 800 :: SFloat
+pwm_max = 2200 :: SFloat
+
+maxRoll = 30 :: SFloat    
+maxPitch = 30 :: SFloat   
+maxYaw = 160 :: SFloat    
+
+-- IMU scaling --------------------------------------------------------------
+
+accel_scale_factor = 16384 :: SFloat
+gyro_scale_factor = 131 :: SFloat
+
+-- IMU LP filter parameters
+b_accel = 0.14 :: SFloat
+b_gyro = 0.1 :: SFloat
+
 -----------------------------------------------------------------------------
 
-step = motors where
+getImu :: (SFloat, SFloat, SFloat, SFloat, SFloat, SFloat)
 
-  -- Roll --------------------------------------------------------
+getImu = (accelX, accelY, accelZ, gyroX, gyroY, gyroZ) where
 
-  error_roll = roll_des - roll_IMU
+  lpf = \v v' f b -> let s = v / f in (1 - b) * v' + b * s
+
+  alpf = \a a' -> lpf a a' accel_scale_factor b_accel
+
+  accelX = alpf acX accelX'
+  accelY = alpf acY accelY'
+  accelZ = alpf acZ accelZ'
+
+  accelX' = [0] ++ accelX
+  accelY' = [0] ++ accelY
+  accelZ' = [0] ++ accelZ
+
+  glpf = \g g' -> lpf g g' gyro_scale_factor b_gyro
+
+  gyroX = glpf gyX gyroX'
+  gyroY = glpf gyY gyroY'
+  gyroZ = glpf gyZ gyroZ'
+
+  gyroX' = [0] ++ gyroX
+  gyroY' = [0] ++ gyroY
+  gyroZ' = [0] ++ gyroZ
+
+-----------------------------------------------------------------------------
+
+step gyroX gyroY gyroZ = motors' where
+
+  -- Open-loop demands ----------------------------------------------
+
+  scaleup = \c -> sbus_scale * c + sbus_bias
+
+  c1 = scaleup channel1_raw
+  c2 = scaleup channel2_raw
+  c3 = scaleup channel3_raw
+  c4 = scaleup channel4_raw
+  c5 = scaleup channel5_raw
+
+  throttle_is_down = c1 < 1060
+
+  armed = if radio_failsafe then false
+          else if c5 < 1500 then false 
+          else if c1 < 1050 then true 
+          else armed'
+
+  demandThrottle = constrain ((c1 - 1000) / 1000) 0 1
+  demandRoll     = (constrain ((c2 - 1500 ) / 500) (-1) 1) * maxRoll
+  demandPitch    = (constrain ((c3 - 1500) / 500) (-1) 1) * maxPitch
+  demandYaw      = (constrain (-(c4 - 1500) / 500) (-1) 1) * maxYaw
+
+  -- Roll PID --------------------------------------------------------
+
+  error_roll = demandRoll - statePhi
 
   -- Don't let integrator build if throttle is too low
   integral_roll = if throttle_is_down then 0 else
@@ -106,9 +182,9 @@ step = motors where
         ki_cyclic * integral_roll - 
         kd_cyclic * derivative_roll) 
 
-  -- Pitch -------------------------------------------------------
+  -- Pitch PID -------------------------------------------------------
 
-  error_pitch = pitch_des - pitch_IMU
+  error_pitch = demandPitch - stateTheta
 
   -- Don't let integrator build if throttle is too low
   integral_pitch = if throttle_is_down then 0 else
@@ -123,9 +199,9 @@ step = motors where
          ki_cyclic * integral_pitch - 
          kd_cyclic * derivative_pitch)
 
-  -- Yaw: stablize on rate from gyroZ -------------------------------
+  -- Yaw PID : stablize on rate from gyroZ -------------------------------
 
-  error_yaw = yaw_des - gyroZ
+  error_yaw = demandYaw - gyroZ
 
   -- Don't let integrator build if throttle is too low
   integral_yaw = if throttle_is_down then 0 else
@@ -139,12 +215,19 @@ step = motors where
   yaw_PID = 0.01 * 
     (kp_yaw * error_yaw + ki_yaw * integral_yaw + kd_yaw * derivative_yaw) 
 
-  m1 = thro_des - pitch_PID + roll_PID + yaw_PID --Front Left
-  m2 = thro_des - pitch_PID - roll_PID - yaw_PID --Front Right
-  m3 = thro_des + pitch_PID - roll_PID + yaw_PID --Back Right
-  m4 = thro_des + pitch_PID + roll_PID - yaw_PID --Back Left
+  -- Run demands through motor mixer
+  motors = quadDFMixer $ Demands demandThrottle roll_PID pitch_PID yaw_PID
 
-  motors = QuadMotors m1 m2 m3 m4
+  -- Convert motors to PWM interval, with safety check for arming
+
+  safeMotor m = if armed then constrain ((m motors) * 125 + 125) 125 250 else 120
+
+  m1_pwm = safeMotor Motors.qm1 
+  m2_pwm = safeMotor Motors.qm2 
+  m3_pwm = safeMotor Motors.qm3 
+  m4_pwm = safeMotor Motors.qm4 
+
+  motors' = (m1_pwm, m2_pwm, m3_pwm, m4_pwm, c1)
 
   -- State variables ---------------------------------------------------------
 
@@ -152,10 +235,13 @@ step = motors where
   integral_pitch' = [0] ++ integral_pitch
   integral_yaw' = [0] ++ integral_yaw
   error_yaw' = [0] ++ error_yaw
+  armed' = [False] ++ armed
 
 ------------------------------------------------------------------------------
 
 spec = do
+
+  let (accelX, accelY, accelZ, gyroX, gyroY, gyroZ) = getImu
 
   let (phi, theta, psi) = madgwick6DOF (gyroX, (-gyroY), (-gyroZ)) 
                                        ((-accelX), accelY, accelZ)
@@ -163,13 +249,9 @@ spec = do
 
   trigger "setAngles" true [ arg phi, arg theta, arg psi ]
 
-  let motors = step
+  let (m1_pwm, m2_pwm, m3_pwm, m4_pwm, c1) = step gyroX gyroY gyroZ
 
-  trigger "setMotors" true [
-      arg $ Motors.qm1 motors, 
-      arg $ Motors.qm2 motors, 
-      arg $ Motors.qm3 motors, 
-      arg $ Motors.qm4 motors] 
+  trigger "setMotors" true [arg m1_pwm, arg m2_pwm, arg m3_pwm, arg m4_pwm] 
 
 -- Compile the spec
 main = reify spec >>= 
