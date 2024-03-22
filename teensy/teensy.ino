@@ -276,10 +276,6 @@ void setup()
     delay(5);
 
     //Arm OneShot125 motors
-    m1_command_PWM = 125; //Command OneShot125 ESC from 125 to 250us pulse length
-    m2_command_PWM = 125;
-    m3_command_PWM = 125;
-    m4_command_PWM = 125;
     motors.arm();
 
     //Indicate entering main loop with 3 quick blinks
