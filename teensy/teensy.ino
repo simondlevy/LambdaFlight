@@ -21,14 +21,6 @@ static const float GYRO_SCALE_FACTOR = 131;
 static const uint8_t ACCEL_SCALE = MPU6050_ACCEL_FS_2;
 static const float ACCEL_SCALE_FACTOR = 16384;
 
-//Radio failsafe values for every channel in the event that bad reciever data
-//is detected. Recommended defaults:
-static const uint16_t channel_1_failsafe = 1000; //thro
-static const uint16_t channel_2_failsafe = 1500; //ail
-static const uint16_t channel_3_failsafe = 1500; //elev
-static const uint16_t channel_4_failsafe = 1500; //rudd
-static const uint16_t channel_5_failsafe = 2000; //gear, less than 1500 = throttle cut
-
 //Filter parameters - Defaults tuned for 2kHz loop rate; Do not touch unless
 //you know what you are doing:
 
@@ -37,19 +29,6 @@ static const float B_accel = 0.14;
 
 //Gyro LP filter paramter, (MPU6050 default: 0.1. MPU9250 default: 0.17)
 static const float B_gyro = 0.1;       
-
-//Controller parameters (take note of defaults before modifying!): 
-
-//Max roll angle in degrees for angle mode (maximum ~70 degrees), deg/sec for
-//rate mode 
-static const float maxRoll = 30.0;     
-
-//Max pitch angle in degrees for angle mode (maximum ~70 degrees), deg/sec for
-//rate mode
-static const float maxPitch = 30.0;    
-
-//Max yaw rate in deg/sec
-static const float maxYaw = 160.0;     
 
 // ---------------------------------------------------------------------------
 
@@ -62,10 +41,25 @@ static MPU6050 mpu6050;
 bfs::SbusRx sbus(&Serial5);
 
 // Streams read by Copilot.hs
-float demandThrottle, demandRoll, demandPitch, demandYaw;
-float gyroX, gyroY, gyroZ;
-float accelX, accelY, accelZ;
+float gyroX;
+float gyroY;
+float gyroZ;
+float accelX;
+float accelY;
+float accelZ;
 float dt;
+float channel1_raw;
+float channel2_raw;
+float channel3_raw;
+float channel4_raw;
+float channel5_raw;
+bool radio_failsafe;
+int16_t AcX;
+int16_t AcY;
+int16_t AcZ;
+int16_t GyX;
+int16_t GyY;
+int16_t GyZ;
 
 // Stream written and read by Copilot.hs
 float statePhi, stateTheta, statePsi;
@@ -78,13 +72,6 @@ static uint32_t print_counter;
 static uint32_t blink_counter;
 static uint32_t blink_delay;
 static bool blinkAlternate;
-
-// Radio communication:
-uint16_t channel_1_pwm;
-uint16_t channel_2_pwm;
-uint16_t channel_3_pwm;
-uint16_t channel_4_pwm;
-uint16_t channel_5_pwm;
 
 // Motors
 static int m1_command_PWM;
@@ -122,8 +109,6 @@ static void getIMUdata()
     static float accelX_prev, accelY_prev, accelZ_prev;
     static float gyroX_prev, gyroY_prev, gyroZ_prev;
 
-    int16_t AcX = 0, AcY = 0, AcZ = 0, GyX = 0, GyY = 0, GyZ = 0;
-
     mpu6050.getMotion6(&AcX, &AcY, &AcZ, &GyX, &GyY, &GyZ);
 
     //Accelerometer (Gs), corrected with the calculated error values
@@ -153,94 +138,19 @@ static void getIMUdata()
     gyroZ_prev = gyroZ;
 }
 
-static void getDesState() 
-{
-    demandThrottle = (channel_1_pwm - 1000.0)/1000.0; //Between 0 and 1
-    demandRoll = (channel_2_pwm - 1500.0)/500.0; //Between -1 and 1
-    demandPitch = (channel_3_pwm - 1500.0)/500.0; //Between -1 and 1
-    demandYaw = -(channel_4_pwm - 1500.0)/500.0; //Between -1 and 1
-
-    //Constrain within normalized bounds
-    demandThrottle = constrain(demandThrottle, 0.0, 1.0); //Between 0 and 1
-    demandRoll = constrain(demandRoll, -1.0, 1.0)*maxRoll; //Between -maxRoll and +maxRoll
-    demandPitch = constrain(demandPitch, -1.0, 1.0)*maxPitch; //Between -maxPitch and +maxPitch
-    demandYaw = constrain(demandYaw, -1.0, 1.0)*maxYaw; //Between -maxYaw and +maxYaw
-}
-
 static void getCommands() 
 {
-    //DESCRIPTION: Get raw PWM values for every channel from the radio
-    /*
-     * Updates radio PWM commands in loop based on current available commands.
-     * channel_x_pwm is the raw command used in the rest of the loop. If using
-     * a PWM or PPM receiver, the radio commands are retrieved from a function
-     * in the readPWM file separate from this one which is running a bunch of
-     * interrupts to continuously update the radio readings. If using an SBUS
-     * receiver, the alues are pulled from the SBUS library directly.  The raw
-     * radio commands are filtered with a first order low-pass filter to
-     * eliminate any really high frequency noise. 
-     */
-
     if (sbus.Read()) {
 
-        //sBus scaling below is for Taranis-Plus and X4R-SB
-        float scale = 0.615;  
-        float bias  = 895.0; 
-
-        channel_1_pwm = sbus.data().ch[0] * scale + bias;
-        channel_2_pwm = sbus.data().ch[1] * scale + bias;
-        channel_3_pwm = sbus.data().ch[2] * scale + bias;
-        channel_4_pwm = sbus.data().ch[3] * scale + bias;
-        channel_5_pwm = sbus.data().ch[4] * scale + bias;
+        channel1_raw = sbus.data().ch[0];
+        channel2_raw = sbus.data().ch[1];
+        channel3_raw = sbus.data().ch[2];
+        channel4_raw = sbus.data().ch[3];
+        channel5_raw = sbus.data().ch[4];
     }
 
-    static uint16_t channel_1_pwm_prev, channel_2_pwm_prev,
-                         channel_3_pwm_prev, channel_4_pwm_prev;
-
-    //Low-pass the critical commands and update previous values
-    float b = 0.7; //Lower=slower, higher=noiser
-    channel_1_pwm = (1.0 - b)*channel_1_pwm_prev + b*channel_1_pwm;
-    channel_2_pwm = (1.0 - b)*channel_2_pwm_prev + b*channel_2_pwm;
-    channel_3_pwm = (1.0 - b)*channel_3_pwm_prev + b*channel_3_pwm;
-    channel_4_pwm = (1.0 - b)*channel_4_pwm_prev + b*channel_4_pwm;
-    channel_1_pwm_prev = channel_1_pwm;
-    channel_2_pwm_prev = channel_2_pwm;
-    channel_3_pwm_prev = channel_3_pwm;
-    channel_4_pwm_prev = channel_4_pwm;
-}
-
-static void failSafe() 
-{
-    //DESCRIPTION: If radio gives garbage values, set all commands to default
-    //values
-    /*
-     * Radio connection failsafe used to check if the getCommands() function is
-     * returning acceptable pwm values. If any of the commands are lower than
-     * 800 or higher than 2200, then we can be certain that there is an issue
-     * with the radio connection (most likely hardware related). If any of the
-     * channels show this failure, then all of the radio commands channel_x_pwm
-     * are set to default failsafe values specified in the setup. Comment out
-     * this function when troubleshooting your radio connection in case any
-     * extreme values are triggering this function to overwrite the printed
-     * variables.
-     */
-    unsigned minVal = 800;
-    unsigned maxVal = 2200;
-
-    //Triggers for failure criteria
-    int check1 = (channel_1_pwm > maxVal || channel_1_pwm < minVal) ? 1 : 0;
-    int check2 = (channel_2_pwm > maxVal || channel_2_pwm < minVal) ? 1 : 0;
-    int check3 = (channel_3_pwm > maxVal || channel_3_pwm < minVal) ? 1 : 0;
-    int check4 = (channel_4_pwm > maxVal || channel_4_pwm < minVal) ? 1 : 0;
-    int check5 = (channel_5_pwm > maxVal || channel_5_pwm < minVal) ? 1 : 0;
-
-    //If any failures, set to default failsafe values
-    if ((check1 + check2 + check3 + check4 + check5) > 0) {
-        channel_1_pwm = channel_1_failsafe;
-        channel_2_pwm = channel_2_failsafe;
-        channel_3_pwm = channel_3_failsafe;
-        channel_4_pwm = channel_4_failsafe;
-        channel_5_pwm = channel_5_failsafe;
+    if (sbus.data().failsafe) {
+        radio_failsafe = true;
     }
 }
 
@@ -322,25 +232,6 @@ static void debug(void)
     //debugLoopRate();      
 }
 
-void debugRadioData() 
-{
-    if (current_time - print_counter > 10000) {
-        print_counter = micros();
-        Serial.printf("CH1:%d CH2:%d CH3:%d CH4:%d CH5:%d\n",
-                channel_1_pwm, channel_2_pwm, channel_3_pwm,
-                channel_4_pwm, channel_5_pwm);
-    }
-}
-
-void debugDesiredState() 
-{
-    if (current_time - print_counter > 10000) {
-        print_counter = micros();
-        Serial.printf("demandThrottle:%f demandRoll:%f demandYaw:%f\n",
-                demandThrottle, demandRoll, demandYaw);
-    }
-}
-
 void debugGyroData() 
 {
     if (current_time - print_counter > 10000) {
@@ -392,6 +283,8 @@ void setup()
     Serial.begin(500000); //USB serial
     delay(500);
 
+    radio_failsafe = false;
+
     //Pin 13 LED blinker on board, do not modify     
     pinMode(13, OUTPUT); 
     digitalWrite(13, HIGH);
@@ -400,13 +293,6 @@ void setup()
 
     //Initialize radio communication
     sbus.Begin();
-
-    //Set radio channels to default (safe) values before entering main loop
-    channel_1_pwm = channel_1_failsafe;
-    channel_2_pwm = channel_2_failsafe;
-    channel_3_pwm = channel_3_failsafe;
-    channel_4_pwm = channel_4_failsafe;
-    channel_5_pwm = channel_5_failsafe;
 
     //Initialize IMU communication
     IMUinit();
@@ -440,18 +326,15 @@ void loop()
     // Get vehicle state
     getIMUdata(); 
 
-    // Compute desired state
-    getDesState(); 
-
+    // Run Haskell Copilot
     void copilot_step(void);
     copilot_step(); 
 
-    // Command actuators
-    commandMotors(); //Sends command pulses to each motor pin using OneShot125 protocol
+    // Run the motors
+    commandMotors();
 
     // Get vehicle commands for next loop iteration
     getCommands();
-    failSafe(); 
 
     // Regulate loop rate
     loopRate(2000); //Do not exceed 2000Hz, all filter paras tuned to 2000Hz by default
@@ -472,4 +355,9 @@ void setAngles(const float phi, const float theta, const float psi)
     statePhi = phi;
     stateTheta = theta;
     statePsi = psi;
+}
+
+void showChannel1(const float c1)
+{
+    //Serial.println(c1);
 }
