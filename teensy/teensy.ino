@@ -12,19 +12,11 @@
 #include <oneshot125.hpp>
 #include <vector>
 
-
-//Setup gyro and accel full scale value selection and scale factor
+// Setup gyro and accel full scale value selection and scale factor
 
 static const uint8_t GYRO_SCALE = MPU6050_GYRO_FS_250;
-static const float GYRO_SCALE_FACTOR = 131;
 
 static const uint8_t ACCEL_SCALE = MPU6050_ACCEL_FS_2;
-
-//Filter parameters - Defaults tuned for 2kHz loop rate; Do not touch unless
-//you know what you are doing:
-
-//Gyro LP filter paramter, (MPU6050 default: 0.1. MPU9250 default: 0.17)
-static const float B_gyro = 0.1;       
 
 // ---------------------------------------------------------------------------
 
@@ -58,7 +50,6 @@ float statePhi, stateTheta, statePsi;
 static uint32_t current_time;
 
 // LED control
-static uint32_t print_counter;
 static uint32_t blink_counter;
 static uint32_t blink_delay;
 static bool blinkAlternate;
@@ -91,7 +82,6 @@ static void IMUinit()
     //do is set the desired fullscale ranges
     mpu6050.setFullScaleGyroRange(GYRO_SCALE);
     mpu6050.setFullScaleAccelRange(ACCEL_SCALE);
-
 }
 
 static void getIMUdata() 
@@ -191,13 +181,15 @@ static void setupBlink(int numBlinks,int upTime, int downTime)
 
 static void debug(void)
 {
+
     //Print data at 100hz (uncomment one at a time for troubleshooting) - SELECT ONE:
-    //debugRollPitchYaw();  
-    //debugMotorCommands(); 
-    //debugLoopRate();      
+    //static uint32_t print_counter;
+    //debugRollPitchYaw(print_counter);  
+    //debugMotorCommands(print_counter); 
+    //debugLoopRate(print_counter);      
 }
 
-void debugRollPitchYaw() 
+void debugRollPitchYaw(uint32_t & print_counter) 
 {
     if (current_time - print_counter > 10000) {
         print_counter = micros();
@@ -206,7 +198,7 @@ void debugRollPitchYaw()
     }
 }
 
-void debugMotorCommands() 
+void debugMotorCommands(uint32_t & print_counter) 
 {
     if (current_time - print_counter > 10000) {
         print_counter = micros();
@@ -217,7 +209,7 @@ void debugMotorCommands()
     }
 }
 
-void debugLoopRate() 
+void debugLoopRate(uint32_t & print_counter) 
 {
     if (current_time - print_counter > 10000) {
         print_counter = micros();
