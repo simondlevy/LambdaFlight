@@ -37,9 +37,6 @@ static MPU6050 mpu6050;
 bfs::SbusRx sbus(&Serial5);
 
 // Streams read by Copilot.hs
-float gyroX;
-float gyroY;
-float gyroZ;
 float dt;
 float channel1_raw;
 float channel2_raw;
@@ -99,8 +96,6 @@ static void IMUinit()
 
 static void getIMUdata() 
 {
-    static float gyroX_prev, gyroY_prev, gyroZ_prev;
-
     int16_t ax=0, ay=0, az=0, gx=0, gy=0, gz=0;
 
     mpu6050.getMotion6(&ax, &ay, &az, &gx, &gy, &gz);
@@ -111,19 +106,6 @@ static void getIMUdata()
     GyX = gx;
     GyY = gy;
     GyZ = gz;
-
-    //Gyro (DPS),  corrected with the calculated error values
-    gyroX = GyX / GYRO_SCALE_FACTOR; 
-    gyroY = GyY / GYRO_SCALE_FACTOR;
-    gyroZ = GyZ / GYRO_SCALE_FACTOR;
-
-    //LP filter gyro data
-    gyroX = (1.0 - B_gyro)*gyroX_prev + B_gyro*gyroX;
-    gyroY = (1.0 - B_gyro)*gyroY_prev + B_gyro*gyroY;
-    gyroZ = (1.0 - B_gyro)*gyroZ_prev + B_gyro*gyroZ;
-    gyroX_prev = gyroX;
-    gyroY_prev = gyroY;
-    gyroZ_prev = gyroZ;
 }
 
 static void getCommands() 
@@ -210,19 +192,9 @@ static void setupBlink(int numBlinks,int upTime, int downTime)
 static void debug(void)
 {
     //Print data at 100hz (uncomment one at a time for troubleshooting) - SELECT ONE:
-    //debugGyroData();      
     debugRollPitchYaw();  
     //debugMotorCommands(); 
     //debugLoopRate();      
-}
-
-void debugGyroData() 
-{
-    if (current_time - print_counter > 10000) {
-        print_counter = micros();
-        Serial.printf("gyroX:%f gyroY:%f gyroZ:%f\n",
-                gyroX, gyroY, gyroZ);
-    }
 }
 
 void debugRollPitchYaw() 

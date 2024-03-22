@@ -66,9 +66,6 @@ gyroX = extern "gyroX" Nothing
 gyroY :: SFloat
 gyroY = extern "gyroY" Nothing
 
---gyroZ :: SFloat
---gyroZ = extern "gyroZ" Nothing
-
 gyX :: SFloat
 gyX = extern "GyX" Nothing
 
@@ -122,9 +119,9 @@ b_gyro = 0.1 :: SFloat
 
 -----------------------------------------------------------------------------
 
-getImu :: (SFloat, SFloat, SFloat, SFloat)
+getImu :: (SFloat, SFloat, SFloat, SFloat, SFloat, SFloat)
 
-getImu = (accelX, accelY, accelZ, new_gyroZ) where
+getImu = (accelX, accelY, accelZ, gyroX, gyroY, gyroZ) where
 
   alpf = \a a' -> let as = a / accel_scale_factor in (1 - b_accel) * a' + b_accel * as
 
@@ -138,13 +135,17 @@ getImu = (accelX, accelY, accelZ, new_gyroZ) where
 
   glpf = \g g' -> let gs = g / gyro_scale_factor in (1 - b_gyro) * g' + b_gyro * gs
 
-  new_gyroZ = glpf gyZ gyroZ' -- gyZ / gyro_scale_factor 
+  gyroX = glpf gyX gyroX'
+  gyroY = glpf gyY gyroY'
+  gyroZ = glpf gyZ gyroZ'
 
-  gyroZ' = [0] ++ new_gyroZ
+  gyroX' = [0] ++ gyroX
+  gyroY' = [0] ++ gyroY
+  gyroZ' = [0] ++ gyroZ
 
 -----------------------------------------------------------------------------
 
-step new_gyroZ = motors' where
+step gyroZ = motors' where
 
   -- Open-loop demands ----------------------------------------------
 
@@ -204,7 +205,7 @@ step new_gyroZ = motors' where
 
   -- Yaw PID : stablize on rate from gyroZ -------------------------------
 
-  error_yaw = demandYaw - new_gyroZ
+  error_yaw = demandYaw - gyroZ
 
   -- Don't let integrator build if throttle is too low
   integral_yaw = if throttle_is_down then 0 else
@@ -244,15 +245,15 @@ step new_gyroZ = motors' where
 
 spec = do
 
-  let (accelX, accelY, accelZ, new_gyroZ) = getImu
+  let (accelX, accelY, accelZ, gyroX, gyroY, gyroZ) = getImu
 
-  let (phi, theta, psi) = madgwick6DOF (gyroX, (-gyroY), (-new_gyroZ)) 
+  let (phi, theta, psi) = madgwick6DOF (gyroX, (-gyroY), (-gyroZ)) 
                                        ((-accelX), accelY, accelZ)
                                        dt
 
   trigger "setAngles" true [ arg phi, arg theta, arg psi ]
 
-  let (m1_pwm, m2_pwm, m3_pwm, m4_pwm, c1) = step new_gyroZ
+  let (m1_pwm, m2_pwm, m3_pwm, m4_pwm, c1) = step gyroZ
 
   trigger "setMotors" true [arg m1_pwm, arg m2_pwm, arg m3_pwm, arg m4_pwm] 
 
