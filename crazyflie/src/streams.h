@@ -11,7 +11,7 @@
 
 EXTERN demands_t stream_openLoopDemands;
 EXTERN vehicleState_t stream_vehicleState;
-EXTERN bool stream_inHoverMode;
+EXTERN bool stream_inFlyingMode;
 EXTERN bool stream_resetPids;
 
 EXTERN quat_t stream_quat;
