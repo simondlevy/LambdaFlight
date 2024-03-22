@@ -50,7 +50,7 @@ demands_t stream_openLoopDemands;
 
 vehicleState_t stream_vehicleState;
 
-bool stream_inHoverMode;
+bool stream_inFlyingMode;
 
 bool stream_resetPids;
 
@@ -190,7 +190,7 @@ int main(int argc, char ** argv)
 
     auto sec_start = _timesec();
 
-    stream_inHoverMode = false;
+    stream_inFlyingMode = false;
     stream_resetPids = false;
 
     while (wb_robot_step(timestep) != -1) {
@@ -205,7 +205,7 @@ int main(int argc, char ** argv)
                 stream_openLoopDemands.roll, 
                 stream_openLoopDemands.pitch, 
                 stream_openLoopDemands.yaw,
-                stream_inHoverMode);
+                stream_inFlyingMode);
 
         stream_openLoopDemands.thrust = throttle;
 
