@@ -33,7 +33,8 @@ run kp ki flying reset dt ilimit target actual integ = (demand, integ') where
 
   error = target - actual
 
-  demand = (-(if flying then kp * error + ki * integ else actual * 30))
+  -- demand = (-(if flying then kp * error + ki * integ else actual * 30))
+  demand = (-(kp * error + ki * integ))
 
   integ' = if reset 
            then 0
