@@ -44,9 +44,6 @@ bfs::SbusRx sbus(&Serial5);
 float gyroX;
 float gyroY;
 float gyroZ;
-float accelX;
-float accelY;
-float accelZ;
 float dt;
 float channel1_raw;
 float channel2_raw;
@@ -106,7 +103,6 @@ static void IMUinit()
 
 static void getIMUdata() 
 {
-    static float accelX_prev, accelY_prev, accelZ_prev;
     static float gyroX_prev, gyroY_prev, gyroZ_prev;
 
     int16_t ax=0, ay=0, az=0, gx=0, gy=0, gz=0;
@@ -119,19 +115,6 @@ static void getIMUdata()
     GyX = gx;
     GyY = gy;
     GyZ = gz;
-
-    //Accelerometer (Gs), corrected with the calculated error values
-    accelX = AcX / ACCEL_SCALE_FACTOR;
-    accelY = AcY / ACCEL_SCALE_FACTOR;
-    accelZ = AcZ / ACCEL_SCALE_FACTOR;
-
-    //LP filter accelerometer data
-    accelX = (1.0 - B_accel)*accelX_prev + B_accel*accelX;
-    accelY = (1.0 - B_accel)*accelY_prev + B_accel*accelY;
-    accelZ = (1.0 - B_accel)*accelZ_prev + B_accel*accelZ;
-    accelX_prev = accelX;
-    accelY_prev = accelY;
-    accelZ_prev = accelZ;
 
     //Gyro (DPS),  corrected with the calculated error values
     gyroX = GyX / GYRO_SCALE_FACTOR; 
@@ -231,11 +214,8 @@ static void setupBlink(int numBlinks,int upTime, int downTime)
 static void debug(void)
 {
     //Print data at 100hz (uncomment one at a time for troubleshooting) - SELECT ONE:
-    //debugThrottle();
     //debugRadioData();     
-    //debugDesiredState();  
     //debugGyroData();      
-    //debugAccelData();     
     //debugRollPitchYaw();  
     //debugMotorCommands(); 
     //debugLoopRate();      
@@ -247,15 +227,6 @@ void debugGyroData()
         print_counter = micros();
         Serial.printf("gyroX:%f gyroY:%f gyroZ:%f\n",
                 gyroX, gyroY, gyroZ);
-    }
-}
-
-void debugAccelData() 
-{
-    if (current_time - print_counter > 10000) {
-        print_counter = micros();
-        Serial.printf("accelX:%f accelY:%f accelZ:%f\n",
-                accelX, accelY, accelZ);
     }
 }
 

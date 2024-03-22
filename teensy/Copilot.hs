@@ -69,15 +69,6 @@ gyroY = extern "gyroY" Nothing
 gyroZ :: SFloat
 gyroZ = extern "gyroZ" Nothing
 
-accelX :: SFloat
-accelX = extern "accelX" Nothing
-
-accelY :: SFloat
-accelY = extern "accelY" Nothing
-
-accelZ :: SFloat
-accelZ = extern "accelZ" Nothing
-
 gyX :: SFloat
 gyX = extern "GyX" Nothing
 
@@ -120,6 +111,29 @@ maxRoll = 30 :: SFloat
 maxPitch = 30 :: SFloat   
 maxYaw = 160 :: SFloat    
 
+-- IMU scaling --------------------------------------------------------------
+
+accel_scale_factor = 16384 :: SFloat
+
+-- Accelerometer LP filter parameter
+b_accel = 0.14 :: SFloat
+
+-----------------------------------------------------------------------------
+
+getImu :: (SFloat, SFloat, SFloat)
+
+getImu = (accelX, accelY, accelZ) where
+
+  lpf = \a a' -> let as = a / accel_scale_factor in (1 - b_accel) * a' + b_accel * a
+
+  accelX = lpf acX accelX'
+  accelY = lpf acY accelY'
+  accelZ = lpf acZ accelZ'
+
+  accelX' = [0] ++ accelX
+  accelY' = [0] ++ accelY
+  accelZ' = [0] ++ accelZ
+
 -----------------------------------------------------------------------------
 
 step = motors' where
@@ -145,8 +159,6 @@ step = motors' where
   demandRoll     = (constrain ((c2 - 1500 ) / 500) (-1) 1) * maxRoll
   demandPitch    = (constrain ((c3 - 1500) / 500) (-1) 1) * maxPitch
   demandYaw      = (constrain (-(c4 - 1500) / 500) (-1) 1) * maxYaw
-
-  -- IMU -------------------------------------------------------------
 
   -- Roll PID --------------------------------------------------------
 
@@ -223,6 +235,8 @@ step = motors' where
 ------------------------------------------------------------------------------
 
 spec = do
+
+  let (accelX, accelY, accelZ) = getImu
 
   let (phi, theta, psi) = madgwick6DOF (gyroX, (-gyroY), (-gyroZ)) 
                                        ((-accelX), accelY, accelZ)
