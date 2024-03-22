@@ -60,12 +60,6 @@ stateTheta = extern "stateTheta" Nothing
 dt :: SFloat
 dt = extern "dt" Nothing
 
-gyroX :: SFloat
-gyroX = extern "gyroX" Nothing
-
-gyroY :: SFloat
-gyroY = extern "gyroY" Nothing
-
 gyX :: SFloat
 gyX = extern "GyX" Nothing
 
@@ -123,7 +117,9 @@ getImu :: (SFloat, SFloat, SFloat, SFloat, SFloat, SFloat)
 
 getImu = (accelX, accelY, accelZ, gyroX, gyroY, gyroZ) where
 
-  alpf = \a a' -> let as = a / accel_scale_factor in (1 - b_accel) * a' + b_accel * as
+  lpf = \v v' f b -> let s = v / f in (1 - b) * v' + b * s
+
+  alpf = \a a' -> lpf a a' accel_scale_factor b_accel
 
   accelX = alpf acX accelX'
   accelY = alpf acY accelY'
@@ -133,7 +129,7 @@ getImu = (accelX, accelY, accelZ, gyroX, gyroY, gyroZ) where
   accelY' = [0] ++ accelY
   accelZ' = [0] ++ accelZ
 
-  glpf = \g g' -> let gs = g / gyro_scale_factor in (1 - b_gyro) * g' + b_gyro * gs
+  glpf = \g g' -> lpf g g' gyro_scale_factor b_gyro
 
   gyroX = glpf gyX gyroX'
   gyroY = glpf gyY gyroY'
@@ -145,7 +141,7 @@ getImu = (accelX, accelY, accelZ, gyroX, gyroY, gyroZ) where
 
 -----------------------------------------------------------------------------
 
-step gyroZ = motors' where
+step gyroX gyroY gyroZ = motors' where
 
   -- Open-loop demands ----------------------------------------------
 
@@ -253,7 +249,7 @@ spec = do
 
   trigger "setAngles" true [ arg phi, arg theta, arg psi ]
 
-  let (m1_pwm, m2_pwm, m3_pwm, m4_pwm, c1) = step gyroZ
+  let (m1_pwm, m2_pwm, m3_pwm, m4_pwm, c1) = step gyroX gyroY gyroZ
 
   trigger "setMotors" true [arg m1_pwm, arg m2_pwm, arg m3_pwm, arg m4_pwm] 
 

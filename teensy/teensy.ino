@@ -192,7 +192,7 @@ static void setupBlink(int numBlinks,int upTime, int downTime)
 static void debug(void)
 {
     //Print data at 100hz (uncomment one at a time for troubleshooting) - SELECT ONE:
-    debugRollPitchYaw();  
+    //debugRollPitchYaw();  
     //debugMotorCommands(); 
     //debugLoopRate();      
 }
