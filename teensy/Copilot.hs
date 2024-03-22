@@ -78,6 +78,24 @@ accelY = extern "accelY" Nothing
 accelZ :: SFloat
 accelZ = extern "accelZ" Nothing
 
+gyX :: SFloat
+gyX = extern "GyX" Nothing
+
+gyY :: SFloat
+gyY = extern "GyY" Nothing
+
+gyZ :: SFloat
+gyZ = extern "GyZ" Nothing
+
+acX :: SFloat
+acX = extern "AcX" Nothing
+
+acY :: SFloat
+acY = extern "AcY" Nothing
+
+acZ :: SFloat
+acZ = extern "AcZ" Nothing
+
 -- PID tuning constants -----------------------------------------------------
 
 i_limit = 25 :: SFloat
@@ -106,7 +124,7 @@ maxYaw = 160 :: SFloat
 
 step = motors' where
 
-  -- R/C demands -------------------------------------------------
+  -- Open-loop demands ----------------------------------------------
 
   scaleup = \c -> sbus_scale * c + sbus_bias
 
@@ -116,26 +134,23 @@ step = motors' where
   c4 = scaleup channel4_raw
   c5 = scaleup channel5_raw
 
+  throttle_is_down = c1 < 1060
+
   armed = if radio_failsafe then false
           else if c5 < 1500 then false 
           else if c1 < 1050 then true 
           else armed'
 
-  demandThrottle = (c1 - 1000) / 1000
-  demandRoll = (c2 - 1500 ) / 500
-  demandPitch = (c3 - 1500) / 500
-  demandYaw = -(c4 - 1500) / 500
+  demandThrottle = constrain ((c1 - 1000) / 1000) 0 1
+  demandRoll     = (constrain ((c2 - 1500 ) / 500) (-1) 1) * maxRoll
+  demandPitch    = (constrain ((c3 - 1500) / 500) (-1) 1) * maxPitch
+  demandYaw      = (constrain (-(c4 - 1500) / 500) (-1) 1) * maxYaw
 
-  demandThrottle' = constrain demandThrottle  0 1
-  demandRoll' = (constrain demandRoll (-1) 1) * maxRoll
-  demandPitch' = (constrain demandPitch (-1) 1) * maxPitch
-  demandYaw' = (constrain demandYaw (-1) 1) * maxYaw
-
-  throttle_is_down = demandThrottle' < 0.06
+  -- IMU -------------------------------------------------------------
 
   -- Roll PID --------------------------------------------------------
 
-  error_roll = demandRoll' - statePhi
+  error_roll = demandRoll - statePhi
 
   -- Don't let integrator build if throttle is too low
   integral_roll = if throttle_is_down then 0 else
@@ -152,7 +167,7 @@ step = motors' where
 
   -- Pitch PID -------------------------------------------------------
 
-  error_pitch = demandPitch' - stateTheta
+  error_pitch = demandPitch - stateTheta
 
   -- Don't let integrator build if throttle is too low
   integral_pitch = if throttle_is_down then 0 else
@@ -169,7 +184,7 @@ step = motors' where
 
   -- Yaw PID : stablize on rate from gyroZ -------------------------------
 
-  error_yaw = demandYaw' - gyroZ
+  error_yaw = demandYaw - gyroZ
 
   -- Don't let integrator build if throttle is too low
   integral_yaw = if throttle_is_down then 0 else
@@ -216,8 +231,6 @@ spec = do
   trigger "setAngles" true [ arg phi, arg theta, arg psi ]
 
   let (m1_pwm, m2_pwm, m3_pwm, m4_pwm, c1) = step
-
-  trigger "showChannel1" true [arg c1]
 
   trigger "setMotors" true [arg m1_pwm, arg m2_pwm, arg m3_pwm, arg m4_pwm] 
 

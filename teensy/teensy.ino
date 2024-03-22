@@ -54,12 +54,12 @@ float channel3_raw;
 float channel4_raw;
 float channel5_raw;
 bool radio_failsafe;
-int16_t AcX;
-int16_t AcY;
-int16_t AcZ;
-int16_t GyX;
-int16_t GyY;
-int16_t GyZ;
+float AcX;
+float AcY;
+float AcZ;
+float GyX;
+float GyY;
+float GyZ;
 
 // Stream written and read by Copilot.hs
 float statePhi, stateTheta, statePsi;
@@ -109,7 +109,16 @@ static void getIMUdata()
     static float accelX_prev, accelY_prev, accelZ_prev;
     static float gyroX_prev, gyroY_prev, gyroZ_prev;
 
-    mpu6050.getMotion6(&AcX, &AcY, &AcZ, &GyX, &GyY, &GyZ);
+    int16_t ax=0, ay=0, az=0, gx=0, gy=0, gz=0;
+
+    mpu6050.getMotion6(&ax, &ay, &az, &gx, &gy, &gz);
+
+    AcX = ax;
+    AcY = ay;
+    AcZ = az;
+    GyX = gx;
+    GyY = gy;
+    GyZ = gz;
 
     //Accelerometer (Gs), corrected with the calculated error values
     accelX = AcX / ACCEL_SCALE_FACTOR;
@@ -355,9 +364,4 @@ void setAngles(const float phi, const float theta, const float psi)
     statePhi = phi;
     stateTheta = theta;
     statePsi = psi;
-}
-
-void showChannel1(const float c1)
-{
-    //Serial.println(c1);
 }
