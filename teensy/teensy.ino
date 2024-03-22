@@ -12,11 +12,12 @@
 #include <oneshot125.hpp>
 #include <vector>
 
-// Setup gyro and accel full scale value selection and scale factor
-
+// Gyro and accel full scale value selection and scale factor
 static const uint8_t GYRO_SCALE = MPU6050_GYRO_FS_250;
-
 static const uint8_t ACCEL_SCALE = MPU6050_ACCEL_FS_2;
+
+// Do not exceed 2000Hz, all filter paras tuned to 2000Hz by default
+static const uint32_t LOOP_RATE = 2000;
 
 // ---------------------------------------------------------------------------
 
@@ -45,9 +46,6 @@ float GyZ;
 
 // Stream written and read by Copilot.hs
 float statePhi, stateTheta, statePsi;
-
-// Timing
-static uint32_t current_time;
 
 // Motors
 static int m1_command_PWM;
@@ -93,7 +91,7 @@ static void getIMUdata()
     GyZ = gz;
 }
 
-static void getCommands() 
+static void getOpenLoopDemands() 
 {
     if (sbus.Read()) {
 
@@ -109,7 +107,7 @@ static void getCommands()
     }
 }
 
-static void commandMotors() 
+static void runMotors() 
 {
     motors.set(0, m1_command_PWM);
     motors.set(1, m2_command_PWM);
@@ -119,7 +117,7 @@ static void commandMotors()
     motors.run();
 }
 
-static void loopRate(const uint32_t freq) 
+static void maintainLoopRate(const uint32_t freq, const uint32_t current_time) 
 {
     //DESCRIPTION: Regulate main loop rate to specified frequency in Hz
     /*
@@ -142,7 +140,7 @@ static void loopRate(const uint32_t freq)
     }
 }
 
-static void loopBlink() 
+static void blinkLed(const uint32_t current_time) 
 {
     //DESCRIPTION: Blink LED on board to indicate main loop is running
     /*
@@ -178,17 +176,16 @@ static void setupBlink(int numBlinks,int upTime, int downTime)
     }
 }
 
-static void debug(void)
+static void debug(const uint32_t current_time)
 {
-
     //Print data at 100hz (uncomment one at a time for troubleshooting) - SELECT ONE:
     //static uint32_t print_counter;
-    //debugState(print_counter);  
-    //debugMotorCommands(print_counter); 
-    //debugLoopRate(print_counter);      
+    //debugState(print_counter, current_time);  
+    //debugMotorCommands(print_counter, current_time); 
+    //debugLoopRate(print_counter, current_time);      
 }
 
-void debugState(uint32_t & print_counter) 
+void debugState(uint32_t & print_counter, const uint32_t current_time) 
 {
     if (current_time - print_counter > 10000) {
         print_counter = micros();
@@ -197,7 +194,7 @@ void debugState(uint32_t & print_counter)
     }
 }
 
-void debugMotorCommands(uint32_t & print_counter) 
+void debugMotorCommands(uint32_t & print_counter, const uint32_t current_time) 
 {
     if (current_time - print_counter > 10000) {
         print_counter = micros();
@@ -208,13 +205,15 @@ void debugMotorCommands(uint32_t & print_counter)
     }
 }
 
-void debugLoopRate(uint32_t & print_counter) 
+void debugLoopRate(uint32_t & print_counter, const uint32_t current_time) 
 {
     if (current_time - print_counter > 10000) {
         print_counter = micros();
         Serial.printf("dt:%f\n", dt*1e6);
     }
 }
+
+static uint32_t _current_time;
 
 void setup() 
 {
@@ -249,29 +248,25 @@ void loop()
     static uint32_t _prev_time;
 
     //Keep track of what time it is and how much time has elapsed since the last loop
-    _prev_time = current_time;      
-    current_time = micros();      
-    dt = (current_time - _prev_time)/1e6;
+    _prev_time = _current_time;      
+    _current_time = micros();      
+    dt = (_current_time - _prev_time)/1e6;
 
-    loopBlink(); //Indicate we are in main loop with short blink every 1.5 seconds
+    blinkLed(_current_time);
 
-    debug();
+    debug(_current_time);
 
-    // Get vehicle state
     getIMUdata(); 
 
     // Run Haskell Copilot
     void copilot_step(void);
     copilot_step(); 
 
-    // Run the motors
-    commandMotors();
+    runMotors();
 
-    // Get vehicle commands for next loop iteration
-    getCommands();
+    getOpenLoopDemands();
 
-    // Regulate loop rate
-    loopRate(2000); //Do not exceed 2000Hz, all filter paras tuned to 2000Hz by default
+    maintainLoopRate(LOOP_RATE, _current_time); 
 }
 
 // Called by Copilot ---------------------------------------------------------
