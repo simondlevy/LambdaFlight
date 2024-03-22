@@ -29,15 +29,15 @@ import Demands
 import State
 import Utils
 
-run kp ki hover reset dt ilimit target actual integ = (demand, integ') where
+run kp ki flying reset dt ilimit target actual integ = (demand, integ') where
 
   error = target - actual
 
-  demand = (-(if hover then kp * error + ki * integ else actual * 30))
+  demand = (-(if flying then kp * error + ki * integ else actual * 30))
 
   integ' = if reset 
            then 0
-           else if hover 
+           else if flying 
            then constrain (integ + error * dt) (-ilimit) (ilimit)
            else integ
 
@@ -54,19 +54,19 @@ run kp ki hover reset dt ilimit target actual integ = (demand, integ') where
 
 positionPid :: SBool -> ClosedLoopController
 
-positionPid reset hover dt state demands = demands'  where
+positionPid reset flying dt state demands = demands'  where
 
   kp = 25
   ki = 1
   ilimit = 5000
     
   (rollDemand, rollInteg) = 
-    run kp ki hover reset dt ilimit (roll demands) (dy state) rollInteg'
+    run kp ki flying reset dt ilimit (roll demands) (dy state) rollInteg'
 
   rollInteg' = [0] ++ rollInteg
 
   (pitchDemand, pitchInteg) = 
-    run kp ki hover reset dt ilimit (pitch demands) (dx state) pitchInteg'
+    run kp ki flying reset dt ilimit (pitch demands) (dx state) pitchInteg'
 
   pitchInteg' = [0] ++ pitchInteg
 

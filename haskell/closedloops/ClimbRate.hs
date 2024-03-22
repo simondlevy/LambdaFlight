@@ -47,10 +47,10 @@ run dt thrust dz = thrust'  where
 
 --}
 
-climbRatePid hover dt state demands = demands' where
+climbRatePid flying dt state demands = demands' where
 
     thrustraw = thrust demands
 
-    thrustout = if hover then run dt thrustraw (dz state) else thrustraw
+    thrustout = if flying then run dt thrustraw (dz state) else thrustraw
 
     demands' = Demands thrustout (roll demands) (pitch demands) (yaw demands)

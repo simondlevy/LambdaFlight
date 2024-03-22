@@ -72,8 +72,8 @@ step = motors where
   dt = rateToPeriod clock_rate
 
   pids = [positionPid resetPids inFlyingMode dt,
-          pitchRollAnglePid resetPids inFlyingMode dt,
-          pitchRollRatePid resetPids inFlyingMode dt,
+          pitchRollAnglePid resetPids dt,
+          pitchRollRatePid resetPids dt,
           altitudePid inFlyingMode dt,
           climbRatePid inFlyingMode dt,
           yawAnglePid dt,

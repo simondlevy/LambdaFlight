@@ -57,7 +57,7 @@ run nothrust reset kp ki kd ilimit dt target actual integ prev =
 
 --}
 
-pitchRollRatePid reset hover dt state demands = demands' where
+pitchRollRatePid reset dt state demands = demands' where
 
   kp = 125
   ki = 250
