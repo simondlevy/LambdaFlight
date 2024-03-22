@@ -44,8 +44,10 @@ float GyX;
 float GyY;
 float GyZ;
 
-// Stream written and read by Copilot.hs
-float statePhi, stateTheta, statePsi;
+// Streams written and read by Copilot.hs
+float statePhi;
+float stateTheta;
+float statePsi;
 
 // Motors
 static int m1_command_PWM;
@@ -55,10 +57,6 @@ static int m4_command_PWM;
 
 static void IMUinit() 
 {
-    //DESCRIPTION: Initialize IMU
-    /*
-     * Don't worry about how this works.
-     */
     Wire.begin();
     Wire.setClock(1000000); //Note this is 2.5 times the spec sheet 400 kHz max...
 
@@ -77,7 +75,7 @@ static void IMUinit()
     mpu6050.setFullScaleAccelRange(ACCEL_SCALE);
 }
 
-static void getIMUdata() 
+static void readImu() 
 {
     int16_t ax=0, ay=0, az=0, gx=0, gy=0, gz=0;
 
@@ -91,7 +89,7 @@ static void getIMUdata()
     GyZ = gz;
 }
 
-static void getOpenLoopDemands() 
+static void readReceiver() 
 {
     if (sbus.Read()) {
 
@@ -165,10 +163,12 @@ static void blinkLed(const uint32_t current_time)
     }
 }
 
-static void setupBlink(int numBlinks,int upTime, int downTime) 
+static void setupBlink(
+        const uint32_t numBlinks, 
+        const uint32_t upTime, 
+        const uint32_t downTime) 
 {
-    //DESCRIPTION: Simple function to make LED on board blink as desired
-    for (int j = 1; j<= numBlinks; j++) {
+    for (uint32_t j = 1; j<= numBlinks; j++) {
         digitalWrite(13, LOW);
         delay(downTime);
         digitalWrite(13, HIGH);
@@ -220,25 +220,25 @@ void setup()
 
     radio_failsafe = false;
 
-    //Pin 13 LED blinker on board, do not modify     
+    // Pin 13 LED blinker on board, do not modify     
     pinMode(13, OUTPUT); 
     digitalWrite(13, HIGH);
 
     delay(5);
 
-    //Initialize radio communication
+    // Initialize radio communication
     sbus.Begin();
 
-    //Initialize IMU communication
+    // Initialize IMU communication
     IMUinit();
 
     delay(5);
 
-    //Arm OneShot125 motors
+    // Arm OneShot125 motors
     motors.arm();
 
-    //Indicate entering main loop with 3 quick blinks
-    setupBlink(3,160,70); //numBlinks, upTime (ms), downTime (ms)
+    // Indicate entering main loop with 3 quick blinks
+    setupBlink(3, 160, 70); //numBlinks, upTime (ms), downTime (ms)
 }
 
 void loop() 
@@ -246,7 +246,7 @@ void loop()
     static uint32_t _current_time;
     static uint32_t _prev_time;
 
-    //Keep track of what time it is and how much time has elapsed since the last loop
+    // Keep track of what time it is and how much time has elapsed since the last loop
     _prev_time = _current_time;      
     _current_time = micros();      
     dt = (_current_time - _prev_time)/1e6;
@@ -255,7 +255,7 @@ void loop()
 
     debug(_current_time);
 
-    getIMUdata(); 
+    readImu(); 
 
     // Run Haskell Copilot
     void copilot_step(void);
@@ -263,7 +263,7 @@ void loop()
 
     runMotors();
 
-    getOpenLoopDemands();
+    readReceiver();
 
     maintainLoopRate(LOOP_RATE, _current_time); 
 }
