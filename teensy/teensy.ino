@@ -19,13 +19,9 @@ static const uint8_t GYRO_SCALE = MPU6050_GYRO_FS_250;
 static const float GYRO_SCALE_FACTOR = 131;
 
 static const uint8_t ACCEL_SCALE = MPU6050_ACCEL_FS_2;
-static const float ACCEL_SCALE_FACTOR = 16384;
 
 //Filter parameters - Defaults tuned for 2kHz loop rate; Do not touch unless
 //you know what you are doing:
-
-//Accelerometer LP filter paramter, (MPU6050 default: 0.14. MPU9250 default: 0.2)
-static const float B_accel = 0.14;     
 
 //Gyro LP filter paramter, (MPU6050 default: 0.1. MPU9250 default: 0.17)
 static const float B_gyro = 0.1;       
