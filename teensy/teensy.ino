@@ -49,11 +49,6 @@ float statePhi, stateTheta, statePsi;
 // Timing
 static uint32_t current_time;
 
-// LED control
-static uint32_t blink_counter;
-static uint32_t blink_delay;
-static bool blinkAlternate;
-
 // Motors
 static int m1_command_PWM;
 static int m2_command_PWM;
@@ -124,7 +119,7 @@ static void commandMotors()
     motors.run();
 }
 
-static void loopRate(int freq) 
+static void loopRate(const uint32_t freq) 
 {
     //DESCRIPTION: Regulate main loop rate to specified frequency in Hz
     /*
@@ -139,7 +134,7 @@ static void loopRate(int freq)
      * parameters.
      */
     float invFreq = 1.0/freq*1000000.0;
-    uint32_t checker = micros();
+    auto checker = micros();
 
     //Sit in loop until appropriate time has passed
     while (invFreq > (checker - current_time)) {
@@ -153,6 +148,10 @@ static void loopBlink()
     /*
      * It looks cool.
      */
+    static uint32_t blink_counter;
+    static uint32_t blink_delay;
+    static bool blinkAlternate;
+
     if (current_time - blink_counter > blink_delay) {
         blink_counter = micros();
         digitalWrite(13, blinkAlternate); //Pin 13 is built in LED
@@ -184,12 +183,12 @@ static void debug(void)
 
     //Print data at 100hz (uncomment one at a time for troubleshooting) - SELECT ONE:
     //static uint32_t print_counter;
-    //debugRollPitchYaw(print_counter);  
+    //debugState(print_counter);  
     //debugMotorCommands(print_counter); 
     //debugLoopRate(print_counter);      
 }
 
-void debugRollPitchYaw(uint32_t & print_counter) 
+void debugState(uint32_t & print_counter) 
 {
     if (current_time - print_counter > 10000) {
         print_counter = micros();
