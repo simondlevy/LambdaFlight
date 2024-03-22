@@ -213,8 +213,6 @@ void debugLoopRate(uint32_t & print_counter, const uint32_t current_time)
     }
 }
 
-static uint32_t _current_time;
-
 void setup() 
 {
     Serial.begin(500000); //USB serial
@@ -245,6 +243,7 @@ void setup()
 
 void loop() 
 {
+    static uint32_t _current_time;
     static uint32_t _prev_time;
 
     //Keep track of what time it is and how much time has elapsed since the last loop
