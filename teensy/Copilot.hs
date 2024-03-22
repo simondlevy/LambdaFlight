@@ -66,8 +66,8 @@ gyroX = extern "gyroX" Nothing
 gyroY :: SFloat
 gyroY = extern "gyroY" Nothing
 
-gyroZ :: SFloat
-gyroZ = extern "gyroZ" Nothing
+--gyroZ :: SFloat
+--gyroZ = extern "gyroZ" Nothing
 
 gyX :: SFloat
 gyX = extern "GyX" Nothing
@@ -114,29 +114,37 @@ maxYaw = 160 :: SFloat
 -- IMU scaling --------------------------------------------------------------
 
 accel_scale_factor = 16384 :: SFloat
+gyro_scale_factor = 131 :: SFloat
 
--- Accelerometer LP filter parameter
+-- IMU LP filter parameters
 b_accel = 0.14 :: SFloat
+b_gyro = 0.1 :: SFloat
 
 -----------------------------------------------------------------------------
 
-getImu :: (SFloat, SFloat, SFloat)
+getImu :: (SFloat, SFloat, SFloat, SFloat)
 
-getImu = (accelX, accelY, accelZ) where
+getImu = (accelX, accelY, accelZ, new_gyroZ) where
 
-  lpf = \a a' -> let as = a / accel_scale_factor in (1 - b_accel) * a' + b_accel * a
+  alpf = \a a' -> let as = a / accel_scale_factor in (1 - b_accel) * a' + b_accel * as
 
-  accelX = lpf acX accelX'
-  accelY = lpf acY accelY'
-  accelZ = lpf acZ accelZ'
+  accelX = alpf acX accelX'
+  accelY = alpf acY accelY'
+  accelZ = alpf acZ accelZ'
 
   accelX' = [0] ++ accelX
   accelY' = [0] ++ accelY
   accelZ' = [0] ++ accelZ
 
+  glpf = \g g' -> let gs = g / gyro_scale_factor in (1 - b_gyro) * g' + b_gyro * gs
+
+  new_gyroZ = glpf gyZ gyroZ' -- gyZ / gyro_scale_factor 
+
+  gyroZ' = [0] ++ new_gyroZ
+
 -----------------------------------------------------------------------------
 
-step = motors' where
+step new_gyroZ = motors' where
 
   -- Open-loop demands ----------------------------------------------
 
@@ -196,7 +204,7 @@ step = motors' where
 
   -- Yaw PID : stablize on rate from gyroZ -------------------------------
 
-  error_yaw = demandYaw - gyroZ
+  error_yaw = demandYaw - new_gyroZ
 
   -- Don't let integrator build if throttle is too low
   integral_yaw = if throttle_is_down then 0 else
@@ -236,15 +244,15 @@ step = motors' where
 
 spec = do
 
-  let (accelX, accelY, accelZ) = getImu
+  let (accelX, accelY, accelZ, new_gyroZ) = getImu
 
-  let (phi, theta, psi) = madgwick6DOF (gyroX, (-gyroY), (-gyroZ)) 
+  let (phi, theta, psi) = madgwick6DOF (gyroX, (-gyroY), (-new_gyroZ)) 
                                        ((-accelX), accelY, accelZ)
                                        dt
 
   trigger "setAngles" true [ arg phi, arg theta, arg psi ]
 
-  let (m1_pwm, m2_pwm, m3_pwm, m4_pwm, c1) = step
+  let (m1_pwm, m2_pwm, m3_pwm, m4_pwm, c1) = step new_gyroZ
 
   trigger "setMotors" true [arg m1_pwm, arg m2_pwm, arg m3_pwm, arg m4_pwm] 
 
