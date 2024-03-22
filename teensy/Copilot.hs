@@ -60,15 +60,6 @@ stateTheta = extern "stateTheta" Nothing
 dt :: SFloat
 dt = extern "dt" Nothing
 
-gyroX :: SFloat
-gyroX = extern "gyroX" Nothing
-
-gyroY :: SFloat
-gyroY = extern "gyroY" Nothing
-
-gyroZ :: SFloat
-gyroZ = extern "gyroZ" Nothing
-
 gyX :: SFloat
 gyX = extern "GyX" Nothing
 
@@ -114,29 +105,43 @@ maxYaw = 160 :: SFloat
 -- IMU scaling --------------------------------------------------------------
 
 accel_scale_factor = 16384 :: SFloat
+gyro_scale_factor = 131 :: SFloat
 
--- Accelerometer LP filter parameter
+-- IMU LP filter parameters
 b_accel = 0.14 :: SFloat
+b_gyro = 0.1 :: SFloat
 
 -----------------------------------------------------------------------------
 
-getImu :: (SFloat, SFloat, SFloat)
+getImu :: (SFloat, SFloat, SFloat, SFloat, SFloat, SFloat)
 
-getImu = (accelX, accelY, accelZ) where
+getImu = (accelX, accelY, accelZ, gyroX, gyroY, gyroZ) where
 
-  lpf = \a a' -> let as = a / accel_scale_factor in (1 - b_accel) * a' + b_accel * a
+  lpf = \v v' f b -> let s = v / f in (1 - b) * v' + b * s
 
-  accelX = lpf acX accelX'
-  accelY = lpf acY accelY'
-  accelZ = lpf acZ accelZ'
+  alpf = \a a' -> lpf a a' accel_scale_factor b_accel
+
+  accelX = alpf acX accelX'
+  accelY = alpf acY accelY'
+  accelZ = alpf acZ accelZ'
 
   accelX' = [0] ++ accelX
   accelY' = [0] ++ accelY
   accelZ' = [0] ++ accelZ
 
+  glpf = \g g' -> lpf g g' gyro_scale_factor b_gyro
+
+  gyroX = glpf gyX gyroX'
+  gyroY = glpf gyY gyroY'
+  gyroZ = glpf gyZ gyroZ'
+
+  gyroX' = [0] ++ gyroX
+  gyroY' = [0] ++ gyroY
+  gyroZ' = [0] ++ gyroZ
+
 -----------------------------------------------------------------------------
 
-step = motors' where
+step gyroX gyroY gyroZ = motors' where
 
   -- Open-loop demands ----------------------------------------------
 
@@ -236,7 +241,7 @@ step = motors' where
 
 spec = do
 
-  let (accelX, accelY, accelZ) = getImu
+  let (accelX, accelY, accelZ, gyroX, gyroY, gyroZ) = getImu
 
   let (phi, theta, psi) = madgwick6DOF (gyroX, (-gyroY), (-gyroZ)) 
                                        ((-accelX), accelY, accelZ)
@@ -244,7 +249,7 @@ spec = do
 
   trigger "setAngles" true [ arg phi, arg theta, arg psi ]
 
-  let (m1_pwm, m2_pwm, m3_pwm, m4_pwm, c1) = step
+  let (m1_pwm, m2_pwm, m3_pwm, m4_pwm, c1) = step gyroX gyroY gyroZ
 
   trigger "setMotors" true [arg m1_pwm, arg m2_pwm, arg m3_pwm, arg m4_pwm] 
 
