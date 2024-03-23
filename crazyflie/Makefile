@@ -275,7 +275,7 @@ links:
 copilot:
 	rm -f $(VENDOR)/STMicroelectronics || rm -rf $(VENDOR)/STMicroelectronics # removes whether or not it has contents
 	ln -s $(STM32DUINO) $(VENDOR)
-	runhaskell -i$(HASKDIR) -i$(HASKDIR)/closedloops -i$(PWD) $(HASKDIR)/Core.hs
+	runhaskell -i$(HASKDIR) -i$(HASKDIR)/closedloops -i$(PWD) $(HASKDIR)/Crazyflie.hs
 	runhaskell -i$(HASKDIR) -i$(HASKDIR)/closedloops -i$(PWD) $(HASKDIR)/Ekf.hs
 	cp copilot_core.c $(PWD)/src/copilot_core.cpp
 	cp copilot_ekf.c $(PWD)/src/copilot_ekf.cpp
