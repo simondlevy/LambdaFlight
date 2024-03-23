@@ -8,24 +8,38 @@
 
 #include <I2Cdev.h>
 #include <MPU6050.h>
+#include <usfs.hpp>
 
 #include <oneshot125.hpp>
 #include <vector>
 
-// Gyro and accel full scale value selection and scale factor
-const uint8_t GYRO_SCALE = MPU6050_GYRO_FS_2000;
-const uint8_t ACCEL_SCALE = MPU6050_ACCEL_FS_8;
+// USFS settings ------------------------------------------------------------
+
+static const uint8_t USFS_ACCEL_BANDWIDTH = 3;
+static const uint8_t USFS_GYRO_BANDWIDTH  = 3;
+static const uint8_t USFS_QUAT_DIVISOR    = 1;
+static const uint8_t USFS_MAG_RATE        = 100;
+static const uint8_t USFS_ACCEL_RATE      = 20; // Multiply by 10 to get actual rate
+static const uint8_t USFS_GYRO_RATE       = 100; // Multiply by 10 to get actual rate
+static const uint8_t USFS_BARO_RATE       = 50;
+
+
+static const uint8_t USFS_INTERRUPT_ENABLE = Usfs::INTERRUPT_RESET_REQUIRED |
+                                        Usfs::INTERRUPT_ERROR |
+                                        Usfs::INTERRUPT_QUAT;
+
+static const bool USFS_VERBOSE = false;
+
+// ---------------------------------------------------------------------------
 
 // Do not exceed 2000Hz, all filter paras tuned to 2000Hz by default
 static const uint32_t LOOP_RATE = 2000;
-
-// ---------------------------------------------------------------------------
 
 static const std::vector<uint8_t> MOTOR_PINS = {0, 1, 2, 3};
 
 static auto motors = OneShot125(MOTOR_PINS);
 
-static MPU6050 mpu6050;
+static Usfs usfs;
 
 bfs::SbusRx sbus(&Serial5);
 
@@ -57,29 +71,37 @@ static int m4_command_PWM;
 
 static void IMUinit() 
 {
-    Wire.begin();
-    Wire.setClock(1000000); //Note this is 2.5 times the spec sheet 400 kHz max...
+    Serial.begin(115200);
+    delay(4000);
 
-    mpu6050.initialize();
+    Wire.begin(); 
+    Wire.setClock(400000); 
+    delay(1000);
 
-    if (mpu6050.testConnection() == false) {
-        Serial.println("MPU6050 initialization unsuccessful");
-        Serial.println("Check MPU6050 wiring or try cycling power");
-        while(1) {}
-    }
+    usfs.reportChipId();        
 
-    //From the reset state all registers should be 0x00, so we should be at
-    //max sample rate with digital low pass filter(s) off.  All we need to
-    //do is set the desired fullscale ranges
-    mpu6050.setFullScaleGyroRange(GYRO_SCALE);
-    mpu6050.setFullScaleAccelRange(ACCEL_SCALE);
+    usfs.loadFirmware(USFS_VERBOSE); 
+
+    usfs.begin(
+            USFS_ACCEL_BANDWIDTH,
+            USFS_GYRO_BANDWIDTH,
+            USFS_QUAT_DIVISOR,
+            USFS_MAG_RATE,
+            USFS_ACCEL_RATE,
+            USFS_GYRO_RATE,
+            USFS_BARO_RATE,
+            USFS_INTERRUPT_ENABLE,
+            USFS_VERBOSE); 
+
+    // Clear interrupts
+    Usfs::checkStatus();
 }
 
 static void readImu() 
 {
     int16_t ax=0, ay=0, az=0, gx=0, gy=0, gz=0;
 
-    mpu6050.getMotion6(&ax, &ay, &az, &gx, &gy, &gz);
+    // mpu6050.getMotion6(&ax, &ay, &az, &gx, &gy, &gz);
 
     AcX = ax;
     AcY = ay;
