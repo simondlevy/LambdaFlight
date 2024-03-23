@@ -6,8 +6,6 @@
 
 #include <sbus.h>
 
-#include <I2Cdev.h>
-#include <MPU6050.h>
 #include <usfs.hpp>
 
 #include <oneshot125.hpp>
@@ -99,16 +97,31 @@ static void IMUinit()
 
 static void readImu() 
 {
-    int16_t ax=0, ay=0, az=0, gx=0, gy=0, gz=0;
+    auto eventStatus = Usfs::checkStatus(); 
 
-    // mpu6050.getMotion6(&ax, &ay, &az, &gx, &gy, &gz);
+    if (Usfs::eventStatusIsAccelerometer(eventStatus)) { 
 
-    AcX = ax;
-    AcY = ay;
-    AcZ = az;
-    GyX = gx;
-    GyY = gy;
-    GyZ = gz;
+        int16_t accel[3] = {};
+
+        usfs.readAccelerometerRaw(accel);
+
+        AcX = accel[0];
+        AcY = accel[1];
+        AcZ = accel[2];
+
+        Serial.printf("%+f\n", AcZ);
+    }
+
+    if (Usfs::eventStatusIsGyrometer(eventStatus)) { 
+
+        int16_t gyro[3] = {};
+
+        usfs.readAccelerometerRaw(gyro);
+
+        GyX = gyro[0];
+        GyY = gyro[1];
+        GyZ = gyro[2];
+    }
 }
 
 static void readReceiver() 
@@ -201,10 +214,9 @@ static void setupBlink(
 static void debug(const uint32_t current_time)
 {
     //Print data at 100hz (uncomment one at a time for troubleshooting) - SELECT ONE:
-    //static uint32_t print_counter;
-    //debugState(print_counter, current_time);  
-    //debugMotorCommands(print_counter, current_time); 
-    //debugLoopRate(print_counter, current_time);      
+    //static uint32_t count; debugState(count, current_time);  
+    //static uint32_t count; debugMotorCommands(count, current_time); 
+    //static uint32_t count; debugLoopRate(count, current_time);      
 }
 
 void debugState(uint32_t & print_counter, const uint32_t current_time) 
