@@ -8,13 +8,14 @@
 
 #include <I2Cdev.h>
 #include <MPU6050.h>
+#include <usfs.hpp>
 
 #include <oneshot125.hpp>
 #include <vector>
 
 // Gyro and accel full scale value selection and scale factor
-const uint8_t GYRO_SCALE = MPU6050_GYRO_FS_2000;
-const uint8_t ACCEL_SCALE = MPU6050_ACCEL_FS_8;
+static const uint8_t GYRO_SCALE = MPU6050_GYRO_FS_250;
+static const uint8_t ACCEL_SCALE = MPU6050_ACCEL_FS_2;
 
 // Do not exceed 2000Hz, all filter paras tuned to 2000Hz by default
 static const uint32_t LOOP_RATE = 2000;

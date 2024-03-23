@@ -104,8 +104,8 @@ maxYaw = 160 :: SFloat
 
 -- IMU scaling --------------------------------------------------------------
 
-gyro_scale_factor = 16.4 :: SFloat  -- 2000 DPS
-accel_scale_factor = 4096 :: SFloat -- 8G
+accel_scale_factor = 16384 :: SFloat
+gyro_scale_factor = 131 :: SFloat
 
 -- IMU LP filter parameters
 b_accel = 0.14 :: SFloat
