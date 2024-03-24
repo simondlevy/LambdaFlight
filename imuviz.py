@@ -776,10 +776,10 @@ class Comms:
             if byte == '\n':
                 toks = line.split()
                 if len(toks) == 3:
-                    self.viz.roll_pitch_yaw[0] = np.radians(float(toks[0].split(':')[1]))
-                    self.viz.roll_pitch_yaw[1] = np.radians(float(toks[1].split(':')[1]))
-                    self.viz.roll_pitch_yaw[2] = np.radians(float(toks[2].split(':')[1]))
-                line = ''
+                    self.viz.roll_pitch_yaw = [
+                            np.radians(float(toks[k].split(':')[1])) 
+                            for k in range(3)]
+                    line = ''
 
             else:
                 line += byte
