@@ -1,6 +1,6 @@
 /*
    Based on https://github.com/nickrehm/dRehmFlight
-*/
+ */
 
 #include <Wire.h> 
 
@@ -23,8 +23,8 @@ static const uint8_t USFS_BARO_RATE       = 50;
 
 
 static const uint8_t USFS_INTERRUPT_ENABLE = Usfs::INTERRUPT_RESET_REQUIRED |
-                                        Usfs::INTERRUPT_ERROR |
-                                        Usfs::INTERRUPT_QUAT;
+Usfs::INTERRUPT_ERROR |
+Usfs::INTERRUPT_QUAT;
 
 static const bool USFS_VERBOSE = false;
 
@@ -101,26 +101,13 @@ static void readImu()
 
     if (Usfs::eventStatusIsAccelerometer(eventStatus)) { 
 
-        int16_t accel[3] = {};
+        usfs.readAccelerometerScaled(AcX, AcY, AcZ);
 
-        usfs.readAccelerometerRaw(accel);
-
-        AcX = accel[0];
-        AcY = accel[1];
-        AcZ = accel[2];
-
-        Serial.printf("%+f\n", AcZ);
     }
 
     if (Usfs::eventStatusIsGyrometer(eventStatus)) { 
 
-        int16_t gyro[3] = {};
-
-        usfs.readAccelerometerRaw(gyro);
-
-        GyX = gyro[0];
-        GyY = gyro[1];
-        GyZ = gyro[2];
+        usfs.readGyrometerScaled(GyX, GyY, GyZ);
     }
 }
 
@@ -214,7 +201,7 @@ static void setupBlink(
 static void debug(const uint32_t current_time)
 {
     //Print data at 100hz (uncomment one at a time for troubleshooting) - SELECT ONE:
-    //static uint32_t count; debugState(count, current_time);  
+    static uint32_t count; debugState(count, current_time);  
     //static uint32_t count; debugMotorCommands(count, current_time); 
     //static uint32_t count; debugLoopRate(count, current_time);      
 }

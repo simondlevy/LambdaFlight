@@ -12,9 +12,13 @@
 #include <oneshot125.hpp>
 #include <vector>
 
-// Gyro and accel full scale value selection and scale factor
+// Gyro and accel full scale value selection
 const uint8_t GYRO_SCALE = MPU6050_GYRO_FS_2000;
 const uint8_t ACCEL_SCALE = MPU6050_ACCEL_FS_8;
+
+// Scaling factors for above
+const float GYRO_SCALE_FACTOR = 16.4;
+const float ACCEL_SCALE_FACTOR = 4096;
 
 // Do not exceed 2000Hz, all filter paras tuned to 2000Hz by default
 static const uint32_t LOOP_RATE = 2000;
@@ -81,12 +85,13 @@ static void readImu()
 
     mpu6050.getMotion6(&ax, &ay, &az, &gx, &gy, &gz);
 
-    AcX = ax;
-    AcY = ay;
-    AcZ = az;
-    GyX = gx;
-    GyY = gy;
-    GyZ = gz;
+    AcX = ax / ACCEL_SCALE_FACTOR;
+    AcY = ay / ACCEL_SCALE_FACTOR;
+    AcZ = az / ACCEL_SCALE_FACTOR;
+
+    GyX = gx / GYRO_SCALE_FACTOR;
+    GyY = gy / GYRO_SCALE_FACTOR;
+    GyZ = gz / GYRO_SCALE_FACTOR;
 }
 
 static void readReceiver() 
@@ -179,14 +184,14 @@ static void setupBlink(
 static void debug(const uint32_t current_time)
 {
     //Print data at 100hz (uncomment one at a time for troubleshooting) - SELECT ONE:
-    //static uint32_t print_counter;
-    //debugState(print_counter, current_time);  
-    //debugMotorCommands(print_counter, current_time); 
-    //debugLoopRate(print_counter, current_time);      
+    debugState(current_time);  
+    //debugMotorCommands(current_time); 
+    //debugLoopRate(current_time);      
 }
 
-void debugState(uint32_t & print_counter, const uint32_t current_time) 
+void debugState(const uint32_t current_time) 
 {
+    static uint32_t print_counter;
     if (current_time - print_counter > 10000) {
         print_counter = micros();
         Serial.printf("roll:%2.2f pitch:%2.2f yaw:%2.2f\n", 
@@ -194,8 +199,9 @@ void debugState(uint32_t & print_counter, const uint32_t current_time)
     }
 }
 
-void debugMotorCommands(uint32_t & print_counter, const uint32_t current_time) 
+void debugMotorCommands(const uint32_t current_time) 
 {
+    static uint32_t print_counter;
     if (current_time - print_counter > 10000) {
         print_counter = micros();
         Serial.printf(
@@ -205,8 +211,9 @@ void debugMotorCommands(uint32_t & print_counter, const uint32_t current_time)
     }
 }
 
-void debugLoopRate(uint32_t & print_counter, const uint32_t current_time) 
+void debugLoopRate(const uint32_t current_time) 
 {
+    static uint32_t print_counter;
     if (current_time - print_counter > 10000) {
         print_counter = micros();
         Serial.printf("dt:%f\n", dt*1e6);

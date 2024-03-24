@@ -104,9 +104,6 @@ maxYaw = 160 :: SFloat
 
 -- IMU scaling --------------------------------------------------------------
 
-gyro_scale_factor = 16.4 :: SFloat  -- 2000 DPS
-accel_scale_factor = 4096 :: SFloat -- 8G
-
 -- IMU LP filter parameters
 b_accel = 0.14 :: SFloat
 b_gyro = 0.1 :: SFloat
@@ -117,9 +114,9 @@ getImu :: (SFloat, SFloat, SFloat, SFloat, SFloat, SFloat)
 
 getImu = (accelX, accelY, accelZ, gyroX, gyroY, gyroZ) where
 
-  lpf = \v v' f b -> let s = v / f in (1 - b) * v' + b * s
+  lpf = \v v' b -> let s = v in (1 - b) * v' + b * s
 
-  alpf = \a a' -> lpf a a' accel_scale_factor b_accel
+  alpf = \a a' -> lpf a a' b_accel
 
   accelX = alpf acX accelX'
   accelY = alpf acY accelY'
@@ -129,7 +126,7 @@ getImu = (accelX, accelY, accelZ, gyroX, gyroY, gyroZ) where
   accelY' = [0] ++ accelY
   accelZ' = [0] ++ accelZ
 
-  glpf = \g g' -> lpf g g' gyro_scale_factor b_gyro
+  glpf = \g g' -> lpf g g' b_gyro
 
   gyroX = glpf gyX gyroX'
   gyroY = glpf gyY gyroY'
