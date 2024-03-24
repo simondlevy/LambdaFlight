@@ -22,7 +22,7 @@ import os
 import tkinter as tk
 from numpy import radians as rad
 
-from dialogs.imu import ImuDialog
+from imu import ImuDialog
 
 from resources import resource_path
 from debugging import debug
