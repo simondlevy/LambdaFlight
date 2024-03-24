@@ -1,6 +1,6 @@
 SKETCH = teensy
 
-PORT = /dev/ttyACM1
+PORT = /dev/ttyACM0
 
 BOARD = teensy:avr:teensy40
 
