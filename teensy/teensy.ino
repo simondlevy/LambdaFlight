@@ -184,9 +184,31 @@ static void setupBlink(
 static void debug(const uint32_t current_time)
 {
     //Print data at 100hz (uncomment one at a time for troubleshooting) - SELECT ONE:
-    debugState(current_time);  
+    //debugAccel(current_time);
+    //debugGyro(current_time);
+    //debugState(current_time);  
     //debugMotorCommands(current_time); 
     //debugLoopRate(current_time);      
+}
+
+void debugAccel(const uint32_t current_time) 
+{
+    static uint32_t print_counter;
+    if (current_time - print_counter > 10000) {
+        print_counter = micros();
+        Serial.printf("accelX:%+03.3f accelY:%+03.3f accelZ:%+03.3f\n", 
+                AcX, AcY, AcZ);
+    }
+}
+
+void debugGyro(const uint32_t current_time) 
+{
+    static uint32_t print_counter;
+    if (current_time - print_counter > 10000) {
+        print_counter = micros();
+        Serial.printf("gyroX:%+03.3f gyroY:%+03.3f gyroZ:%+03.3f\n", 
+                GyX, GyY, GyZ);
+    }
 }
 
 void debugState(const uint32_t current_time) 

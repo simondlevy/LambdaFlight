@@ -103,11 +103,15 @@ static void readImu()
 
         usfs.readAccelerometerScaled(AcX, AcY, AcZ);
 
+        AcY = -AcY;
     }
 
     if (Usfs::eventStatusIsGyrometer(eventStatus)) { 
 
         usfs.readGyrometerScaled(GyX, GyY, GyZ);
+
+        GyX = -GyX;
+        GyZ = -GyZ;
     }
 }
 
@@ -201,10 +205,31 @@ static void setupBlink(
 static void debug(const uint32_t current_time)
 {
     //Print data at 100hz (uncomment one at a time for troubleshooting) - SELECT ONE:
-    static uint32_t count; debugState(count, current_time);  
+    //static uint32_t count; debugAccel(count, current_time);  
+    //static uint32_t count; debugGyro(count, current_time);  
+    //static uint32_t count; debugState(count, current_time);  
     //static uint32_t count; debugMotorCommands(count, current_time); 
     //static uint32_t count; debugLoopRate(count, current_time);      
 }
+
+void debugAccel(uint32_t & print_counter, const uint32_t current_time) 
+{
+    if (current_time - print_counter > 10000) {
+        print_counter = micros();
+        Serial.printf("accelX:%+3.3f accelY:%+3.3f accelZ:%+3.3f\n", 
+                AcX, AcY, AcZ);
+    }
+}
+
+void debugGyro(uint32_t & print_counter, const uint32_t current_time) 
+{
+    if (current_time - print_counter > 10000) {
+        print_counter = micros();
+        Serial.printf("gyroX:%+3.3f gyroY:%+3.3f gyroZ:%+3.3f\n", 
+                GyX, GyY, GyZ);
+    }
+}
+
 
 void debugState(uint32_t & print_counter, const uint32_t current_time) 
 {
@@ -301,7 +326,7 @@ void setMotors(const float m1, const float m2, const float m3, const float m4)
 
 void setAngles(const float phi, const float theta, const float psi)
 {
-    statePhi = -phi;
+    statePhi = phi;
     stateTheta = theta;
-    statePsi = -psi;
+    statePsi = psi;
 }
