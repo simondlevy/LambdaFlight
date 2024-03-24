@@ -46,11 +46,6 @@ def get_vehicle(width, depth, length):
     armLength = width*2
     armWidth = armLength/10
 
-    # arrow constants
-    arrowWidth = 1.0 * armWidth
-    arrowLength = 5.0 * armWidth
-    arrowHeight = 1.5 * depth
-
     # prop constants
     propWidth = 1.00 * armWidth
     propNarrowWidth = 0.20 * propWidth
@@ -142,27 +137,23 @@ def get_vehicle(width, depth, length):
             [-width + armWidth, -depth/2, -length - armWidth],  # 6   30
             [-width - armWidth, -depth/2, -length + armWidth],  # 7   31
 
-            # creates the arrow body
-            [-arrowWidth, +arrowHeight, 0],                     # 0   32
-            [+arrowWidth, +arrowHeight, 0],                     # 1   33
-            [+arrowWidth, +depth, 0],                           # 2   34
-            [-arrowWidth, +depth, 0],                           # 3   35
-
-            [-arrowWidth, +arrowHeight, +arrowLength],          # 4  36
-            [+arrowWidth, +arrowHeight, +arrowLength],          # 5  37
-            [+arrowWidth, +depth, +arrowLength],                # 6  38
-            [-arrowWidth, +depth, +arrowLength],                # 7  39
-
-            # creates the arrow head
-            [-(1/6)*arrowWidth, +arrowHeight, -arrowLength],    # 0  40
-            [+(1/6)*arrowWidth, +arrowHeight, -arrowLength],    # 1  41
-            [+(1/6)*arrowWidth, +depth, -arrowLength],          # 2  42
-            [-(1/6)*arrowWidth, +depth, -arrowLength],          # 3  43
-
-            [-arrowWidth - 2*arrowWidth, +arrowHeight, 0],      # 4  44
-            [+arrowWidth + 2*arrowWidth, +arrowHeight, 0],      # 5  45
-            [+arrowWidth + 2*arrowWidth, +depth, 0],            # 6  46
-            [-arrowWidth - 2*arrowWidth, +depth, 0],            # 7  47
+            # Unused
+            [0,0],                     
+            [0,0],                     
+            [0,0],                           
+            [0,0],                           
+            [0,0],          
+            [0,0],          
+            [0,0],                
+            [0,0],                
+            [0,0],    
+            [0,0],    
+            [0,0],          
+            [0,0],          
+            [0,0],      
+            [0,0],      
+            [0,0],            
+            [0,0],            
 
             # creates the center box
             [-width - armWidth, +depth, -length + armWidth],    # 0  48
