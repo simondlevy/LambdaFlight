@@ -4,8 +4,8 @@ IMU Euler-angle visualizer
 
 This file is part of LambdaFlight.
 
-LambdaFlight is free software: you can redistribute it and/or modify it under the
-terms of the GNU General Public License as published by the Free Software
+LambdaFlight is free software: you can redistribute it and/or modify it under
+the terms of the GNU General Public License as published by the Free Software
 Foundation, either version 3 of the License, or (at your option) any later
 version.
 
@@ -19,8 +19,6 @@ LambdaFlight. If not, see <https://www.gnu.org/licenses/>.
 
 from serial import Serial
 from threading import Thread
-from serial.tools.list_ports import comports
-import os
 import tkinter as tk
 import numpy as np
 
@@ -31,11 +29,8 @@ DISPLAY_HEIGHT = 600
 
 BACKGROUND_COLOR = 'white'
 
-CONNECTION_DELAY_MSEC = 4000
-
-USB_UPDATE_MSEC = 200
-
 # ============================================================================
+
 
 def get_vehicle(width, depth, length):
 
@@ -138,22 +133,8 @@ def get_vehicle(width, depth, length):
             [-width - armWidth, -depth/2, -length + armWidth],  # 7   31
 
             # Unused
-            [0,0],                     
-            [0,0],                     
-            [0,0],                           
-            [0,0],                           
-            [0,0],          
-            [0,0],          
-            [0,0],                
-            [0,0],                
-            [0,0],    
-            [0,0],    
-            [0,0],          
-            [0,0],          
-            [0,0],      
-            [0,0],      
-            [0,0],            
-            [0,0],            
+            [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0],
+            [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0],
 
             # creates the center box
             [-width - armWidth, +depth, -length + armWidth],    # 0  48
@@ -611,7 +592,6 @@ class ImuDialog:
         self.width = int(self.viz.canvas['width'])
         self.height = int(self.viz.canvas['height'])
 
-
         # Vehicle dimensions
         W = vehicleScale
         D = vehicleScale / 2
@@ -691,9 +671,9 @@ class ImuDialog:
         # Convert angles to X,Y,Z rotation matrices
 
         # Negate incoming angles for display
-        rollAngle  = -self.roll_pitch_yaw[0]
+        rollAngle = -self.roll_pitch_yaw[0]
         pitchAngle = -self.roll_pitch_yaw[1]
-        yawAngle   =  self.roll_pitch_yaw[2]
+        yawAngle = self.roll_pitch_yaw[2]
 
         self.rollrot[0][0] = +np.cos(rollAngle)
         self.rollrot[0][1] = -np.sin(rollAngle)
@@ -750,6 +730,7 @@ class ImuDialog:
 
 # ============================================================================
 
+
 class Comms:
 
     def __init__(self, viz):
@@ -777,13 +758,12 @@ class Comms:
                 toks = line.split()
                 if len(toks) == 3:
                     self.viz.roll_pitch_yaw = [
-                            np.radians(float(toks[k].split(':')[1])) 
+                            np.radians(float(toks[k].split(':')[1]))
                             for k in range(3)]
                     line = ''
 
             else:
                 line += byte
-
 
     def start(self):
 
@@ -869,6 +849,7 @@ class Viz:
     def _clear(self):
 
         self.canvas.delete(tk.ALL)
+
 
 def main():
 
