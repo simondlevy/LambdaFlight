@@ -301,7 +301,7 @@ void setMotors(const float m1, const float m2, const float m3, const float m4)
 
 void setAngles(const float phi, const float theta, const float psi)
 {
-    statePhi = phi;
+    statePhi = -phi;
     stateTheta = theta;
-    statePsi = psi;
+    statePsi = -psi;
 }
