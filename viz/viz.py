@@ -22,8 +22,6 @@ import os
 import tkinter as tk
 from numpy import radians as rad
 
-from mspparser import MspParser
-
 from dialogs.imu import ImuDialog
 
 from resources import resource_path
@@ -94,11 +92,9 @@ class Comms:
 # Viz class runs the show =====================================================
 
 
-class Viz(MspParser):
+class Viz:
 
     def __init__(self):
-
-        MspParser.__init__(self)
 
         # No communications or arming yet
         self.comms = None
@@ -160,9 +156,6 @@ class Viz(MspParser):
         # Create a splash image
         self.splashimage = tk.PhotoImage(file=resource_path('splash.gif'))
         self._show_splash()
-
-        # Set up parser's request strings
-        self.attitude_request = MspParser.serialize_ATTITUDE_Request()
 
         # No messages yet
         self.roll_pitch_yaw = [0]*3
