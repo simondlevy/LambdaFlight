@@ -24,9 +24,6 @@ from numpy import radians as rad
 
 from imu import ImuDialog
 
-from resources import resource_path
-from debugging import debug
-
 BAUD = 115200
 
 DISPLAY_WIDTH = 800
@@ -152,10 +149,6 @@ class Viz:
         # Create IMU dialog
         self.imu_dialog = ImuDialog(self)
         self._schedule_connection_task()
-
-        # Create a splash image
-        self.splashimage = tk.PhotoImage(file=resource_path('splash.gif'))
-        self._show_splash()
 
         # No messages yet
         self.roll_pitch_yaw = [0]*3
@@ -306,8 +299,6 @@ class Viz:
 
             self.hide(self.error_label)
 
-            self._show_splash()
-
         else:
 
             self.comms = Comms(self)
@@ -315,8 +306,6 @@ class Viz:
 
             self.button_connect['text'] = 'Connecting ...'
             self._disable_widget(self.button_connect)
-
-            self.canvas.delete(self.splash)
 
             self.scheduleTask(CONNECTION_DELAY_MSEC, self._start)
 
@@ -385,11 +374,6 @@ class Viz:
     def _disable_widget(self, button):
 
         button['state'] = 'disabled'
-
-    def _show_splash(self):
-
-        self.splash = self.canvas.create_image(SPLASH_LOCATION,
-                                               image=self.splashimage)
 
 
 def main():
