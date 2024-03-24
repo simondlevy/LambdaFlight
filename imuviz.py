@@ -483,14 +483,6 @@ def get_vehicle(width, depth, length):
              # top of the Box
              (50, 49, 48, 51), (59, 51, 48, 56), (58, 59, 56, 57),
 
-             # arrow Head
-             (40, 41, 42, 43), (41, 45, 46, 42), (45, 44, 47, 46),
-             (44, 40, 43, 47), (40, 44, 45, 41), (43, 42, 46, 47),
-
-             # arrow Body
-             (32, 33, 34, 35), (33, 37, 38, 34), (37, 36, 39, 38),
-             (36, 32, 35, 39), (32, 36, 37, 33), (35, 34, 38, 39),
-
              # rest of the box
              (54, 55, 52, 53), (54, 53, 61, 62), (62, 61, 60, 63),
              (48, 49, 55, 54), (49, 50, 52, 55), (50, 51, 53, 52),
@@ -569,9 +561,6 @@ def get_vehicle(width, depth, length):
 
     colors = [
               lightGrey, lightGrey, lightGrey,                  # box Top
-
-              'red', 'red', 'red', 'red', 'red', 'red',         # arrow head
-              'red', 'red', 'red', 'red', 'red', 'red',         # arrow body
 
               lightGrey, lightGrey, lightGrey,                  # box bottom
               grey, grey, grey,                                 # box North
