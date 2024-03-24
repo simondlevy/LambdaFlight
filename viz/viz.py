@@ -15,7 +15,8 @@ You should have received a copy of the GNU General Public License along with
 Hackflight. If not, see <https://www.gnu.org/licenses/>.
 '''
 
-from comms import Comms
+from serial import Serial
+from threading import Thread
 from serial.tools.list_ports import comports
 import os
 import tkinter as tk
@@ -28,6 +29,8 @@ from dialogs.imu import ImuDialog
 from resources import resource_path
 from debugging import debug
 
+BAUD = 115200
+
 DISPLAY_WIDTH = 800
 DISPLAY_HEIGHT = 600
 
@@ -38,6 +41,55 @@ BACKGROUND_COLOR = 'white'
 CONNECTION_DELAY_MSEC = 4000
 
 USB_UPDATE_MSEC = 200
+
+# ============================================================================
+
+class Comms:
+
+    def __init__(self, viz):
+
+        self.viz = viz
+
+        portname = viz.portsvar.get()
+
+        baud = BAUD
+
+        self.port = Serial(portname, baud)
+
+        self.thread = Thread(target=self.run)
+        self.thread.setDaemon(True)
+
+        self.running = False
+
+    def run(self):
+
+        line = ''
+
+        while self.running:
+
+            byte = str(self.port.read(1).decode())
+
+            if byte == '\n':
+                print(line)
+                line = ''
+
+            else:
+                line += byte
+
+
+    def start(self):
+
+        self.running = True
+
+        self.thread.start()
+
+        self.viz.newconnect = True
+
+    def stop(self):
+
+        self.running = False
+
+        self.port.close()
 
 # Viz class runs the show =====================================================
 
