@@ -69,6 +69,12 @@ static int m4_command_PWM;
 
 static void IMUinit() 
 {
+    pinMode(21, OUTPUT);
+    digitalWrite(21, HIGH); // 3.3V
+
+    pinMode(22, OUTPUT);
+    digitalWrite(22, LOW);  // GND
+
     Serial.begin(115200);
     delay(4000);
 
