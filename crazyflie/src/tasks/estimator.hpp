@@ -202,7 +202,27 @@ class EstimatorTask : public FreeRTOSTask {
                     stream_gyro.z = stream_ekfMeasurement.data.gyroscope.gyro.z;
                 }
 
-                _ekf.update(stream_ekfMeasurement, nowMsec);
+                switch (stream_ekfMeasurement.type) {
+
+                    case MeasurementTypeRange:
+                        _ekf.updateWithRange(&stream_ekfMeasurement.data.range);
+                        break;
+
+                    case MeasurementTypeFlow:
+                        _ekf.updateWithFlow(&stream_ekfMeasurement.data.flow);
+                        break;
+
+                    case MeasurementTypeGyroscope:
+                        _ekf.updateWithGyro(stream_ekfMeasurement);
+                        break;
+
+                    case MeasurementTypeAcceleration:
+                        _ekf.updateWithAccel(stream_ekfMeasurement);
+                        break;
+
+                    default:
+                        break;
+                }
             }
 
             auto isStateInBounds = _ekf.finalize();

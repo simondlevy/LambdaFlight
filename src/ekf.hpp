@@ -381,29 +381,109 @@ class Ekf {
                 _lastProcessNoiseUpdateMs;
         }
 
-        void update(const measurement_t & m, const uint32_t nowMs)
+        void updateWithRange(const rangeMeasurement_t *range)
         {
-            switch (m.type) {
+            const auto angle = max( 0, 
+                    fabsf(acosf(_r22)) - 
+                    DEGREES_TO_RADIANS * (15.0f / 2.0f));
 
-                case MeasurementTypeRange:
-                    updateWithRange(&m.data.range);
-                    break;
+            const auto predictedDistance = _ekfState.z / cosf(angle);
+            const auto measuredDistance = range->distance; // [m]
 
-                case MeasurementTypeFlow:
-                    updateWithFlow(&m.data.flow);
-                    break;
+            // The sensor model (Pg.95-96,
+            // https://lup.lub.lu.se/student-papers/search/publication/8905295)
+            //
+            // h = z/((R*z_b).z_b) = z/cos(alpha)
+            //
+            // Here,
+            // h (Measured variable)[m] = Distance given by TOF sensor. This is the 
+            // closest point from any surface to the sensor in the measurement cone
+            // z (Estimated variable)[m] = THe actual elevation of the crazyflie
+            // z_b = Basis vector in z direction of body coordinate system
+            // R = Rotation matrix made from ZYX Tait-Bryan angles. Assumed to be 
+            // stationary
+            // alpha = angle between [line made by measured point <---> sensor] 
+            // and [the intertial z-axis] 
 
-                case MeasurementTypeGyroscope:
-                    updateWithGyro(m);
-                    break;
+            const float h[KC_STATE_DIM] = {1 / cosf(angle), 0, 0, 0, 0, 0, 0};
 
-                case MeasurementTypeAcceleration:
-                    updateWithAccel(m);
-                    break;
+            // Only update the filter if the measurement is reliable 
+            // (\hat{h} -> infty when R[2][2] -> 0)
+            const auto shouldUpdate = fabs(_r22) > 0.1f && _r22 > 0;
+            scalarUpdate(h, measuredDistance-predictedDistance, 
+                    range->stdDev, shouldUpdate);
+        }
 
-                default:
-                    break;
-            }
+        void updateWithAccel(const measurement_t & m)
+        {
+            axis3fSubSamplerAccumulate(&_accSubSampler, &m.data.acceleration.acc);
+        }
+
+        void updateWithGyro(const measurement_t & m)
+        {
+            axis3fSubSamplerAccumulate(&_gyroSubSampler, &m.data.gyroscope.gyro);
+            _gyroLatest = m.data.gyroscope.gyro;
+        }
+
+        void updateWithFlow(const flowMeasurement_t *flow) 
+        {
+            const Axis3f *gyro = &_gyroLatest;
+
+            // Inclusion of flow measurements in the EKF done by two scalar updates
+
+            // ~~~ Camera constants ~~~
+            // The angle of aperture is guessed from the raw data register and
+            // thankfully look to be symmetric
+
+            float Npix = 35.0;                      // [pixels] (same in x and y)
+            //float thetapix = DEGREES_TO_RADIANS * 4.0f;     // [rad]    (same in x and y)
+
+            // 2*sin(42/2); 42degree is the agnle of aperture, here we computed the
+            // corresponding ground length
+            float thetapix = 0.71674f;
+
+            //~~~ Body rates ~~~
+            // TODO check if this is feasible or if some filtering has to be done
+            const auto omegax_b = gyro->x * DEGREES_TO_RADIANS;
+            const auto omegay_b = gyro->y * DEGREES_TO_RADIANS;
+
+            const auto dx_g = _ekfState.dx;
+            const auto dy_g = _ekfState.dy;
+
+            // Saturate elevation in prediction and correction to avoid singularities
+            const auto z_g = _ekfState.z < 0.1f ? 0.1f : _ekfState.z;
+
+            // ~~~ X velocity prediction and update ~~~
+            // predicts the number of accumulated pixels in the x-direction
+            float hx[KC_STATE_DIM] = {};
+            auto predictedNX = (flow->dt * Npix / thetapix ) * 
+                ((dx_g * _r22 / z_g) - omegay_b);
+            auto measuredNX = flow->dpixelx*FLOW_RESOLUTION;
+
+            // derive measurement equation with respect to dx (and z?)
+            hx[KC_STATE_Z] = (Npix * flow->dt / thetapix) * 
+                ((_r22 * dx_g) / (-z_g * z_g));
+            hx[KC_STATE_DX] = (Npix * flow->dt / thetapix) * 
+                (_r22 / z_g);
+
+            //First update
+            scalarUpdate(hx, (measuredNX-predictedNX), 
+                    flow->stdDevX*FLOW_RESOLUTION, true);
+
+            // ~~~ Y velocity prediction and update ~~~
+            float hy[KC_STATE_DIM] = {};
+            auto predictedNY = (flow->dt * Npix / thetapix ) * 
+                ((dy_g * _r22 / z_g) + omegax_b);
+            auto measuredNY = flow->dpixely*FLOW_RESOLUTION;
+
+            // derive measurement equation with respect to dy (and z?)
+            hy[KC_STATE_Z] = (Npix * flow->dt / thetapix) * 
+                ((_r22 * dy_g) / (-z_g * z_g));
+            hy[KC_STATE_DY] = (Npix * flow->dt / thetapix) * (_r22 / z_g);
+
+            // Second update
+            scalarUpdate(hy, (measuredNY-predictedNY), 
+                    flow->stdDevY*FLOW_RESOLUTION, true);
         }
 
         void getState(vehicleState_t & state)
@@ -793,114 +873,9 @@ class Ekf {
             _P[j][i] = shouldUpdate ? _P[i][j] : _P[j][i];
         }
 
-        void updateWithFlow(const flowMeasurement_t *flow) 
-        {
-            const Axis3f *gyro = &_gyroLatest;
-
-            // Inclusion of flow measurements in the EKF done by two scalar updates
-
-            // ~~~ Camera constants ~~~
-            // The angle of aperture is guessed from the raw data register and
-            // thankfully look to be symmetric
-
-            float Npix = 35.0;                      // [pixels] (same in x and y)
-            //float thetapix = DEGREES_TO_RADIANS * 4.0f;     // [rad]    (same in x and y)
-
-            // 2*sin(42/2); 42degree is the agnle of aperture, here we computed the
-            // corresponding ground length
-            float thetapix = 0.71674f;
-
-            //~~~ Body rates ~~~
-            // TODO check if this is feasible or if some filtering has to be done
-            const auto omegax_b = gyro->x * DEGREES_TO_RADIANS;
-            const auto omegay_b = gyro->y * DEGREES_TO_RADIANS;
-
-            const auto dx_g = _ekfState.dx;
-            const auto dy_g = _ekfState.dy;
-
-            // Saturate elevation in prediction and correction to avoid singularities
-            const auto z_g = _ekfState.z < 0.1f ? 0.1f : _ekfState.z;
-
-            // ~~~ X velocity prediction and update ~~~
-            // predicts the number of accumulated pixels in the x-direction
-            float hx[KC_STATE_DIM] = {};
-            auto predictedNX = (flow->dt * Npix / thetapix ) * 
-                ((dx_g * _r22 / z_g) - omegay_b);
-            auto measuredNX = flow->dpixelx*FLOW_RESOLUTION;
-
-            // derive measurement equation with respect to dx (and z?)
-            hx[KC_STATE_Z] = (Npix * flow->dt / thetapix) * 
-                ((_r22 * dx_g) / (-z_g * z_g));
-            hx[KC_STATE_DX] = (Npix * flow->dt / thetapix) * 
-                (_r22 / z_g);
-
-            //First update
-            scalarUpdate(hx, (measuredNX-predictedNX), 
-                    flow->stdDevX*FLOW_RESOLUTION, true);
-
-            // ~~~ Y velocity prediction and update ~~~
-            float hy[KC_STATE_DIM] = {};
-            auto predictedNY = (flow->dt * Npix / thetapix ) * 
-                ((dy_g * _r22 / z_g) + omegax_b);
-            auto measuredNY = flow->dpixely*FLOW_RESOLUTION;
-
-            // derive measurement equation with respect to dy (and z?)
-            hy[KC_STATE_Z] = (Npix * flow->dt / thetapix) * 
-                ((_r22 * dy_g) / (-z_g * z_g));
-            hy[KC_STATE_DY] = (Npix * flow->dt / thetapix) * (_r22 / z_g);
-
-            // Second update
-            scalarUpdate(hy, (measuredNY-predictedNY), 
-                    flow->stdDevY*FLOW_RESOLUTION, true);
-        }
-
         static const float max(const float val, const float maxval)
         {
             return val > maxval ? maxval : val;
-        }
-
-        void updateWithRange(const rangeMeasurement_t *range)
-        {
-            const auto angle = max( 0, 
-                    fabsf(acosf(_r22)) - 
-                    DEGREES_TO_RADIANS * (15.0f / 2.0f));
-
-            const auto predictedDistance = _ekfState.z / cosf(angle);
-            const auto measuredDistance = range->distance; // [m]
-
-            // The sensor model (Pg.95-96,
-            // https://lup.lub.lu.se/student-papers/search/publication/8905295)
-            //
-            // h = z/((R*z_b).z_b) = z/cos(alpha)
-            //
-            // Here,
-            // h (Measured variable)[m] = Distance given by TOF sensor. This is the 
-            // closest point from any surface to the sensor in the measurement cone
-            // z (Estimated variable)[m] = THe actual elevation of the crazyflie
-            // z_b = Basis vector in z direction of body coordinate system
-            // R = Rotation matrix made from ZYX Tait-Bryan angles. Assumed to be 
-            // stationary
-            // alpha = angle between [line made by measured point <---> sensor] 
-            // and [the intertial z-axis] 
-
-            const float h[KC_STATE_DIM] = {1 / cosf(angle), 0, 0, 0, 0, 0, 0};
-
-            // Only update the filter if the measurement is reliable 
-            // (\hat{h} -> infty when R[2][2] -> 0)
-            const auto shouldUpdate = fabs(_r22) > 0.1f && _r22 > 0;
-            scalarUpdate(h, measuredDistance-predictedDistance, 
-                    range->stdDev, shouldUpdate);
-        }
-
-        void updateWithAccel(const measurement_t & m)
-        {
-            axis3fSubSamplerAccumulate(&_accSubSampler, &m.data.acceleration.acc);
-        }
-
-        void updateWithGyro(const measurement_t & m)
-        {
-            axis3fSubSamplerAccumulate(&_gyroSubSampler, &m.data.gyroscope.gyro);
-            _gyroLatest = m.data.gyroscope.gyro;
         }
 
         bool isStateWithinBounds(void) 
