@@ -120,283 +120,48 @@ class Ekf {
 
     public:
 
-        // The quad's attitude as a quaternion (w,x,y,z) We store as a quaternion
-        // to allow easy normalization (in comparison to a rotation matrix),
-        // while also being robust against singularities (in comparison to euler angles)
-        float _qw;
-        float _qx;
-        float _qy;
-        float _qz;
-
-        void getState(vehicleState_t & state)
+        void init(const uint32_t nowMs)
         {
-            state.dx = _ekfState.dx;
+            axis3fSubSamplerInit(&_accSubSampler, GRAVITY_MAGNITUDE);
+            axis3fSubSamplerInit(&_gyroSubSampler, DEGREES_TO_RADIANS);
 
-            state.dy = _ekfState.dy;
+            // Reset all data to 0 (like upon system reset)
 
-            state.z = _ekfState.z;
+            memset(&_ekfState, 0, sizeof(_ekfState));
+            memset(&_P, 0, sizeof(_P));
 
-            state.dz = 
-                _r20 * _ekfState.dx +
-                _r21 * _ekfState.dy +
-                _r22 * _ekfState.dz;
+            _ekfState.z = 0;
 
-            state.phi = RADIANS_TO_DEGREES * atan2((2 * (_qy*_qz + _qw*_qx)),
-                    (_qw*_qw - _qx*_qx - _qy*_qy + _qz*_qz));
+            _qw = QW_INIT;
+            _qx = QX_INIT;
+            _qy = QY_INIT;
+            _qz = QZ_INIT;
 
-            // Negate for ENU
-            state.theta = -RADIANS_TO_DEGREES * asin((-2) * (_qx*_qz - _qw*_qy));
+            // set the initial rotation matrix to the identity. This only affects
+            // the first prediction step, since in the finalization, after shifting
+            // attitude errors into the attitude state, the rotation matrix is updated.
+            _r20 = 0;
+            _r21 = 0;
+            _r22 = 1;
 
-            state.psi = RADIANS_TO_DEGREES * atan2((2 * (_qx*_qy + _qw*_qz)),
-                    (_qw*_qw + _qx*_qx - _qy*_qy - _qz*_qz));
+            // set covariances to zero (diagonals will be changed from
+            // zero in the next section)
+            memset(_P, 0, sizeof(_P));
 
-            // Get angular velocities directly from gyro
-            state.dphi =    _gyroLatest.x;
-            state.dtheta = -_gyroLatest.y; // negate for ENU
-            state.dpsi =    _gyroLatest.z;
-        }
+            // initialize state variances
+            _P[KC_STATE_Z][KC_STATE_Z] = powf(STDEV_INITIAL_POSITION_Z, 2);
 
-        bool step(void)
-        {
-            bool isStateInBounds = true;
+            _P[KC_STATE_DX][KC_STATE_DX] = powf(STDEV_INITIAL_VELOCITY, 2);
+            _P[KC_STATE_DY][KC_STATE_DY] = powf(STDEV_INITIAL_VELOCITY, 2);
+            _P[KC_STATE_DZ][KC_STATE_DZ] = powf(STDEV_INITIAL_VELOCITY, 2);
 
-            switch (stream_ekfMode) {
-
-                case EKF_MODE_INIT:
-                    init(stream_ekfNowMsec);
-                    break;
-
-                case EKF_MODE_PREDICT:
-                    predict(
-                            stream_ekfNowMsec, 
-                            stream_ekfNextPredictionMsec, 
-                            stream_ekfIsFlying);
-                    break;
-
-                case EKF_MODE_UPDATE:
-                    update(stream_ekfMeasurement, stream_ekfNowMsec);
-                    break;
-
-                case EKF_MODE_FINALIZE:
-                    isStateInBounds = finalize();
-                    break;
-
-                default:
-                    break;
-            }
-
-            return isStateInBounds;
-        }
-
-        /**
-         * Vehicle State
-         *
-         * The internally-estimated state is:
-         * - Z: the quad's altitude
-         * - DX, DY, DZ: the quad's velocity in its body frame
-         * - E0, E1, E2: attitude error
-         *
-         * For more information, refer to the paper
-         */         
-        typedef struct {
-
-            float z;
-            float dx;
-            float dy;
-            float dz;
-            float e0;
-            float e1;
-            float e2;
-
-        } ekfState_t;
-
-        // Indexes to access the state
-        typedef enum {
-
-            KC_STATE_Z,
-            KC_STATE_DX,
-            KC_STATE_DY,
-            KC_STATE_DZ,
-            KC_STATE_E0,
-            KC_STATE_E1,
-            KC_STATE_E2,
-            KC_STATE_DIM
-
-        } kalmanCoreStateIdx_t;
-
-        typedef struct {
-            Axis3f sum;
-            uint32_t count;
-            float conversionFactor;
-
-            Axis3f subSample;
-        } Axis3fSubSampler_t;
-
-        //////////////////////////////////////////////////////////////////////////
-
-        Axis3f _gyroLatest;
-
-        Axis3fSubSampler_t _accSubSampler;
-        Axis3fSubSampler_t _gyroSubSampler;
-
-        ekfState_t _ekfState;
-
-        // Third row (Z) of attitude as a rotation matrix (used by the prediction,
-        // updated by the finalization)
-        float _r20;
-        float _r21;
-        float _r22;
-
-        // The covariance matrix
-        float _P[KC_STATE_DIM][KC_STATE_DIM];
-
-        // Tracks whether an update to the state has been made, and the state
-        // therefore requires finalization
-        bool _isUpdated;
-
-        uint32_t _lastPredictionMs;
-        uint32_t _lastProcessNoiseUpdateMs;
-
-        //////////////////////////////////////////////////////////////////////////
-
-        bool finalize(void)
-        {
-            // Only finalize if data is updated
-            return _isUpdated ? doFinalize() : isStateWithinBounds();
-        }
-
-        bool doFinalize(void)
-        {
-            // Incorporate the attitude error (Kalman filter state) with the attitude
-            const auto v0 = _ekfState.e0;
-            const auto v1 = _ekfState.e1;
-            const auto v2 = _ekfState.e2;
-
-            const auto angle = sqrt(v0*v0 + v1*v1 + v2*v2) + EPS;
-            const auto ca = cos(angle / 2.0f);
-            const auto sa = sin(angle / 2.0f);
-
-            const auto dqw = ca;
-            const auto dqx = sa * v0 / angle;
-            const auto dqy = sa * v1 / angle;
-            const auto dqz = sa * v2 / angle;
-
-            // Rotate the quad's attitude by the delta quaternion vector
-            // computed above
-            const auto tmpq0 = dqw * _qw - dqx * _qx - dqy * _qy - dqz * _qz;
-            const auto tmpq1 = dqx * _qw + dqw * _qx + dqz * _qy - dqy * _qz;
-            const auto tmpq2 = dqy * _qw - dqz * _qx + dqw * _qy + dqx * _qz;
-            const auto tmpq3 = dqz * _qw + dqy * _qx - dqx * _qy + dqw * _qz;
-
-            // normalize and store the result
-            const auto norm = sqrt(tmpq0 * tmpq0 + tmpq1 * tmpq1 + tmpq2 * tmpq2 + 
-                    tmpq3 * tmpq3) + EPS;
-
-            /** Rotate the covariance, since we've rotated the body
-             *
-             * This comes from a second order approximation to:
-             * Sigma_post = exps(-d) Sigma_pre exps(-d)'
-             *            ~ (I + [[-d]] + [[-d]]^2 / 2) 
-             Sigma_pre (I + [[-d]] + [[-d]]^2 / 2)'
-             * where d is the attitude error expressed as Rodriges parameters, ie. 
-             d = tan(|v|/2)*v/|v|
-             *
-             * As derived in "Covariance Correction Step for Kalman Filtering with an 
-             Attitude"
-             * http://arc.aiaa.org/doi/abs/10.2514/1.G000848
-             */
-
-            // the attitude error vector (v0,v1,v2) is small,
-            // so we use a first order approximation to e0 = tan(|v0|/2)*v0/|v0|
-            const auto e0 = v0/2; 
-            const auto e1 = v1/2; 
-            const auto e2 = v2/2;
-
-            const auto e0e0 =  1 - e1*e1/2 - e2*e2/2;
-            const auto e0e1 =  e2 + e0*e1/2;
-            const auto e0e2 = -e1 + e0*e2/2;
-
-            const auto e1e0 =  -e2 + e0*e1/2;
-            const auto e1e1 = 1 - e0*e0/2 - e2*e2/2;
-            const auto e1e2 = e0 + e1*e2/2;
-
-            const auto e2e0 = e1 + e0*e2/2;
-            const auto e2e1 = -e0 + e1*e2/2;
-            const auto e2e2 = 1 - e0*e0/2 - e1*e1/2;
-
-            // Matrix to rotate the attitude covariances once updated
-            const float A[KC_STATE_DIM][KC_STATE_DIM] = 
-            { 
-                //    Z  DX DY DZ    E0     E1    E2
-                /*Z*/   {0, 0, 0, 0, 0,     0,    0},   
-                /*DX*/  {0, 1, 0, 0, 0,     0,    0},  
-                /*DY*/  {0, 0, 1, 0, 0,     0,    0}, 
-                /*DX*/  {0, 0, 0, 1, 0,     0,    0},  
-                /*E0*/  {0, 0, 0, 0, e0e0, e0e1, e0e2},
-                /*E1*/  {0, 0, 0, 0, e1e0, e1e1, e1e2},
-                /*E2*/  {0, 0, 0, 0, e2e0, e2e1, e2e2}
-            };
-
-            float At[KC_STATE_DIM][KC_STATE_DIM] = {};
-            transpose(A, At);     // A'
-
-            float AP[KC_STATE_DIM][KC_STATE_DIM] = {};
-            multiply(A, _P, AP, true);  // AP
-
-            const auto isErrorSufficient  = 
-                (isErrorLarge(v0) || isErrorLarge(v1) || isErrorLarge(v2)) &&
-                isErrorInBounds(v0) && isErrorInBounds(v1) && isErrorInBounds(v2);
-
-            _qw = isErrorSufficient ? tmpq0 / norm : _qw;
-            _qx = isErrorSufficient ? tmpq1 / norm : _qx;
-            _qy = isErrorSufficient ? tmpq2 / norm : _qy;
-            _qz = isErrorSufficient ? tmpq3 / norm : _qz;
-
-            // Move attitude error into attitude if any of the angle errors are
-            // large enough
-            multiply(AP, At, _P, isErrorSufficient); // APA'
-
-            // Convert the new attitude to a rotation matrix, such that we can
-            // rotate body-frame velocity and acc
-            _r20 = 2 * _qx * _qz - 2 * _qw * _qy;
-            _r21 = 2 * _qy * _qz + 2 * _qw * _qx;
-            _r22 = _qw * _qw - _qx * _qx - _qy * _qy + _qz * _qz;
-
-            // Reset the attitude error
-            _ekfState.e0 = 0;
-            _ekfState.e1 = 0;
-            _ekfState.e2 = 0;
-
-            updateCovarianceMatrix(true);
+            _P[KC_STATE_E0][KC_STATE_E0] = powf(STDEV_INITIAL_ATTITUDE_ROLL_PITCH, 2);
+            _P[KC_STATE_E1][KC_STATE_E1] = powf(STDEV_INITIAL_ATTITUDE_ROLL_PITCH, 2);
+            _P[KC_STATE_E2][KC_STATE_E2] = powf(STDEV_INITIAL_ATTITUDE_YAW, 2);
 
             _isUpdated = false;
-
-            return isStateWithinBounds();
-        }
-
-        void update(const measurement_t & m, const uint32_t nowMs)
-        {
-            switch (m.type) {
-
-                case MeasurementTypeRange:
-                    updateWithRange(&m.data.range);
-                    break;
-
-                case MeasurementTypeFlow:
-                    updateWithFlow(&m.data.flow);
-                    break;
-
-                case MeasurementTypeGyroscope:
-                    updateWithGyro(m);
-                    break;
-
-                case MeasurementTypeAcceleration:
-                    updateWithAccel(m);
-                    break;
-
-                default:
-                    break;
-            }
+            _lastPredictionMs = nowMs;
+            _lastProcessNoiseUpdateMs = nowMs;
         }
 
         void predict(
@@ -616,48 +381,254 @@ class Ekf {
                 _lastProcessNoiseUpdateMs;
         }
 
-        void init(const uint32_t nowMs)
+        void update(const measurement_t & m, const uint32_t nowMs)
         {
-            axis3fSubSamplerInit(&_accSubSampler, GRAVITY_MAGNITUDE);
-            axis3fSubSamplerInit(&_gyroSubSampler, DEGREES_TO_RADIANS);
+            switch (m.type) {
 
-            // Reset all data to 0 (like upon system reset)
+                case MeasurementTypeRange:
+                    updateWithRange(&m.data.range);
+                    break;
 
-            memset(&_ekfState, 0, sizeof(_ekfState));
-            memset(&_P, 0, sizeof(_P));
+                case MeasurementTypeFlow:
+                    updateWithFlow(&m.data.flow);
+                    break;
 
-            _ekfState.z = 0;
+                case MeasurementTypeGyroscope:
+                    updateWithGyro(m);
+                    break;
 
-            _qw = QW_INIT;
-            _qx = QX_INIT;
-            _qy = QY_INIT;
-            _qz = QZ_INIT;
+                case MeasurementTypeAcceleration:
+                    updateWithAccel(m);
+                    break;
 
-            // set the initial rotation matrix to the identity. This only affects
-            // the first prediction step, since in the finalization, after shifting
-            // attitude errors into the attitude state, the rotation matrix is updated.
-            _r20 = 0;
-            _r21 = 0;
-            _r22 = 1;
+                default:
+                    break;
+            }
+        }
 
-            // set covariances to zero (diagonals will be changed from
-            // zero in the next section)
-            memset(_P, 0, sizeof(_P));
+        void getState(vehicleState_t & state)
+        {
+            state.dx = _ekfState.dx;
 
-            // initialize state variances
-            _P[KC_STATE_Z][KC_STATE_Z] = powf(STDEV_INITIAL_POSITION_Z, 2);
+            state.dy = _ekfState.dy;
 
-            _P[KC_STATE_DX][KC_STATE_DX] = powf(STDEV_INITIAL_VELOCITY, 2);
-            _P[KC_STATE_DY][KC_STATE_DY] = powf(STDEV_INITIAL_VELOCITY, 2);
-            _P[KC_STATE_DZ][KC_STATE_DZ] = powf(STDEV_INITIAL_VELOCITY, 2);
+            state.z = _ekfState.z;
 
-            _P[KC_STATE_E0][KC_STATE_E0] = powf(STDEV_INITIAL_ATTITUDE_ROLL_PITCH, 2);
-            _P[KC_STATE_E1][KC_STATE_E1] = powf(STDEV_INITIAL_ATTITUDE_ROLL_PITCH, 2);
-            _P[KC_STATE_E2][KC_STATE_E2] = powf(STDEV_INITIAL_ATTITUDE_YAW, 2);
+            state.dz = 
+                _r20 * _ekfState.dx +
+                _r21 * _ekfState.dy +
+                _r22 * _ekfState.dz;
+
+            state.phi = RADIANS_TO_DEGREES * atan2((2 * (_qy*_qz + _qw*_qx)),
+                    (_qw*_qw - _qx*_qx - _qy*_qy + _qz*_qz));
+
+            // Negate for ENU
+            state.theta = -RADIANS_TO_DEGREES * asin((-2) * (_qx*_qz - _qw*_qy));
+
+            state.psi = RADIANS_TO_DEGREES * atan2((2 * (_qx*_qy + _qw*_qz)),
+                    (_qw*_qw + _qx*_qx - _qy*_qy - _qz*_qz));
+
+            // Get angular velocities directly from gyro
+            state.dphi =    _gyroLatest.x;
+            state.dtheta = -_gyroLatest.y; // negate for ENU
+            state.dpsi =    _gyroLatest.z;
+        }
+
+        bool finalize(void)
+        {
+            // Only finalize if data is updated
+            return _isUpdated ? doFinalize() : isStateWithinBounds();
+        }
+
+     private:
+
+
+        // The quad's attitude as a quaternion (w,x,y,z) We store as a quaternion
+        // to allow easy normalization (in comparison to a rotation matrix),
+        // while also being robust against singularities (in comparison to euler angles)
+        float _qw;
+        float _qx;
+        float _qy;
+        float _qz;
+
+       /**
+         * Vehicle State
+         *
+         * The internally-estimated state is:
+         * - Z: the quad's altitude
+         * - DX, DY, DZ: the quad's velocity in its body frame
+         * - E0, E1, E2: attitude error
+         *
+         * For more information, refer to the paper
+         */         
+        typedef struct {
+
+            float z;
+            float dx;
+            float dy;
+            float dz;
+            float e0;
+            float e1;
+            float e2;
+
+        } ekfState_t;
+
+        // Indexes to access the state
+        typedef enum {
+
+            KC_STATE_Z,
+            KC_STATE_DX,
+            KC_STATE_DY,
+            KC_STATE_DZ,
+            KC_STATE_E0,
+            KC_STATE_E1,
+            KC_STATE_E2,
+            KC_STATE_DIM
+
+        } kalmanCoreStateIdx_t;
+
+        typedef struct {
+            Axis3f sum;
+            uint32_t count;
+            float conversionFactor;
+
+            Axis3f subSample;
+        } Axis3fSubSampler_t;
+
+        //////////////////////////////////////////////////////////////////////////
+
+        Axis3f _gyroLatest;
+
+        Axis3fSubSampler_t _accSubSampler;
+        Axis3fSubSampler_t _gyroSubSampler;
+
+        ekfState_t _ekfState;
+
+        // Third row (Z) of attitude as a rotation matrix (used by the prediction,
+        // updated by the finalization)
+        float _r20;
+        float _r21;
+        float _r22;
+
+        // The covariance matrix
+        float _P[KC_STATE_DIM][KC_STATE_DIM];
+
+        // Tracks whether an update to the state has been made, and the state
+        // therefore requires finalization
+        bool _isUpdated;
+
+        uint32_t _lastPredictionMs;
+        uint32_t _lastProcessNoiseUpdateMs;
+
+        //////////////////////////////////////////////////////////////////////////
+
+        bool doFinalize(void)
+        {
+            // Incorporate the attitude error (Kalman filter state) with the attitude
+            const auto v0 = _ekfState.e0;
+            const auto v1 = _ekfState.e1;
+            const auto v2 = _ekfState.e2;
+
+            const auto angle = sqrt(v0*v0 + v1*v1 + v2*v2) + EPS;
+            const auto ca = cos(angle / 2.0f);
+            const auto sa = sin(angle / 2.0f);
+
+            const auto dqw = ca;
+            const auto dqx = sa * v0 / angle;
+            const auto dqy = sa * v1 / angle;
+            const auto dqz = sa * v2 / angle;
+
+            // Rotate the quad's attitude by the delta quaternion vector
+            // computed above
+            const auto tmpq0 = dqw * _qw - dqx * _qx - dqy * _qy - dqz * _qz;
+            const auto tmpq1 = dqx * _qw + dqw * _qx + dqz * _qy - dqy * _qz;
+            const auto tmpq2 = dqy * _qw - dqz * _qx + dqw * _qy + dqx * _qz;
+            const auto tmpq3 = dqz * _qw + dqy * _qx - dqx * _qy + dqw * _qz;
+
+            // normalize and store the result
+            const auto norm = sqrt(tmpq0 * tmpq0 + tmpq1 * tmpq1 + tmpq2 * tmpq2 + 
+                    tmpq3 * tmpq3) + EPS;
+
+            /** Rotate the covariance, since we've rotated the body
+             *
+             * This comes from a second order approximation to:
+             * Sigma_post = exps(-d) Sigma_pre exps(-d)'
+             *            ~ (I + [[-d]] + [[-d]]^2 / 2) 
+             Sigma_pre (I + [[-d]] + [[-d]]^2 / 2)'
+             * where d is the attitude error expressed as Rodriges parameters, ie. 
+             d = tan(|v|/2)*v/|v|
+             *
+             * As derived in "Covariance Correction Step for Kalman Filtering with an 
+             Attitude"
+             * http://arc.aiaa.org/doi/abs/10.2514/1.G000848
+             */
+
+            // the attitude error vector (v0,v1,v2) is small,
+            // so we use a first order approximation to e0 = tan(|v0|/2)*v0/|v0|
+            const auto e0 = v0/2; 
+            const auto e1 = v1/2; 
+            const auto e2 = v2/2;
+
+            const auto e0e0 =  1 - e1*e1/2 - e2*e2/2;
+            const auto e0e1 =  e2 + e0*e1/2;
+            const auto e0e2 = -e1 + e0*e2/2;
+
+            const auto e1e0 =  -e2 + e0*e1/2;
+            const auto e1e1 = 1 - e0*e0/2 - e2*e2/2;
+            const auto e1e2 = e0 + e1*e2/2;
+
+            const auto e2e0 = e1 + e0*e2/2;
+            const auto e2e1 = -e0 + e1*e2/2;
+            const auto e2e2 = 1 - e0*e0/2 - e1*e1/2;
+
+            // Matrix to rotate the attitude covariances once updated
+            const float A[KC_STATE_DIM][KC_STATE_DIM] = 
+            { 
+                //    Z  DX DY DZ    E0     E1    E2
+                /*Z*/   {0, 0, 0, 0, 0,     0,    0},   
+                /*DX*/  {0, 1, 0, 0, 0,     0,    0},  
+                /*DY*/  {0, 0, 1, 0, 0,     0,    0}, 
+                /*DX*/  {0, 0, 0, 1, 0,     0,    0},  
+                /*E0*/  {0, 0, 0, 0, e0e0, e0e1, e0e2},
+                /*E1*/  {0, 0, 0, 0, e1e0, e1e1, e1e2},
+                /*E2*/  {0, 0, 0, 0, e2e0, e2e1, e2e2}
+            };
+
+            float At[KC_STATE_DIM][KC_STATE_DIM] = {};
+            transpose(A, At);     // A'
+
+            float AP[KC_STATE_DIM][KC_STATE_DIM] = {};
+            multiply(A, _P, AP, true);  // AP
+
+            const auto isErrorSufficient  = 
+                (isErrorLarge(v0) || isErrorLarge(v1) || isErrorLarge(v2)) &&
+                isErrorInBounds(v0) && isErrorInBounds(v1) && isErrorInBounds(v2);
+
+            _qw = isErrorSufficient ? tmpq0 / norm : _qw;
+            _qx = isErrorSufficient ? tmpq1 / norm : _qx;
+            _qy = isErrorSufficient ? tmpq2 / norm : _qy;
+            _qz = isErrorSufficient ? tmpq3 / norm : _qz;
+
+            // Move attitude error into attitude if any of the angle errors are
+            // large enough
+            multiply(AP, At, _P, isErrorSufficient); // APA'
+
+            // Convert the new attitude to a rotation matrix, such that we can
+            // rotate body-frame velocity and acc
+            _r20 = 2 * _qx * _qz - 2 * _qw * _qy;
+            _r21 = 2 * _qy * _qz + 2 * _qw * _qx;
+            _r22 = _qw * _qw - _qx * _qx - _qy * _qy + _qz * _qz;
+
+            // Reset the attitude error
+            _ekfState.e0 = 0;
+            _ekfState.e1 = 0;
+            _ekfState.e2 = 0;
+
+            updateCovarianceMatrix(true);
 
             _isUpdated = false;
-            _lastPredictionMs = nowMs;
-            _lastProcessNoiseUpdateMs = nowMs;
+
+            return isStateWithinBounds();
         }
 
         static float rotateQuat(
