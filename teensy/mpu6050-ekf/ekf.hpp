@@ -14,17 +14,17 @@ static const float QZ_INIT = 0;
 
 // Initial variances, uncertain of position, but know we're
 // stationary and roughly flat
-static const float STDEV_INITIAL_POSITION_Z = 1;
+static const float STDEV_INITIAL_PmatOSITION_Z = 1;
 static const float STDEV_INITIAL_VELOCITY = 0.01;
-static const float STDEV_INITIAL_ATTITUDE_ROLL_PITCH = 0.01;
+static const float STDEV_INITIAL_ATTITUDE_ROLL_PmatITCH = 0.01;
 static const float STDEV_INITIAL_ATTITUDE_YAW = 0.01;
 
 static const float PROC_NOISE_ACC_XY = 0.5;
 static const float PROC_NOISE_ACC_Z = 1.0;
 static const float PROC_NOISE_VEL = 0;
-static const float PROC_NOISE_POS = 0;
+static const float PROC_NOISE_PmatOS = 0;
 static const float PROC_NOISE_ATT = 0;
-static const float MEAS_NOISE_GYRO_ROLL_PITCH = 0.1; // radians per second
+static const float MEAS_NOISE_GYRO_ROLL_PmatITCH = 0.1; // radians per second
 static const float MEAS_NOISE_GYRO_ROLL_YAW = 0.1;   // radians per second
 
 static const float GRAVITY_MAGNITUDE = 9.81;
@@ -40,7 +40,7 @@ static const float MAX_COVARIANCE = 100;
 static const float MIN_COVARIANCE = 1e-6;
 
 // The bounds on states, these shouldn't be hit...
-static const float MAX_POSITION = 100; //meters
+static const float MAX_PmatOSITION = 100; //meters
 static const float MAX_VELOCITY = 10; //meters per second
 
 // Small number epsilon, to prevent dividing by zero
@@ -62,7 +62,7 @@ class Ekf {
             // Reset all data to 0 (like upon system reset)
 
             memset(&_ekfState, 0, sizeof(_ekfState));
-            memset(_P, 0, sizeof(_P));
+            memset(_Pmat, 0, sizeof(_Pmat));
 
             _ekfState.z = 0;
 
@@ -80,18 +80,18 @@ class Ekf {
 
             // set covariances to zero (diagonals will be changed from
             // zero in the next section)
-            memset(_P, 0, sizeof(_P));
+            memset(_Pmat, 0, sizeof(_Pmat));
 
             // initialize state variances
-            _P[KC_STATE_Z][KC_STATE_Z] = powf(STDEV_INITIAL_POSITION_Z, 2);
+            _Pmat[KC_STATE_Z][KC_STATE_Z] = powf(STDEV_INITIAL_PmatOSITION_Z, 2);
 
-            _P[KC_STATE_DX][KC_STATE_DX] = powf(STDEV_INITIAL_VELOCITY, 2);
-            _P[KC_STATE_DY][KC_STATE_DY] = powf(STDEV_INITIAL_VELOCITY, 2);
-            _P[KC_STATE_DZ][KC_STATE_DZ] = powf(STDEV_INITIAL_VELOCITY, 2);
+            _Pmat[KC_STATE_DX][KC_STATE_DX] = powf(STDEV_INITIAL_VELOCITY, 2);
+            _Pmat[KC_STATE_DY][KC_STATE_DY] = powf(STDEV_INITIAL_VELOCITY, 2);
+            _Pmat[KC_STATE_DZ][KC_STATE_DZ] = powf(STDEV_INITIAL_VELOCITY, 2);
 
-            _P[KC_STATE_E0][KC_STATE_E0] = powf(STDEV_INITIAL_ATTITUDE_ROLL_PITCH, 2);
-            _P[KC_STATE_E1][KC_STATE_E1] = powf(STDEV_INITIAL_ATTITUDE_ROLL_PITCH, 2);
-            _P[KC_STATE_E2][KC_STATE_E2] = powf(STDEV_INITIAL_ATTITUDE_YAW, 2);
+            _Pmat[KC_STATE_E0][KC_STATE_E0] = powf(STDEV_INITIAL_ATTITUDE_ROLL_PmatITCH, 2);
+            _Pmat[KC_STATE_E1][KC_STATE_E1] = powf(STDEV_INITIAL_ATTITUDE_ROLL_PmatITCH, 2);
+            _Pmat[KC_STATE_E2][KC_STATE_E2] = powf(STDEV_INITIAL_ATTITUDE_YAW, 2);
 
             _isUpdated = false;
             _lastPredictionMs = nowMs;
@@ -233,8 +233,8 @@ class Ekf {
             float At[KC_STATE_DIM][KC_STATE_DIM] = {};
             transpose(A, At);     // A'
             float AP[KC_STATE_DIM][KC_STATE_DIM] = {};
-            multiply(A, _P, AP, true);  // AP
-            multiply(AP, At, _P, shouldPredict); // APA'
+            multiply(A, _Pmat, AP, true);  // AP
+            multiply(AP, At, _Pmat, shouldPredict); // APA'
 
             // Process noise is added after the return from the prediction step
 
@@ -280,32 +280,32 @@ class Ekf {
             const auto isDtPositive = dt1 > 0;
 
             // add process noise on position
-            _P[KC_STATE_Z][KC_STATE_Z] += isDtPositive ?
+            _Pmat[KC_STATE_Z][KC_STATE_Z] += isDtPositive ?
                 powf(PROC_NOISE_ACC_Z*dt1*dt1 + PROC_NOISE_VEL*dt1 + 
-                        PROC_NOISE_POS, 2) : 0;  
+                        PROC_NOISE_PmatOS, 2) : 0;  
 
             // add process noise on velocity
-            _P[KC_STATE_DX][KC_STATE_DX] += isDtPositive ? 
+            _Pmat[KC_STATE_DX][KC_STATE_DX] += isDtPositive ? 
                 powf(PROC_NOISE_ACC_XY*dt1 + 
                         PROC_NOISE_VEL, 2) : 0; 
 
             // add process noise on velocity
-            _P[KC_STATE_DY][KC_STATE_DY] += isDtPositive ?
+            _Pmat[KC_STATE_DY][KC_STATE_DY] += isDtPositive ?
                 powf(PROC_NOISE_ACC_XY*dt1 + 
                         PROC_NOISE_VEL, 2) : 0; 
 
             // add process noise on velocity
-            _P[KC_STATE_DZ][KC_STATE_DZ] += isDtPositive ?
+            _Pmat[KC_STATE_DZ][KC_STATE_DZ] += isDtPositive ?
                 powf(PROC_NOISE_ACC_Z*dt1 + 
                         PROC_NOISE_VEL, 2) : 0; 
 
-            _P[KC_STATE_E0][KC_STATE_E0] += isDtPositive ?
-                powf(MEAS_NOISE_GYRO_ROLL_PITCH * dt1 + PROC_NOISE_ATT, 2) : 0;
+            _Pmat[KC_STATE_E0][KC_STATE_E0] += isDtPositive ?
+                powf(MEAS_NOISE_GYRO_ROLL_PmatITCH * dt1 + PROC_NOISE_ATT, 2) : 0;
 
-            _P[KC_STATE_E1][KC_STATE_E1] += isDtPositive ?
-                powf(MEAS_NOISE_GYRO_ROLL_PITCH * dt1 + PROC_NOISE_ATT, 2) : 0;
+            _Pmat[KC_STATE_E1][KC_STATE_E1] += isDtPositive ?
+                powf(MEAS_NOISE_GYRO_ROLL_PmatITCH * dt1 + PROC_NOISE_ATT, 2) : 0;
 
-            _P[KC_STATE_E2][KC_STATE_E2] += isDtPositive ?
+            _Pmat[KC_STATE_E2][KC_STATE_E2] += isDtPositive ?
                 powf(MEAS_NOISE_GYRO_ROLL_YAW * dt1 + PROC_NOISE_ATT, 2) : 0;
 
             updateCovarianceMatrix(isDtPositive);
@@ -498,6 +498,7 @@ class Ekf {
             KC_STATE_E1,
             KC_STATE_E2,
             KC_STATE_DIM
+
         };
 
         typedef struct {
@@ -524,7 +525,7 @@ class Ekf {
         float _r22;
 
         // The covariance matrix
-        float _P[KC_STATE_DIM][KC_STATE_DIM];
+        float _Pmat[KC_STATE_DIM][KC_STATE_DIM];
 
         // Tracks whether an update to the state has been made, and the state
         // therefore requires finalization
@@ -611,7 +612,7 @@ class Ekf {
             transpose(A, At);     // A'
 
             float AP[KC_STATE_DIM][KC_STATE_DIM] = {};
-            multiply(A, _P, AP, true);  // AP
+            multiply(A, _Pmat, AP, true);  // AP
 
             const auto isErrorSufficient  = 
                 (isErrorLarge(v0) || isErrorLarge(v1) || isErrorLarge(v2)) &&
@@ -624,7 +625,7 @@ class Ekf {
 
             // Move attitude error into attitude if any of the angle errors are
             // large enough
-            multiply(AP, At, _P, isErrorSufficient); // APA'
+            multiply(AP, At, _Pmat, isErrorSufficient); // APA'
 
             // Convert the new attitude to a rotation matrix, such that we can
             // rotate body-frame velocity and acc
@@ -729,7 +730,7 @@ class Ekf {
 
             // ====== INNOVATION COVARIANCE ======
             float Ph[KC_STATE_DIM] = {};
-            multiply(_P, h, Ph);
+            multiply(_Pmat, h, Ph);
             const auto R = stdMeasNoise * stdMeasNoise;
             auto HPHR = R; // HPH' + R
             for (int i=0; i<KC_STATE_DIM; i++) { 
@@ -775,9 +776,9 @@ class Ekf {
             transpose(KH, KHt);      // (KH - I)'
 
             float KHIP[KC_STATE_DIM][KC_STATE_DIM] = {};
-            multiply(KH, _P, KHIP, true);  // (KH - I)*P
+            multiply(KH, _Pmat, KHIP, true);  // (KH - I)*P
 
-            multiply(KHIP, KHt, _P, shouldUpdate); // (KH - I)*P*(KH - I)'
+            multiply(KHIP, KHt, _Pmat, shouldUpdate); // (KH - I)*P*(KH - I)'
 
             // Add the measurement variance and ensure boundedness and symmetry
             for (int i=0; i<KC_STATE_DIM; i++) {
@@ -796,14 +797,14 @@ class Ekf {
                 const float variance,
                 const bool shouldUpdate)
         {
-            const auto p = (_P[i][j] + _P[j][i]) / 2 + variance;
+            const auto p = (_Pmat[i][j] + _Pmat[j][i]) / 2 + variance;
 
-            _P[i][j] = !shouldUpdate ? _P[i][j] :
+            _Pmat[i][j] = !shouldUpdate ? _Pmat[i][j] :
                 (isnan(p) || p > MAX_COVARIANCE) ?  MAX_COVARIANCE :
                 (i==j && p < MIN_COVARIANCE) ?  MIN_COVARIANCE :
                 p;
 
-            _P[j][i] = shouldUpdate ? _P[i][j] : _P[j][i];
+            _Pmat[j][i] = shouldUpdate ? _Pmat[i][j] : _Pmat[j][i];
         }
 
         static const float max(const float val, const float maxval)
@@ -822,7 +823,7 @@ class Ekf {
 
         static bool isPositionWithinBounds(const float pos)
         {
-            return fabs(pos) < MAX_POSITION;
+            return fabs(pos) < MAX_PmatOSITION;
         }
 
         static bool isVelocityWithinBounds(const float vel)
