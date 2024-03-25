@@ -1,4 +1,4 @@
-SKETCH = teensy
+SKETCH = mpu6050-madgwick
 
 PORT = /dev/ttyACM0
 
@@ -6,11 +6,13 @@ BOARD = teensy:avr:teensy40
 
 LIBS = $(HOME)/Documents/Arduino/libraries/
 
+HASKELL = ../../haskell
+
 build: $(SKETCH).ino copilot.cpp
 	arduino-cli compile  --libraries $(LIBS) --fqbn $(BOARD) $(SKETCH).ino
 
-copilot.cpp : ../haskell/Teensy.hs
-	runhaskell -i../haskell ../haskell/Teensy.hs
+copilot.cpp : $(HASKELL)/Teensy.hs
+	runhaskell -i$(HASKELL) $(HASKELL)/Teensy.hs
 	mv copilot.c copilot.cpp
 
 flash:
