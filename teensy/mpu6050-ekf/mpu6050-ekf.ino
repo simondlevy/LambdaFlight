@@ -12,7 +12,7 @@
 #include <oneshot125.hpp>
 #include <vector>
 
-#include "ekf.hpp"
+#include <ekf.hpp>
 
 // Gyro and accel full scale value selection
 const uint8_t GYRO_SCALE = MPU6050_GYRO_FS_2000;

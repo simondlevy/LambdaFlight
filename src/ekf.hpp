@@ -1,75 +1,10 @@
-/**
- * Authored by Michael Hamer (http://www.mikehamer.info), June 2016
- * Thank you to Mark Mueller (www.mwm.im) for advice during implementation,
- * and for derivation of the original filter in the below-cited paper.
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, in version 3.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU General Public License for more details.
- *
- * You should have received a cody of the GNU General Public License
- * along with this program. If not, see <http://www.gnu.org/licenses/>.
- *
- * ============================================================================
- *
- * The Kalman filter implemented in this file is based on the papers:
- *
- * "Fusing ultra-wideband range measurements with accelerometers and rate
- * gyroscopes for quadrocopter state estimation"
- * http://ieeexplore.ieee.org/xpl/articleDetails.jsp?arnumber=7139421
- *
- * and
- *
- * "Covariance Correction Step for Kalman Filtering with an Attitude"
- * http://arc.aiaa.org/doi/abs/10.2514/1.G000848
- *
- * Academic citation would be appreciated.
- *
- * BIBTEX ENTRIES:
-
- @INPROCEEDINGS{MuellerHamerUWB2015,
- author = {Mueller, Mark W and Hamer, Michael and D’Andrea, Raffaello},
- title  = {Fusing ultra-wideband range measurements with accelerometers and rate 
- gyroscopes for quadrocopter state estimation},
- booktitle = {2015 IEEE International Conference on Robotics and Automation (ICRA)},
- year   = {2015},
- month  = {May},
- pages  = {1730-1736},
- doi    = {10.1109/ICRA.2015.7139421},
- ISSN   = {1050-4729}}
-
- @ARTICLE{MuellerCovariance2016,
- author={Mueller, Mark W and Hehn, Markus and D’Andrea, Raffaello},
- title={Covariance Correction Step for Kalman Filtering with an Attitude},
- journal={Journal of Guidance, Control, and Dynamics},
- pages={1--7},
- year={2016},
- publisher={American Institute of Aeronautics and Astronautics}}
- *
- * ============================================================================
- * MAJOR CHANGELOG:
- * 2016.06.28, Mike Hamer: Initial version
- * 2019.04.12, Kristoffer Richardsson: Refactored, separated kalman implementation from 
- OS related functionality
- * 2021.03.15, Wolfgang Hoenig: Refactored queue handling
- * 2023.09.10, Simon D. Levy: Made a header-only C++ class
- */
-
 #pragma once
 
 #include <string.h>
 
-#include <math3d.h>
-#include <m_pi.h>
-#include <datatypes.h>
-
+#include "math3d.h"
+#include "datatypes.h"
 #include "linalg.h"
-#include "m_pi.h"
 
 // Quaternion used for initial orientation
 static const float QW_INIT = 1;
@@ -127,7 +62,7 @@ class Ekf {
             // Reset all data to 0 (like upon system reset)
 
             memset(&_ekfState, 0, sizeof(_ekfState));
-            memset(_P, 0, sizeof(_P));
+            memset(_Pmat, 0, sizeof(_Pmat));
 
             _ekfState.z = 0;
 
@@ -145,18 +80,18 @@ class Ekf {
 
             // set covariances to zero (diagonals will be changed from
             // zero in the next section)
-            memset(_P, 0, sizeof(_P));
+            memset(_Pmat, 0, sizeof(_Pmat));
 
             // initialize state variances
-            _P[KC_STATE_Z][KC_STATE_Z] = powf(STDEV_INITIAL_POSITION_Z, 2);
+            _Pmat[KC_STATE_Z][KC_STATE_Z] = powf(STDEV_INITIAL_POSITION_Z, 2);
 
-            _P[KC_STATE_DX][KC_STATE_DX] = powf(STDEV_INITIAL_VELOCITY, 2);
-            _P[KC_STATE_DY][KC_STATE_DY] = powf(STDEV_INITIAL_VELOCITY, 2);
-            _P[KC_STATE_DZ][KC_STATE_DZ] = powf(STDEV_INITIAL_VELOCITY, 2);
+            _Pmat[KC_STATE_DX][KC_STATE_DX] = powf(STDEV_INITIAL_VELOCITY, 2);
+            _Pmat[KC_STATE_DY][KC_STATE_DY] = powf(STDEV_INITIAL_VELOCITY, 2);
+            _Pmat[KC_STATE_DZ][KC_STATE_DZ] = powf(STDEV_INITIAL_VELOCITY, 2);
 
-            _P[KC_STATE_E0][KC_STATE_E0] = powf(STDEV_INITIAL_ATTITUDE_ROLL_PITCH, 2);
-            _P[KC_STATE_E1][KC_STATE_E1] = powf(STDEV_INITIAL_ATTITUDE_ROLL_PITCH, 2);
-            _P[KC_STATE_E2][KC_STATE_E2] = powf(STDEV_INITIAL_ATTITUDE_YAW, 2);
+            _Pmat[KC_STATE_E0][KC_STATE_E0] = powf(STDEV_INITIAL_ATTITUDE_ROLL_PITCH, 2);
+            _Pmat[KC_STATE_E1][KC_STATE_E1] = powf(STDEV_INITIAL_ATTITUDE_ROLL_PITCH, 2);
+            _Pmat[KC_STATE_E2][KC_STATE_E2] = powf(STDEV_INITIAL_ATTITUDE_YAW, 2);
 
             _isUpdated = false;
             _lastPredictionMs = nowMs;
@@ -298,8 +233,8 @@ class Ekf {
             float At[KC_STATE_DIM][KC_STATE_DIM] = {};
             transpose(A, At);     // A'
             float AP[KC_STATE_DIM][KC_STATE_DIM] = {};
-            multiply(A, _P, AP, true);  // AP
-            multiply(AP, At, _P, shouldPredict); // APA'
+            multiply(A, _Pmat, AP, true);  // AP
+            multiply(AP, At, _Pmat, shouldPredict); // APA'
 
             // Process noise is added after the return from the prediction step
 
@@ -345,32 +280,32 @@ class Ekf {
             const auto isDtPositive = dt1 > 0;
 
             // add process noise on position
-            _P[KC_STATE_Z][KC_STATE_Z] += isDtPositive ?
+            _Pmat[KC_STATE_Z][KC_STATE_Z] += isDtPositive ?
                 powf(PROC_NOISE_ACC_Z*dt1*dt1 + PROC_NOISE_VEL*dt1 + 
                         PROC_NOISE_POS, 2) : 0;  
 
             // add process noise on velocity
-            _P[KC_STATE_DX][KC_STATE_DX] += isDtPositive ? 
+            _Pmat[KC_STATE_DX][KC_STATE_DX] += isDtPositive ? 
                 powf(PROC_NOISE_ACC_XY*dt1 + 
                         PROC_NOISE_VEL, 2) : 0; 
 
             // add process noise on velocity
-            _P[KC_STATE_DY][KC_STATE_DY] += isDtPositive ?
+            _Pmat[KC_STATE_DY][KC_STATE_DY] += isDtPositive ?
                 powf(PROC_NOISE_ACC_XY*dt1 + 
                         PROC_NOISE_VEL, 2) : 0; 
 
             // add process noise on velocity
-            _P[KC_STATE_DZ][KC_STATE_DZ] += isDtPositive ?
+            _Pmat[KC_STATE_DZ][KC_STATE_DZ] += isDtPositive ?
                 powf(PROC_NOISE_ACC_Z*dt1 + 
                         PROC_NOISE_VEL, 2) : 0; 
 
-            _P[KC_STATE_E0][KC_STATE_E0] += isDtPositive ?
+            _Pmat[KC_STATE_E0][KC_STATE_E0] += isDtPositive ?
                 powf(MEAS_NOISE_GYRO_ROLL_PITCH * dt1 + PROC_NOISE_ATT, 2) : 0;
 
-            _P[KC_STATE_E1][KC_STATE_E1] += isDtPositive ?
+            _Pmat[KC_STATE_E1][KC_STATE_E1] += isDtPositive ?
                 powf(MEAS_NOISE_GYRO_ROLL_PITCH * dt1 + PROC_NOISE_ATT, 2) : 0;
 
-            _P[KC_STATE_E2][KC_STATE_E2] += isDtPositive ?
+            _Pmat[KC_STATE_E2][KC_STATE_E2] += isDtPositive ?
                 powf(MEAS_NOISE_GYRO_ROLL_YAW * dt1 + PROC_NOISE_ATT, 2) : 0;
 
             updateCovarianceMatrix(isDtPositive);
@@ -412,7 +347,6 @@ class Ekf {
             scalarUpdate(h, measuredDistance-predictedDistance, 
                     range->stdDev, shouldUpdate);
         }
-
 
         void updateWithAccel(const Axis3f * accel)
         {
@@ -521,7 +455,7 @@ class Ekf {
             return _isUpdated ? doFinalize() : isStateWithinBounds();
         }
 
-    private:
+     private:
 
 
         // The quad's attitude as a quaternion (w,x,y,z) We store as a quaternion
@@ -532,7 +466,7 @@ class Ekf {
         float _qy;
         float _qz;
 
-        /**
+       /**
          * Vehicle State
          *
          * The internally-estimated state is:
@@ -555,7 +489,7 @@ class Ekf {
         } ekfState_t;
 
         // Indexes to access the state
-        typedef enum {
+        enum {
 
             KC_STATE_Z,
             KC_STATE_DX,
@@ -566,7 +500,7 @@ class Ekf {
             KC_STATE_E2,
             KC_STATE_DIM
 
-        } kalmanCoreStateIdx_t;
+        };
 
         typedef struct {
             Axis3f sum;
@@ -592,7 +526,7 @@ class Ekf {
         float _r22;
 
         // The covariance matrix
-        float _P[KC_STATE_DIM][KC_STATE_DIM];
+        float _Pmat[KC_STATE_DIM][KC_STATE_DIM];
 
         // Tracks whether an update to the state has been made, and the state
         // therefore requires finalization
@@ -679,7 +613,7 @@ class Ekf {
             transpose(A, At);     // A'
 
             float AP[KC_STATE_DIM][KC_STATE_DIM] = {};
-            multiply(A, _P, AP, true);  // AP
+            multiply(A, _Pmat, AP, true);  // AP
 
             const auto isErrorSufficient  = 
                 (isErrorLarge(v0) || isErrorLarge(v1) || isErrorLarge(v2)) &&
@@ -692,7 +626,7 @@ class Ekf {
 
             // Move attitude error into attitude if any of the angle errors are
             // large enough
-            multiply(AP, At, _P, isErrorSufficient); // APA'
+            multiply(AP, At, _Pmat, isErrorSufficient); // APA'
 
             // Convert the new attitude to a rotation matrix, such that we can
             // rotate body-frame velocity and acc
@@ -797,7 +731,7 @@ class Ekf {
 
             // ====== INNOVATION COVARIANCE ======
             float Ph[KC_STATE_DIM] = {};
-            multiply(_P, h, Ph);
+            multiply(_Pmat, h, Ph);
             const auto R = stdMeasNoise * stdMeasNoise;
             auto HPHR = R; // HPH' + R
             for (int i=0; i<KC_STATE_DIM; i++) { 
@@ -843,9 +777,9 @@ class Ekf {
             transpose(KH, KHt);      // (KH - I)'
 
             float KHIP[KC_STATE_DIM][KC_STATE_DIM] = {};
-            multiply(KH, _P, KHIP, true);  // (KH - I)*P
+            multiply(KH, _Pmat, KHIP, true);  // (KH - I)*P
 
-            multiply(KHIP, KHt, _P, shouldUpdate); // (KH - I)*P*(KH - I)'
+            multiply(KHIP, KHt, _Pmat, shouldUpdate); // (KH - I)*P*(KH - I)'
 
             // Add the measurement variance and ensure boundedness and symmetry
             for (int i=0; i<KC_STATE_DIM; i++) {
@@ -864,14 +798,14 @@ class Ekf {
                 const float variance,
                 const bool shouldUpdate)
         {
-            const auto p = (_P[i][j] + _P[j][i]) / 2 + variance;
+            const auto p = (_Pmat[i][j] + _Pmat[j][i]) / 2 + variance;
 
-            _P[i][j] = !shouldUpdate ? _P[i][j] :
+            _Pmat[i][j] = !shouldUpdate ? _Pmat[i][j] :
                 (isnan(p) || p > MAX_COVARIANCE) ?  MAX_COVARIANCE :
                 (i==j && p < MIN_COVARIANCE) ?  MIN_COVARIANCE :
                 p;
 
-            _P[j][i] = shouldUpdate ? _P[i][j] : _P[j][i];
+            _Pmat[j][i] = shouldUpdate ? _Pmat[i][j] : _Pmat[j][i];
         }
 
         static const float max(const float val, const float maxval)
