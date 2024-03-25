@@ -413,15 +413,16 @@ class Ekf {
                     range->stdDev, shouldUpdate);
         }
 
-        void updateWithAccel(const measurement_t & m)
+        void updateWithAccel(const Axis3f * accel)
         {
-            axis3fSubSamplerAccumulate(&_accSubSampler, &m.data.acceleration.acc);
+            axis3fSubSamplerAccumulate(&_accSubSampler, accel);
         }
 
-        void updateWithGyro(const measurement_t & m)
+        void updateWithGyro(const Axis3f * gyro)
         {
-            axis3fSubSamplerAccumulate(&_gyroSubSampler, &m.data.gyroscope.gyro);
-            _gyroLatest = m.data.gyroscope.gyro;
+            axis3fSubSamplerAccumulate(&_gyroSubSampler, gyro);
+
+            memcpy(&_gyroLatest, gyro, sizeof(Axis3f));
         }
 
         void updateWithFlow(const flowMeasurement_t *flow) 

@@ -69,15 +69,6 @@ gyY = extern "GyY" Nothing
 gyZ :: SFloat
 gyZ = extern "GyZ" Nothing
 
-acX :: SFloat
-acX = extern "AcX" Nothing
-
-acY :: SFloat
-acY = extern "AcY" Nothing
-
-acZ :: SFloat
-acZ = extern "AcZ" Nothing
-
 -- PID tuning constants -----------------------------------------------------
 
 i_limit = 25 :: SFloat
@@ -102,29 +93,16 @@ maxRoll = 30 :: SFloat
 maxPitch = 30 :: SFloat   
 maxYaw = 160 :: SFloat    
 
--- IMU scaling --------------------------------------------------------------
-
 -- IMU LP filter parameters
-b_accel = 0.14 :: SFloat
 b_gyro = 0.1 :: SFloat
 
 -----------------------------------------------------------------------------
 
-getImu :: (SFloat, SFloat, SFloat, SFloat, SFloat, SFloat)
+getGyro :: (SFloat, SFloat, SFloat)
 
-getImu = (accelX, accelY, accelZ, gyroX, gyroY, gyroZ) where
+getGyro = (gyroX, gyroY, gyroZ) where
 
   lpf = \v v' b -> let s = v in (1 - b) * v' + b * s
-
-  alpf = \a a' -> lpf a a' b_accel
-
-  accelX = alpf acX accelX'
-  accelY = alpf acY accelY'
-  accelZ = alpf acZ accelZ'
-
-  accelX' = [0] ++ accelX
-  accelY' = [0] ++ accelY
-  accelZ' = [0] ++ accelZ
 
   glpf = \g g' -> lpf g g' b_gyro
 
@@ -238,13 +216,7 @@ step gyroX gyroY gyroZ = motors' where
 
 spec = do
 
-  let (accelX, accelY, accelZ, gyroX, gyroY, gyroZ) = getImu
-
-  let (phi, theta, psi) = madgwick6DOF (gyroX, (-gyroY), (-gyroZ)) 
-                                       ((-accelX), accelY, accelZ)
-                                       dt
-
-  trigger "setAngles" true [ arg phi, arg theta, arg psi ]
+  let (gyroX, gyroY, gyroZ) = getGyro
 
   let (m1_pwm, m2_pwm, m3_pwm, m4_pwm, c1) = step gyroX gyroY gyroZ
 

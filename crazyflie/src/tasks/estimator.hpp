@@ -189,11 +189,11 @@ class EstimatorTask : public FreeRTOSTask {
                         break;
 
                     case MeasurementTypeGyroscope:
-                        _ekf.updateWithGyro(measurement);
+                        _ekf.updateWithGyro(&measurement.data.gyroscope.gyro);
                         break;
 
                     case MeasurementTypeAcceleration:
-                        _ekf.updateWithAccel(measurement);
+                        _ekf.updateWithAccel(&measurement.data.acceleration.acc);
                         break;
 
                     default:

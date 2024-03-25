@@ -25,6 +25,10 @@ const float ACCEL_SCALE_FACTOR = 4096;
 // Do not exceed 2000Hz, all filter paras tuned to 2000Hz by default
 static const uint32_t LOOP_RATE = 2000;
 
+// This is slower than the IMU update rate of 1000Hz
+static const uint32_t PREDICT_RATE = 100;
+static const uint32_t PREDICTION_UPDATE_INTERVAL_MS = 1000 / PREDICT_RATE;
+
 // ---------------------------------------------------------------------------
 
 static const std::vector<uint8_t> MOTOR_PINS = {0, 1, 2, 3};
@@ -35,7 +39,7 @@ static MPU6050 mpu6050;
 
 bfs::SbusRx sbus(&Serial5);
 
-// Streams read by Copilot.hs
+// Streams read by Haskell
 float dt;
 float channel1_raw;
 float channel2_raw;
@@ -50,18 +54,22 @@ float GyX;
 float GyY;
 float GyZ;
 
-// Streams written and read by Copilot.hs
+// Streams written and read by Haskell
 float statePhi;
 float stateTheta;
 float statePsi;
 
-// Motors
+// Motors set by Haskell
 static int m1_command_PWM;
 static int m2_command_PWM;
 static int m3_command_PWM;
 static int m4_command_PWM;
 
-static void IMUinit() 
+static Ekf _ekf;
+
+// ---------------------------------------------------------------------------
+
+static void imuInit() 
 {
     Wire.begin();
     Wire.setClock(1000000); //Note this is 2.5 times the spec sheet 400 kHz max...
@@ -244,6 +252,30 @@ void debugLoopRate(const uint32_t current_time)
     }
 }
 
+static void ekfInit(void)
+{
+    _ekf.init(millis());
+}
+
+static void ekfStep(void)
+{
+    static uint32_t _nextPredictionMsec;
+
+    _nextPredictionMsec = 
+        _nextPredictionMsec == 0 ? millis() : _nextPredictionMsec;
+
+    const auto nowMsec = millis();
+
+    const auto isFlying = true; // XXX
+
+    _ekf.predict(nowMsec, _nextPredictionMsec, isFlying);
+
+    _nextPredictionMsec = nowMsec >= _nextPredictionMsec ?
+        nowMsec + PREDICTION_UPDATE_INTERVAL_MS :
+        _nextPredictionMsec;
+
+}
+
 void setup() 
 {
     Serial.begin(500000); //USB serial
@@ -261,7 +293,9 @@ void setup()
     sbus.Begin();
 
     // Initialize IMU communication
-    IMUinit();
+    imuInit();
+
+    ekfInit();
 
     delay(5);
 
@@ -287,6 +321,8 @@ void loop()
     debug(_current_time);
 
     readImu(); 
+
+    ekfStep();
 
     // Run Haskell Copilot
     void copilot_step(void);

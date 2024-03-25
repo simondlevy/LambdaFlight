@@ -102,9 +102,8 @@ maxRoll = 30 :: SFloat
 maxPitch = 30 :: SFloat   
 maxYaw = 160 :: SFloat    
 
--- IMU scaling --------------------------------------------------------------
+-- IMU LP filter parameters ------------------------------------------------
 
--- IMU LP filter parameters
 b_accel = 0.14 :: SFloat
 b_gyro = 0.1 :: SFloat
 
