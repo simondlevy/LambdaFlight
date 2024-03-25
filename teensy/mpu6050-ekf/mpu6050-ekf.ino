@@ -53,11 +53,8 @@ float AcZ;
 float GyX;
 float GyY;
 float GyZ;
-
-// Streams written and read by Haskell
 float statePhi;
 float stateTheta;
-float statePsi;
 
 // Motors set by Haskell
 static int m1_command_PWM;
@@ -66,6 +63,11 @@ static int m3_command_PWM;
 static int m4_command_PWM;
 
 static Ekf _ekf;
+
+static float _statePsi;
+
+static Axis3f _gyroLatest;
+static Axis3f _accelLatest;
 
 // ---------------------------------------------------------------------------
 
@@ -99,9 +101,17 @@ static void readImu()
     AcY = ay / ACCEL_SCALE_FACTOR;
     AcZ = az / ACCEL_SCALE_FACTOR;
 
+    _accelLatest.x = AcX;
+    _accelLatest.y = AcY;
+    _accelLatest.z = AcZ;
+
     GyX = gx / GYRO_SCALE_FACTOR;
     GyY = gy / GYRO_SCALE_FACTOR;
     GyZ = gz / GYRO_SCALE_FACTOR;
+
+    _gyroLatest.x = GyX;
+    _gyroLatest.y = GyY;
+    _gyroLatest.z = GyZ;
 }
 
 static void readReceiver() 
@@ -196,7 +206,7 @@ static void debug(const uint32_t current_time)
     //Print data at 100hz (uncomment one at a time for troubleshooting) - SELECT ONE:
     //debugAccel(current_time);
     //debugGyro(current_time);
-    //debugState(current_time);  
+    debugState(current_time);  
     //debugMotorCommands(current_time); 
     //debugLoopRate(current_time);      
 }
@@ -227,7 +237,7 @@ void debugState(const uint32_t current_time)
     if (current_time - print_counter > 10000) {
         print_counter = micros();
         Serial.printf("roll:%2.2f pitch:%2.2f yaw:%2.2f\n", 
-                statePhi, stateTheta, statePsi);
+                statePhi, stateTheta, _statePsi);
     }
 }
 
@@ -273,6 +283,24 @@ static void ekfStep(void)
     _nextPredictionMsec = nowMsec >= _nextPredictionMsec ?
         nowMsec + PREDICTION_UPDATE_INTERVAL_MS :
         _nextPredictionMsec;
+
+    _ekf.updateWithGyro(&_gyroLatest);
+
+    _ekf.updateWithAccel(&_accelLatest);
+
+    auto isStateInBounds = _ekf.finalize();
+
+    vehicleState_t state = {};
+    _ekf.getState(state);
+
+    statePhi = state.phi;
+    stateTheta = state.theta;
+    _statePsi = state.psi;
+
+    if (!isStateInBounds) { 
+
+        //_ekf.init(millis());
+    }
 
 }
 
@@ -343,11 +371,4 @@ void setMotors(const float m1, const float m2, const float m3, const float m4)
     m2_command_PWM = m2;
     m3_command_PWM = m3;
     m4_command_PWM = m4;
-}
-
-void setAngles(const float phi, const float theta, const float psi)
-{
-    statePhi = phi;
-    stateTheta = theta;
-    statePsi = psi;
 }

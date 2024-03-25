@@ -413,6 +413,7 @@ class Ekf {
                     range->stdDev, shouldUpdate);
         }
 
+
         void updateWithAccel(const Axis3f * accel)
         {
             axis3fSubSamplerAccumulate(&_accSubSampler, accel);
@@ -520,7 +521,7 @@ class Ekf {
             return _isUpdated ? doFinalize() : isStateWithinBounds();
         }
 
-     private:
+    private:
 
 
         // The quad's attitude as a quaternion (w,x,y,z) We store as a quaternion
@@ -531,7 +532,7 @@ class Ekf {
         float _qy;
         float _qz;
 
-       /**
+        /**
          * Vehicle State
          *
          * The internally-estimated state is:
