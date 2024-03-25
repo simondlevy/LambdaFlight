@@ -55,16 +55,6 @@ typedef struct {
 
 } vehicleState_t;
 
-typedef enum {
-
-    EKF_MODE_INIT,
-    EKF_MODE_PREDICT,
-    EKF_MODE_UPDATE,
-    EKF_MODE_FINALIZE,
-    EKF_MODE_GET_STATE
-
-} ekfMode_e;
-
 typedef union {
     struct {
         float x;
