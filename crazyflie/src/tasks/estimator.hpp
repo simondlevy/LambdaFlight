@@ -102,25 +102,6 @@ class EstimatorTask : public FreeRTOSTask {
             enqueue(&m, isInInterrupt);
         }
 
-        // For VisualizerTask
-        void getEulerAngles(int16_t angles[3])
-        {
-            static int16_t phi;
-            static int8_t dir;
-
-            dir = 
-                dir == 0 ? +1 : 
-                phi == +450 ? -1 :
-                phi == -450 ? +1 :
-                dir;
-
-            phi += dir;
-
-            angles[0] = phi;
-            angles[1] = 0;
-            angles[2] = 0;
-        }
-
     private:
 
         static const uint32_t WARNING_HOLD_BACK_TIME_MS = 2000;
