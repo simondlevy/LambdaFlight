@@ -162,9 +162,7 @@ class EstimatorTask : public FreeRTOSTask {
 
         void initEkf(const uint32_t nowMsec)
         {
-            stream_ekfMode = EKF_MODE_INIT; 
-            stream_ekfNowMsec = nowMsec;
-            _ekf.step();
+            _ekf.init(nowMsec);
         }
 
         uint32_t step(const uint32_t nowMsec, uint32_t nextPredictionMsec) 
@@ -176,12 +174,7 @@ class EstimatorTask : public FreeRTOSTask {
                 didResetEstimation = false;
             }
 
-            stream_ekfMode = EKF_MODE_PREDICT;
-            stream_ekfNowMsec = nowMsec;
-            stream_ekfNextPredictionMsec = nextPredictionMsec;
-            stream_ekfIsFlying = _safety->isFlying();
-
-            _ekf.step();
+            _ekf.predict(nowMsec, nextPredictionMsec, _safety->isFlying());
 
             // Run the system dynamics to predict the state forward.
             if (nowMsec >= nextPredictionMsec) {
@@ -209,13 +202,10 @@ class EstimatorTask : public FreeRTOSTask {
                     stream_gyro.z = stream_ekfMeasurement.data.gyroscope.gyro.z;
                 }
 
-                stream_ekfMode = EKF_MODE_UPDATE; 
-                stream_ekfNowMsec = nowMsec;
-                _ekf.step();
+                _ekf.update(stream_ekfMeasurement, nowMsec);
             }
 
-            stream_ekfMode = EKF_MODE_FINALIZE; 
-            auto isStateInBounds = _ekf.step();
+            auto isStateInBounds = _ekf.finalize();
 
             if (!isStateInBounds) { 
 
