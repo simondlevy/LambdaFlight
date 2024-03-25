@@ -294,7 +294,7 @@ static void ekfStep(void)
     _ekf.getState(state);
 
     statePhi = state.phi;
-    stateTheta = state.theta;
+    stateTheta = -state.theta;
     _statePsi = state.psi;
 
     if (!isStateInBounds) { 
