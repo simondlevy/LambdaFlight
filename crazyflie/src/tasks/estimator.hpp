@@ -193,31 +193,26 @@ class EstimatorTask : public FreeRTOSTask {
             // measurements since the last loop, rather than accumulating
 
             // Pull the latest sensors values of interest; discard the rest
+            measurement_t measurement = {};
             while (pdTRUE == xQueueReceive(
-                        _measurementsQueue, &stream_ekfMeasurement, 0)) {
+                        _measurementsQueue, &measurement, 0)) {
 
-                if (stream_ekfMeasurement.type == MeasurementTypeGyroscope) {
-                    stream_gyro.x = stream_ekfMeasurement.data.gyroscope.gyro.x;
-                    stream_gyro.y = stream_ekfMeasurement.data.gyroscope.gyro.y;
-                    stream_gyro.z = stream_ekfMeasurement.data.gyroscope.gyro.z;
-                }
-
-                switch (stream_ekfMeasurement.type) {
+                switch (measurement.type) {
 
                     case MeasurementTypeRange:
-                        _ekf.updateWithRange(&stream_ekfMeasurement.data.range);
+                        _ekf.updateWithRange(&measurement.data.range);
                         break;
 
                     case MeasurementTypeFlow:
-                        _ekf.updateWithFlow(&stream_ekfMeasurement.data.flow);
+                        _ekf.updateWithFlow(&measurement.data.flow);
                         break;
 
                     case MeasurementTypeGyroscope:
-                        _ekf.updateWithGyro(stream_ekfMeasurement);
+                        _ekf.updateWithGyro(measurement);
                         break;
 
                     case MeasurementTypeAcceleration:
-                        _ekf.updateWithAccel(stream_ekfMeasurement);
+                        _ekf.updateWithAccel(measurement);
                         break;
 
                     default:
