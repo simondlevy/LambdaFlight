@@ -1,26 +1,36 @@
 /*
    Based on https://github.com/nickrehm/dRehmFlight
-*/
+ */
 
 #include <Wire.h> 
 
 #include <sbus.h>
 
-#include <I2Cdev.h>
-#include <MPU6050.h>
+#include <usfs.hpp>
 
 #include <oneshot125.hpp>
 #include <vector>
 
 #include <ekf.hpp>
 
-// Gyro and accel full scale value selection
-const uint8_t GYRO_SCALE = MPU6050_GYRO_FS_2000;
-const uint8_t ACCEL_SCALE = MPU6050_ACCEL_FS_8;
+// USFS settings ------------------------------------------------------------
 
-// Scaling factors for above
-const float GYRO_SCALE_FACTOR = 16.4;
-const float ACCEL_SCALE_FACTOR = 4096;
+static const uint8_t USFS_ACCEL_BANDWIDTH = 3;
+static const uint8_t USFS_GYRO_BANDWIDTH  = 3;
+static const uint8_t USFS_QUAT_DIVISOR    = 1;
+static const uint8_t USFS_MAG_RATE        = 100;
+static const uint8_t USFS_ACCEL_RATE      = 20; // Multiply by 10 to get actual rate
+static const uint8_t USFS_GYRO_RATE       = 100; // Multiply by 10 to get actual rate
+static const uint8_t USFS_BARO_RATE       = 50;
+
+
+static const uint8_t USFS_INTERRUPT_ENABLE = Usfs::INTERRUPT_RESET_REQUIRED |
+Usfs::INTERRUPT_ERROR |
+Usfs::INTERRUPT_QUAT;
+
+static const bool USFS_VERBOSE = false;
+
+// ---------------------------------------------------------------------------
 
 // Do not exceed 2000Hz, all filter paras tuned to 2000Hz by default
 static const uint32_t LOOP_RATE = 2000;
@@ -29,13 +39,11 @@ static const uint32_t LOOP_RATE = 2000;
 static const uint32_t PREDICT_RATE = 100;
 static const uint32_t PREDICTION_UPDATE_INTERVAL_MS = 1000 / PREDICT_RATE;
 
-// ---------------------------------------------------------------------------
-
 static const std::vector<uint8_t> MOTOR_PINS = {0, 1, 2, 3};
 
 static auto motors = OneShot125(MOTOR_PINS);
 
-static MPU6050 mpu6050;
+static Usfs usfs;
 
 bfs::SbusRx sbus(&Serial5);
 
@@ -69,49 +77,67 @@ static float _statePsi;
 static Axis3f _gyroLatest;
 static Axis3f _accelLatest;
 
-// ---------------------------------------------------------------------------
-
 static void imuInit() 
 {
-    Wire.begin();
-    Wire.setClock(1000000); //Note this is 2.5 times the spec sheet 400 kHz max...
+    pinMode(21, OUTPUT);
+    digitalWrite(21, HIGH); // 3.3V
 
-    mpu6050.initialize();
+    pinMode(22, OUTPUT);
+    digitalWrite(22, LOW);  // GND
 
-    if (mpu6050.testConnection() == false) {
-        Serial.println("MPU6050 initialization unsuccessful");
-        Serial.println("Check MPU6050 wiring or try cycling power");
-        while(1) {}
-    }
+    Serial.begin(115200);
+    delay(4000);
 
-    //From the reset state all registers should be 0x00, so we should be at
-    //max sample rate with digital low pass filter(s) off.  All we need to
-    //do is set the desired fullscale ranges
-    mpu6050.setFullScaleGyroRange(GYRO_SCALE);
-    mpu6050.setFullScaleAccelRange(ACCEL_SCALE);
+    Wire.begin(); 
+    Wire.setClock(400000); 
+    delay(1000);
+
+    usfs.reportChipId();        
+
+    usfs.loadFirmware(USFS_VERBOSE); 
+
+    usfs.begin(
+            USFS_ACCEL_BANDWIDTH,
+            USFS_GYRO_BANDWIDTH,
+            USFS_QUAT_DIVISOR,
+            USFS_MAG_RATE,
+            USFS_ACCEL_RATE,
+            USFS_GYRO_RATE,
+            USFS_BARO_RATE,
+            USFS_INTERRUPT_ENABLE,
+            USFS_VERBOSE); 
+
+    // Clear interrupts
+    Usfs::checkStatus();
 }
 
 static void readImu() 
 {
-    int16_t ax=0, ay=0, az=0, gx=0, gy=0, gz=0;
+    auto eventStatus = Usfs::checkStatus(); 
 
-    mpu6050.getMotion6(&ax, &ay, &az, &gx, &gy, &gz);
+    if (Usfs::eventStatusIsAccelerometer(eventStatus)) { 
 
-    AcX = ax / ACCEL_SCALE_FACTOR;
-    AcY = ay / ACCEL_SCALE_FACTOR;
-    AcZ = az / ACCEL_SCALE_FACTOR;
+        usfs.readAccelerometerScaled(AcX, AcY, AcZ);
 
-    _accelLatest.x = AcX;
-    _accelLatest.y = AcY;
-    _accelLatest.z = AcZ;
+        AcY = -AcY;
 
-    GyX = gx / GYRO_SCALE_FACTOR;
-    GyY = gy / GYRO_SCALE_FACTOR;
-    GyZ = gz / GYRO_SCALE_FACTOR;
+        _accelLatest.x = AcX;
+        _accelLatest.y = AcY;
+        _accelLatest.z = AcZ;
 
-    _gyroLatest.x = GyX;
-    _gyroLatest.y = GyY;
-    _gyroLatest.z = GyZ;
+    }
+
+    if (Usfs::eventStatusIsGyrometer(eventStatus)) { 
+
+        usfs.readGyrometerScaled(GyX, GyY, GyZ);
+
+        GyX = -GyX;
+        GyZ = -GyZ;
+
+        _gyroLatest.x = GyX;
+        _gyroLatest.y = GyY;
+        _gyroLatest.z = GyZ;
+    }
 }
 
 static void readReceiver() 
@@ -204,36 +230,34 @@ static void setupBlink(
 static void debug(const uint32_t current_time)
 {
     //Print data at 100hz (uncomment one at a time for troubleshooting) - SELECT ONE:
-    //debugAccel(current_time);
-    //debugGyro(current_time);
-    //debugState(current_time);  
-    //debugMotorCommands(current_time); 
-    //debugLoopRate(current_time);      
+    //static uint32_t count; debugAccel(count, current_time);  
+    //static uint32_t count; debugGyro(count, current_time);  
+    static uint32_t count; debugState(count, current_time);  
+    //static uint32_t count; debugMotorCommands(count, current_time); 
+    //static uint32_t count; debugLoopRate(count, current_time);      
 }
 
-void debugAccel(const uint32_t current_time) 
+void debugAccel(uint32_t & print_counter, const uint32_t current_time) 
 {
-    static uint32_t print_counter;
     if (current_time - print_counter > 10000) {
         print_counter = micros();
-        Serial.printf("accelX:%+03.3f accelY:%+03.3f accelZ:%+03.3f\n", 
+        Serial.printf("accelX:%+3.3f accelY:%+3.3f accelZ:%+3.3f\n", 
                 AcX, AcY, AcZ);
     }
 }
 
-void debugGyro(const uint32_t current_time) 
+void debugGyro(uint32_t & print_counter, const uint32_t current_time) 
 {
-    static uint32_t print_counter;
     if (current_time - print_counter > 10000) {
         print_counter = micros();
-        Serial.printf("gyroX:%+03.3f gyroY:%+03.3f gyroZ:%+03.3f\n", 
+        Serial.printf("gyroX:%+3.3f gyroY:%+3.3f gyroZ:%+3.3f\n", 
                 GyX, GyY, GyZ);
     }
 }
 
-void debugState(const uint32_t current_time) 
+
+void debugState(uint32_t & print_counter, const uint32_t current_time) 
 {
-    static uint32_t print_counter;
     if (current_time - print_counter > 10000) {
         print_counter = micros();
         Serial.printf("roll:%2.2f pitch:%2.2f yaw:%2.2f\n", 
@@ -241,9 +265,8 @@ void debugState(const uint32_t current_time)
     }
 }
 
-void debugMotorCommands(const uint32_t current_time) 
+void debugMotorCommands(uint32_t & print_counter, const uint32_t current_time) 
 {
-    static uint32_t print_counter;
     if (current_time - print_counter > 10000) {
         print_counter = micros();
         Serial.printf(
@@ -253,9 +276,8 @@ void debugMotorCommands(const uint32_t current_time)
     }
 }
 
-void debugLoopRate(const uint32_t current_time) 
+void debugLoopRate(uint32_t & print_counter, const uint32_t current_time) 
 {
-    static uint32_t print_counter;
     if (current_time - print_counter > 10000) {
         print_counter = micros();
         Serial.printf("dt:%f\n", dt*1e6);
@@ -303,6 +325,7 @@ static void ekfStep(void)
     }
 
 }
+
 
 void setup() 
 {
