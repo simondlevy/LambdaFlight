@@ -77,28 +77,10 @@ PowerMonitorTask::syslinkInfo_t pmSyslinkInfo;
 
 // Haskell Copilot callbacks --------------------------------------------------
 
-void setStateAngles(
-        float phi, 
-        float dphi, 
-        float theta, 
-        float dtheta, 
-        float psi,
-        float dpsi) 
-
-{
-    estimatorTask.setStateAngular(phi, dphi, theta, dtheta, psi, dpsi);
-}
-
 void setMotors(float m1, float m2, float m3, float m4)
 {
     coreTask.setMotors(m1, m2, m3, m4);
 }
-
-void setKalmanStateInBounds(bool inBounds)
-{
-    estimatorTask.setKalmanStateInBounds(inBounds);
-}
-
 
 // ---------------------------------------------------------------------------
 

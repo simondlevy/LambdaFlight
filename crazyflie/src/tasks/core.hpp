@@ -134,6 +134,11 @@ class CoreTask : public FreeRTOSTask {
 
             for (uint32_t step=1; ; step++) {
 
+                // Debugging
+                if (step % 50 == 0) {
+                    //consolePrintf("");
+                }
+
                 // The IMU should unlock at 1kHz
                 _imuTask->waitDataReady();
                 sensorData_t sensorData = {};

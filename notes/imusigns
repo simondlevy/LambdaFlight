@@ -6,3 +6,5 @@ GyroX: + Roll right
 GyroY: + Nose down
 GyroZ: + Nose left
 
+Accel: gs
+Gyro: dps

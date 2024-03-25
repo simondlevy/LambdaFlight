@@ -25,7 +25,6 @@
 #include <task.hpp>
 
 #include <streams.h>
-#include <copilot_ekf.h>
 
 class EstimatorTask : public FreeRTOSTask {
 
@@ -69,28 +68,6 @@ class EstimatorTask : public FreeRTOSTask {
             xSemaphoreGive(_dataMutex);
 
             xSemaphoreGive(_runTaskSemaphore);
-        }
-
-        void setKalmanStateInBounds(bool inBounds)
-        {
-            _isStateInBounds = inBounds;
-        }
-
-        // Called from system.cpp
-        void setStateAngular(
-                const float phi, 
-                const float dphi, 
-                const float theta, 
-                const float dtheta, 
-                const float psi,
-                const float dpsi) 
-        {
-            _state.phi = phi;
-            _state.dphi = dphi;
-            _state.theta = theta;
-            _state.dtheta = dtheta;
-            _state.psi = psi;
-            _state.dpsi = dpsi;
         }
 
         void enqueueGyro(const Axis3f * gyro, const bool isInInterrupt)
@@ -158,8 +135,6 @@ class EstimatorTask : public FreeRTOSTask {
         StaticQueue_t measurementsQueueBuffer;
         xQueueHandle _measurementsQueue;
 
-        bool _isStateInBounds;
-
         RateSupervisor _rateSupervisor;
 
         // Mutex to protect data that is shared between the task and
@@ -190,7 +165,6 @@ class EstimatorTask : public FreeRTOSTask {
             stream_ekfMode = EKF_MODE_INIT; 
             stream_ekfNowMsec = nowMsec;
             _ekf.step();
-            copilot_step_ekf();
         }
 
         uint32_t step(const uint32_t nowMsec, uint32_t nextPredictionMsec) 
@@ -208,7 +182,6 @@ class EstimatorTask : public FreeRTOSTask {
             stream_ekfIsFlying = _safety->isFlying();
 
             _ekf.step();
-            copilot_step_ekf();
 
             // Run the system dynamics to predict the state forward.
             if (nowMsec >= nextPredictionMsec) {
@@ -239,15 +212,12 @@ class EstimatorTask : public FreeRTOSTask {
                 stream_ekfMode = EKF_MODE_UPDATE; 
                 stream_ekfNowMsec = nowMsec;
                 _ekf.step();
-                copilot_step_ekf();
             }
 
-            stream_ekfMode = EKF_MODE_FINALIZE;
-            _isStateInBounds = false;
-            _ekf.step();
-            copilot_step_ekf();
+            stream_ekfMode = EKF_MODE_FINALIZE; 
+            auto isStateInBounds = _ekf.step();
 
-            if (!_isStateInBounds) { 
+            if (!isStateInBounds) { 
 
                 didResetEstimation = true;
 
@@ -259,26 +229,7 @@ class EstimatorTask : public FreeRTOSTask {
 
             xSemaphoreTake(_dataMutex, portMAX_DELAY);
 
-            // Get altitude and linear velocity from C++ EKF
-
-            _state.dx = _ekf._ekfState.dx;
-
-            _state.dy = _ekf._ekfState.dy;
-
-            _state.z = _ekf._ekfState.z;
-
-            _state.dz = 
-                _ekf._r20 * _ekf._ekfState.dx +
-                _ekf._r21 * _ekf._ekfState.dy +
-                _ekf._r22 * _ekf._ekfState.dz;
-
-            // Quaternion is used by Haskell EKF
-            stream_quat.w = _ekf._qz;
-            stream_quat.x = _ekf._qw;
-            stream_quat.y = _ekf._qx;
-            stream_quat.z = _ekf._qy;
-            stream_ekfMode = EKF_MODE_GET_STATE;
-            copilot_step_ekf();
+            _ekf.getState(_state);
 
             xSemaphoreGive(_dataMutex);
 

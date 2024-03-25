@@ -128,12 +128,37 @@ class Ekf {
         float _qy;
         float _qz;
 
-        void step(void)
+        void getState(vehicleState_t & state)
         {
-            void setKalmanStateInBounds(bool);
+            state.dx = _ekfState.dx;
 
-            void setStateLinear(
-                    const float dx, const float dy, const float z, const float dz);
+            state.dy = _ekfState.dy;
+
+            state.z = _ekfState.z;
+
+            state.dz = 
+                _r20 * _ekfState.dx +
+                _r21 * _ekfState.dy +
+                _r22 * _ekfState.dz;
+
+            state.phi = RADIANS_TO_DEGREES * atan2((2 * (_qy*_qz + _qw*_qx)),
+                    (_qw*_qw - _qx*_qx - _qy*_qy + _qz*_qz));
+
+            // Negate for ENU
+            state.theta = -RADIANS_TO_DEGREES * asin((-2) * (_qx*_qz - _qw*_qy));
+
+            state.psi = RADIANS_TO_DEGREES * atan2((2 * (_qx*_qy + _qw*_qz)),
+                    (_qw*_qw + _qx*_qx - _qy*_qy - _qz*_qz));
+
+            // Get angular velocities directly from gyro
+            state.dphi =    _gyroLatest.x;
+            state.dtheta = -_gyroLatest.y; // negate for ENU
+            state.dpsi =    _gyroLatest.z;
+        }
+
+        bool step(void)
+        {
+            bool isStateInBounds = true;
 
             switch (stream_ekfMode) {
 
@@ -153,12 +178,14 @@ class Ekf {
                     break;
 
                 case EKF_MODE_FINALIZE:
-                    setKalmanStateInBounds(finalize());
+                    isStateInBounds = finalize();
                     break;
 
                 default:
                     break;
             }
+
+            return isStateInBounds;
         }
 
         /**
