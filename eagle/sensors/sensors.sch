@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!DOCTYPE eagle SYSTEM "eagle.dtd">
-<eagle version="9.6.2">
+<eagle version="9.1.1">
 <drawing>
 <settings>
 <setting alwaysvectorfont="no"/>
@@ -4362,11 +4362,6 @@ Holes are offset 0.005" from center, locking pins in place during soldering.
 </net>
 <net name="SCL" class="0">
 <segment>
-<pinref part="U$1" gate="G$1" pin="3"/>
-<wire x1="-43.18" y1="25.4" x2="-38.1" y2="25.4" width="0.1524" layer="91"/>
-<label x="-40.64" y="25.4" size="1.778" layer="95"/>
-</segment>
-<segment>
 <pinref part="J4" gate="J1" pin="2"/>
 <wire x1="7.62" y1="-10.16" x2="12.7" y2="-10.16" width="0.1524" layer="91"/>
 <label x="7.62" y="-10.16" size="1.778" layer="95"/>
@@ -4376,13 +4371,13 @@ Holes are offset 0.005" from center, locking pins in place during soldering.
 <wire x1="38.1" y1="22.86" x2="43.18" y2="22.86" width="0.1524" layer="91"/>
 <label x="38.1" y="22.86" size="1.778" layer="95"/>
 </segment>
-</net>
-<net name="SDA" class="0">
 <segment>
 <pinref part="U$1" gate="G$1" pin="4"/>
 <wire x1="-43.18" y1="22.86" x2="-38.1" y2="22.86" width="0.1524" layer="91"/>
 <label x="-40.64" y="22.86" size="1.778" layer="95"/>
 </segment>
+</net>
+<net name="SDA" class="0">
 <segment>
 <pinref part="J4" gate="J1" pin="1"/>
 <wire x1="7.62" y1="-12.7" x2="12.7" y2="-12.7" width="0.1524" layer="91"/>
@@ -4393,17 +4388,22 @@ Holes are offset 0.005" from center, locking pins in place during soldering.
 <wire x1="38.1" y1="20.32" x2="43.18" y2="20.32" width="0.1524" layer="91"/>
 <label x="38.1" y="20.32" size="1.778" layer="95"/>
 </segment>
+<segment>
+<pinref part="U$1" gate="G$1" pin="3"/>
+<wire x1="-43.18" y1="25.4" x2="-38.1" y2="25.4" width="0.1524" layer="91"/>
+<label x="-40.64" y="25.4" size="1.778" layer="95"/>
+</segment>
 </net>
 <net name="MISO" class="0">
-<segment>
-<pinref part="U$1" gate="G$1" pin="5"/>
-<wire x1="-43.18" y1="20.32" x2="-38.1" y2="20.32" width="0.1524" layer="91"/>
-<label x="-40.64" y="20.32" size="1.778" layer="95"/>
-</segment>
 <segment>
 <pinref part="J1" gate="J1" pin="4"/>
 <wire x1="-45.72" y1="-10.16" x2="-40.64" y2="-10.16" width="0.1524" layer="91"/>
 <label x="-45.72" y="-10.16" size="1.778" layer="95"/>
+</segment>
+<segment>
+<pinref part="U$1" gate="G$1" pin="7"/>
+<wire x1="-43.18" y1="15.24" x2="-38.1" y2="15.24" width="0.1524" layer="91"/>
+<label x="-40.64" y="15.24" size="1.778" layer="95"/>
 </segment>
 </net>
 <net name="MOSI" class="0">
@@ -4420,26 +4420,26 @@ Holes are offset 0.005" from center, locking pins in place during soldering.
 </net>
 <net name="SCK" class="0">
 <segment>
-<pinref part="U$1" gate="G$1" pin="7"/>
-<wire x1="-43.18" y1="15.24" x2="-38.1" y2="15.24" width="0.1524" layer="91"/>
-<label x="-40.64" y="15.24" size="1.778" layer="95"/>
-</segment>
-<segment>
 <pinref part="J2" gate="J1" pin="4"/>
 <wire x1="-45.72" y1="-27.94" x2="-40.64" y2="-27.94" width="0.1524" layer="91"/>
 <label x="-45.72" y="-27.94" size="1.778" layer="95"/>
 </segment>
-</net>
-<net name="CS" class="0">
 <segment>
 <pinref part="U$1" gate="G$1" pin="8"/>
 <wire x1="-43.18" y1="12.7" x2="-38.1" y2="12.7" width="0.1524" layer="91"/>
 <label x="-40.64" y="12.7" size="1.778" layer="95"/>
 </segment>
+</net>
+<net name="CS" class="0">
 <segment>
 <pinref part="J1" gate="J1" pin="2"/>
 <wire x1="-45.72" y1="-15.24" x2="-40.64" y2="-15.24" width="0.1524" layer="91"/>
 <label x="-45.72" y="-15.24" size="1.778" layer="95"/>
+</segment>
+<segment>
+<pinref part="U$1" gate="G$1" pin="5"/>
+<wire x1="-43.18" y1="20.32" x2="-38.1" y2="20.32" width="0.1524" layer="91"/>
+<label x="-40.64" y="20.32" size="1.778" layer="95"/>
 </segment>
 </net>
 <net name="LED" class="0">
