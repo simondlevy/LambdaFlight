@@ -145,7 +145,7 @@ class EstimatorTask : public FreeRTOSTask {
         {
             _ekf.init(nowMsec);
 
-            ekf_step(EKF_INIT);
+            ekf_step(EKF_INIT, nowMsec, 0, false, NULL);
         }
 
         uint32_t step(const uint32_t nowMsec, uint32_t nextPredictionMsec) 
@@ -158,6 +158,9 @@ class EstimatorTask : public FreeRTOSTask {
             }
 
             _ekf.predict(nowMsec, nextPredictionMsec, _safety->isFlying());
+
+            ekf_step(EKF_PREDICT, nowMsec, nextPredictionMsec,
+                    _safety->isFlying(), NULL);
 
             // Run the system dynamics to predict the state forward.
             if (nowMsec >= nextPredictionMsec) {
@@ -184,18 +187,22 @@ class EstimatorTask : public FreeRTOSTask {
 
                     case MeasurementTypeRange:
                         _ekf.updateWithRange(&measurement.data.range);
+                        ekf_step(EKF_UPDATE_WITH_RANGE, 0, 0, false, NULL);
                         break;
 
                     case MeasurementTypeFlow:
                         _ekf.updateWithFlow(&measurement.data.flow);
+                        ekf_step(EKF_UPDATE_WITH_FLOW, 0, 0, false, NULL);
                         break;
 
                     case MeasurementTypeGyroscope:
                         _ekf.updateWithGyro(&measurement.data.gyroscope.gyro);
+                        ekf_step(EKF_UPDATE_WITH_GYRO, 0, 0, false, NULL);
                         break;
 
                     case MeasurementTypeAcceleration:
                         _ekf.updateWithAccel(&measurement.data.acceleration.acc);
+                        ekf_step(EKF_UPDATE_WITH_ACCEL, 0, 0, false, NULL);
                         break;
 
                     default:
@@ -218,6 +225,9 @@ class EstimatorTask : public FreeRTOSTask {
             xSemaphoreTake(_dataMutex, portMAX_DELAY);
 
             _ekf.getState(_state);
+
+            vehicleState_t state = {};
+            ekf_step(EKF_GET_STATE, 0, 0, false, &state);
 
             xSemaphoreGive(_dataMutex);
 

@@ -62,7 +62,12 @@ typedef enum {
 
 } ekfAction_e;
 
-static bool ekf_step(const ekfAction_e action)
+static bool ekf_step(
+        const ekfAction_e action,
+        const uint32_t nowMsec,
+        const uint32_t nextPredictionMsec,
+        const bool isFlying,
+        vehicleState_t * state)
 {
     switch (action) {
 
