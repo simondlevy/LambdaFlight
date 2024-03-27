@@ -100,13 +100,76 @@ enum {
 };
 
 typedef struct {
+
     Axis3f sum;
     uint32_t count;
     float conversionFactor;
-
     Axis3f subSample;
+
 } Axis3fSubSampler_t;
 
+static void axis3fSubSamplerInit(Axis3fSubSampler_t* subSampler, const
+        float conversionFactor) 
+{ 
+    memset(subSampler, 0, sizeof(Axis3fSubSampler_t));
+    subSampler->conversionFactor = conversionFactor;
+}
+
+static void ekf_init(
+        const uint32_t nowMsec,
+        Axis3fSubSampler_t & accSubSampler,
+        Axis3fSubSampler_t & gyroSubSampler,
+        ekfState_t & ekfState,
+        float Pmat[KC_STATE_DIM][KC_STATE_DIM],
+        float & qw, float & qx, float & qy, float & qz,
+        float & r20, float & r21, float & r22,
+        bool & isUpdated,
+        uint32_t & lastPredictionMsec,
+        uint32_t & lastProcessNoiseUpdateMsec
+        )
+{
+    axis3fSubSamplerInit(&accSubSampler, GRAVITY_MAGNITUDE);
+    axis3fSubSamplerInit(&gyroSubSampler, DEGREES_TO_RADIANS);
+
+    // Reset all data to 0 (like upon system reset)
+
+    memset(&ekfState, 0, sizeof(ekfState_t));
+
+    // set covariances to zero (diagonals will be changed from
+    // zero in the next section)
+    memset(Pmat, 0, KC_STATE_DIM*KC_STATE_DIM*sizeof(float));
+
+    ekfState.z = 0;
+
+    qw = QW_INIT;
+    qx = QX_INIT;
+    qy = QY_INIT;
+    qz = QZ_INIT;
+
+
+    // set the initial rotation matrix to the identity. This only affects
+    // the first prediction step, since in the finalization, after shifting
+    // attitude errors into the attitude state, the rotation matrix is updated.
+    r20 = 0;
+    r21 = 0;
+    r22 = 1;
+
+
+    // initialize state variances
+    Pmat[KC_STATE_Z][KC_STATE_Z] = powf(STDEV_INITIAL_POSITION_Z, 2);
+
+    Pmat[KC_STATE_DX][KC_STATE_DX] = powf(STDEV_INITIAL_VELOCITY, 2);
+    Pmat[KC_STATE_DY][KC_STATE_DY] = powf(STDEV_INITIAL_VELOCITY, 2);
+    Pmat[KC_STATE_DZ][KC_STATE_DZ] = powf(STDEV_INITIAL_VELOCITY, 2);
+
+    Pmat[KC_STATE_E0][KC_STATE_E0] = powf(STDEV_INITIAL_ATTITUDE_ROLL_PITCH, 2);
+    Pmat[KC_STATE_E1][KC_STATE_E1] = powf(STDEV_INITIAL_ATTITUDE_ROLL_PITCH, 2);
+    Pmat[KC_STATE_E2][KC_STATE_E2] = powf(STDEV_INITIAL_ATTITUDE_YAW, 2);
+
+    isUpdated = false;
+    lastPredictionMsec = nowMsec;
+    lastProcessNoiseUpdateMsec = nowMsec;
+}
 
 static bool ekf_step(
         const ekfAction_e action,
@@ -117,7 +180,14 @@ static bool ekf_step(
 {
     // State variables ---------------------------------------------------
 
-    /*
+    Axis3fSubSampler_t _accSubSampler;
+    Axis3fSubSampler_t _gyroSubSampler;
+
+    ekfState_t _ekfState;
+
+    // The covariance matrix
+    float _Pmat[KC_STATE_DIM][KC_STATE_DIM];
+
     // The quad's attitude as a quaternion (w,x,y,z) We store as a quaternion
     // to allow easy normalization (in comparison to a rotation matrix),
     // while also being robust against singularities (in comparison to euler angles)
@@ -126,35 +196,39 @@ static bool ekf_step(
     float _qy;
     float _qz;
 
-    Axis3f _gyroLatest;
-
-    Axis3fSubSampler_t _accSubSampler;
-    Axis3fSubSampler_t _gyroSubSampler;
-
-    ekfState_t _ekfState;
-
     // Third row (Z) of attitude as a rotation matrix (used by the prediction,
     // updated by the finalization)
     float _r20;
     float _r21;
     float _r22;
 
-    // The covariance matrix
-    float _Pmat[KC_STATE_DIM][KC_STATE_DIM];
-
     // Tracks whether an update to the state has been made, and the state
     // therefore requires finalization
     bool _isUpdated;
 
-    uint32_t _lastPredictionMs;
-    uint32_t _lastProcessNoiseUpdateMs;
-    */
+    uint32_t _lastPredictionMsec;
+    uint32_t _lastProcessNoiseUpdateMsec;
+
+    /*
+    Axis3f _gyroLatest;
+
+     */
 
     // -------------------------------------------------------------------
 
     switch (action) {
 
         case EKF_INIT:
+            ekf_init(nowMsec,
+                    _accSubSampler, _gyroSubSampler, 
+                    _ekfState, 
+                    _Pmat,
+                    _qw, _qx, _qy, _qz,
+                    _r20, _r21, _r22,
+                    _isUpdated, 
+                    _lastPredictionMsec,
+                    _lastProcessNoiseUpdateMsec
+                    );
             break;
 
         case EKF_PREDICT:
