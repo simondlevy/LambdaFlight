@@ -62,6 +62,52 @@ typedef enum {
 
 } ekfAction_e;
 
+/**
+ * Vehicle State
+ *
+ * The internally-estimated state is:
+ * - Z: the quad's altitude
+ * - DX, DY, DZ: the quad's velocity in its body frame
+ * - E0, E1, E2: attitude error
+ *
+ * For more information, refer to the paper
+ */         
+typedef struct {
+
+    float z;
+    float dx;
+    float dy;
+    float dz;
+    float e0;
+    float e1;
+    float e2;
+
+} ekfState_t;
+
+
+// Indexes to access the state
+enum {
+
+    KC_STATE_Z,
+    KC_STATE_DX,
+    KC_STATE_DY,
+    KC_STATE_DZ,
+    KC_STATE_E0,
+    KC_STATE_E1,
+    KC_STATE_E2,
+    KC_STATE_DIM
+
+};
+
+typedef struct {
+    Axis3f sum;
+    uint32_t count;
+    float conversionFactor;
+
+    Axis3f subSample;
+} Axis3fSubSampler_t;
+
+
 static bool ekf_step(
         const ekfAction_e action,
         const uint32_t nowMsec,
@@ -69,6 +115,43 @@ static bool ekf_step(
         const bool isFlying,
         vehicleState_t * state)
 {
+    // State variables ---------------------------------------------------
+
+    /*
+    // The quad's attitude as a quaternion (w,x,y,z) We store as a quaternion
+    // to allow easy normalization (in comparison to a rotation matrix),
+    // while also being robust against singularities (in comparison to euler angles)
+    float _qw;
+    float _qx;
+    float _qy;
+    float _qz;
+
+    Axis3f _gyroLatest;
+
+    Axis3fSubSampler_t _accSubSampler;
+    Axis3fSubSampler_t _gyroSubSampler;
+
+    ekfState_t _ekfState;
+
+    // Third row (Z) of attitude as a rotation matrix (used by the prediction,
+    // updated by the finalization)
+    float _r20;
+    float _r21;
+    float _r22;
+
+    // The covariance matrix
+    float _Pmat[KC_STATE_DIM][KC_STATE_DIM];
+
+    // Tracks whether an update to the state has been made, and the state
+    // therefore requires finalization
+    bool _isUpdated;
+
+    uint32_t _lastPredictionMs;
+    uint32_t _lastProcessNoiseUpdateMs;
+    */
+
+    // -------------------------------------------------------------------
+
     switch (action) {
 
         case EKF_INIT:
@@ -93,9 +176,6 @@ static bool ekf_step(
             break;
 
         case EKF_UPDATE_WITH_RANGE:
-            break;
-
-        default:
             break;
     }
 
@@ -507,8 +587,7 @@ class Ekf {
             return _isUpdated ? doFinalize() : isStateWithinBounds();
         }
 
-     private:
-
+    private:
 
         // The quad's attitude as a quaternion (w,x,y,z) We store as a quaternion
         // to allow easy normalization (in comparison to a rotation matrix),
@@ -517,50 +596,6 @@ class Ekf {
         float _qx;
         float _qy;
         float _qz;
-
-       /**
-         * Vehicle State
-         *
-         * The internally-estimated state is:
-         * - Z: the quad's altitude
-         * - DX, DY, DZ: the quad's velocity in its body frame
-         * - E0, E1, E2: attitude error
-         *
-         * For more information, refer to the paper
-         */         
-        typedef struct {
-
-            float z;
-            float dx;
-            float dy;
-            float dz;
-            float e0;
-            float e1;
-            float e2;
-
-        } ekfState_t;
-
-        // Indexes to access the state
-        enum {
-
-            KC_STATE_Z,
-            KC_STATE_DX,
-            KC_STATE_DY,
-            KC_STATE_DZ,
-            KC_STATE_E0,
-            KC_STATE_E1,
-            KC_STATE_E2,
-            KC_STATE_DIM
-
-        };
-
-        typedef struct {
-            Axis3f sum;
-            uint32_t count;
-            float conversionFactor;
-
-            Axis3f subSample;
-        } Axis3fSubSampler_t;
 
         //////////////////////////////////////////////////////////////////////////
 
