@@ -212,6 +212,9 @@ class EstimatorTask : public FreeRTOSTask {
 
             auto isStateInBounds = _ekf.finalize();
 
+            auto new_isStateInBounds = ekf_step(EKF_FINALIZE, 0, 0, false, NULL);
+            (void)new_isStateInBounds;
+
             if (!isStateInBounds) { 
 
                 didResetEstimation = true;
@@ -226,8 +229,8 @@ class EstimatorTask : public FreeRTOSTask {
 
             _ekf.getState(_state);
 
-            vehicleState_t state = {};
-            ekf_step(EKF_GET_STATE, 0, 0, false, &state);
+            vehicleState_t new_state = {};
+            ekf_step(EKF_GET_STATE, 0, 0, false, &new_state);
 
             xSemaphoreGive(_dataMutex);
 
