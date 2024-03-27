@@ -119,7 +119,9 @@ static void readImu()
 
         usfs.readAccelerometerScaled(AcX, AcY, AcZ);
 
+        // Mounted upside-down
         AcY = -AcY;
+        AcZ = -AcZ; 
 
         _accelLatest.x = AcX;
         _accelLatest.y = AcY;
@@ -132,7 +134,6 @@ static void readImu()
         usfs.readGyrometerScaled(GyX, GyY, GyZ);
 
         GyX = -GyX;
-        GyZ = -GyZ;
 
         _gyroLatest.x = GyX;
         _gyroLatest.y = GyY;
@@ -231,8 +232,8 @@ static void debug(const uint32_t current_time)
 {
     //Print data at 100hz (uncomment one at a time for troubleshooting) - SELECT ONE:
     //static uint32_t count; debugAccel(count, current_time);  
-    //static uint32_t count; debugGyro(count, current_time);  
-    static uint32_t count; debugState(count, current_time);  
+    static uint32_t count; debugGyro(count, current_time);  
+    //static uint32_t count; debugState(count, current_time);  
     //static uint32_t count; debugMotorCommands(count, current_time); 
     //static uint32_t count; debugLoopRate(count, current_time);      
 }

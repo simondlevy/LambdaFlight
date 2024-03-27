@@ -49,6 +49,54 @@ static const float EPS = 1e-6f;
 // the reversion of pitch and roll to zero
 static const float ROLLPITCH_ZERO_REVERSION = 0.001;
 
+typedef enum {
+
+    EKF_INIT,
+    EKF_PREDICT,
+    EKF_FINALIZE,
+    EKF_GET_STATE,
+    EKF_UPDATE_WITH_GYRO,
+    EKF_UPDATE_WITH_ACCEL,
+    EKF_UPDATE_WITH_FLOW,
+    EKF_UPDATE_WITH_RANGE 
+
+} ekfAction_e;
+
+static bool ekf_step(const ekfAction_e action)
+{
+    switch (action) {
+
+        case EKF_INIT:
+            break;
+
+        case EKF_PREDICT:
+            break;
+
+        case EKF_FINALIZE:
+            break;
+
+        case EKF_GET_STATE:
+            break;
+
+        case EKF_UPDATE_WITH_GYRO:
+            break;
+
+        case EKF_UPDATE_WITH_ACCEL:
+            break;
+
+        case EKF_UPDATE_WITH_FLOW:
+            break;
+
+        case EKF_UPDATE_WITH_RANGE:
+            break;
+
+        default:
+            break;
+    }
+
+    return false;
+}
+
 class Ekf { 
 
     public:
