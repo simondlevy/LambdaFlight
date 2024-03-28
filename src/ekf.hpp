@@ -760,6 +760,7 @@ static bool ekf_step(
             break;
 
         case EKF_UPDATE_WITH_ACCEL:
+            axis3fSubSamplerAccumulate(*accel, _accSubSampler);
             break;
 
         case EKF_UPDATE_WITH_FLOW:
