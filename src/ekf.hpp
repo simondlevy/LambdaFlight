@@ -673,6 +673,9 @@ static bool ekf_step(
         const uint32_t nextPredictionMsec,
         const bool isFlying,
         const Axis3f * gyro,
+        const Axis3f * accel,
+        const flowMeasurement_t * flow,
+        const rangeMeasurement_t *range,
         vehicleState_t * vehicleState)
 {
     // State variables ---------------------------------------------------
