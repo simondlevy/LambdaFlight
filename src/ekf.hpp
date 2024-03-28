@@ -621,13 +621,48 @@ static void ekf_predict(
         lastProcessNoiseUpdateMsec;
 }
 
+static void getVehicleState(
+        const ekfState_t & ekfState, 
+        const Axis3f & gyroLatest,
+        const float qw,
+        const float qx,
+        const float qy,
+        const float qz,
+        const float r20,
+        const float r21,
+        const float r22,
+        vehicleState_t * vehicleState)
+{
+    vehicleState->dx = ekfState.dx;
+
+    vehicleState->dy = ekfState.dy;
+
+    vehicleState->z = ekfState.z;
+
+    vehicleState->dz = r20 * ekfState.dx + r21 * ekfState.dy + r22 * ekfState.dz;
+
+    vehicleState->phi = RADIANS_TO_DEGREES * atan2((2 * (qy*qz + qw*qx)),
+            (qw*qw - qx*qx - qy*qy + qz*qz));
+
+    // Negate for ENU
+    vehicleState->theta = -RADIANS_TO_DEGREES * asin((-2) * (qx*qz - qw*qy));
+
+    vehicleState->psi = RADIANS_TO_DEGREES * atan2((2 * (qx*qy + qw*qz)),
+            (qw*qw + qx*qx - qy*qy - qz*qz));
+
+    // Get angular velocities directly from gyro
+    vehicleState->dphi =    gyroLatest.x;
+    vehicleState->dtheta = -gyroLatest.y; // negate for ENU
+    vehicleState->dpsi =    gyroLatest.z;
+}
+
 
 static bool ekf_step(
         const ekfAction_e action,
         const uint32_t nowMsec,
         const uint32_t nextPredictionMsec,
         const bool isFlying,
-        vehicleState_t * state)
+        vehicleState_t * vehicleState)
 {
     // State variables ---------------------------------------------------
 
@@ -660,10 +695,7 @@ static bool ekf_step(
     static uint32_t _lastPredictionMsec;
     static uint32_t _lastProcessNoiseUpdateMsec;
 
-    /*
-       Axis3f _gyroLatest;
-
-     */
+    static Axis3f _gyroLatest;
 
     // -------------------------------------------------------------------
 
@@ -704,6 +736,8 @@ static bool ekf_step(
                 isStateWithinBounds(_ekfState);
 
         case EKF_GET_STATE:
+            getVehicleState( _ekfState, _gyroLatest, _qw, _qx, _qy, _qz,
+                    _r20, _r21, _r22, vehicleState);
             break;
 
         case EKF_UPDATE_WITH_GYRO:
