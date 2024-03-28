@@ -115,6 +115,75 @@ static void axis3fSubSamplerInit(Axis3fSubSampler_t* subSampler, const
     subSampler->conversionFactor = conversionFactor;
 }
 
+static Axis3f* axis3fSubSamplerFinalize(
+        Axis3fSubSampler_t* subSampler,
+        const bool shouldPredict) 
+{
+    const auto count  = subSampler->count; 
+    const auto isCountNonzero = count > 0;
+    const auto shouldFinalize = shouldPredict && isCountNonzero;
+
+    subSampler->subSample.x = shouldFinalize ? 
+        subSampler->sum.x * subSampler->conversionFactor / count :
+        subSampler->subSample.x;
+
+    subSampler->subSample.y = shouldFinalize ?
+        subSampler->sum.y * subSampler->conversionFactor / count :
+        subSampler->subSample.y;
+
+    subSampler->subSample.z = shouldFinalize ?
+        subSampler->sum.z * subSampler->conversionFactor / count :
+        subSampler->subSample.z;
+
+    // Reset
+    subSampler->count = 0;
+    subSampler->sum = (Axis3f){.axis={0}};
+
+    return &subSampler->subSample;
+}
+
+static void updateCovarianceCell(
+        const int i, 
+        const int j, 
+        const float variance,
+        const bool shouldUpdate,
+        float Pmat[KC_STATE_DIM][KC_STATE_DIM])
+{
+    const auto p = (Pmat[i][j] + Pmat[j][i]) / 2 + variance;
+
+    Pmat[i][j] = !shouldUpdate ? Pmat[i][j] :
+        (isnan(p) || p > MAX_COVARIANCE) ?  MAX_COVARIANCE :
+        (i==j && p < MIN_COVARIANCE) ?  MIN_COVARIANCE :
+        p;
+
+    Pmat[j][i] = shouldUpdate ? Pmat[i][j] : Pmat[j][i];
+}
+
+
+static void updateCovarianceMatrix(
+        const bool shouldUpdate,
+        float Pmat[KC_STATE_DIM][KC_STATE_DIM])
+{
+    // Enforce symmetry of the covariance matrix, and ensure the
+    // values stay bounded
+    for (int i=0; i<KC_STATE_DIM; i++) {
+        for (int j=i; j<KC_STATE_DIM; j++) {
+            updateCovarianceCell(i, j, 0, shouldUpdate, Pmat);
+        }
+    }
+}
+
+static float rotateQuat(
+        const float val, 
+        const float initVal,
+        const bool isFlying)
+{
+    const auto keep = 1.0f - ROLLPITCH_ZERO_REVERSION;
+
+    return (val * (isFlying ? 1: keep)) +
+        (isFlying ? 0 : ROLLPITCH_ZERO_REVERSION * initVal);
+}
+
 static void ekf_init(
         const uint32_t nowMsec,
         Axis3fSubSampler_t & accSubSampler,
@@ -171,6 +240,239 @@ static void ekf_init(
     lastProcessNoiseUpdateMsec = nowMsec;
 }
 
+
+static void ekf_predict(
+        const uint32_t nowMsec, 
+        const uint32_t nextPredictionMsec,
+        const bool isFlying, 
+        const float r20, 
+        const float r21,
+        const float r22,
+        Axis3fSubSampler_t & accSubSampler,
+        Axis3fSubSampler_t & gyroSubSampler,
+        float Pmat[KC_STATE_DIM][KC_STATE_DIM],
+        ekfState_t & ekfState,
+        float &qw,
+        float &qx,
+        float &qy,
+        float &qz,
+        bool & isUpdated,
+        uint32_t & lastPredictionMsec,
+        uint32_t & lastProcessNoiseUpdateMsec)
+
+{
+    const bool shouldPredict = nowMsec >= nextPredictionMsec;
+
+    axis3fSubSamplerFinalize(&accSubSampler, shouldPredict);
+
+    axis3fSubSamplerFinalize(&gyroSubSampler, shouldPredict);
+
+    const Axis3f * acc = &accSubSampler.subSample; 
+    const Axis3f * gyro = &gyroSubSampler.subSample; 
+    const float dt = (nowMsec - lastPredictionMsec) / 1000.0f;
+
+    const auto e0 = gyro->x*dt/2;
+    const auto e1 = gyro->y*dt/2;
+    const auto e2 = gyro->z*dt/2;
+
+    // altitude from body-frame velocity
+    const auto zdx = r20*dt;
+    const auto zdy = r21*dt;
+    const auto zdz = r22*dt;
+
+    // altitude from attitude error
+    const auto ze0 = (ekfState.dy*r22 - ekfState.dz*r21)*dt;
+    const auto ze1 = (- ekfState.dx*r22 + ekfState.dz*r20)*dt;
+    const auto ze2 = (ekfState.dx*r21 - ekfState.dy*r20)*dt;
+
+    // body-frame velocity from body-frame velocity
+    const auto dxdx = 1; //drag negligible
+    const auto dydx =-gyro->z*dt;
+    const auto dzdx = gyro->y*dt;
+
+    const auto dxdy = gyro->z*dt;
+    const auto dydy = 1; //drag negligible
+    const auto dzdy =-gyro->x*dt;
+
+    const auto dxdz =-gyro->y*dt;
+    const auto dydz = gyro->x*dt;
+    const auto dzdz = 1; //drag negligible
+
+    // body-frame velocity from attitude error
+    const auto dxe0 =  0;
+    const auto dye0 = -GRAVITY_MAGNITUDE*r22*dt;
+    const auto dze0 =  GRAVITY_MAGNITUDE*r21*dt;
+
+    const auto dxe1 =  GRAVITY_MAGNITUDE*r22*dt;
+    const auto dye1 =  0;
+    const auto dze1 = -GRAVITY_MAGNITUDE*r20*dt;
+
+    const auto dxe2 = -GRAVITY_MAGNITUDE*r21*dt;
+    const auto dye2 =  GRAVITY_MAGNITUDE*r20*dt;
+    const auto dze2 =  0;
+
+    const auto e0e0 =  1 - e1*e1/2 - e2*e2/2;
+    const auto e0e1 =  e2 + e0*e1/2;
+    const auto e0e2 = -e1 + e0*e2/2;
+
+    const auto e1e0 = -e2 + e0*e1/2;
+    const auto e1e1 =  1 - e0*e0/2 - e2*e2/2;
+    const auto e1e2 =  e0 + e1*e2/2;
+
+    const auto e2e0 =  e1 + e0*e2/2;
+    const auto e2e1 = -e0 + e1*e2/2;
+    const auto e2e2 = 1 - e0*e0/2 - e1*e1/2;
+
+    const float A[KC_STATE_DIM][KC_STATE_DIM] = 
+    { 
+        //        Z  DX    DY    DZ    E0    E1    E2
+        /*Z*/    {0, zdx,  zdy,  zdz,  ze0,  ze1,  ze2}, 
+        /*DX*/   {0, dxdx, dxdy, dxdz, dxe0, dxe1, dxe2}, 
+        /*DY*/   {0, dydx, dydy, dydz, dye0, dye1, dye2},
+        /*DZ*/   {0, dzdx, dzdy, dzdz, dze0, dze1, dze2},
+        /*E0*/   {0, 0,    0,    0,    e0e0, e0e1, e0e2}, 
+        /*E1*/   {0, 0,    0,    0,    e1e0, e1e1, e1e2}, 
+        /*E2*/   {0, 0,    0,    0,    e2e0, e2e1, e2e2}  
+    };
+
+    const auto dt2 = dt * dt;
+
+    // Position updates in the body frame (will be rotated to inertial frame);
+    // thrust can only be produced in the body's Z direction
+    const auto dx = ekfState.dx * dt + isFlying ? 0 : acc->x * dt2 / 2;
+    const auto dy = ekfState.dy * dt + isFlying ? 0 : acc->y * dt2 / 2;
+    const auto dz = ekfState.dz * dt + acc->z * dt2 / 2; 
+
+    // keep previous time step's state for the update
+    const auto tmpSDX = ekfState.dx;
+    const auto tmpSDY = ekfState.dy;
+    const auto tmpSDZ = ekfState.dz;
+
+    const auto accx = isFlying ? 0 : acc->x;
+    const auto accy = isFlying ? 0 : acc->y;
+
+    // attitude update (rotate by gyroscope), we do this in quaternions
+    // this is the gyroscope angular velocity integrated over the sample period
+    const auto dtwx = dt*gyro->x;
+    const auto dtwy = dt*gyro->y;
+    const auto dtwz = dt*gyro->z;
+
+    // compute the quaternion values in [w,x,y,z] order
+    const auto angle = sqrt(dtwx*dtwx + dtwy*dtwy + dtwz*dtwz) + EPS;
+    const auto ca = cos(angle/2);
+    const auto sa = sin(angle/2);
+    const auto dqw = ca;
+    const auto dqx = sa*dtwx/angle;
+    const auto dqy = sa*dtwy/angle;
+    const auto dqz = sa*dtwz/angle;
+
+    // rotate the quad's attitude by the delta quaternion vector computed above
+
+    const auto tmpq0 = rotateQuat(
+            dqw*qw - dqx*qx - dqy*qy - dqz*qz, QW_INIT, isFlying);
+
+    const auto tmpq1 = rotateQuat(
+            dqx*qw + dqw*qx + dqz*qy - dqy*qz, QX_INIT, isFlying);
+
+    const auto tmpq2 = rotateQuat(
+            dqy*qw - dqz*qx + dqw*qy + dqx*qz, QY_INIT, isFlying);
+
+    const auto tmpq3 = rotateQuat(
+            dqz*qw + dqy*qx - dqx*qy + dqw*qz, QZ_INIT, isFlying);
+
+    // normalize and store the result
+    const auto norm = 
+        sqrt(tmpq0*tmpq0 + tmpq1*tmpq1 + tmpq2*tmpq2 + tmpq3*tmpq3) + 
+        EPS;
+
+    // ====== COVARIANCE UPDATE ======
+
+    float At[KC_STATE_DIM][KC_STATE_DIM] = {};
+    transpose(A, At);     // A'
+    float AP[KC_STATE_DIM][KC_STATE_DIM] = {};
+    multiply(A, Pmat, AP, true);  // AP
+    multiply(AP, At, Pmat, shouldPredict); // APA'
+
+    // Process noise is added after the return from the prediction step
+
+    // ====== PREDICTION STEP ======
+    // The prediction depends on whether we're on the ground, or in flight.
+    // When flying, the accelerometer directly measures thrust (hence is useless
+    // to estimate body angle while flying)
+
+    // altitude update
+    ekfState.z += shouldPredict ? r20 * dx + r21 * dy + r22 * dz - 
+        GRAVITY_MAGNITUDE * dt2 / 2 :
+        0;
+
+    // body-velocity update: accelerometers - gyros cross velocity
+    // - gravity in body frame
+
+    ekfState.dx += shouldPredict ? 
+        dt * (accx + gyro->z * tmpSDY - 
+                gyro->y * tmpSDZ - GRAVITY_MAGNITUDE * r20) : 
+        0;
+
+    ekfState.dy += shouldPredict ?
+        dt * (accy - gyro->z * tmpSDX + gyro->x * tmpSDZ - 
+                GRAVITY_MAGNITUDE * r21) : 
+        0;
+
+    ekfState.dz += shouldPredict ?
+        dt * (acc->z + gyro->y * tmpSDX - gyro->x * 
+                tmpSDY - GRAVITY_MAGNITUDE * r22) :
+        0;
+
+    qw = shouldPredict ? tmpq0/norm : qw;
+    qx = shouldPredict ? tmpq1/norm : qx; 
+    qy = shouldPredict ? tmpq2/norm : qy; 
+    qz = shouldPredict ? tmpq3/norm : qz;
+
+    isUpdated = shouldPredict ? true : isUpdated;
+
+    lastPredictionMsec = shouldPredict ? nowMsec : lastPredictionMsec;
+
+    const auto dt1 = (nowMsec - lastProcessNoiseUpdateMsec) / 1000.0f;
+
+    const auto isDtPositive = dt1 > 0;
+
+    // add process noise on position
+    Pmat[KC_STATE_Z][KC_STATE_Z] += isDtPositive ?
+        powf(PROC_NOISE_ACC_Z*dt1*dt1 + PROC_NOISE_VEL*dt1 + 
+                PROC_NOISE_POS, 2) : 0;  
+
+    // add process noise on velocity
+    Pmat[KC_STATE_DX][KC_STATE_DX] += isDtPositive ? 
+        powf(PROC_NOISE_ACC_XY*dt1 + 
+                PROC_NOISE_VEL, 2) : 0; 
+
+    // add process noise on velocity
+    Pmat[KC_STATE_DY][KC_STATE_DY] += isDtPositive ?
+        powf(PROC_NOISE_ACC_XY*dt1 + 
+                PROC_NOISE_VEL, 2) : 0; 
+
+    // add process noise on velocity
+    Pmat[KC_STATE_DZ][KC_STATE_DZ] += isDtPositive ?
+        powf(PROC_NOISE_ACC_Z*dt1 + 
+                PROC_NOISE_VEL, 2) : 0; 
+
+    Pmat[KC_STATE_E0][KC_STATE_E0] += isDtPositive ?
+        powf(MEAS_NOISE_GYRO_ROLL_PITCH * dt1 + PROC_NOISE_ATT, 2) : 0;
+
+    Pmat[KC_STATE_E1][KC_STATE_E1] += isDtPositive ?
+        powf(MEAS_NOISE_GYRO_ROLL_PITCH * dt1 + PROC_NOISE_ATT, 2) : 0;
+
+    Pmat[KC_STATE_E2][KC_STATE_E2] += isDtPositive ?
+        powf(MEAS_NOISE_GYRO_ROLL_YAW * dt1 + PROC_NOISE_ATT, 2) : 0;
+
+    updateCovarianceMatrix(isDtPositive, Pmat);
+
+    lastProcessNoiseUpdateMsec = isDtPositive ?  nowMsec : 
+
+        lastProcessNoiseUpdateMsec;
+}
+
+
 static bool ekf_step(
         const ekfAction_e action,
         const uint32_t nowMsec,
@@ -180,37 +482,37 @@ static bool ekf_step(
 {
     // State variables ---------------------------------------------------
 
-    Axis3fSubSampler_t _accSubSampler;
-    Axis3fSubSampler_t _gyroSubSampler;
+    static Axis3fSubSampler_t _accSubSampler;
+    static Axis3fSubSampler_t _gyroSubSampler;
 
     ekfState_t _ekfState;
 
     // The covariance matrix
-    float _Pmat[KC_STATE_DIM][KC_STATE_DIM];
+    static float _Pmat[KC_STATE_DIM][KC_STATE_DIM];
 
     // The quad's attitude as a quaternion (w,x,y,z) We store as a quaternion
     // to allow easy normalization (in comparison to a rotation matrix),
     // while also being robust against singularities (in comparison to euler angles)
-    float _qw;
-    float _qx;
-    float _qy;
-    float _qz;
+    static float _qw;
+    static float _qx;
+    static float _qy;
+    static float _qz;
 
     // Third row (Z) of attitude as a rotation matrix (used by the prediction,
     // updated by the finalization)
-    float _r20;
-    float _r21;
-    float _r22;
+    static float _r20;
+    static float _r21;
+    static float _r22;
 
     // Tracks whether an update to the state has been made, and the state
     // therefore requires finalization
-    bool _isUpdated;
+    static bool _isUpdated;
 
-    uint32_t _lastPredictionMsec;
-    uint32_t _lastProcessNoiseUpdateMsec;
+    static uint32_t _lastPredictionMsec;
+    static uint32_t _lastProcessNoiseUpdateMsec;
 
     /*
-    Axis3f _gyroLatest;
+       Axis3f _gyroLatest;
 
      */
 
@@ -232,6 +534,18 @@ static bool ekf_step(
             break;
 
         case EKF_PREDICT:
+            ekf_predict(nowMsec, 
+                    nextPredictionMsec, 
+                    isFlying, 
+                    _r20, _r21, _r22,
+                    _accSubSampler, _gyroSubSampler, 
+                    _Pmat,
+                    _ekfState,
+                    _qw, _qx, _qy, _qz,
+                    _isUpdated, 
+                    _lastPredictionMsec,
+                    _lastProcessNoiseUpdateMsec
+                    );
             break;
 
         case EKF_FINALIZE:
@@ -807,17 +1121,6 @@ class Ekf {
             return isStateWithinBounds();
         }
 
-        static float rotateQuat(
-                const float val, 
-                const float initVal,
-                const bool isFlying)
-        {
-            const auto keep = 1.0f - ROLLPITCH_ZERO_REVERSION;
-
-            return (val * (isFlying ? 1: keep)) +
-                (isFlying ? 0 : ROLLPITCH_ZERO_REVERSION * initVal);
-        }
-
         static void axis3fSubSamplerInit(Axis3fSubSampler_t* subSampler, const
                 float conversionFactor) 
         { 
@@ -833,33 +1136,6 @@ class Ekf {
             subSampler->sum.z += sample->z;
 
             subSampler->count++;
-        }
-
-        static Axis3f* axis3fSubSamplerFinalize(
-                Axis3fSubSampler_t* subSampler,
-                const bool shouldPredict) 
-        {
-            const auto count  = subSampler->count; 
-            const auto isCountNonzero = count > 0;
-            const auto shouldFinalize = shouldPredict && isCountNonzero;
-
-            subSampler->subSample.x = shouldFinalize ? 
-                subSampler->sum.x * subSampler->conversionFactor / count :
-                subSampler->subSample.x;
-
-            subSampler->subSample.y = shouldFinalize ?
-                subSampler->sum.y * subSampler->conversionFactor / count :
-                subSampler->subSample.y;
-
-            subSampler->subSample.z = shouldFinalize ?
-                subSampler->sum.z * subSampler->conversionFactor / count :
-                subSampler->subSample.z;
-
-            // Reset
-            subSampler->count = 0;
-            subSampler->sum = (Axis3f){.axis={0}};
-
-            return &subSampler->subSample;
         }
 
         void updateCovarianceMatrix(const bool shouldUpdate)
