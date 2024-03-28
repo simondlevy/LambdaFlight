@@ -666,6 +666,155 @@ static void getVehicleState(
     vehicleState->dpsi =    gyroLatest.z;
 }
 
+static void scalarUpdate(
+        const float h[KC_STATE_DIM],
+        const float error, 
+        const float stdMeasNoise,
+        const bool shouldUpdate,
+        ekfState_t & ekfState,
+        float Pmat[KC_STATE_DIM][KC_STATE_DIM],
+        bool & isUpdated)
+{
+
+    // ====== INNOVATION COVARIANCE ======
+    float Ph[KC_STATE_DIM] = {};
+    multiply(Pmat, h, Ph);
+    const auto R = stdMeasNoise * stdMeasNoise;
+    auto HPHR = R; // HPH' + R
+    for (int i=0; i<KC_STATE_DIM; i++) { 
+
+        // Add the element of HPH' to the above
+
+        // this obviously only works if the update is scalar (as in this function)
+        HPHR += h[i]*Ph[i]; 
+    }
+
+    // Compute the Kalman gain as a column vector
+    const float K[KC_STATE_DIM] = {
+
+        // kalman gain = (PH' (HPH' + R )^-1)
+        Ph[0] / HPHR, 
+        Ph[1] / HPHR, 
+        Ph[2] / HPHR, 
+        Ph[3] / HPHR, 
+        Ph[4] / HPHR, 
+        Ph[5] / HPHR, 
+        Ph[6] / HPHR
+    };
+
+    // Perform the state update
+    ekfState.z  += shouldUpdate ? K[0] * error: 0;
+    ekfState.dx += shouldUpdate ? K[1] * error: 0;
+    ekfState.dy += shouldUpdate ? K[2] * error: 0;
+    ekfState.dz += shouldUpdate ? K[3] * error: 0;
+    ekfState.e0 += shouldUpdate ? K[4] * error: 0;
+    ekfState.e1 += shouldUpdate ? K[5] * error: 0;
+    ekfState.e2 += shouldUpdate ? K[6] * error: 0;
+
+    // ====== COVARIANCE UPDATE ======
+
+    float KH[KC_STATE_DIM][KC_STATE_DIM] = {};
+    multiply(K, h, KH); // KH
+
+    for (int i=0; i<KC_STATE_DIM; i++) { 
+        KH[i][i] -= 1;
+    } // KH - I
+
+    float KHt[KC_STATE_DIM][KC_STATE_DIM] = {};
+    transpose(KH, KHt);      // (KH - I)'
+
+    float KHIP[KC_STATE_DIM][KC_STATE_DIM] = {};
+    multiply(KH, Pmat, KHIP, true);  // (KH - I)*P
+
+    multiply(KHIP, KHt, Pmat, shouldUpdate); // (KH - I)*P*(KH - I)'
+
+    // Add the measurement variance and ensure boundedness and symmetry
+    for (int i=0; i<KC_STATE_DIM; i++) {
+        for (int j=i; j<KC_STATE_DIM; j++) {
+
+            updateCovarianceCell(i, j, K[i] * R * K[j], shouldUpdate, Pmat);
+        }
+    }
+
+    isUpdated = shouldUpdate ? true : isUpdated;
+}
+
+
+static void updateWithFlow(
+        const flowMeasurement_t & flow, 
+        const Axis3f & gyro,
+        const float r22,
+        ekfState_t & ekfState,
+        float Pmat[KC_STATE_DIM][KC_STATE_DIM],
+        bool & isUpdated)
+{
+    // Inclusion of flow measurements in the EKF done by two scalar updates
+
+    // ~~~ Camera constants ~~~
+    // The angle of aperture is guessed from the raw data register and
+    // thankfully look to be symmetric
+
+    const float Npix = 35.0;                      // [pixels] (same in x and y)
+    //float thetapix = DEGREES_TO_RADIANS * 4.0f;     // [rad]    (same in x and y)
+
+    // 2*sin(42/2); 42degree is the agnle of aperture, here we computed the
+    // corresponding ground length
+    const float thetapix = 0.71674f;
+
+    //~~~ Body rates ~~~
+    // TODO check if this is feasible or if some filtering has to be done
+    const auto omegax_b = gyro.x * DEGREES_TO_RADIANS;
+    const auto omegay_b = gyro.y * DEGREES_TO_RADIANS;
+
+    const auto dx_g = ekfState.dx;
+    const auto dy_g = ekfState.dy;
+
+    // Saturate elevation in prediction and correction to avoid singularities
+    const auto z_g = ekfState.z < 0.1f ? 0.1f : ekfState.z;
+
+    // ~~~ X velocity prediction and update ~~~
+    // predicts the number of accumulated pixels in the x-direction
+    float hx[KC_STATE_DIM] = {};
+    auto predictedNX = (flow.dt * Npix / thetapix ) * 
+        ((dx_g * r22 / z_g) - omegay_b);
+    auto measuredNX = flow.dpixelx*FLOW_RESOLUTION;
+
+    // derive measurement equation with respect to dx (and z?)
+    hx[KC_STATE_Z] = (Npix * flow.dt / thetapix) * 
+        ((r22 * dx_g) / (-z_g * z_g));
+    hx[KC_STATE_DX] = (Npix * flow.dt / thetapix) * 
+        (r22 / z_g);
+
+    //First update
+    scalarUpdate(hx, 
+            (measuredNX-predictedNX), 
+            flow.stdDevX*FLOW_RESOLUTION, 
+            true,
+            ekfState,
+            Pmat,
+            isUpdated);
+
+    // ~~~ Y velocity prediction and update ~~~
+    float hy[KC_STATE_DIM] = {};
+    const auto predictedNY = (flow.dt * Npix / thetapix ) * 
+        ((dy_g * r22 / z_g) + omegax_b);
+    const auto measuredNY = flow.dpixely*FLOW_RESOLUTION;
+
+    // derive measurement equation with respect to dy (and z?)
+    hy[KC_STATE_Z] = (Npix * flow.dt / thetapix) * 
+        ((r22 * dy_g) / (-z_g * z_g));
+    hy[KC_STATE_DY] = (Npix * flow.dt / thetapix) * (r22 / z_g);
+
+    // Second update
+    scalarUpdate(hy, 
+            (measuredNY-predictedNY), 
+            flow.stdDevY*FLOW_RESOLUTION, 
+            true,
+            ekfState,
+            Pmat,
+            isUpdated);
+}
+
 
 static bool ekf_step(
         const ekfAction_e action,
@@ -764,6 +913,7 @@ static bool ekf_step(
             break;
 
         case EKF_UPDATE_WITH_FLOW:
+            updateWithFlow(*flow, *gyro, _r22, _ekfState, _Pmat, _isUpdated);
             break;
 
         case EKF_UPDATE_WITH_RANGE:
