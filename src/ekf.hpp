@@ -115,6 +115,16 @@ static void axis3fSubSamplerInit(Axis3fSubSampler_t* subSampler, const
     subSampler->conversionFactor = conversionFactor;
 }
 
+static void axis3fSubSamplerAccumulate(
+        const Axis3f & sample, Axis3fSubSampler_t & subSampler)
+{
+    subSampler.sum.x += sample.x;
+    subSampler.sum.y += sample.y;
+    subSampler.sum.z += sample.z;
+
+    subSampler.count++;
+}
+
 static Axis3f* axis3fSubSamplerFinalize(
         Axis3fSubSampler_t* subSampler,
         const bool shouldPredict) 
@@ -662,6 +672,7 @@ static bool ekf_step(
         const uint32_t nowMsec,
         const uint32_t nextPredictionMsec,
         const bool isFlying,
+        const Axis3f * gyro,
         vehicleState_t * vehicleState)
 {
     // State variables ---------------------------------------------------
@@ -741,6 +752,8 @@ static bool ekf_step(
             break;
 
         case EKF_UPDATE_WITH_GYRO:
+            axis3fSubSamplerAccumulate(*gyro, _gyroSubSampler);
+            memcpy(&_gyroLatest, gyro, sizeof(Axis3f));
             break;
 
         case EKF_UPDATE_WITH_ACCEL:
@@ -1054,16 +1067,15 @@ class Ekf {
                     range->stdDev, shouldUpdate);
         }
 
-        void updateWithAccel(const Axis3f * accel)
+        void updateWithAccel(const Axis3f & accel)
         {
-            axis3fSubSamplerAccumulate(&_accSubSampler, accel);
+            axis3fSubSamplerAccumulate(accel, _accSubSampler);
         }
 
-        void updateWithGyro(const Axis3f * gyro)
+        void updateWithGyro(const Axis3f & gyro)
         {
-            axis3fSubSamplerAccumulate(&_gyroSubSampler, gyro);
-
-            memcpy(&_gyroLatest, gyro, sizeof(Axis3f));
+            axis3fSubSamplerAccumulate(gyro, _gyroSubSampler);
+            memcpy(&_gyroLatest, &gyro, sizeof(Axis3f));
         }
 
         void updateWithFlow(const flowMeasurement_t *flow) 
@@ -1312,16 +1324,6 @@ class Ekf {
         { 
             memset(subSampler, 0, sizeof(Axis3fSubSampler_t));
             subSampler->conversionFactor = conversionFactor;
-        }
-
-        static void axis3fSubSamplerAccumulate(Axis3fSubSampler_t* subSampler,
-                const Axis3f* sample) 
-        {
-            subSampler->sum.x += sample->x;
-            subSampler->sum.y += sample->y;
-            subSampler->sum.z += sample->z;
-
-            subSampler->count++;
         }
 
         void updateCovarianceMatrix(const bool shouldUpdate)

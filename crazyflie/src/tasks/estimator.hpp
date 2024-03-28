@@ -145,7 +145,7 @@ class EstimatorTask : public FreeRTOSTask {
         {
             _ekf.init(nowMsec);
 
-            ekf_step(EKF_INIT, nowMsec, 0, false, NULL);
+            ekf_step(EKF_INIT, nowMsec, 0, false, NULL, NULL);
         }
 
         uint32_t step(const uint32_t nowMsec, uint32_t nextPredictionMsec) 
@@ -160,7 +160,7 @@ class EstimatorTask : public FreeRTOSTask {
             _ekf.predict(nowMsec, nextPredictionMsec, _safety->isFlying());
 
             ekf_step(EKF_PREDICT, nowMsec, nextPredictionMsec,
-                    _safety->isFlying(), NULL);
+                    _safety->isFlying(), NULL, NULL);
 
             // Run the system dynamics to predict the state forward.
             if (nowMsec >= nextPredictionMsec) {
@@ -187,22 +187,23 @@ class EstimatorTask : public FreeRTOSTask {
 
                     case MeasurementTypeRange:
                         _ekf.updateWithRange(&measurement.data.range);
-                        ekf_step(EKF_UPDATE_WITH_RANGE, 0, 0, false, NULL);
+                        ekf_step(EKF_UPDATE_WITH_RANGE, 0, 0, false, NULL, NULL);
                         break;
 
                     case MeasurementTypeFlow:
                         _ekf.updateWithFlow(&measurement.data.flow);
-                        ekf_step(EKF_UPDATE_WITH_FLOW, 0, 0, false, NULL);
+                        ekf_step(EKF_UPDATE_WITH_FLOW, 0, 0, false, NULL, NULL);
                         break;
 
                     case MeasurementTypeGyroscope:
-                        _ekf.updateWithGyro(&measurement.data.gyroscope.gyro);
-                        ekf_step(EKF_UPDATE_WITH_GYRO, 0, 0, false, NULL);
+                        _ekf.updateWithGyro(measurement.data.gyroscope.gyro);
+                        ekf_step(EKF_UPDATE_WITH_GYRO, 0, 0, false, 
+                                &measurement.data.gyroscope.gyro, NULL);
                         break;
 
                     case MeasurementTypeAcceleration:
-                        _ekf.updateWithAccel(&measurement.data.acceleration.acc);
-                        ekf_step(EKF_UPDATE_WITH_ACCEL, 0, 0, false, NULL);
+                        _ekf.updateWithAccel(measurement.data.acceleration.acc);
+                        ekf_step(EKF_UPDATE_WITH_ACCEL, 0, 0, false, NULL, NULL);
                         break;
 
                     default:
@@ -212,7 +213,7 @@ class EstimatorTask : public FreeRTOSTask {
 
             auto isStateInBounds = _ekf.finalize();
 
-            auto new_isStateInBounds = ekf_step(EKF_FINALIZE, 0, 0, false, NULL);
+            auto new_isStateInBounds = ekf_step(EKF_FINALIZE, 0, 0, false, NULL, NULL);
             (void)new_isStateInBounds;
 
             if (!isStateInBounds) { 
@@ -230,7 +231,7 @@ class EstimatorTask : public FreeRTOSTask {
             _ekf.getState(_state);
 
             vehicleState_t new_state = {};
-            ekf_step(EKF_GET_STATE, 0, 0, false, &new_state);
+            ekf_step(EKF_GET_STATE, 0, 0, false, NULL, &new_state);
 
             xSemaphoreGive(_dataMutex);
 
