@@ -184,6 +184,155 @@ static float rotateQuat(
         (isFlying ? 0 : ROLLPITCH_ZERO_REVERSION * initVal);
 }
 
+static bool isPositionWithinBounds(const float pos)
+{
+    return fabs(pos) < MAX_POSITION;
+}
+
+static bool isVelocityWithinBounds(const float vel)
+{
+    return fabs(vel) < MAX_VELOCITY;
+}
+
+static bool isStateWithinBounds(const ekfState_t & ekfState) 
+{
+    return 
+        isPositionWithinBounds(ekfState.z) &&
+        isVelocityWithinBounds(ekfState.dx) &&
+        isVelocityWithinBounds(ekfState.dy) &&
+        isVelocityWithinBounds(ekfState.dz);
+}
+
+static bool isErrorLarge(const float v)
+{
+    return fabs(v) > 0.1e-3f;
+}
+
+static bool isErrorInBounds(const float v)
+{
+    return fabs(v) < 10;
+}
+
+static bool doFinalize(
+        ekfState_t & ekfState,
+        float & qw, 
+        float & qx,
+        float & qy,
+        float & qz,
+        float & r20,
+        float & r21,
+        float & r22,
+        float Pmat[KC_STATE_DIM][KC_STATE_DIM],
+        bool & isUpdated)
+{
+    // Incorporate the attitude error (Kalman filter state) with the attitude
+    const auto v0 = ekfState.e0;
+    const auto v1 = ekfState.e1;
+    const auto v2 = ekfState.e2;
+
+    const auto angle = sqrt(v0*v0 + v1*v1 + v2*v2) + EPS;
+    const auto ca = cos(angle / 2.0f);
+    const auto sa = sin(angle / 2.0f);
+
+    const auto dqw = ca;
+    const auto dqx = sa * v0 / angle;
+    const auto dqy = sa * v1 / angle;
+    const auto dqz = sa * v2 / angle;
+
+    // Rotate the quad's attitude by the delta quaternion vector
+    // computed above
+    const auto tmpq0 = dqw * qw - dqx * qx - dqy * qy - dqz * qz;
+    const auto tmpq1 = dqx * qw + dqw * qx + dqz * qy - dqy * qz;
+    const auto tmpq2 = dqy * qw - dqz * qx + dqw * qy + dqx * qz;
+    const auto tmpq3 = dqz * qw + dqy * qx - dqx * qy + dqw * qz;
+
+    // normalize and store the result
+    const auto norm = sqrt(tmpq0 * tmpq0 + tmpq1 * tmpq1 + tmpq2 * tmpq2 + 
+            tmpq3 * tmpq3) + EPS;
+
+    /** Rotate the covariance, since we've rotated the body
+     *
+     * This comes from a second order approximation to:
+     * Sigma_post = exps(-d) Sigma_pre exps(-d)'
+     *            ~ (I + [[-d]] + [[-d]]^2 / 2) 
+     Sigma_pre (I + [[-d]] + [[-d]]^2 / 2)'
+     * where d is the attitude error expressed as Rodriges parameters, ie. 
+     d = tan(|v|/2)*v/|v|
+     *
+     * As derived in "Covariance Correction Step for Kalman Filtering with an 
+     Attitude"
+     * http://arc.aiaa.org/doi/abs/10.2514/1.G000848
+     */
+
+    // the attitude error vector (v0,v1,v2) is small,
+    // so we use a first order approximation to e0 = tan(|v0|/2)*v0/|v0|
+    const auto e0 = v0/2; 
+    const auto e1 = v1/2; 
+    const auto e2 = v2/2;
+
+    const auto e0e0 =  1 - e1*e1/2 - e2*e2/2;
+    const auto e0e1 =  e2 + e0*e1/2;
+    const auto e0e2 = -e1 + e0*e2/2;
+
+    const auto e1e0 =  -e2 + e0*e1/2;
+    const auto e1e1 = 1 - e0*e0/2 - e2*e2/2;
+    const auto e1e2 = e0 + e1*e2/2;
+
+    const auto e2e0 = e1 + e0*e2/2;
+    const auto e2e1 = -e0 + e1*e2/2;
+    const auto e2e2 = 1 - e0*e0/2 - e1*e1/2;
+
+    // Matrix to rotate the attitude covariances once updated
+    const float A[KC_STATE_DIM][KC_STATE_DIM] = 
+    { 
+        //    Z  DX DY DZ    E0     E1    E2
+        /*Z*/   {0, 0, 0, 0, 0,     0,    0},   
+        /*DX*/  {0, 1, 0, 0, 0,     0,    0},  
+        /*DY*/  {0, 0, 1, 0, 0,     0,    0}, 
+        /*DX*/  {0, 0, 0, 1, 0,     0,    0},  
+        /*E0*/  {0, 0, 0, 0, e0e0, e0e1, e0e2},
+        /*E1*/  {0, 0, 0, 0, e1e0, e1e1, e1e2},
+        /*E2*/  {0, 0, 0, 0, e2e0, e2e1, e2e2}
+    };
+
+    float At[KC_STATE_DIM][KC_STATE_DIM] = {};
+    transpose(A, At);     // A'
+
+    float AP[KC_STATE_DIM][KC_STATE_DIM] = {};
+    multiply(A, Pmat, AP, true);  // AP
+
+    const auto isErrorSufficient  = 
+        (isErrorLarge(v0) || isErrorLarge(v1) || isErrorLarge(v2)) &&
+        isErrorInBounds(v0) && isErrorInBounds(v1) && isErrorInBounds(v2);
+
+    qw = isErrorSufficient ? tmpq0 / norm : qw;
+    qx = isErrorSufficient ? tmpq1 / norm : qx;
+    qy = isErrorSufficient ? tmpq2 / norm : qy;
+    qz = isErrorSufficient ? tmpq3 / norm : qz;
+
+    // Move attitude error into attitude if any of the angle errors are
+    // large enough
+    multiply(AP, At, Pmat, isErrorSufficient); // APA'
+
+    // Convert the new attitude to a rotation matrix, such that we can
+    // rotate body-frame velocity and acc
+    r20 = 2 * qx * qz - 2 * qw * qy;
+    r21 = 2 * qy * qz + 2 * qw * qx;
+    r22 = qw * qw - qx * qx - qy * qy + qz * qz;
+
+    // Reset the attitude error
+    ekfState.e0 = 0;
+    ekfState.e1 = 0;
+    ekfState.e2 = 0;
+
+    updateCovarianceMatrix(true, Pmat);
+
+    isUpdated = false;
+
+    return isStateWithinBounds(ekfState);
+}
+
+
 static void ekf_init(
         const uint32_t nowMsec,
         Axis3fSubSampler_t & accSubSampler,
@@ -549,7 +698,10 @@ static bool ekf_step(
             break;
 
         case EKF_FINALIZE:
-            break;
+            return _isUpdated ? 
+                doFinalize(_ekfState, _qw, _qx, _qy, _qz, _r20, _r21, _r22,
+                        _Pmat, _isUpdated) : 
+                isStateWithinBounds(_ekfState);
 
         case EKF_GET_STATE:
             break;
@@ -1149,16 +1301,6 @@ class Ekf {
             }
         }
 
-        static bool isErrorLarge(const float v)
-        {
-            return fabs(v) > 0.1e-3f;
-        }
-
-        static bool isErrorInBounds(const float v)
-        {
-            return fabs(v) < 10;
-        }
-
         void scalarUpdate(
                 const float h[KC_STATE_DIM],
                 const float error, 
@@ -1257,15 +1399,5 @@ class Ekf {
                 isVelocityWithinBounds(_ekfState.dx) &&
                 isVelocityWithinBounds(_ekfState.dy) &&
                 isVelocityWithinBounds(_ekfState.dz);
-        }
-
-        static bool isPositionWithinBounds(const float pos)
-        {
-            return fabs(pos) < MAX_POSITION;
-        }
-
-        static bool isVelocityWithinBounds(const float vel)
-        {
-            return fabs(vel) < MAX_VELOCITY;
         }
 };
