@@ -108,6 +108,11 @@ typedef struct {
 
 } Axis3fSubSampler_t;
 
+static const float max(const float val, const float maxval)
+{
+    return val > maxval ? maxval : val;
+}
+
 static void axis3fSubSamplerInit(Axis3fSubSampler_t* subSampler, const
         float conversionFactor) 
 { 
@@ -815,6 +820,50 @@ static void updateWithFlow(
             isUpdated);
 }
 
+static void updateWithRange(
+        const rangeMeasurement_t &range,
+        const float r22,
+        ekfState_t & ekfState,
+        float Pmat[KC_STATE_DIM][KC_STATE_DIM],
+        bool & isUpdated)
+{
+    const auto angle = max( 0, 
+            fabsf(acosf(r22)) - 
+            DEGREES_TO_RADIANS * (15.0f / 2.0f));
+
+    const auto predictedDistance = ekfState.z / cosf(angle);
+    const auto measuredDistance = range.distance; // [m]
+
+    // The sensor model (Pg.95-96,
+    // https://lup.lub.lu.se/student-papers/search/publication/8905295)
+    //
+    // h = z/((R*z_b).z_b) = z/cos(alpha)
+    //
+    // Here,
+    // h (Measured variable)[m] = Distance given by TOF sensor. This is the 
+    // closest point from any surface to the sensor in the measurement cone
+    // z (Estimated variable)[m] = THe actual elevation of the crazyflie
+    // z_b = Basis vector in z direction of body coordinate system
+    // R = Rotation matrix made from ZYX Tait-Bryan angles. Assumed to be 
+    // stationary
+    // alpha = angle between [line made by measured point <---> sensor] 
+    // and [the intertial z-axis] 
+
+    const float h[KC_STATE_DIM] = {1 / cosf(angle), 0, 0, 0, 0, 0, 0};
+
+    // Only update the filter if the measurement is reliable 
+    // (\hat{h} -> infty when R[2][2] -> 0)
+    const auto shouldUpdate = fabs(r22) > 0.1f && r22 > 0;
+    scalarUpdate(
+            h, 
+            measuredDistance-predictedDistance, 
+            range.stdDev, 
+            shouldUpdate,
+            ekfState,
+            Pmat,
+            isUpdated);
+}
+
 
 static bool ekf_step(
         const ekfAction_e action,
@@ -917,6 +966,7 @@ static bool ekf_step(
             break;
 
         case EKF_UPDATE_WITH_RANGE:
+            updateWithRange(*range, _r22, _ekfState, _Pmat, _isUpdated);
             break;
     }
 
@@ -1577,12 +1627,7 @@ class Ekf {
             _Pmat[j][i] = shouldUpdate ? _Pmat[i][j] : _Pmat[j][i];
         }
 
-        static const float max(const float val, const float maxval)
-        {
-            return val > maxval ? maxval : val;
-        }
-
-        bool isStateWithinBounds(void) 
+       bool isStateWithinBounds(void) 
         {
             return 
                 isPositionWithinBounds(_ekfState.z) &&
