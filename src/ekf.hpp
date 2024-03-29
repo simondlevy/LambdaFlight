@@ -62,41 +62,6 @@ typedef enum {
 
 } ekfAction_e;
 
-static bool ekf_step(const ekfAction_e action)
-{
-    switch (action) {
-
-        case EKF_INIT:
-            break;
-
-        case EKF_PREDICT:
-            break;
-
-        case EKF_FINALIZE:
-            break;
-
-        case EKF_GET_STATE:
-            break;
-
-        case EKF_UPDATE_WITH_GYRO:
-            break;
-
-        case EKF_UPDATE_WITH_ACCEL:
-            break;
-
-        case EKF_UPDATE_WITH_FLOW:
-            break;
-
-        case EKF_UPDATE_WITH_RANGE:
-            break;
-
-        default:
-            break;
-    }
-
-    return false;
-}
-
 class Ekf { 
 
     public:

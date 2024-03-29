@@ -144,8 +144,6 @@ class EstimatorTask : public FreeRTOSTask {
         void initEkf(const uint32_t nowMsec)
         {
             _ekf.init(nowMsec);
-
-            ekf_step(EKF_INIT);
         }
 
         uint32_t step(const uint32_t nowMsec, uint32_t nextPredictionMsec) 

@@ -1,4 +1,4 @@
-SKETCH = mpu6050-ekf
+SKETCH = usfs
 
 PORT = /dev/ttyACM0
 
@@ -11,8 +11,8 @@ HASKELL = ../../haskell
 build: $(SKETCH).ino copilot.cpp
 	arduino-cli compile  --libraries $(LIBS) --fqbn $(BOARD) $(SKETCH).ino
 
-copilot.cpp : $(HASKELL)/TeensyEkf.hs
-	runhaskell -i$(HASKELL) $(HASKELL)/TeensyEkf.hs
+copilot.cpp : $(HASKELL)/Teensy.hs
+	runhaskell -i$(HASKELL) $(HASKELL)/Teensy.hs
 	mv copilot.c copilot.cpp
 
 flash:
