@@ -96,15 +96,22 @@ init = (pinit, (1, 0, 0, 0))
 
 ------------------------------------------------------------------------------
 
-predict ::  (SFloat, SFloat, SFloat) -> (SFloat, SFloat, SFloat)
+predict :: SFloat -> SFloat -> SFloat -> 
+           SFloat -> SFloat -> SFloat -> SFloat ->
+           (SFloat, SFloat, SFloat, SFloat, SFloat, SFloat, SFloat) 
 
-predict (dx, dy, dz) = (dx', dy', dz') where
+predict dx dy dz qw qx qy qz = (dx', dy', dz', qw', qx', qy', qz') where
 
   shouldPredict = nowMsec >= nextPredictionMsec
 
   dx' = dx
   dy' = dy
   dz' = dz
+
+  qw' = qw
+  qx' = qx
+  qy' = qy
+  qz' = qz
 
 {--
   axis3fSubSamplerFinalize(&_accSubSampler, shouldPredict)
