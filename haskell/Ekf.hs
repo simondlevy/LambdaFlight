@@ -202,6 +202,8 @@ step = (dx, dy, dz, phi, theta, psi) where
 
    init = ekfMode == mode_init
 
+   (dx', dy', dz', qw', qx', qy', qz') = predict dx dy dz qw qx qy qz
+
    gyroSubsamplerX = (if init then 0 else _gyroSubsamplerX) :: SFloat
    gyroSubsamplerY = (if init then 0 else _gyroSubsamplerY) :: SFloat
    gyroSubsamplerZ = (if init then 0 else _gyroSubsamplerZ) :: SFloat
