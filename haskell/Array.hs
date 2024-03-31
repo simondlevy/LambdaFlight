@@ -21,13 +21,6 @@ type SBool = Stream Bool
 doinit :: SBool
 doinit = extern "stream_doinit" Nothing
 
-farr :: Stream (Array 2 (Array 2 Float))
-farr = [ array [
-                array [0, 0], 
-                array [0, 0]
-               ] 
-       ] ++ farr
-
 rawzero :: Array 2 (Array 2 Float)
 rawzero =  array [
                 array [0, 0], 
@@ -35,12 +28,8 @@ rawzero =  array [
                ] 
 
 zero :: Stream (Array 2 (Array 2 Float))
-zero = [ array [
-                array [0, 0], 
-                array [0, 0]
-               ] 
-       ] ++ zero
 
+zero = [ rawzero ] ++ zero
 
 fun = False where
 
