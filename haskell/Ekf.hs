@@ -13,7 +13,7 @@
   GNU General Public License for more details.
  
   You should have received a copy of the GNU General Public License
-  along with this program. If not, see <http://www.gnu.org/licenses/>.
+  along with this program. If not, see <http:--www.gnu.org/licenses/>.
 --} 
 
 {-# LANGUAGE DataKinds        #-}
@@ -30,8 +30,10 @@ import Utils
 -- roughly flat
 stdev_initial_position_z          = 1.0  :: Float
 stdev_initial_velocity            = 0.01 :: Float
-stdev_initial_attitude_roll_pitch = 0.01 :: Float
+stdev_initial_attituderoll_pitch = 0.01 :: Float
 stdev_initial_attitude_yaw        = 0.01 :: Float
+
+gravity_magnitude = 9.81 :: Float
 
 ------------------------------------------------------------------------------
 
@@ -39,9 +41,6 @@ type EkfMode = SInt8
 
 ekfMode :: EkfMode
 ekfMode = extern "stream_ekfMode" Nothing
-
-nowMsec :: SInt32
-nowMsec = extern "stream_nowMsec" Nothing
 
 mode_init              = 0 :: EkfMode
 mode_predict           = 1 :: EkfMode
@@ -52,6 +51,15 @@ mode_update_with_accel = 5 :: EkfMode
 mode_update_with_range = 6 :: EkfMode
 mode_update_with_flow  = 7 :: EkfMode
 
+nowMsec :: SInt32
+nowMsec = extern "stream_nowMsec" Nothing
+
+nextPredictionMsec :: SInt32
+nextPredictionMsec = extern "stream_nextPredictionMsec" Nothing
+
+isFlying :: SBool
+isFlying = extern "stream_isFlying" Nothing
+
 ------------------------------------------------------------------------------
 
 sqr :: Float -> Float
@@ -59,7 +67,7 @@ sqr x = x * x
 
 z = sqr stdev_initial_position_z 
 d = sqr stdev_initial_velocity 
-e = sqr stdev_initial_attitude_roll_pitch
+e = sqr stdev_initial_attituderoll_pitch
 y = sqr stdev_initial_attitude_yaw
 
 type EkfArray = Array 7 (Array 7 Float)
@@ -85,6 +93,81 @@ pinit = [ raw_pinit ] ++ pinit
 init :: (SEkfArray, (SFloat, SFloat, SFloat, SFloat))
 
 init = (pinit, (1, 0, 0, 0))
+
+------------------------------------------------------------------------------
+
+predict ::  (SFloat, SFloat, SFloat) -> (SFloat, SFloat, SFloat)
+
+predict (dx, dy, dz) = (dx', dy', dz') where
+
+  shouldPredict = nowMsec >= nextPredictionMsec
+
+  dx' = dx
+  dy' = dy
+  dz' = dz
+
+{--
+  axis3fSubSamplerFinalize(&_accSubSampler, shouldPredict)
+
+  axis3fSubSamplerFinalize(&_gyroSubSampler, shouldPredict)
+
+  const Axis3f * acc = &_accSubSampler.subSample 
+  const Axis3f * gyro = &_gyroSubSampler.subSample 
+
+  dt = (nowMsec - lastPredictionMsec) / 1000.0
+
+  e0 = gx*dt/2
+  e1 = gy*dt/2
+  e2 = gz*dt/2
+
+  -- altitude from body-frame velocity
+  zdx = r20*dt
+  zdy = r21*dt
+  zdz = r22*dt
+
+  -- altitude from attitude error
+  ze0 = (dy*r22 - dz*r21)*dt
+  ze1 = (- dx*r22 + dz*r20)*dt
+  ze2 = (dx*r21 - dy*r20)*dt
+
+  -- body-frame velocity from body-frame velocity
+  dxdx = 1 --drag negligible
+  dydx =-gz*dt
+  dzdx = gy*dt
+
+  dxdy = gz*dt
+  dydy = 1 --drag negligible
+  dzdy =-gx*dt
+
+  dxdz =-gy*dt
+  dydz = gx*dt
+  dzdz = 1 --drag negligible
+
+  -- body-frame velocity from attitude error
+  dxe0 =  0
+  dye0 = -gravity_magnitude*r22*dt
+  dze0 =  gravity_magnitude*r21*dt
+
+  dxe1 =  gravity_magnitude*r22*dt
+  dye1 =  0
+  dze1 = -gravity_magnitude*r20*dt
+
+  dxe2 = -gravity_magnitude*r21*dt
+  dye2 =  gravity_magnitude*r20*dt
+  dze2 =  0
+
+  e0e0 =  1 - e1*e1/2 - e2*e2/2
+  e0e1 =  e2 + e0*e1/2
+  e0e2 = -e1 + e0*e2/2
+
+  e1e0 = -e2 + e0*e1/2
+  e1e1 =  1 - e0*e0/2 - e2*e2/2
+  e1e2 =  e0 + e1*e2/2
+
+  e2e0 =  e1 + e0*e2/2
+  e2e1 = -e0 + e1*e2/2
+  e2e2 = 1 - e0*e0/2 - e1*e1/2
+--}
 
 ------------------------------------------------------------------------------
 
