@@ -28,10 +28,10 @@ import Utils
 
 -- Initial variances, uncertain of position, but know we're stationary and
 -- roughly flat
-stdev_initial_position_z = 1 :: Float
-stdev_initial_velocity = 0.01 :: Float
+stdev_initial_position_z          = 1.0  :: Float
+stdev_initial_velocity            = 0.01 :: Float
 stdev_initial_attitude_roll_pitch = 0.01 :: Float
-stdev_initial_attitude_yaw = 0.01 :: Float
+stdev_initial_attitude_yaw        = 0.01 :: Float
 
 ------------------------------------------------------------------------------
 
@@ -55,16 +55,20 @@ sqr :: Float -> Float
 sqr x = x * x
 
 z = sqr stdev_initial_position_z 
+d = sqr stdev_initial_velocity 
+e = sqr stdev_initial_attitude_roll_pitch
+y = sqr stdev_initial_attitude_yaw
 
 rawzero :: Array 7 (Array 7 Float)
-rawzero =  array [
-                array [z, 0, 0, 0, 0, 0, 0], 
-                array [0, 0, 0, 0, 0, 0, 0], 
-                array [0, 0, 0, 0, 0, 0, 0], 
-                array [0, 0, 0, 0, 0, 0, 0], 
-                array [0, 0, 0, 0, 0, 0, 0], 
-                array [0, 0, 0, 0, 0, 0, 0], 
-                array [0, 0, 0, 0, 0, 0, 0]
+
+rawzero =  array [--   z   dx  dy  dz  e0  e1  e2
+                array [z,  0,  0,  0,  0,  0,  0], -- z
+                array [0,  d,  0,  0,  0,  0,  0], -- dx
+                array [0,  0,  d,  0,  0,  0,  0], -- dy
+                array [0,  0,  0,  d,  0,  0,  0], -- dz
+                array [0,  0,  0,  0,  e,  0,  0], -- e0
+                array [0,  0,  0,  0,  0,  e,  0], -- e1
+                array [0,  0,  0,  0,  0,  0,  y]  -- e2
                ] 
 
 zero :: Stream (Array 7 (Array 7 Float))
