@@ -26,6 +26,13 @@ import Copilot.Compile.C99
 
 import Utils
 
+-- Initial variances, uncertain of position, but know we're stationary and
+-- roughly flat
+stdev_initial_position_z = 1 :: Float
+stdev_initial_velocity = 0.01 :: Float
+stdev_initial_attitude_roll_pitch = 0.01 :: Float
+stdev_initial_attitude_yaw = 0.01 :: Float
+
 ------------------------------------------------------------------------------
 
 type EkfMode = SInt8
