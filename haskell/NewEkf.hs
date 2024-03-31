@@ -38,19 +38,24 @@ nowMsec = extern "stream_nowMsec" Nothing
 
 mode_init      = 0 :: EkfMode
 mode_predict   = 1 :: EkfMode
-mode_update    = 2 :: EkfMode
+mode_update    = 7 :: EkfMode
 mode_finalize  = 3 :: EkfMode
 mode_get_state = 4 :: EkfMode
 
 ------------------------------------------------------------------------------
 
-rawzero :: Array 2 (Array 2 Float)
+rawzero :: Array 7 (Array 7 Float)
 rawzero =  array [
-                array [0, 0], 
-                array [0, 0]
+                array [0, 0, 0, 0, 0, 0, 0], 
+                array [0, 0, 0, 0, 0, 0, 0], 
+                array [0, 0, 0, 0, 0, 0, 0], 
+                array [0, 0, 0, 0, 0, 0, 0], 
+                array [0, 0, 0, 0, 0, 0, 0], 
+                array [0, 0, 0, 0, 0, 0, 0], 
+                array [0, 0, 0, 0, 0, 0, 0]
                ] 
 
-zero :: Stream (Array 2 (Array 2 Float))
+zero :: Stream (Array 7 (Array 7 Float))
 
 zero = [ rawzero ] ++ zero
 
