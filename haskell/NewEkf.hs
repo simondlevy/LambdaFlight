@@ -85,9 +85,9 @@ init = (pinit, (1, 0, 0, 0))
 
 ------------------------------------------------------------------------------
 
-step :: (SFloat, SFloat, SFloat, SFloat, SFloat, SFloat, SFloat, SFloat, SFloat) 
+step :: (SFloat, SFloat, SFloat, SFloat, SFloat, SFloat) 
 
-step = (dx, dy, dz, phi, dphi, theta, dtheta, psi, dpsi) where
+step = (dx, dy, dz, phi, theta, psi) where
 
    pmat = if ekfMode == mode_init then pinit else pmat'
 
@@ -97,7 +97,7 @@ step = (dx, dy, dz, phi, dphi, theta, dtheta, psi, dpsi) where
 
    dy = 0
 
-   dz = r20 * dx + r21 * dy + r22 * dz
+   dz = 0 -- r20 * dx + r21 * dy + r22 * dz
 
    phi = rad2deg $ atan2 (2 * (qy*qz + qw*qx)) (qw*qw - qx*qx - qy*qy + qz*qz)
 
@@ -105,10 +105,6 @@ step = (dx, dy, dz, phi, dphi, theta, dtheta, psi, dpsi) where
    theta = -(rad2deg $ asin ((-2) * (qx*qz - qw*qy)))
 
    psi = rad2deg $ atan2 (2 * (qx*qy + qw*qz)) (qw*qw + qx*qx - qy*qy - qz*qz)
-
-   dphi = 0
-   dtheta = 0
-   dpsi = 0
 
    qw = 0
    qx = 0
@@ -123,7 +119,11 @@ step = (dx, dy, dz, phi, dphi, theta, dtheta, psi, dpsi) where
 
 spec = do
 
-  trigger "setState" (ekfMode == mode_get_state) [arg $ true]
+  let (dx, dy, dz, phi, theta, psi) = step
+
+  trigger "setState" 
+           (ekfMode == mode_get_state) 
+           [arg dx, arg dy, arg dz, arg phi, arg theta, arg psi]
 
 main = reify spec >>= 
 
