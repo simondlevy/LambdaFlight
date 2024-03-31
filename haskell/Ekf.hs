@@ -218,9 +218,11 @@ step = (dx, dy, dz, phi, theta, psi) where
 
    dx = if is_init then 0 else if is_predict then dx' else _dx
 
-   dy = if is_init then 0 else _dy
+   dy = if is_init then 0 else if is_predict then dy' else _dy
 
-   dz = if is_init then 0 else r20 * _dx + r21 * _dy + r22 * _dz
+   dz = if is_init then 0 
+        else if is_predict then dz' 
+        else r20 * _dx + r21 * _dy + r22 * _dz
 
    z = (if is_init then 0 else _z) :: SFloat
 
