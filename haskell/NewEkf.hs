@@ -94,14 +94,21 @@ step = (dx, dy, dz, phi, dphi, theta, dtheta, psi, dpsi) where
    pmat' = [raw_pinit] ++ pmat
 
    dx = 0
+
    dy = 0
-   dz = 0
+
+   dz = r20 * dx + r21 * dy + r22 * dz
+
    phi = 0
    dphi = 0
    theta = 0
    dtheta = 0
    psi = 0
    dpsi = 0
+
+   r20 = 0
+   r21 = 0
+   r22 = 0
 
 ------------------------------------------------------------------------------
 
