@@ -59,9 +59,11 @@ d = sqr stdev_initial_velocity
 e = sqr stdev_initial_attitude_roll_pitch
 y = sqr stdev_initial_attitude_yaw
 
-raw_pzero :: Array 7 (Array 7 Float)
+type EkfArray = Array 7 (Array 7 Float)
 
-raw_pzero =  array [--  z   dx  dy  dz  e0  e1  e2
+raw_pinit :: EkfArray
+
+raw_pinit =  array [--  z   dx  dy  dz  e0  e1  e2
                  array [z,  0,  0,  0,  0,  0,  0], -- z
                  array [0,  d,  0,  0,  0,  0,  0], -- dx
                  array [0,  0,  d,  0,  0,  0,  0], -- dy
@@ -71,15 +73,15 @@ raw_pzero =  array [--  z   dx  dy  dz  e0  e1  e2
                  array [0,  0,  0,  0,  0,  0,  y]  -- e2
              ] 
 
-pzero :: Stream (Array 7 (Array 7 Float))
+pinit :: Stream (Array 7 (Array 7 Float))
 
-pzero = [ raw_pzero ] ++ pzero
+pinit = [ raw_pinit ] ++ pinit
 
 fun = False where
 
-   pmat = if ekfMode == mode_init then pzero else pmat'
+   pmat = if ekfMode == mode_init then pinit else pmat'
 
-   pmat' = [raw_pzero] ++ pmat
+   pmat' = [raw_pinit] ++ pmat
 
 spec = do
 
