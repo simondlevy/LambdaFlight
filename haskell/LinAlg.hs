@@ -21,12 +21,12 @@
 
 module LinAlg where
 
-import Data.Array
+-- import Data.Array
 
-import Language.Copilot hiding Array
+import Language.Copilot hiding(Array)
 import Copilot.Compile.C99
 
-import Utils
+-- import Utils
 
 mmult :: (Ix i, Num a) => Array (i,i) a -> Array (i,i) a -> Array (i,i) a 
 
@@ -40,4 +40,12 @@ mmult x y
     jr = range (y1,y1')
     kr = range (x1,x1')
     l  = [((i,j), sum [x!(i,k) * y!(k,j) | k <- kr]) | i <- ir, j <- jr]
+
+spec = do
+
+    trigger "dummy" true [ ]
+
+-- Compile the spec
+main = reify spec >>= 
+  compileWith (CSettings "copilot_step_ekf" ".") "copilot_ekf"
 
