@@ -51,9 +51,14 @@ mode_get_state = 4 :: EkfMode
 
 ------------------------------------------------------------------------------
 
+sqr :: Float -> Float
+sqr x = x * x
+
+z = sqr stdev_initial_position_z 
+
 rawzero :: Array 7 (Array 7 Float)
 rawzero =  array [
-                array [0, 0, 0, 0, 0, 0, 0], 
+                array [z, 0, 0, 0, 0, 0, 0], 
                 array [0, 0, 0, 0, 0, 0, 0], 
                 array [0, 0, 0, 0, 0, 0, 0], 
                 array [0, 0, 0, 0, 0, 0, 0], 
