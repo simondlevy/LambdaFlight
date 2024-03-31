@@ -101,10 +101,13 @@ step = (dx, dy, dz, phi, dphi, theta, dtheta, psi, dpsi) where
 
    phi = rad2deg $ atan2 (2 * (qy*qz + qw*qx)) (qw*qw - qx*qx - qy*qy + qz*qz)
 
+   -- Negate for ENU
+   theta = -(rad2deg $ asin ((-2) * (qx*qz - qw*qy)))
+
+   psi = rad2deg $ atan2 (2 * (qx*qy + qw*qz)) (qw*qw + qx*qx - qy*qy - qz*qz)
+
    dphi = 0
-   theta = 0
    dtheta = 0
-   psi = 0
    dpsi = 0
 
    qw = 0
