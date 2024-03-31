@@ -33,9 +33,9 @@ zero = [ rawzero ] ++ zero
 
 fun = False where
 
-   foo = if doinit then zero else farr'
+   pmat = if doinit then zero else pmat'
 
-   farr' = [rawzero] ++ foo
+   pmat' = [rawzero] ++ pmat
 
 spec = do
 
