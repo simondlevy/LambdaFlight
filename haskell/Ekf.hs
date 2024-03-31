@@ -114,6 +114,14 @@ init = (pinit, (1, 0, 0, 0))
 
 ------------------------------------------------------------------------------
 
+axis3fSubSamplerFinalize :: SFloat -> SFloat -> SFloat -> SInt32 ->
+  (SFloat, SFloat, SFloat, SInt32)
+
+
+axis3fSubSamplerFinalize x y z count = (x, y, z, count)
+
+------------------------------------------------------------------------------
+
 predict :: SFloat -> SFloat -> SFloat -> 
            SFloat -> SFloat -> SFloat -> SFloat ->
            (SFloat, SFloat, SFloat, SFloat, SFloat, SFloat, SFloat) 
