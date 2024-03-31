@@ -21,7 +21,7 @@
 
 module Main where
 
-import Language.Copilot
+import Language.Copilot hiding(atan2)
 import Copilot.Compile.C99
 
 import Utils
@@ -99,12 +99,18 @@ step = (dx, dy, dz, phi, dphi, theta, dtheta, psi, dpsi) where
 
    dz = r20 * dx + r21 * dy + r22 * dz
 
-   phi = 0
+   phi = rad2deg $ atan2 (2 * (qy*qz + qw*qx)) (qw*qw - qx*qx - qy*qy + qz*qz)
+
    dphi = 0
    theta = 0
    dtheta = 0
    psi = 0
    dpsi = 0
+
+   qw = 0
+   qx = 0
+   qy = 0
+   qz = 0
 
    r20 = 0
    r21 = 0
