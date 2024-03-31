@@ -35,11 +35,20 @@ zero = [ array [
                ] 
        ] ++ zero
 
+baz :: Array 2 (Array 2 Float)
+baz =  array [
+                array [0, 0], 
+                array [0, 0]
+               ] 
+
+
 fun = False where
 
    foo = if doinit then zero else farr'
 
-   farr' = [ array [
+   farr' = [baz] ++ foo
+
+   farr'' = [ array [
                 array [0, 0], 
                 array [0, 0]
                ] 
