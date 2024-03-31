@@ -200,46 +200,48 @@ step :: (SFloat, SFloat, SFloat, SFloat, SFloat, SFloat)
 
 step = (dx, dy, dz, phi, theta, psi) where
 
-   init = ekfMode == mode_init
+   is_init = ekfMode == mode_init
 
-   (dx', dy', dz', qw', qx', qy', qz') = predict dx dy dz qw qx qy qz
+   is_predict = ekfMode == mode_predict
 
-   gyroSubsamplerX = (if init then 0 else _gyroSubsamplerX) :: SFloat
-   gyroSubsamplerY = (if init then 0 else _gyroSubsamplerY) :: SFloat
-   gyroSubsamplerZ = (if init then 0 else _gyroSubsamplerZ) :: SFloat
+   (dx', dy', dz', qw', qx', qy', qz') = predict _dx _dy _dz _qw _qx _qy _qz
 
-   accelSubsamplerX = (if init then 0 else _accelSubsamplerX) :: SFloat
-   accelSubsamplerY = (if init then 0 else _accelSubsamplerY) :: SFloat
-   accelSubsamplerZ = (if init then 0 else _accelSubsamplerZ) :: SFloat
+   gyroSubsamplerX = (if is_init then 0 else _gyroSubsamplerX) :: SFloat
+   gyroSubsamplerY = (if is_init then 0 else _gyroSubsamplerY) :: SFloat
+   gyroSubsamplerZ = (if is_init then 0 else _gyroSubsamplerZ) :: SFloat
 
-   pmat = if init then pinit else _pmat
+   accelSubsamplerX = (if is_init then 0 else _accelSubsamplerX) :: SFloat
+   accelSubsamplerY = (if is_init then 0 else _accelSubsamplerY) :: SFloat
+   accelSubsamplerZ = (if is_init then 0 else _accelSubsamplerZ) :: SFloat
 
-   dx = if init then 0 else _dx
+   pmat = if is_init then pinit else _pmat
 
-   dy = if init then 0 else _dy
+   dx = if is_init then 0 else if is_predict then dx' else _dx
 
-   dz = if init then 0 else r20 * _dx + r21 * _dy + r22 * _dz
+   dy = if is_init then 0 else _dy
 
-   z = (if init then 0 else _z) :: SFloat
+   dz = if is_init then 0 else r20 * _dx + r21 * _dy + r22 * _dz
 
-   qw = if init then 1 else _qw
-   qx = if init then 0 else _qx
-   qy = if init then 0 else _qy
-   qz = if init then 0 else _qz
+   z = (if is_init then 0 else _z) :: SFloat
 
-   -- Set the initial rotation matrix to the identity. This only affects  the
+   qw = if is_init then 1 else _qw
+   qx = if is_init then 0 else _qx
+   qy = if is_init then 0 else _qy
+   qz = if is_init then 0 else _qz
+
+   -- Set the is_initial rotation matrix to the identity. This only affects  the
    -- first prediction step, since in the finalization, after shifting 
    -- attitude errors into the attitude state, the rotation matrix is updated.
-   r20 = if init then 0 else _r20
-   r21 = if init then 0 else _r21
-   r22 = if init then 1 else _r22
+   r20 = if is_init then 0 else _r20
+   r21 = if is_init then 0 else _r21
+   r22 = if is_init then 1 else _r22
 
-   isUpdated = if init then false else _isUpdated
+   isUpdated = if is_init then false else _isUpdated
 
-   lastPredictionMsec = (if init then nowMsec else _lastPredictionMsec) :: SInt32
+   lastPredictionMsec = (if is_init then nowMsec else _lastPredictionMsec) :: SInt32
 
    lastProcessNoiseUpdateMsec = 
-     (if init then nowMsec else _lastProcessNoiseUpdateMsec) :: SInt32
+     (if is_init then nowMsec else _lastProcessNoiseUpdateMsec) :: SInt32
 
    phi = rad2deg $ atan2 (2 * (qy*qz + qw*qx)) (qw*qw - qx*qx - qy*qy + qz*qz)
 
