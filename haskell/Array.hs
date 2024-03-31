@@ -28,16 +28,16 @@ farr = [ array [
                ] 
        ] ++ farr
 
-newfarr :: Stream (Array 2 (Array 2 Float))
-newfarr = [ array [
+zero :: Stream (Array 2 (Array 2 Float))
+zero = [ array [
                 array [0, 0], 
                 array [0, 0]
                ] 
-       ] ++ newfarr
+       ] ++ zero
 
 fun = False where
 
-   foo = if doinit then newfarr else farr'
+   foo = if doinit then zero else farr'
 
    farr' = [ array [
                 array [0, 0], 
