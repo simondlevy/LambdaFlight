@@ -73,21 +73,41 @@ raw_pinit =  array [--  z   dx  dy  dz  e0  e1  e2
                  array [0,  0,  0,  0,  0,  0,  y]  -- e2
              ] 
 
-pinit :: Stream (Array 7 (Array 7 Float))
+type SEkfArray = Stream EkfArray
+
+pinit :: SEkfArray
 
 pinit = [ raw_pinit ] ++ pinit
 
-fun = False where
+init :: (SEkfArray, (SFloat, SFloat, SFloat, SFloat))
+
+init = (pinit, (1, 0, 0, 0))
+
+------------------------------------------------------------------------------
+
+step :: (SFloat, SFloat, SFloat, SFloat, SFloat, SFloat, SFloat, SFloat, SFloat) 
+
+step = (dx, dy, dz, phi, dphi, theta, dtheta, psi, dpsi) where
 
    pmat = if ekfMode == mode_init then pinit else pmat'
 
    pmat' = [raw_pinit] ++ pmat
 
+   dx = 0
+   dy = 0
+   dz = 0
+   phi = 0
+   dphi = 0
+   theta = 0
+   dtheta = 0
+   psi = 0
+   dpsi = 0
+
+------------------------------------------------------------------------------
+
 spec = do
 
-  -- let x = fun
-
-  trigger "foo" true [arg $ true]
+  trigger "setState" (ekfMode == mode_get_state) [arg $ true]
 
 main = reify spec >>= 
 
