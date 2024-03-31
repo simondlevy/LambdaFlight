@@ -59,27 +59,27 @@ d = sqr stdev_initial_velocity
 e = sqr stdev_initial_attitude_roll_pitch
 y = sqr stdev_initial_attitude_yaw
 
-rawzero :: Array 7 (Array 7 Float)
+raw_pzero :: Array 7 (Array 7 Float)
 
-rawzero =  array [--   z   dx  dy  dz  e0  e1  e2
-                array [z,  0,  0,  0,  0,  0,  0], -- z
-                array [0,  d,  0,  0,  0,  0,  0], -- dx
-                array [0,  0,  d,  0,  0,  0,  0], -- dy
-                array [0,  0,  0,  d,  0,  0,  0], -- dz
-                array [0,  0,  0,  0,  e,  0,  0], -- e0
-                array [0,  0,  0,  0,  0,  e,  0], -- e1
-                array [0,  0,  0,  0,  0,  0,  y]  -- e2
-               ] 
+raw_pzero =  array [--  z   dx  dy  dz  e0  e1  e2
+                 array [z,  0,  0,  0,  0,  0,  0], -- z
+                 array [0,  d,  0,  0,  0,  0,  0], -- dx
+                 array [0,  0,  d,  0,  0,  0,  0], -- dy
+                 array [0,  0,  0,  d,  0,  0,  0], -- dz
+                 array [0,  0,  0,  0,  e,  0,  0], -- e0
+                 array [0,  0,  0,  0,  0,  e,  0], -- e1
+                 array [0,  0,  0,  0,  0,  0,  y]  -- e2
+             ] 
 
-zero :: Stream (Array 7 (Array 7 Float))
+pzero :: Stream (Array 7 (Array 7 Float))
 
-zero = [ rawzero ] ++ zero
+pzero = [ raw_pzero ] ++ pzero
 
 fun = False where
 
-   pmat = if ekfMode == mode_init then zero else pmat'
+   pmat = if ekfMode == mode_init then pzero else pmat'
 
-   pmat' = [rawzero] ++ pmat
+   pmat' = [raw_pzero] ++ pmat
 
 spec = do
 
