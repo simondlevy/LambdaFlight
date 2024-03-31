@@ -226,10 +226,10 @@ step = (dx, dy, dz, phi, theta, psi) where
 
    z = (if is_init then 0 else _z) :: SFloat
 
-   qw = if is_init then 1 else _qw
-   qx = if is_init then 0 else _qx
-   qy = if is_init then 0 else _qy
-   qz = if is_init then 0 else _qz
+   qw = if is_init then 1 else if is_predict then qw' else _qw
+   qx = if is_init then 0 else if is_predict then qx' else _qx
+   qy = if is_init then 0 else if is_predict then qy' else _qy
+   qz = if is_init then 0 else if is_predict then qz' else _qz
 
    -- Set the is_initial rotation matrix to the identity. This only affects  the
    -- first prediction step, since in the finalization, after shifting 
