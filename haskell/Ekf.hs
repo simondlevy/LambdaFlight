@@ -60,8 +60,8 @@ nextPredictionMsec = extern "stream_nextPredictionMsec" Nothing
 isFlying :: SBool
 isFlying = extern "stream_isFlying" Nothing
 
-gyroX :: SFloat
-gyroX = extern "stream_gyroX" Nothing
+gx :: SFloat
+gx = extern "stream_gx" Nothing
 
 gyroY :: SFloat
 gyroY = extern "stream_gyroY" Nothing
@@ -202,42 +202,42 @@ step = (dx, dy, dz, phi, theta, psi) where
 
    init = ekfMode == mode_init
 
-   gyroSubsamplerX = (if init then 0 else gyroSubsamplerX') :: SFloat
-   gyroSubsamplerY = (if init then 0 else gyroSubsamplerY') :: SFloat
-   gyroSubsamplerZ = (if init then 0 else gyroSubsamplerZ') :: SFloat
+   gyroSubsamplerX = (if init then 0 else _gyroSubsamplerX) :: SFloat
+   gyroSubsamplerY = (if init then 0 else _gyroSubsamplerY) :: SFloat
+   gyroSubsamplerZ = (if init then 0 else _gyroSubsamplerZ) :: SFloat
 
-   accelSubsamplerX = (if init then 0 else accelSubsamplerX') :: SFloat
-   accelSubsamplerY = (if init then 0 else accelSubsamplerY') :: SFloat
-   accelSubsamplerZ = (if init then 0 else accelSubsamplerZ') :: SFloat
+   accelSubsamplerX = (if init then 0 else _accelSubsamplerX) :: SFloat
+   accelSubsamplerY = (if init then 0 else _accelSubsamplerY) :: SFloat
+   accelSubsamplerZ = (if init then 0 else _accelSubsamplerZ) :: SFloat
 
-   pmat = if init then pinit else pmat'
+   pmat = if init then pinit else _pmat
 
-   dx = if init then 0 else dx'
+   dx = if init then 0 else _dx
 
-   dy = if init then 0 else dy'
+   dy = if init then 0 else _dy
 
-   dz = if init then 0 else r20 * dx' + r21 * dy' + r22 * dz'
+   dz = if init then 0 else r20 * _dx + r21 * _dy + r22 * _dz
 
-   z = (if init then 0 else z') :: SFloat
+   z = (if init then 0 else _z) :: SFloat
 
-   qw = if init then 1 else qw'
-   qx = if init then 0 else qx'
-   qy = if init then 0 else qy'
-   qz = if init then 0 else qz'
+   qw = if init then 1 else _qw
+   qx = if init then 0 else _qx
+   qy = if init then 0 else _qy
+   qz = if init then 0 else _qz
 
    -- Set the initial rotation matrix to the identity. This only affects  the
    -- first prediction step, since in the finalization, after shifting 
    -- attitude errors into the attitude state, the rotation matrix is updated.
-   r20 = if init then 0 else r20'
-   r21 = if init then 0 else r21'
-   r22 = if init then 1 else r22'
+   r20 = if init then 0 else _r20
+   r21 = if init then 0 else _r21
+   r22 = if init then 1 else _r22
 
-   isUpdated = if init then false else isUpdated'
+   isUpdated = if init then false else _isUpdated
 
-   lastPredictionMsec = (if init then nowMsec else lastPredictionMsec') :: SInt32
+   lastPredictionMsec = (if init then nowMsec else _lastPredictionMsec) :: SInt32
 
    lastProcessNoiseUpdateMsec = 
-     (if init then nowMsec else lastProcessNoiseUpdateMsec') :: SInt32
+     (if init then nowMsec else _lastProcessNoiseUpdateMsec) :: SInt32
 
    phi = rad2deg $ atan2 (2 * (qy*qz + qw*qx)) (qw*qw - qx*qx - qy*qy + qz*qz)
 
@@ -246,38 +246,38 @@ step = (dx, dy, dz, phi, theta, psi) where
 
    psi = rad2deg $ atan2 (2 * (qx*qy + qw*qz)) (qw*qw + qx*qx - qy*qy - qz*qz)
 
-   pmat' = [raw_pinit] ++ pmat
+   _pmat = [raw_pinit] ++ pmat
 
    -- EKF state
-   dx' = [0] ++ dx
-   dy' = [0] ++ dy
-   dz' = [0] ++ dz
-   z' = [0] ++ z
+   _dx = [0] ++ dx
+   _dy = [0] ++ dy
+   _dz = [0] ++ dz
+   _z = [0] ++ z
 
    -- Quaternion
-   qw' = [0] ++ qw
-   qx' = [0] ++ qx
-   qy' = [0] ++ qy
-   qz' = [0] ++ qz
+   _qw = [0] ++ qw
+   _qx = [0] ++ qx
+   _qy = [0] ++ qy
+   _qz = [0] ++ qz
 
    -- Rotation vector
-   r20' = [0] ++ r20
-   r21' = [0] ++ r21
-   r22' = [1] ++ r22
+   _r20 = [0] ++ r20
+   _r21 = [0] ++ r21
+   _r22 = [1] ++ r22
 
    -- Gyro subsampler
-   gyroSubsamplerX' = [0] ++ gyroSubsamplerX 
-   gyroSubsamplerY' = [0] ++ gyroSubsamplerY 
-   gyroSubsamplerZ' = [0] ++ gyroSubsamplerZ 
+   _gyroSubsamplerX = [0] ++ gyroSubsamplerX 
+   _gyroSubsamplerY = [0] ++ gyroSubsamplerY 
+   _gyroSubsamplerZ = [0] ++ gyroSubsamplerZ 
 
    -- Accel subsampler
-   accelSubsamplerX' = [0] ++ accelSubsamplerX 
-   accelSubsamplerY' = [0] ++ accelSubsamplerY 
-   accelSubsamplerZ' = [0] ++ accelSubsamplerZ 
+   _accelSubsamplerX = [0] ++ accelSubsamplerX 
+   _accelSubsamplerY = [0] ++ accelSubsamplerY 
+   _accelSubsamplerZ = [0] ++ accelSubsamplerZ 
 
-   isUpdated' = [False] ++ isUpdated
-   lastPredictionMsec' = [0] ++ lastPredictionMsec
-   lastProcessNoiseUpdateMsec' = [0] ++ lastProcessNoiseUpdateMsec
+   _isUpdated = [False] ++ isUpdated
+   _lastPredictionMsec = [0] ++ lastPredictionMsec
+   _lastProcessNoiseUpdateMsec = [0] ++ lastProcessNoiseUpdateMsec
 
 ------------------------------------------------------------------------------
 
