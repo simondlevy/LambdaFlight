@@ -89,15 +89,15 @@ step :: (SFloat, SFloat, SFloat, SFloat, SFloat, SFloat)
 
 step = (dx, dy, dz, phi, theta, psi) where
 
-   pmat = if ekfMode == mode_init then pinit else pmat'
+   init = ekfMode == mode_init
 
-   pmat' = [raw_pinit] ++ pmat
+   pmat = if init then pinit else pmat'
 
-   dx = 0
+   dx = if init then 0 else dx'
 
-   dy = 0
+   dy = if init then 0 else dy'
 
-   dz = 0 -- r20 * dx + r21 * dy + r22 * dz
+   dz = if init then 0 else r20 * dx' + r21 * dy' + r22 * dz'
 
    phi = rad2deg $ atan2 (2 * (qy*qz + qw*qx)) (qw*qw - qx*qx - qy*qy + qz*qz)
 
@@ -114,6 +114,12 @@ step = (dx, dy, dz, phi, theta, psi) where
    r20 = 0
    r21 = 0
    r22 = 0
+
+   pmat' = [raw_pinit] ++ pmat
+   dx' = [0] ++ dx
+   dy' = [0] ++ dy
+   dz' = [0] ++ dz
+
 
 ------------------------------------------------------------------------------
 
