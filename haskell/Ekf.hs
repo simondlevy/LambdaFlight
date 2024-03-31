@@ -60,6 +60,24 @@ nextPredictionMsec = extern "stream_nextPredictionMsec" Nothing
 isFlying :: SBool
 isFlying = extern "stream_isFlying" Nothing
 
+gyroX :: SFloat
+gyroX = extern "stream_gyroX" Nothing
+
+gyroY :: SFloat
+gyroY = extern "stream_gyroY" Nothing
+
+gyroZ :: SFloat
+gyroZ = extern "stream_gyroZ" Nothing
+
+accelX :: SFloat
+accelX = extern "stream_accelX" Nothing
+
+accelY :: SFloat
+accelY = extern "stream_accelY" Nothing
+
+accelZ :: SFloat
+accelZ = extern "stream_accelZ" Nothing
+
 ------------------------------------------------------------------------------
 
 sqr :: Float -> Float
