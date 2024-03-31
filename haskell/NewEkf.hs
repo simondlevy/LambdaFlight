@@ -26,8 +26,23 @@ import Copilot.Compile.C99
 
 import Utils
 
-doinit :: SBool
-doinit = extern "stream_doinit" Nothing
+------------------------------------------------------------------------------
+
+type EkfMode = SInt8
+
+ekfMode :: EkfMode
+ekfMode = extern "stream_ekfMode" Nothing
+
+nowMsec :: SInt32
+nowMsec = extern "stream_nowMsec" Nothing
+
+mode_init      = 0 :: EkfMode
+mode_predict   = 1 :: EkfMode
+mode_update    = 2 :: EkfMode
+mode_finalize  = 3 :: EkfMode
+mode_get_state = 4 :: EkfMode
+
+------------------------------------------------------------------------------
 
 rawzero :: Array 2 (Array 2 Float)
 rawzero =  array [
@@ -41,12 +56,11 @@ zero = [ rawzero ] ++ zero
 
 fun = False where
 
-   pmat = if doinit then zero else pmat'
+   pmat = if ekfMode == mode_init then zero else pmat'
 
    pmat' = [rawzero] ++ pmat
 
 spec = do
-
 
   -- let x = fun
 
