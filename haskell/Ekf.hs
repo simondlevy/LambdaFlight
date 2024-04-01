@@ -181,9 +181,9 @@ predict lastPredictionMsec dx dy dz qw qx qy qz =
   qy' = qy
   qz' = qz
 
-  dmsec = nowMsec - lastPredictionMsec
+  dmsec = (unsafeCast $ nowMsec - lastPredictionMsec) :: SFloat
 
-  -- dt = (unsafeCast ()) / 1000.0
+  dt = dmsec / 1000.0
 
 {--
   axis3fSubSamplerFinalize(&_accSubSampler, shouldPredict)
