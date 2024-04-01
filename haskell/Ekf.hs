@@ -35,6 +35,9 @@ stdev_initial_attitude_yaw       = 0.01 :: SFloat
 
 gravity_magnitude = 9.81 :: SFloat
 
+-- Small number epsilon, to prevent dividing by zero
+eps = 1e-6 :: SFloat
+
 ------------------------------------------------------------------------------
 
 type EkfMode = SInt8
@@ -244,6 +247,8 @@ predict lastPredictionMsec ekfState quat r gyroSubSampler accelSubSampler =
              ] :: EkfMatrix
 
   dt2 = dt * dt
+
+  mss2g = \mss -> mss / gravity_magnitude
   
   accelSubSampler' = subsampler_finalize shouldPredict mss2g accelSubSampler
 
@@ -263,6 +268,21 @@ predict lastPredictionMsec ekfState quat r gyroSubSampler accelSubSampler =
   accx = if isFlying then 0 else x accel
   accy = if isFlying then 0 else y accel
  
+  -- Attitude update (rotate by gyroscope), we do this in quaternions:
+  -- this is the gyroscope angular velocity integrated over the sample period
+  dtwx = dt * (x gyro)
+  dtwy = dt * (y gyro)
+  dtwz = dt * (z gyro)
+
+  -- Compute the quaternion values in [w,x,y,z] order
+  angle = (sqrt (dtwx * dtwx + dtwy * dtwy + dtwz * dtwz)) + eps
+  ca = cos (angle / 2)
+  sa = sin (angle / 2)
+  dqw = ca
+  dqx = sa * dtwx / angle
+  dqy = sa * dtwy / angle
+  dqz = sa * dtwz / angle
+
   ekfState' = ekfState
 
   quat' = quat
