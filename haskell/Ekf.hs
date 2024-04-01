@@ -186,13 +186,14 @@ predict lastPredictionMsec ekfState quat r gyroSubSampler accelSubSampler =
 
   dmsec = (unsafeCast $ nowMsec - lastPredictionMsec) :: SFloat
 
+  gyroSubSampler' = subsampler_finalize shouldPredict deg2rad gyroSubSampler
+
   dt = dmsec / 1000.0
 
   ekfState' = ekfState
 
   quat' = quat
 
-  gyroSubSampler' = gyroSubSampler
   accelSubSampler' = accelSubSampler
 
 ------------------------------------------------------------------------------
