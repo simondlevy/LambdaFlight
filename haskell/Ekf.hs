@@ -21,7 +21,7 @@
 
 module Main where
 
-import Language.Copilot hiding(atan2)
+import Language.Copilot hiding(atan2, sum)
 import Copilot.Compile.C99
 
 import Utils
@@ -138,24 +138,36 @@ data Axis3f = Axis3f {
 }
 
 data Axis3fSubSampler = Axis3fSubSampler { 
-    sum :: Axis3f
-  , count :: SInt32
-  , subSample :: Axis3f
+    sum    :: Axis3f
+  , count  :: SInt32
+  , sample :: Axis3f
 }
 
 subsampler_init = Axis3fSubSampler (Axis3f 0 0 0) 0 (Axis3f 0 0 0)
 
-subsampler_finalize :: SBool -> Axis3fSubSampler -> Axis3fSubSampler
+subsampler_finalize :: SBool -> (SFloat -> SFloat) -> Axis3fSubSampler -> 
+  Axis3fSubSampler
 
-subsampler_finalize shouldPredict subsamp = subsamp' where
+subsampler_finalize shouldPredict converter subsamp = subsamp' where
 
-  isCountNonzero = (count subsamp) > 0
+  cnt = unsafeCast (count subsamp) :: SFloat
+
+  isCountNonzero = cnt > 0
+
   shouldFinalize = shouldPredict && isCountNonzero
+ 
+  samp = sample subsamp
+
+  ssum = sum subsamp
 
   subsamp' = subsamp
 
+  x' = if shouldFinalize then (converter (x ssum)) / cnt else (x samp)
+  y' = if shouldFinalize then (converter (y ssum)) / cnt else (y samp)
+  z' = if shouldFinalize then (converter (z ssum)) / cnt else (z samp)
+
+
 {--
-  x' = if shouldFinalize then (conversionFun xsum) / (unsafeCast count) else x
   y' = if shouldFinalize then (conversionFun ysum) / (unsafeCast count) else y
   z' = if shouldFinalize then (conversionFun zsum) / (unsafeCast count) else z
 
