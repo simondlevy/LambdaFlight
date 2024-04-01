@@ -174,9 +174,9 @@ init = (pinit, (1, 0, 0, 0) )
 
 -----------------------------------------------------------------------------
 
-predict :: SInt32 -> EkfState -> Quaternion -> (EkfState, Quaternion)
+predict :: SInt32 -> EkfState -> Quaternion -> Axis3f -> (EkfState, Quaternion)
 
-predict lastPredictionMsec ekfState quat = (ekfState', quat') where
+predict lastPredictionMsec ekfState quat r = (ekfState', quat') where
 
   shouldPredict = nowMsec >= nextPredictionMsec
 
@@ -271,7 +271,9 @@ step = (z, dx, dy, dz, phi, theta, psi) where
 
    quat = Quaternion _qw _qx _qy _qz
 
-   (ekfState', quat') = predict lastPredictionMsec ekfState quat
+   r = Axis3f 0 0 0
+
+   (ekfState', quat') = predict lastPredictionMsec ekfState quat r
 
    qw = if is_init then 1 else if is_predict then (qqw quat') else _qw
    qx = if is_init then 0 else if is_predict then (qqx quat') else _qx
