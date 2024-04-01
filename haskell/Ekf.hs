@@ -137,16 +137,18 @@ data Axis3f = Axis3f {
   , z :: SFloat
 }
 
-data Axis3fSubSampler = Axis3fSubSampler { 
+------------------------------------------------------------------------------
+
+data SubSampler = SubSampler { 
     sample :: Axis3f
   , sum    :: Axis3f
   , count  :: SInt32
 }
 
-subsampler_init = Axis3fSubSampler (Axis3f 0 0 0) (Axis3f 0 0 0) 0
+subsampler_init = SubSampler (Axis3f 0 0 0) (Axis3f 0 0 0) 0
 
-subsampler_finalize :: SBool -> (SFloat -> SFloat) -> Axis3fSubSampler -> 
-  Axis3fSubSampler
+subsampler_finalize :: SBool -> (SFloat -> SFloat) -> SubSampler -> 
+  SubSampler
 
 subsampler_finalize shouldPredict converter subsamp = subsamp' where
 
@@ -164,7 +166,7 @@ subsampler_finalize shouldPredict converter subsamp = subsamp' where
   y' = if shouldFinalize then (converter (y ssum)) / cnt else (y samp)
   z' = if shouldFinalize then (converter (z ssum)) / cnt else (z samp)
 
-  subsamp' = Axis3fSubSampler (Axis3f x' y' z') (Axis3f 0 0 0) 0
+  subsamp' = SubSampler (Axis3f x' y' z') (Axis3f 0 0 0) 0
 
 ------------------------------------------------------------------------------
 
@@ -174,9 +176,11 @@ init = (pinit, (1, 0, 0, 0) )
 
 -----------------------------------------------------------------------------
 
-predict :: SInt32 -> EkfState -> Quaternion -> Axis3f -> (EkfState, Quaternion)
+predict :: SInt32 -> EkfState -> Quaternion -> Axis3f ->  SubSampler -> SubSampler ->
+  (EkfState, Quaternion, SubSampler, SubSampler)
 
-predict lastPredictionMsec ekfState quat r = (ekfState', quat') where
+predict lastPredictionMsec ekfState quat r gyroSubSampler accelSubSampler = 
+  (ekfState', quat', gyroSubSampler', accelSubSampler') where
 
   shouldPredict = nowMsec >= nextPredictionMsec
 
@@ -188,67 +192,8 @@ predict lastPredictionMsec ekfState quat r = (ekfState', quat') where
 
   quat' = quat
 
-{--
-  axis3fSubSamplerFinalize(&_accSubSampler, shouldPredict)
-
-  axis3fSubSamplerFinalize(&_gyroSubSampler, shouldPredict)
-
-  const Axis3f * acc = &_accSubSampler.subSample 
-  const Axis3f * gyro = &_gyroSubSampler.subSample 
-
-
-  e0 = gx*dt/2
-  e1 = gy*dt/2
-  e2 = gz*dt/2
-
-  -- altitude from body-frame velocity
-  zdx = r20*dt
-  zdy = r21*dt
-  zdz = r22*dt
-
-  -- altitude from attitude error
-  ze0 = (dy*r22 - dz*r21)*dt
-  ze1 = (- dx*r22 + dz*r20)*dt
-  ze2 = (dx*r21 - dy*r20)*dt
-
-  -- body-frame velocity from body-frame velocity
-  dxdx = 1 --drag negligible
-  dydx =-gz*dt
-  dzdx = gy*dt
-
-  dxdy = gz*dt
-  dydy = 1 --drag negligible
-  dzdy =-gx*dt
-
-  dxdz =-gy*dt
-  dydz = gx*dt
-  dzdz = 1 --drag negligible
-
-  -- body-frame velocity from attitude error
-  dxe0 =  0
-  dye0 = -gravity_magnitude*r22*dt
-  dze0 =  gravity_magnitude*r21*dt
-
-  dxe1 =  gravity_magnitude*r22*dt
-  dye1 =  0
-  dze1 = -gravity_magnitude*r20*dt
-
-  dxe2 = -gravity_magnitude*r21*dt
-  dye2 =  gravity_magnitude*r20*dt
-  dze2 =  0
-
-  e0e0 =  1 - e1*e1/2 - e2*e2/2
-  e0e1 =  e2 + e0*e1/2
-  e0e2 = -e1 + e0*e2/2
-
-  e1e0 = -e2 + e0*e1/2
-  e1e1 =  1 - e0*e0/2 - e2*e2/2
-  e1e2 =  e0 + e1*e2/2
-
-  e2e0 =  e1 + e0*e2/2
-  e2e1 = -e0 + e1*e2/2
-  e2e2 = 1 - e0*e0/2 - e1*e1/2
---}
+  gyroSubSampler' = gyroSubSampler
+  accelSubSampler' = accelSubSampler
 
 ------------------------------------------------------------------------------
 
@@ -273,7 +218,11 @@ step = (z, dx, dy, dz, phi, theta, psi) where
 
    r = Axis3f 0 0 0
 
-   (ekfState', quat') = predict lastPredictionMsec ekfState quat r
+   gyroSubSampler = subsampler_init
+   accelSubSampler = subsampler_init
+
+   (ekfState', quat', gyroSubSampler', accelSubSampler') = 
+     predict lastPredictionMsec ekfState quat r gyroSubSampler accelSubSampler
 
    qw = if is_init then 1 else if is_predict then (qqw quat') else _qw
    qx = if is_init then 0 else if is_predict then (qqx quat') else _qx
