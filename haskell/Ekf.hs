@@ -114,16 +114,27 @@ init = (pinit, (1, 0, 0, 0))
 
 ------------------------------------------------------------------------------
 
-axis3fSubSamplerFinalize :: SFloat -> SFloat -> SFloat -> SInt32 -> SFloat ->
-  (SFloat, SFloat, SFloat, SInt32)
+axis3fSubSamplerFinalize :: SBool -> 
+                            SFloat -> SFloat -> SFloat -> 
+                            SFloat -> SFloat -> SFloat -> 
+                            SInt32 -> SFloat ->
+                            (SFloat, SFloat, SFloat, SFloat, SFloat, SFloat, SInt32)
 
-axis3fSubSamplerFinalize x y z count conversionFactor = (x', y', z', count') where
+axis3fSubSamplerFinalize shouldPredict 
+                         x y z xsum ysum zsum
+                         count conversionFactor = 
+  (x', y', z', xsum', ysum', zsum', count') where
 
   isCountNonzero = count > 0
+  shouldFinalize = shouldPredict && isCountNonzero
 
-  x' = x * conversionFactor / (unsafeCast count)
-  y' = y * conversionFactor / (unsafeCast count)
-  z' = z * conversionFactor / (unsafeCast count)
+  x' = if shouldFinalize then xsum * conversionFactor / (unsafeCast count) else x
+  y' = if shouldFinalize then ysum * conversionFactor / (unsafeCast count) else y
+  z' = if shouldFinalize then zsum * conversionFactor / (unsafeCast count) else z
+
+  xsum' = 0
+  ysum' = 0
+  zsum' = 0
 
   count' = 0
 
