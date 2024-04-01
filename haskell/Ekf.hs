@@ -110,11 +110,11 @@ pinit = [ raw_pinit ] ++ pinit
 
 ------------------------------------------------------------------------------
 
-data Quat = Quat {
-    qw :: SFloat
-  , qx :: SFloat
-  , qy :: SFloat
-  , qz :: SFloat
+data Quaternion = Quaternion {
+    qqw :: SFloat
+  , qqx :: SFloat
+  , qqy :: SFloat
+  , qqz :: SFloat
 }
 
 ------------------------------------------------------------------------------
@@ -164,46 +164,29 @@ subsampler_finalize shouldPredict converter subsamp = subsamp' where
   y' = if shouldFinalize then (converter (y ssum)) / cnt else (y samp)
   z' = if shouldFinalize then (converter (z ssum)) / cnt else (z samp)
 
-
   subsamp' = Axis3fSubSampler (Axis3f x' y' z') (Axis3f 0 0 0) 0
 
 ------------------------------------------------------------------------------
 
--- init :: (SEkfArray, (SFloat, SFloat, SFloat, SFloat), SAxis3fSubSampler)
 init :: (SEkfArray, (SFloat, SFloat, SFloat, SFloat))
 
 init = (pinit, (1, 0, 0, 0) )
 
-------------------------------------------------------------------------------
-
 -----------------------------------------------------------------------------
 
-predict :: SInt32 ->
-           SFloat -> SFloat -> SFloat -> 
-           SFloat -> SFloat -> SFloat -> SFloat ->
-           (SFloat, SFloat, SFloat, SFloat, SFloat, SFloat, SFloat) 
+predict :: SInt32 -> EkfState -> Quaternion -> (EkfState, Quaternion)
 
-predict lastPredictionMsec dx dy dz qw qx qy qz = 
-  (dx', dy', dz', qw', qx', qy', qz') where
+predict lastPredictionMsec ekfState quat = (ekfState', quat') where
 
   shouldPredict = nowMsec >= nextPredictionMsec
-
---  (gx', gy', gz', gxsum', gysum', gzsum', gcount') = 
---    axis3fSubSamplerFinalize shouldPredict gx gy gz gxsum gysum gzsum gcount deg2rad
-
-  dx' = dx
-  dy' = dy
-  dz' = dz
-
-  qw' = qw
-  qx' = qx
-  qy' = qy
-  qz' = qz
 
   dmsec = (unsafeCast $ nowMsec - lastPredictionMsec) :: SFloat
 
   dt = dmsec / 1000.0
 
+  ekfState' = ekfState
+
+  quat' = quat
 
 {--
   axis3fSubSamplerFinalize(&_accSubSampler, shouldPredict)
@@ -269,48 +252,38 @@ predict lastPredictionMsec dx dy dz qw qx qy qz =
 
 ------------------------------------------------------------------------------
 
-step :: (SFloat, SFloat, SFloat, SFloat, SFloat, SFloat) 
+step :: (SFloat, SFloat, SFloat, SFloat, SFloat, SFloat, SFloat) 
 
-step = (dx, dy, dz, phi, theta, psi) where
+step = (z, dx, dy, dz, phi, theta, psi) where
 
    is_init = ekfMode == mode_init
 
    is_predict = ekfMode == mode_predict
 
-   (dx', dy', dz', qw', qx', qy', qz') = 
-     predict _lastPredictionMsec _dx _dy _dz _qw _qx _qy _qz
-
-   gyroSubsamplerX = (if is_init then 0 else _gyroSubsamplerX) :: SFloat
-   gyroSubsamplerY = (if is_init then 0 else _gyroSubsamplerY) :: SFloat
-   gyroSubsamplerZ = (if is_init then 0 else _gyroSubsamplerZ) :: SFloat
-
-   accelSubsamplerX = (if is_init then 0 else _accelSubsamplerX) :: SFloat
-   accelSubsamplerY = (if is_init then 0 else _accelSubsamplerY) :: SFloat
-   accelSubsamplerZ = (if is_init then 0 else _accelSubsamplerZ) :: SFloat
+   z = 0
+   dx = 0
+   dy = 0
+   dz = 0
 
    pmat = if is_init then pinit else _pmat
 
-   dx = if is_init then 0 else if is_predict then dx' else _dx
+   ekfState = EkfState 0 0 0 0 0 0 0
 
-   dy = if is_init then 0 else if is_predict then dy' else _dy
+   quat = Quaternion _qw _qx _qy _qz
 
-   dz = if is_init then 0 
-        else if is_predict then dz' 
-        else r20 * _dx + r21 * _dy + r22 * _dz
+   (ekfState', quat') = predict lastPredictionMsec ekfState quat
 
-   z = (if is_init then 0 else _z) :: SFloat
-
-   qw = if is_init then 1 else if is_predict then qw' else _qw
-   qx = if is_init then 0 else if is_predict then qx' else _qx
-   qy = if is_init then 0 else if is_predict then qy' else _qy
-   qz = if is_init then 0 else if is_predict then qz' else _qz
+   qw = if is_init then 1 else if is_predict then (qqw quat') else _qw
+   qx = if is_init then 0 else if is_predict then (qqx quat') else _qx
+   qy = if is_init then 0 else if is_predict then (qqy quat') else _qy
+   qz = if is_init then 0 else if is_predict then (qqz quat') else _qz
 
    -- Set the is_initial rotation matrix to the identity. This only affects  the
    -- first prediction step, since in the finalization, after shifting 
    -- attitude errors into the attitude state, the rotation matrix is updated.
-   r20 = if is_init then 0 else _r20
-   r21 = if is_init then 0 else _r21
-   r22 = if is_init then 1 else _r22
+   r20 = (if is_init then 0 else _r20) :: SFloat
+   r21 = (if is_init then 0 else _r21) :: SFloat
+   r22 = (if is_init then 1 else _r22) :: SFloat
 
    isUpdated = if is_init then false else _isUpdated
 
@@ -328,12 +301,6 @@ step = (dx, dy, dz, phi, theta, psi) where
 
    _pmat = [raw_pinit] ++ pmat
 
-   -- EKF state
-   _dx = [0] ++ dx
-   _dy = [0] ++ dy
-   _dz = [0] ++ dz
-   _z = [0] ++ z
-
    -- Quaternion
    _qw = [0] ++ qw
    _qx = [0] ++ qx
@@ -345,16 +312,6 @@ step = (dx, dy, dz, phi, theta, psi) where
    _r21 = [0] ++ r21
    _r22 = [1] ++ r22
 
-   -- Gyro subsampler
-   _gyroSubsamplerX = [0] ++ gyroSubsamplerX 
-   _gyroSubsamplerY = [0] ++ gyroSubsamplerY 
-   _gyroSubsamplerZ = [0] ++ gyroSubsamplerZ 
-
-   -- Accel subsampler
-   _accelSubsamplerX = [0] ++ accelSubsamplerX 
-   _accelSubsamplerY = [0] ++ accelSubsamplerY 
-   _accelSubsamplerZ = [0] ++ accelSubsamplerZ 
-
    _isUpdated = [False] ++ isUpdated
    _lastPredictionMsec = [0] ++ lastPredictionMsec
    _lastProcessNoiseUpdateMsec = [0] ++ lastProcessNoiseUpdateMsec
@@ -363,11 +320,11 @@ step = (dx, dy, dz, phi, theta, psi) where
 
 spec = do
 
-  let (dx, dy, dz, phi, theta, psi) = step
+  let (z, dx, dy, dz, phi, theta, psi) = step
 
   trigger "setState" 
            (ekfMode == mode_get_state) 
-           [arg dx, arg dy, arg dz, arg phi, arg theta, arg psi]
+           [arg z, arg dx, arg dy, arg dz, arg phi, arg theta, arg psi]
 
 main = reify spec >>= 
 
