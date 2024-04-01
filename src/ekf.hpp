@@ -86,9 +86,9 @@ class Ekf {
             // set the initial rotation matrix to the identity. This only affects
             // the first prediction step, since in the finalization, after shifting
             // attitude errors into the attitude state, the rotation matrix is updated.
-            _r20 = 0;
-            _r21 = 0;
-            _r22 = 1;
+            _r.x = 0;
+            _r.y = 0;
+            _r.z = 1;
 
             // set covariances to zero (diagonals will be changed from
             // zero in the next section)
@@ -130,14 +130,14 @@ class Ekf {
             const auto e2 = gyro->z*dt/2;
 
             // altitude from body-frame velocity
-            const auto zdx = _r20*dt;
-            const auto zdy = _r21*dt;
-            const auto zdz = _r22*dt;
+            const auto zdx = _r.x*dt;
+            const auto zdy = _r.y*dt;
+            const auto zdz = _r.z*dt;
 
             // altitude from attitude error
-            const auto ze0 = (_ekfState.dy*_r22 - _ekfState.dz*_r21)*dt;
-            const auto ze1 = (- _ekfState.dx*_r22 + _ekfState.dz*_r20)*dt;
-            const auto ze2 = (_ekfState.dx*_r21 - _ekfState.dy*_r20)*dt;
+            const auto ze0 = (_ekfState.dy*_r.z - _ekfState.dz*_r.y)*dt;
+            const auto ze1 = (- _ekfState.dx*_r.z + _ekfState.dz*_r.x)*dt;
+            const auto ze2 = (_ekfState.dx*_r.y - _ekfState.dy*_r.x)*dt;
 
             // body-frame velocity from body-frame velocity
             const auto dxdx = 1; //drag negligible
@@ -154,15 +154,15 @@ class Ekf {
 
             // body-frame velocity from attitude error
             const auto dxe0 =  0;
-            const auto dye0 = -GRAVITY_MAGNITUDE*_r22*dt;
-            const auto dze0 =  GRAVITY_MAGNITUDE*_r21*dt;
+            const auto dye0 = -GRAVITY_MAGNITUDE*_r.z*dt;
+            const auto dze0 =  GRAVITY_MAGNITUDE*_r.y*dt;
 
-            const auto dxe1 =  GRAVITY_MAGNITUDE*_r22*dt;
+            const auto dxe1 =  GRAVITY_MAGNITUDE*_r.z*dt;
             const auto dye1 =  0;
-            const auto dze1 = -GRAVITY_MAGNITUDE*_r20*dt;
+            const auto dze1 = -GRAVITY_MAGNITUDE*_r.x*dt;
 
-            const auto dxe2 = -GRAVITY_MAGNITUDE*_r21*dt;
-            const auto dye2 =  GRAVITY_MAGNITUDE*_r20*dt;
+            const auto dxe2 = -GRAVITY_MAGNITUDE*_r.y*dt;
+            const auto dye2 =  GRAVITY_MAGNITUDE*_r.x*dt;
             const auto dze2 =  0;
 
             const auto e0e0 =  1 - e1*e1/2 - e2*e2/2;
@@ -256,7 +256,7 @@ class Ekf {
             // to estimate body angle while flying)
 
             // altitude update
-            _ekfState.z += shouldPredict ? _r20 * dx + _r21 * dy + _r22 * dz - 
+            _ekfState.z += shouldPredict ? _r.x * dx + _r.y * dy + _r.z * dz - 
                 GRAVITY_MAGNITUDE * dt2 / 2 :
                 0;
 
@@ -265,17 +265,17 @@ class Ekf {
 
             _ekfState.dx += shouldPredict ? 
                 dt * (accx + gyro->z * tmpSDY - 
-                        gyro->y * tmpSDZ - GRAVITY_MAGNITUDE * _r20) : 
+                        gyro->y * tmpSDZ - GRAVITY_MAGNITUDE * _r.x) : 
                 0;
 
             _ekfState.dy += shouldPredict ?
                 dt * (accy - gyro->z * tmpSDX + gyro->x * tmpSDZ - 
-                        GRAVITY_MAGNITUDE * _r21) : 
+                        GRAVITY_MAGNITUDE * _r.y) : 
                 0;
 
             _ekfState.dz += shouldPredict ?
                 dt * (acc->z + gyro->y * tmpSDX - gyro->x * 
-                        tmpSDY - GRAVITY_MAGNITUDE * _r22) :
+                        tmpSDY - GRAVITY_MAGNITUDE * _r.z) :
                 0;
 
             _qw = shouldPredict ? tmpq0/norm : _qw;
@@ -330,7 +330,7 @@ class Ekf {
         void updateWithRange(const rangeMeasurement_t *range)
         {
             const auto angle = max( 0, 
-                    fabsf(acosf(_r22)) - 
+                    fabsf(acosf(_r.z)) - 
                     DEGREES_TO_RADIANS * (15.0f / 2.0f));
 
             const auto predictedDistance = _ekfState.z / cosf(angle);
@@ -355,7 +355,7 @@ class Ekf {
 
             // Only update the filter if the measurement is reliable 
             // (\hat{h} -> infty when R[2][2] -> 0)
-            const auto shouldUpdate = fabs(_r22) > 0.1f && _r22 > 0;
+            const auto shouldUpdate = fabs(_r.z) > 0.1f && _r.z > 0;
             scalarUpdate(h, measuredDistance-predictedDistance, 
                     range->stdDev, shouldUpdate);
         }
@@ -404,14 +404,14 @@ class Ekf {
             // predicts the number of accumulated pixels in the x-direction
             float hx[KC_STATE_DIM] = {};
             auto predictedNX = (flow->dt * Npix / thetapix ) * 
-                ((dx_g * _r22 / z_g) - omegay_b);
+                ((dx_g * _r.z / z_g) - omegay_b);
             auto measuredNX = flow->dpixelx*FLOW_RESOLUTION;
 
             // derive measurement equation with respect to dx (and z?)
             hx[KC_STATE_Z] = (Npix * flow->dt / thetapix) * 
-                ((_r22 * dx_g) / (-z_g * z_g));
+                ((_r.z * dx_g) / (-z_g * z_g));
             hx[KC_STATE_DX] = (Npix * flow->dt / thetapix) * 
-                (_r22 / z_g);
+                (_r.z / z_g);
 
             //First update
             scalarUpdate(hx, (measuredNX-predictedNX), 
@@ -420,13 +420,13 @@ class Ekf {
             // ~~~ Y velocity prediction and update ~~~
             float hy[KC_STATE_DIM] = {};
             auto predictedNY = (flow->dt * Npix / thetapix ) * 
-                ((dy_g * _r22 / z_g) + omegax_b);
+                ((dy_g * _r.z / z_g) + omegax_b);
             auto measuredNY = flow->dpixely*FLOW_RESOLUTION;
 
             // derive measurement equation with respect to dy (and z?)
             hy[KC_STATE_Z] = (Npix * flow->dt / thetapix) * 
-                ((_r22 * dy_g) / (-z_g * z_g));
-            hy[KC_STATE_DY] = (Npix * flow->dt / thetapix) * (_r22 / z_g);
+                ((_r.z * dy_g) / (-z_g * z_g));
+            hy[KC_STATE_DY] = (Npix * flow->dt / thetapix) * (_r.z / z_g);
 
             // Second update
             scalarUpdate(hy, (measuredNY-predictedNY), 
@@ -442,9 +442,9 @@ class Ekf {
             state.z = _ekfState.z;
 
             state.dz = 
-                _r20 * _ekfState.dx +
-                _r21 * _ekfState.dy +
-                _r22 * _ekfState.dz;
+                _r.x * _ekfState.dx +
+                _r.y * _ekfState.dy +
+                _r.z * _ekfState.dz;
 
             state.phi = RADIANS_TO_DEGREES * atan2((2 * (_qy*_qz + _qw*_qx)),
                     (_qw*_qw - _qx*_qx - _qy*_qy + _qz*_qz));
@@ -468,7 +468,6 @@ class Ekf {
         }
 
      private:
-
 
         // The quad's attitude as a quaternion (w,x,y,z) We store as a quaternion
         // to allow easy normalization (in comparison to a rotation matrix),
@@ -511,7 +510,6 @@ class Ekf {
             KC_STATE_E1,
             KC_STATE_E2,
             KC_STATE_DIM
-
         };
 
         typedef struct {
@@ -533,9 +531,7 @@ class Ekf {
 
         // Third row (Z) of attitude as a rotation matrix (used by the prediction,
         // updated by the finalization)
-        float _r20;
-        float _r21;
-        float _r22;
+        Axis3f _r;
 
         // The covariance matrix
         float _Pmat[KC_STATE_DIM][KC_STATE_DIM];
@@ -642,9 +638,9 @@ class Ekf {
 
             // Convert the new attitude to a rotation matrix, such that we can
             // rotate body-frame velocity and acc
-            _r20 = 2 * _qx * _qz - 2 * _qw * _qy;
-            _r21 = 2 * _qy * _qz + 2 * _qw * _qx;
-            _r22 = _qw * _qw - _qx * _qx - _qy * _qy + _qz * _qz;
+            _r.x = 2 * _qx * _qz - 2 * _qw * _qy;
+            _r.y = 2 * _qy * _qz + 2 * _qw * _qx;
+            _r.z = _qw * _qw - _qx * _qx - _qy * _qy + _qz * _qz;
 
             // Reset the attitude error
             _ekfState.e0 = 0;
