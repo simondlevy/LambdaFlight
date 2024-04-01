@@ -187,7 +187,6 @@ class Ekf {
                 /*E2*/   {0, 0,    0,    0,    e2e0, e2e1, e2e2}  
             };
 
-
             const auto dt2 = dt * dt;
 
             axis3fSubSamplerFinalize(&_accSubSampler, shouldPredict);
