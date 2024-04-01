@@ -233,6 +233,15 @@ predict lastPredictionMsec ekfState quat r gyroSubSampler accelSubSampler =
   e2e1 = (-e0) + e1 * e2/2
   e2e2 = 1 - e0 * e0/2 - e1 * e1/2
 
+  a =  array [--    z   dx  dy  dz  e0  e1  e2
+             array [0,  0,  0,  0,  0,  0,  0], -- z
+             array [0,  0,  0,  0,  0,  0,  0], -- dx
+             array [0,  0,  0,  0,  0,  0,  0], -- dy
+             array [0,  0,  0,  0,  0,  0,  0], -- dz
+             array [0,  0,  0,  0,  0,  0,  0], -- e0
+             array [0,  0,  0,  0,  0,  0,  0], -- e1
+             array [0,  0,  0,  0,  0,  0,  0]  -- e2
+             ] :: EkfArray
   
   ekfState' = ekfState
 
