@@ -108,29 +108,48 @@ pinit :: SEkfArray
 
 pinit = [ raw_pinit ] ++ pinit
 
+------------------------------------------------------------------------------
+
+data Axis3f = Axis3f {
+    xx :: SFloat
+  , yy :: SFloat
+  , zz :: SFloat
+}
+
+data Axis3fSubSampler = Axis3fSubSampler { 
+    sum :: Axis3f
+  , count :: SInt32
+  , subSample :: Axis3f
+}
+
+subsampler_init = Axis3fSubSampler (Axis3f 0 0 0) 0 (Axis3f 0 0 0)
+
+------------------------------------------------------------------------------
+
+-- init :: (SEkfArray, (SFloat, SFloat, SFloat, SFloat), SAxis3fSubSampler)
 init :: (SEkfArray, (SFloat, SFloat, SFloat, SFloat))
 
-init = (pinit, (1, 0, 0, 0))
+init = (pinit, (1, 0, 0, 0) )
 
 ------------------------------------------------------------------------------
 
 axis3fSubSamplerFinalize :: SBool -> 
                             SFloat -> SFloat -> SFloat -> 
                             SFloat -> SFloat -> SFloat -> 
-                            SInt32 -> SFloat ->
+                            SInt32 -> (SFloat -> SFloat) ->
                             (SFloat, SFloat, SFloat, SFloat, SFloat, SFloat, SInt32)
 
 axis3fSubSamplerFinalize shouldPredict 
                          x y z xsum ysum zsum
-                         count conversionFactor = 
+                         count conversionFun = 
   (x', y', z', xsum', ysum', zsum', count') where
 
   isCountNonzero = count > 0
   shouldFinalize = shouldPredict && isCountNonzero
 
-  x' = if shouldFinalize then xsum * conversionFactor / (unsafeCast count) else x
-  y' = if shouldFinalize then ysum * conversionFactor / (unsafeCast count) else y
-  z' = if shouldFinalize then zsum * conversionFactor / (unsafeCast count) else z
+  x' = if shouldFinalize then (conversionFun xsum) / (unsafeCast count) else x
+  y' = if shouldFinalize then (conversionFun ysum) / (unsafeCast count) else y
+  z' = if shouldFinalize then (conversionFun zsum) / (unsafeCast count) else z
 
   xsum' = 0
   ysum' = 0
@@ -147,6 +166,9 @@ predict :: SFloat -> SFloat -> SFloat ->
 predict dx dy dz qw qx qy qz = (dx', dy', dz', qw', qx', qy', qz') where
 
   shouldPredict = nowMsec >= nextPredictionMsec
+
+--  (gx', gy', gz', gxsum', gysum', gzsum', gcount') = 
+--    axis3fSubSamplerFinalize shouldPredict gx gy gz gxsum gysum gzsum gcount deg2rad
 
   dx' = dx
   dy' = dy
