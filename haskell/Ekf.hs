@@ -201,6 +201,11 @@ predict lastPredictionMsec ekfState quat r gyroSubSampler accelSubSampler =
   zdy = (y r) * dt
   zdz = (z r) * dt
 
+  -- altitude from attitude error
+  ze0 = ((dy ekfState) * (z r) - (dz ekfState) * (y r)) * dt
+  ze1 = (- (dx ekfState) * (z r) + (dz ekfState) * (x r)) * dt
+  ze2 = ((dx ekfState) * (y r) - (dy ekfState) * (x r)) * dt
+
 
   ekfState' = ekfState
 
