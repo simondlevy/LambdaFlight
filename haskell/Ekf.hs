@@ -245,11 +245,12 @@ predict lastPredictionMsec ekfState quat r gyroSubSampler accelSubSampler =
 
   dt2 = dt * dt
   
+  accelSubSampler' = subsampler_finalize shouldPredict mss2g accelSubSampler
+
   ekfState' = ekfState
 
   quat' = quat
 
-  accelSubSampler' = accelSubSampler
 
 ------------------------------------------------------------------------------
 
