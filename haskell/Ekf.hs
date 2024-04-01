@@ -221,8 +221,8 @@ predict lastPredictionMsec ekfState quat r gyroSubSampler accelSubSampler =
 
   -- body-frame velocity from attitude error
   dxe0 =  0 :: SFloat
-  dye0 = (-gravity_magnitude) * (z r) * dt
-  dze0 =   gravity_magnitude  * (y r) * dt
+  dye0 = -gravity_magnitude * (z r) * dt
+  dze0 =  gravity_magnitude * (y r) * dt
 
   dxe1 =  gravity_magnitude * (z r) * dt
   dye1 =  0 :: SFloat
