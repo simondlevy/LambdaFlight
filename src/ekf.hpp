@@ -117,12 +117,10 @@ class Ekf {
         {
             const bool shouldPredict = nowMs >= nextPredictionMs;
 
-            axis3fSubSamplerFinalize(&_accSubSampler, shouldPredict);
-
             axis3fSubSamplerFinalize(&_gyroSubSampler, shouldPredict);
 
-            const Axis3f * acc = &_accSubSampler.subSample; 
             const Axis3f * gyro = &_gyroSubSampler.subSample; 
+
             const float dt = (nowMs - _lastPredictionMs) / 1000.0f;
 
             const auto e0 = gyro->x*dt/2;
@@ -191,6 +189,9 @@ class Ekf {
 
 
             const auto dt2 = dt * dt;
+
+            axis3fSubSamplerFinalize(&_accSubSampler, shouldPredict);
+            const Axis3f * acc = &_accSubSampler.subSample; 
 
             // Position updates in the body frame (will be rotated to inertial frame);
             // thrust can only be produced in the body's Z direction
