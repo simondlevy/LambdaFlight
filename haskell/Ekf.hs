@@ -28,12 +28,12 @@ import Utils
 
 -- Initial variances, uncertain of position, but know we're stationary and
 -- roughly flat
-stdev_initial_position_z          = 1.0  :: Float
-stdev_initial_velocity            = 0.01 :: Float
-stdev_initial_attituderoll_pitch = 0.01 :: Float
-stdev_initial_attitude_yaw        = 0.01 :: Float
+stdev_initial_position_z         = 1.0  :: SFloat
+stdev_initial_velocity           = 0.01 :: SFloat
+stdev_initial_attituderoll_pitch = 0.01 :: SFloat
+stdev_initial_attitude_yaw       = 0.01 :: SFloat
 
-gravity_magnitude = 9.81 :: Float
+gravity_magnitude = 9.81 :: SFloat
 
 ------------------------------------------------------------------------------
 
@@ -80,7 +80,7 @@ accelZ = extern "stream_accelZ" Nothing
 
 ------------------------------------------------------------------------------
 
-sqr :: Float -> Float
+sqr :: SFloat -> SFloat
 sqr x = x * x
 
 q = sqr stdev_initial_position_z 
@@ -88,25 +88,19 @@ d = sqr stdev_initial_velocity
 e = sqr stdev_initial_attituderoll_pitch
 r = sqr stdev_initial_attitude_yaw
 
-type EkfArray = Array 7 (Array 7 Float)
+type EkfMatrix = Array 7 (Array 7 SFloat)
 
-raw_pinit :: EkfArray
+pinit :: EkfMatrix
 
-raw_pinit =  array [--  z   dx  dy  dz  e0  e1  e2
-                 array [q,  0,  0,  0,  0,  0,  0], -- z
-                 array [0,  d,  0,  0,  0,  0,  0], -- dx
-                 array [0,  0,  d,  0,  0,  0,  0], -- dy
-                 array [0,  0,  0,  d,  0,  0,  0], -- dz
-                 array [0,  0,  0,  0,  e,  0,  0], -- e0
-                 array [0,  0,  0,  0,  0,  e,  0], -- e1
-                 array [0,  0,  0,  0,  0,  0,  r]  -- e2
+pinit =  array [--  z   dx  dy  dz  e0  e1  e2
+             array [q,  0,  0,  0,  0,  0,  0], -- z
+             array [0,  d,  0,  0,  0,  0,  0], -- dx
+             array [0,  0,  d,  0,  0,  0,  0], -- dy
+             array [0,  0,  0,  d,  0,  0,  0], -- dz
+             array [0,  0,  0,  0,  e,  0,  0], -- e0
+             array [0,  0,  0,  0,  0,  e,  0], -- e1
+             array [0,  0,  0,  0,  0,  0,  r]  -- e2
              ] 
-
-type SEkfArray = Stream EkfArray
-
-pinit :: SEkfArray
-
-pinit = [ raw_pinit ] ++ pinit
 
 ------------------------------------------------------------------------------
 
@@ -137,16 +131,18 @@ data Axis3f = Axis3f {
   , z :: SFloat
 }
 
-data Axis3fSubSampler = Axis3fSubSampler { 
+------------------------------------------------------------------------------
+
+data SubSampler = SubSampler { 
     sample :: Axis3f
   , sum    :: Axis3f
   , count  :: SInt32
 }
 
-subsampler_init = Axis3fSubSampler (Axis3f 0 0 0) (Axis3f 0 0 0) 0
+subsampler_init = SubSampler (Axis3f 0 0 0) (Axis3f 0 0 0) 0
 
-subsampler_finalize :: SBool -> (SFloat -> SFloat) -> Axis3fSubSampler -> 
-  Axis3fSubSampler
+subsampler_finalize :: SBool -> (SFloat -> SFloat) -> SubSampler -> 
+  SubSampler
 
 subsampler_finalize shouldPredict converter subsamp = subsamp' where
 
@@ -164,91 +160,96 @@ subsampler_finalize shouldPredict converter subsamp = subsamp' where
   y' = if shouldFinalize then (converter (y ssum)) / cnt else (y samp)
   z' = if shouldFinalize then (converter (z ssum)) / cnt else (z samp)
 
-  subsamp' = Axis3fSubSampler (Axis3f x' y' z') (Axis3f 0 0 0) 0
+  subsamp' = SubSampler (Axis3f x' y' z') (Axis3f 0 0 0) 0
 
-------------------------------------------------------------------------------
-
-init :: (SEkfArray, (SFloat, SFloat, SFloat, SFloat))
-
-init = (pinit, (1, 0, 0, 0) )
 
 -----------------------------------------------------------------------------
 
-predict :: SInt32 -> EkfState -> Quaternion -> (EkfState, Quaternion)
+predict :: SInt32 -> EkfState -> Quaternion -> Axis3f ->  SubSampler -> SubSampler ->
+  (EkfState, Quaternion, SubSampler, SubSampler)
 
-predict lastPredictionMsec ekfState quat = (ekfState', quat') where
+predict lastPredictionMsec ekfState quat r gyroSubSampler accelSubSampler = 
+  (ekfState', quat', gyroSubSampler', accelSubSampler') where
 
   shouldPredict = nowMsec >= nextPredictionMsec
+
+  gyroSubSampler' = subsampler_finalize shouldPredict deg2rad gyroSubSampler
+
+  gyro = (sample gyroSubSampler')
 
   dmsec = (unsafeCast $ nowMsec - lastPredictionMsec) :: SFloat
 
   dt = dmsec / 1000.0
 
+  e0 = (x gyro) * dt / 2
+  e1 = (y gyro) * dt / 2
+  e2 = (z gyro) * dt / 2
+
+  -- altitude from body-frame velocity
+  zdx = (x r) * dt
+  zdy = (y r) * dt
+  zdz = (z r) * dt
+
+  -- altitude from attitude error
+  ze0 = ((dy ekfState) * (z r) - (dz ekfState) * (y r)) * dt
+  ze1 = (- (dx ekfState) * (z r) + (dz ekfState) * (x r)) * dt
+  ze2 = ((dx ekfState) * (y r) - (dy ekfState) * (x r)) * dt
+
+  -- body-frame velocity from body-frame velocity
+  dxdx = 1 :: SFloat -- drag negligible
+  dydx = -(z gyro) * dt
+  dzdx =  (y gyro) *dt
+
+  dxdy =  (z gyro) * dt
+  dydy =  1 :: SFloat --drag negligible
+  dzdy = -(x gyro) * dt
+
+  dxdz = -(y gyro) * dt
+  dydz =  (x gyro) * dt
+  dzdz =  1 --drag negligible
+
+  -- body-frame velocity from attitude error
+  dxe0 =  0 :: SFloat
+  dye0 = -gravity_magnitude * (z r) * dt
+  dze0 =  gravity_magnitude * (y r) * dt
+
+  dxe1 =  gravity_magnitude * (z r) * dt
+  dye1 =  0 :: SFloat
+  dze1 = -gravity_magnitude * (x r) * dt
+
+  dxe2 = -gravity_magnitude * (y r) * dt
+  dye2 =  gravity_magnitude * (x r) * dt
+  dze2 =  0 :: SFloat
+
+  e0e0 =  1 - e1 * e1/2 - e2 * e2/2
+  e0e1 =  e2 + e0 * e1/2
+  e0e2 = -e1 + e0 * e2/2
+
+  e1e0 = (-e2) + e0 * e1/2
+  e1e1 =  1 - e0 * e0 /2 - e2 * e2 /2
+  e1e2 =  e0 + e1 * e2/2
+
+  e2e0 =  e1 + e0 * e2/2
+  e2e1 = (-e0) + e1 * e2/2
+  e2e2 = 1 - e0 * e0/2 - e1 * e1/2
+
+  a =  array [--    z   dx    dy    dz    e0    e1    e2
+             array [0,  zdx,  zdy,  zdz,  ze0,  ze1,  ze2], -- z
+             array [0, dxdx, dxdy, dxdz, dxe0, dxe1, dxe2], -- dx
+             array [0, dydx, dydy, dydz, dye0, dye1, dye2], -- dy
+             array [0, dzdx, dzdy, dzdz, dze0, dze1, dze2], -- dz
+             array [0, 0,    0,    0,    e0e0, e0e1, e0e2], -- e0
+             array [0, 0,    0,    0,    e1e0, e1e1, e1e2], -- e1
+             array [0, 0,    0,    0,    e2e0, e2e1, e2e2]  -- e2
+             ] :: EkfMatrix
+
+  dt2 = dt * dt
+  
   ekfState' = ekfState
 
   quat' = quat
 
-{--
-  axis3fSubSamplerFinalize(&_accSubSampler, shouldPredict)
-
-  axis3fSubSamplerFinalize(&_gyroSubSampler, shouldPredict)
-
-  const Axis3f * acc = &_accSubSampler.subSample 
-  const Axis3f * gyro = &_gyroSubSampler.subSample 
-
-
-  e0 = gx*dt/2
-  e1 = gy*dt/2
-  e2 = gz*dt/2
-
-  -- altitude from body-frame velocity
-  zdx = r20*dt
-  zdy = r21*dt
-  zdz = r22*dt
-
-  -- altitude from attitude error
-  ze0 = (dy*r22 - dz*r21)*dt
-  ze1 = (- dx*r22 + dz*r20)*dt
-  ze2 = (dx*r21 - dy*r20)*dt
-
-  -- body-frame velocity from body-frame velocity
-  dxdx = 1 --drag negligible
-  dydx =-gz*dt
-  dzdx = gy*dt
-
-  dxdy = gz*dt
-  dydy = 1 --drag negligible
-  dzdy =-gx*dt
-
-  dxdz =-gy*dt
-  dydz = gx*dt
-  dzdz = 1 --drag negligible
-
-  -- body-frame velocity from attitude error
-  dxe0 =  0
-  dye0 = -gravity_magnitude*r22*dt
-  dze0 =  gravity_magnitude*r21*dt
-
-  dxe1 =  gravity_magnitude*r22*dt
-  dye1 =  0
-  dze1 = -gravity_magnitude*r20*dt
-
-  dxe2 = -gravity_magnitude*r21*dt
-  dye2 =  gravity_magnitude*r20*dt
-  dze2 =  0
-
-  e0e0 =  1 - e1*e1/2 - e2*e2/2
-  e0e1 =  e2 + e0*e1/2
-  e0e2 = -e1 + e0*e2/2
-
-  e1e0 = -e2 + e0*e1/2
-  e1e1 =  1 - e0*e0/2 - e2*e2/2
-  e1e2 =  e0 + e1*e2/2
-
-  e2e0 =  e1 + e0*e2/2
-  e2e1 = -e0 + e1*e2/2
-  e2e2 = 1 - e0*e0/2 - e1*e1/2
---}
+  accelSubSampler' = accelSubSampler
 
 ------------------------------------------------------------------------------
 
@@ -265,13 +266,17 @@ step = (z, dx, dy, dz, phi, theta, psi) where
    dy = 0
    dz = 0
 
-   pmat = if is_init then pinit else _pmat
-
    ekfState = EkfState 0 0 0 0 0 0 0
 
    quat = Quaternion _qw _qx _qy _qz
 
-   (ekfState', quat') = predict lastPredictionMsec ekfState quat
+   r = Axis3f 0 0 0
+
+   gyroSubSampler = subsampler_init
+   accelSubSampler = subsampler_init
+
+   (ekfState', quat', gyroSubSampler', accelSubSampler') = 
+     predict lastPredictionMsec ekfState quat r gyroSubSampler accelSubSampler
 
    qw = if is_init then 1 else if is_predict then (qqw quat') else _qw
    qx = if is_init then 0 else if is_predict then (qqx quat') else _qx
@@ -298,8 +303,6 @@ step = (z, dx, dy, dz, phi, theta, psi) where
    theta = -(rad2deg $ asin ((-2) * (qx*qz - qw*qy)))
 
    psi = rad2deg $ atan2 (2 * (qx*qy + qw*qz)) (qw*qw + qx*qx - qy*qy - qz*qz)
-
-   _pmat = [raw_pinit] ++ pmat
 
    -- Quaternion
    _qw = [0] ++ qw
