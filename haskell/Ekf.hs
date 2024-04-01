@@ -159,11 +159,13 @@ axis3fSubSamplerFinalize shouldPredict
 
 ------------------------------------------------------------------------------
 
-predict :: SFloat -> SFloat -> SFloat -> 
+predict :: SInt32 ->
+           SFloat -> SFloat -> SFloat -> 
            SFloat -> SFloat -> SFloat -> SFloat ->
            (SFloat, SFloat, SFloat, SFloat, SFloat, SFloat, SFloat) 
 
-predict dx dy dz qw qx qy qz = (dx', dy', dz', qw', qx', qy', qz') where
+predict lastPredictionMsec dx dy dz qw qx qy qz = 
+  (dx', dy', dz', qw', qx', qy', qz') where
 
   shouldPredict = nowMsec >= nextPredictionMsec
 
@@ -179,6 +181,10 @@ predict dx dy dz qw qx qy qz = (dx', dy', dz', qw', qx', qy', qz') where
   qy' = qy
   qz' = qz
 
+  dmsec = nowMsec - lastPredictionMsec
+
+  -- dt = (unsafeCast ()) / 1000.0
+
 {--
   axis3fSubSamplerFinalize(&_accSubSampler, shouldPredict)
 
@@ -187,7 +193,6 @@ predict dx dy dz qw qx qy qz = (dx', dy', dz', qw', qx', qy', qz') where
   const Axis3f * acc = &_accSubSampler.subSample 
   const Axis3f * gyro = &_gyroSubSampler.subSample 
 
-  dt = (nowMsec - lastPredictionMsec) / 1000.0
 
   e0 = gx*dt/2
   e1 = gy*dt/2
@@ -252,7 +257,8 @@ step = (dx, dy, dz, phi, theta, psi) where
 
    is_predict = ekfMode == mode_predict
 
-   (dx', dy', dz', qw', qx', qy', qz') = predict _dx _dy _dz _qw _qx _qy _qz
+   (dx', dy', dz', qw', qx', qy', qz') = 
+     predict _lastPredictionMsec _dx _dy _dz _qw _qx _qy _qz
 
    gyroSubsamplerX = (if is_init then 0 else _gyroSubsamplerX) :: SFloat
    gyroSubsamplerY = (if is_init then 0 else _gyroSubsamplerY) :: SFloat
