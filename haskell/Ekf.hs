@@ -303,6 +303,9 @@ predict lastPredictionMsec ekfState quat r gyroSubSampler accelSubSampler =
   tmpq2 = rotateQuat (dqy * qw - dqz * qx + dqw * qy + dqx * qz) qy_init isFlying
   tmpq3 = rotateQuat (dqz * qw + dqy * qx - dqx * qy + dqw * qz) qz_init isFlying
 
+  -- Normalize and store the result
+  norm = sqrt (tmpq0*tmpq0 + tmpq1*tmpq1 + tmpq2*tmpq2 + tmpq3*tmpq3) + eps
+
  
   ekfState' = ekfState
 

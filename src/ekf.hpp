@@ -240,14 +240,6 @@ class Ekf {
                 sqrt(tmpq0*tmpq0 + tmpq1*tmpq1 + tmpq2*tmpq2 + tmpq3*tmpq3) + 
                 EPS;
 
-            // ====== COVARIANCE UPDATE ======
-
-            float At[KC_STATE_DIM][KC_STATE_DIM] = {};
-            transpose(A, At);     // A'
-            float AP[KC_STATE_DIM][KC_STATE_DIM] = {};
-            multiply(A, _Pmat, AP, true);  // AP
-            multiply(AP, At, _Pmat, shouldPredict); // APA'
-
             // Process noise is added after the return from the prediction step
 
             // ====== PREDICTION STEP ======
@@ -290,6 +282,14 @@ class Ekf {
             const auto dt1 = (nowMs - _lastProcessNoiseUpdateMs) / 1000.0f;
 
             const auto isDtPositive = dt1 > 0;
+
+            // ====== COVARIANCE UPDATE ======
+
+            float At[KC_STATE_DIM][KC_STATE_DIM] = {};
+            transpose(A, At);     // A'
+            float AP[KC_STATE_DIM][KC_STATE_DIM] = {};
+            multiply(A, _Pmat, AP, true);  // AP
+            multiply(AP, At, _Pmat, shouldPredict); // APA'
 
             // add process noise on position
             _Pmat[KC_STATE_Z][KC_STATE_Z] += isDtPositive ?
