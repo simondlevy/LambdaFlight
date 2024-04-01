@@ -26,12 +26,21 @@ import Copilot.Compile.C99
 
 import Utils
 
+-- Quaternion used for initial orientation
+qw_init = 1 :: SFloat
+qx_init = 0 :: SFloat
+qy_init = 0 :: SFloat
+qz_init = 0 :: SFloat
+
 -- Initial variances, uncertain of position, but know we're stationary and
 -- roughly flat
 stdev_initial_position_z         = 1.0  :: SFloat
 stdev_initial_velocity           = 0.01 :: SFloat
 stdev_initial_attituderoll_pitch = 0.01 :: SFloat
 stdev_initial_attitude_yaw       = 0.01 :: SFloat
+
+--The reversion of pitch and roll to zero
+rollpitch_zero_reversion = 0.001 :: SFloat
 
 gravity_magnitude = 9.81 :: SFloat
 
@@ -283,9 +292,32 @@ predict lastPredictionMsec ekfState quat r gyroSubSampler accelSubSampler =
   dqy = sa * dtwy / angle
   dqz = sa * dtwz / angle
 
+  qw = qqw quat
+  qx = qqx quat
+  qy = qqy quat
+  qz = qqz quat
+
+  -- Rotate the quad's attitude by the delta quaternion vector computed above
+  tmpq0 = rotateQuat (dqw * qw - dqx * qx - dqy * qy - dqz * qz) qw_init isFlying
+  tmpq1 = rotateQuat (dqx * qw + dqw * qx + dqz * qy - dqy * qz) qx_init isFlying
+  tmpq2 = rotateQuat (dqy * qw - dqz * qx + dqw * qy + dqx * qz) qy_init isFlying
+  tmpq3 = rotateQuat (dqz * qw + dqy * qx - dqx * qy + dqw * qz) qz_init isFlying
+
+ 
   ekfState' = ekfState
 
   quat' = quat
+
+
+rotateQuat :: SFloat -> SFloat -> SBool -> SFloat
+
+rotateQuat val initVal isFlying = val' where
+
+    keep = 1 - rollpitch_zero_reversion
+
+    val' = (val * (if isFlying then 1 else keep)) +
+        (if isFlying then 0 else rollpitch_zero_reversion * initVal)
+
 
 
 ------------------------------------------------------------------------------
