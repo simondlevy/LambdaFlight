@@ -193,9 +193,9 @@ predict lastPredictionMsec ekfState quat r gyroSubSampler accelSubSampler =
 
   dt = dmsec / 1000.0
 
-  e0 = (x gyro) * dt / 2
-  e1 = (y gyro) * dt / 2
-  e2 = (z gyro) * dt / 2
+  e0' = (x gyro) * dt / 2
+  e1' = (y gyro) * dt / 2
+  e2' = (z gyro) * dt / 2
 
   -- altitude from body-frame velocity
   zdx = (x r) * dt
@@ -233,17 +233,17 @@ predict lastPredictionMsec ekfState quat r gyroSubSampler accelSubSampler =
   dye2 =  gravity_magnitude * (x r) * dt
   dze2 =  0 :: SFloat
 
-  e0e0 =  1 - e1 * e1/2 - e2 * e2/2
-  e0e1 =  e2 + e0 * e1/2
-  e0e2 = -e1 + e0 * e2/2
+  e0e0 =  1 - e1' * e1'/2 - e2' * e2'/2
+  e0e1 =  e2' + e0' * e1'/2
+  e0e2 = -e1' + e0' * e2'/2
 
-  e1e0 = (-e2) + e0 * e1/2
-  e1e1 =  1 - e0 * e0 /2 - e2 * e2 /2
-  e1e2 =  e0 + e1 * e2/2
+  e1e0 = (-e2') + e0' * e1'/2
+  e1e1 =  1 - e0' * e0' /2 - e2' * e2' /2
+  e1e2 =  e0' + e1' * e2'/2
 
-  e2e0 =  e1 + e0 * e2/2
-  e2e1 = (-e0) + e1 * e2/2
-  e2e2 = 1 - e0 * e0/2 - e1 * e1/2
+  e2e0 =  e1' + e0' * e2'/2
+  e2e1 = (-e0') + e1' * e2'/2
+  e2e2 = 1 - e0' * e0'/2 - e1' * e1'/2
 
   a =  array [--    z   dx    dy    dz    e0    e1    e2
              array [0,  zdx,  zdy,  zdz,  ze0,  ze1,  ze2], -- z
@@ -323,17 +323,29 @@ predict lastPredictionMsec ekfState quat r gyroSubSampler accelSubSampler =
   -- Body-velocity update: accelerometers - gyros cross velocity
   -- - gravity in body frame
 
-  dx'' = (dx ekfState) + 
-                 if shouldPredict 
+  dx'' = (dx ekfState) + if shouldPredict 
                  then dt * (accx + (z gyro) * tmpSDY - (y gyro) * tmpSDZ - 
                       gravity_magnitude * (x r)) 
                  else 0
 
+  dy'' = (dy ekfState) + if shouldPredict 
+                 then dt * (accy + (z gyro) * tmpSDX - (x gyro) * tmpSDZ - 
+                      gravity_magnitude * (y r)) 
+                 else 0
 
- 
-  ekfState' = ekfState
+  dz'' = (dz ekfState) + if shouldPredict 
+                 then dt * ((z accel) + (y gyro) * tmpSDX - (x gyro) * tmpSDY - 
+                      gravity_magnitude * (z r)) 
+                 else 0
 
-  quat' = quat
+  qw' = if shouldPredict then tmpq0/norm else qw
+  qx' = if shouldPredict then tmpq1/norm else qx 
+  qy' = if shouldPredict then tmpq2/norm else qy 
+  qz' = if shouldPredict then tmpq3/norm else qz
+
+  ekfState' = EkfState zz'' dx'' dy'' dz'' (e0 ekfState) (e1 ekfState) (e2 ekfState)
+
+  quat' = Quaternion qw' qx' qy' qz'
 
 
 rotateQuat :: SFloat -> SFloat -> SBool -> SFloat

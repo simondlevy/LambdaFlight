@@ -256,8 +256,8 @@ class Ekf {
             // - gravity in body frame
 
             _ekfState.dx += shouldPredict ? 
-                dt * (accx + gyro->z * tmpSDY - 
-                        gyro->y * tmpSDZ - GRAVITY_MAGNITUDE * _r.x) : 
+                dt * (accx + gyro->z * tmpSDY - gyro->y * tmpSDZ - 
+                        GRAVITY_MAGNITUDE * _r.x) : 
                 0;
 
             _ekfState.dy += shouldPredict ?
@@ -266,8 +266,8 @@ class Ekf {
                 0;
 
             _ekfState.dz += shouldPredict ?
-                dt * (acc->z + gyro->y * tmpSDX - gyro->x * 
-                        tmpSDY - GRAVITY_MAGNITUDE * _r.z) :
+                dt * (acc->z + gyro->y * tmpSDX - gyro->x * tmpSDY - 
+                         GRAVITY_MAGNITUDE * _r.z) :
                 0;
 
             _qw = shouldPredict ? tmpq0/norm : _qw;
