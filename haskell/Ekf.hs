@@ -255,6 +255,14 @@ predict lastPredictionMsec ekfState quat r gyroSubSampler accelSubSampler =
   dy' = (dy ekfState) * dt + (if isFlying then 0 else (y accel) * dt2 / 2)
   dz' = (dz ekfState) * dt + (z accel)  * dt2 / 2 
 
+  -- Keep previous time step's state for the update
+  tmpSDX = (dx ekfState)
+  tmpSDY = (dy ekfState)
+  tmpSDZ = (dz ekfState)
+
+  accx = if isFlying then 0 else x accel
+  accy = if isFlying then 0 else y accel
+ 
   ekfState' = ekfState
 
   quat' = quat
