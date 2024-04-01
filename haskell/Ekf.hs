@@ -306,6 +306,19 @@ predict lastPredictionMsec ekfState quat r gyroSubSampler accelSubSampler =
   -- Normalize and store the result
   norm = sqrt (tmpq0*tmpq0 + tmpq1*tmpq1 + tmpq2*tmpq2 + tmpq3*tmpq3) + eps
 
+  -- Process noise is added after the return from the prediction step
+
+  -- ====== PREDICTION STEP ======
+  -- The prediction depends on whether we're on the ground, or in flight.
+  -- When flying, the accelerometer directly measures thrust (hence is useless
+  -- to estimate body angle while flying)
+
+  zz' = (zz ekfState) + 
+                 if shouldPredict 
+                 then (x r) * dx' + (y r) * dy' + (z r) * dz' - 
+                      gravity_magnitude * dt2 / 2 
+                 else 0
+
  
   ekfState' = ekfState
 
