@@ -232,6 +232,18 @@ predict lastPredictionMsec ekfState quat r gyroSubSampler accelSubSampler =
   dye2 =  gravity_magnitude * (x r) * dt
   dze2 =  0 :: SFloat
 
+  e0e0 =  1 - e1 * e1/2 - e2 * e2/2
+  e0e1 =  e2 + e0 * e1/2
+  e0e2 = -e1 + e0 * e2/2
+
+  e1e0 = (-e2) + e0 * e1/2
+  e1e1 =  1 - e0 * e0 /2 - e2 * e2 /2
+  e1e2 =  e0 + e1 * e2/2
+
+  e2e0 =  e1 + e0 * e2/2
+  e2e1 = (-e0) + e1 * e2/2
+  e2e2 = 1 - e0 * e0/2 - e1 * e1/2
+
   
   ekfState' = ekfState
 
