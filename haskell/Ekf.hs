@@ -88,9 +88,9 @@ d = sqr stdev_initial_velocity
 e = sqr stdev_initial_attituderoll_pitch
 r = sqr stdev_initial_attitude_yaw
 
-type EkfArray = Array 7 (Array 7 SFloat)
+type EkfMatrix = Array 7 (Array 7 SFloat)
 
-pinit :: EkfArray
+pinit :: EkfMatrix
 
 pinit =  array [--  z   dx  dy  dz  e0  e1  e2
              array [q,  0,  0,  0,  0,  0,  0], -- z
@@ -241,7 +241,7 @@ predict lastPredictionMsec ekfState quat r gyroSubSampler accelSubSampler =
              array [0,  0,  0,  0,  0,  0,  0], -- e0
              array [0,  0,  0,  0,  0,  0,  0], -- e1
              array [0,  0,  0,  0,  0,  0,  0]  -- e2
-             ] :: EkfArray
+             ] :: EkfMatrix
   
   ekfState' = ekfState
 
