@@ -30,10 +30,10 @@ import Utils
 -- roughly flat
 stdev_initial_position_z          = 1.0  :: Float
 stdev_initial_velocity            = 0.01 :: Float
-stdev_initial_attituderoll_pitch = 0.01 :: Float
+stdev_initial_attituderoll_pitch = 0.01 ::  Float
 stdev_initial_attitude_yaw        = 0.01 :: Float
 
-gravity_magnitude = 9.81 :: Float
+gravity_magnitude = 9.81 :: SFloat
 
 ------------------------------------------------------------------------------
 
@@ -206,7 +206,33 @@ predict lastPredictionMsec ekfState quat r gyroSubSampler accelSubSampler =
   ze1 = (- (dx ekfState) * (z r) + (dz ekfState) * (x r)) * dt
   ze2 = ((dx ekfState) * (y r) - (dy ekfState) * (x r)) * dt
 
+  -- body-frame velocity from body-frame velocity
+  dxdx = 1 :: SFloat -- drag negligible
+  dydx = -(z gyro) * dt
+  dzdx =  (y gyro) *dt
 
+  dxdy =  (z gyro) * dt
+  dydy =  1 :: SFloat --drag negligible
+  dzdy = -(x gyro) * dt
+
+  dxdz = -(y gyro) * dt
+  dydz =  (x gyro) * dt
+  dzdz =  1 --drag negligible
+
+  -- body-frame velocity from attitude error
+  dxe0 =  0 :: SFloat
+  dye0 = (-gravity_magnitude) * (z r) * dt
+  dze0 =   gravity_magnitude  * (y r) * dt
+
+  dxe1 =  gravity_magnitude * (z r) * dt
+  dye1 =  0 :: SFloat
+  dze1 = -gravity_magnitude * (x r) * dt
+
+  dxe2 = -gravity_magnitude * (y r) * dt
+  dye2 =  gravity_magnitude * (x r) * dt
+  dze2 =  0 :: SFloat
+
+  
   ekfState' = ekfState
 
   quat' = quat
