@@ -313,11 +313,22 @@ predict lastPredictionMsec ekfState quat r gyroSubSampler accelSubSampler =
   -- When flying, the accelerometer directly measures thrust (hence is useless
   -- to estimate body angle while flying)
 
-  zz' = (zz ekfState) + 
+  -- Altitude update
+  zz'' = (zz ekfState) + 
                  if shouldPredict 
                  then (x r) * dx' + (y r) * dy' + (z r) * dz' - 
-                      gravity_magnitude * dt2 / 2 
+                     gravity_magnitude * dt2 / 2 
                  else 0
+
+  -- Body-velocity update: accelerometers - gyros cross velocity
+  -- - gravity in body frame
+
+  dx'' = (dx ekfState) + 
+                 if shouldPredict 
+                 then dt * (accx + (z gyro) * tmpSDY - (y gyro) * tmpSDZ - 
+                      gravity_magnitude * (x r)) 
+                 else 0
+
 
  
   ekfState' = ekfState
