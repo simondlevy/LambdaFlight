@@ -28,10 +28,10 @@ import Utils
 
 -- Initial variances, uncertain of position, but know we're stationary and
 -- roughly flat
-stdev_initial_position_z          = 1.0  :: Float
-stdev_initial_velocity            = 0.01 :: Float
-stdev_initial_attituderoll_pitch = 0.01 ::  Float
-stdev_initial_attitude_yaw        = 0.01 :: Float
+stdev_initial_position_z         = 1.0  :: SFloat
+stdev_initial_velocity           = 0.01 :: SFloat
+stdev_initial_attituderoll_pitch = 0.01 :: SFloat
+stdev_initial_attitude_yaw       = 0.01 :: SFloat
 
 gravity_magnitude = 9.81 :: SFloat
 
@@ -80,7 +80,7 @@ accelZ = extern "stream_accelZ" Nothing
 
 ------------------------------------------------------------------------------
 
-sqr :: Float -> Float
+sqr :: SFloat -> SFloat
 sqr x = x * x
 
 q = sqr stdev_initial_position_z 
@@ -88,25 +88,19 @@ d = sqr stdev_initial_velocity
 e = sqr stdev_initial_attituderoll_pitch
 r = sqr stdev_initial_attitude_yaw
 
-type EkfArray = Array 7 (Array 7 Float)
+type EkfArray = Array 7 (Array 7 SFloat)
 
-raw_pinit :: EkfArray
+pinit :: EkfArray
 
-raw_pinit =  array [--  z   dx  dy  dz  e0  e1  e2
-                 array [q,  0,  0,  0,  0,  0,  0], -- z
-                 array [0,  d,  0,  0,  0,  0,  0], -- dx
-                 array [0,  0,  d,  0,  0,  0,  0], -- dy
-                 array [0,  0,  0,  d,  0,  0,  0], -- dz
-                 array [0,  0,  0,  0,  e,  0,  0], -- e0
-                 array [0,  0,  0,  0,  0,  e,  0], -- e1
-                 array [0,  0,  0,  0,  0,  0,  r]  -- e2
+pinit =  array [--  z   dx  dy  dz  e0  e1  e2
+             array [q,  0,  0,  0,  0,  0,  0], -- z
+             array [0,  d,  0,  0,  0,  0,  0], -- dx
+             array [0,  0,  d,  0,  0,  0,  0], -- dy
+             array [0,  0,  0,  d,  0,  0,  0], -- dz
+             array [0,  0,  0,  0,  e,  0,  0], -- e0
+             array [0,  0,  0,  0,  0,  e,  0], -- e1
+             array [0,  0,  0,  0,  0,  0,  r]  -- e2
              ] 
-
-type SEkfArray = Stream EkfArray
-
-pinit :: SEkfArray
-
-pinit = [ raw_pinit ] ++ pinit
 
 ------------------------------------------------------------------------------
 
@@ -168,11 +162,6 @@ subsampler_finalize shouldPredict converter subsamp = subsamp' where
 
   subsamp' = SubSampler (Axis3f x' y' z') (Axis3f 0 0 0) 0
 
-------------------------------------------------------------------------------
-
-init :: (SEkfArray, (SFloat, SFloat, SFloat, SFloat))
-
-init = (pinit, (1, 0, 0, 0) )
 
 -----------------------------------------------------------------------------
 
@@ -266,8 +255,6 @@ step = (z, dx, dy, dz, phi, theta, psi) where
    dy = 0
    dz = 0
 
-   pmat = if is_init then pinit else _pmat
-
    ekfState = EkfState 0 0 0 0 0 0 0
 
    quat = Quaternion _qw _qx _qy _qz
@@ -305,8 +292,6 @@ step = (z, dx, dy, dz, phi, theta, psi) where
    theta = -(rad2deg $ asin ((-2) * (qx*qz - qw*qy)))
 
    psi = rad2deg $ atan2 (2 * (qx*qy + qw*qz)) (qw*qw + qx*qx - qy*qy - qz*qz)
-
-   _pmat = [raw_pinit] ++ pmat
 
    -- Quaternion
    _qw = [0] ++ qw
