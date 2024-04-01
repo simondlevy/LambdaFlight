@@ -175,18 +175,6 @@ class Ekf {
             const auto e2e1 = -e0 + e1*e2/2;
             const auto e2e2 = 1 - e0*e0/2 - e1*e1/2;
 
-            const float A[KC_STATE_DIM][KC_STATE_DIM] = 
-            { 
-                //        Z  DX    DY    DZ    E0    E1    E2
-                /*Z*/    {0, zdx,  zdy,  zdz,  ze0,  ze1,  ze2}, 
-                /*DX*/   {0, dxdx, dxdy, dxdz, dxe0, dxe1, dxe2}, 
-                /*DY*/   {0, dydx, dydy, dydz, dye0, dye1, dye2},
-                /*DZ*/   {0, dzdx, dzdy, dzdz, dze0, dze1, dze2},
-                /*E0*/   {0, 0,    0,    0,    e0e0, e0e1, e0e2}, 
-                /*E1*/   {0, 0,    0,    0,    e1e0, e1e1, e1e2}, 
-                /*E2*/   {0, 0,    0,    0,    e2e0, e2e1, e2e2}  
-            };
-
             const auto dt2 = dt * dt;
 
             axis3fSubSamplerFinalize(&_accSubSampler, shouldPredict);
@@ -284,6 +272,18 @@ class Ekf {
             const auto isDtPositive = dt1 > 0;
 
             // ====== COVARIANCE UPDATE ======
+
+            const float A[KC_STATE_DIM][KC_STATE_DIM] = 
+            { 
+                //        Z  DX    DY    DZ    E0    E1    E2
+                /*Z*/    {0, zdx,  zdy,  zdz,  ze0,  ze1,  ze2}, 
+                /*DX*/   {0, dxdx, dxdy, dxdz, dxe0, dxe1, dxe2}, 
+                /*DY*/   {0, dydx, dydy, dydz, dye0, dye1, dye2},
+                /*DZ*/   {0, dzdx, dzdy, dzdz, dze0, dze1, dze2},
+                /*E0*/   {0, 0,    0,    0,    e0e0, e0e1, e0e2}, 
+                /*E1*/   {0, 0,    0,    0,    e1e0, e1e1, e1e2}, 
+                /*E2*/   {0, 0,    0,    0,    e2e0, e2e1, e2e2}  
+            };
 
             float At[KC_STATE_DIM][KC_STATE_DIM] = {};
             transpose(A, At);     // A'
