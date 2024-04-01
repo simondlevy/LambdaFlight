@@ -247,6 +247,14 @@ predict lastPredictionMsec ekfState quat r gyroSubSampler accelSubSampler =
   
   accelSubSampler' = subsampler_finalize shouldPredict mss2g accelSubSampler
 
+  accel = (sample accelSubSampler')
+
+  -- Position updates in the body frame (will be rotated to inertial frame)
+  -- thrust can only be produced in the body's Z direction
+  dx' = (dx ekfState) * dt + (if isFlying then 0 else (x accel) * dt2 / 2)
+  dy' = (dy ekfState) * dt + (if isFlying then 0 else (y accel) * dt2 / 2)
+  dz' = (dz ekfState) * dt + (z accel)  * dt2 / 2 
+
   ekfState' = ekfState
 
   quat' = quat
