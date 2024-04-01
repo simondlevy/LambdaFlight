@@ -83,23 +83,23 @@ accelZ = extern "stream_accelZ" Nothing
 sqr :: Float -> Float
 sqr x = x * x
 
-z = sqr stdev_initial_position_z 
+q = sqr stdev_initial_position_z 
 d = sqr stdev_initial_velocity 
 e = sqr stdev_initial_attituderoll_pitch
-y = sqr stdev_initial_attitude_yaw
+r = sqr stdev_initial_attitude_yaw
 
 type EkfArray = Array 7 (Array 7 Float)
 
 raw_pinit :: EkfArray
 
 raw_pinit =  array [--  z   dx  dy  dz  e0  e1  e2
-                 array [z,  0,  0,  0,  0,  0,  0], -- z
+                 array [q,  0,  0,  0,  0,  0,  0], -- z
                  array [0,  d,  0,  0,  0,  0,  0], -- dx
                  array [0,  0,  d,  0,  0,  0,  0], -- dy
                  array [0,  0,  0,  d,  0,  0,  0], -- dz
                  array [0,  0,  0,  0,  e,  0,  0], -- e0
                  array [0,  0,  0,  0,  0,  e,  0], -- e1
-                 array [0,  0,  0,  0,  0,  0,  y]  -- e2
+                 array [0,  0,  0,  0,  0,  0,  r]  -- e2
              ] 
 
 type SEkfArray = Stream EkfArray
@@ -110,10 +110,31 @@ pinit = [ raw_pinit ] ++ pinit
 
 ------------------------------------------------------------------------------
 
+data Quat = Quat {
+    qw :: SFloat
+  , qx :: SFloat
+  , qy :: SFloat
+  , qz :: SFloat
+}
+
+------------------------------------------------------------------------------
+
+data EkfState = EkfState {
+    zz :: SFloat
+  , dx :: SFloat
+  , dy :: SFloat
+  , dz :: SFloat
+  , e0 :: SFloat
+  , e1 :: SFloat
+  , e2 :: SFloat
+}
+
+------------------------------------------------------------------------------
+
 data Axis3f = Axis3f {
-    xx :: SFloat
-  , yy :: SFloat
-  , zz :: SFloat
+    x :: SFloat
+  , y :: SFloat
+  , z :: SFloat
 }
 
 data Axis3fSubSampler = Axis3fSubSampler { 
@@ -124,29 +145,16 @@ data Axis3fSubSampler = Axis3fSubSampler {
 
 subsampler_init = Axis3fSubSampler (Axis3f 0 0 0) 0 (Axis3f 0 0 0)
 
-------------------------------------------------------------------------------
+subsampler_finalize :: SBool -> Axis3fSubSampler -> Axis3fSubSampler
 
--- init :: (SEkfArray, (SFloat, SFloat, SFloat, SFloat), SAxis3fSubSampler)
-init :: (SEkfArray, (SFloat, SFloat, SFloat, SFloat))
+subsampler_finalize shouldPredict subsamp = subsamp' where
 
-init = (pinit, (1, 0, 0, 0) )
-
-------------------------------------------------------------------------------
-
-axis3fSubSamplerFinalize :: SBool -> 
-                            SFloat -> SFloat -> SFloat -> 
-                            SFloat -> SFloat -> SFloat -> 
-                            SInt32 -> (SFloat -> SFloat) ->
-                            (SFloat, SFloat, SFloat, SFloat, SFloat, SFloat, SInt32)
-
-axis3fSubSamplerFinalize shouldPredict 
-                         x y z xsum ysum zsum
-                         count conversionFun = 
-  (x', y', z', xsum', ysum', zsum', count') where
-
-  isCountNonzero = count > 0
+  isCountNonzero = (count subsamp) > 0
   shouldFinalize = shouldPredict && isCountNonzero
 
+  subsamp' = subsamp
+
+{--
   x' = if shouldFinalize then (conversionFun xsum) / (unsafeCast count) else x
   y' = if shouldFinalize then (conversionFun ysum) / (unsafeCast count) else y
   z' = if shouldFinalize then (conversionFun zsum) / (unsafeCast count) else z
@@ -156,8 +164,19 @@ axis3fSubSamplerFinalize shouldPredict
   zsum' = 0
 
   count' = 0
+--}
+
 
 ------------------------------------------------------------------------------
+
+-- init :: (SEkfArray, (SFloat, SFloat, SFloat, SFloat), SAxis3fSubSampler)
+init :: (SEkfArray, (SFloat, SFloat, SFloat, SFloat))
+
+init = (pinit, (1, 0, 0, 0) )
+
+------------------------------------------------------------------------------
+
+-----------------------------------------------------------------------------
 
 predict :: SInt32 ->
            SFloat -> SFloat -> SFloat -> 
@@ -184,6 +203,7 @@ predict lastPredictionMsec dx dy dz qw qx qy qz =
   dmsec = (unsafeCast $ nowMsec - lastPredictionMsec) :: SFloat
 
   dt = dmsec / 1000.0
+
 
 {--
   axis3fSubSamplerFinalize(&_accSubSampler, shouldPredict)
