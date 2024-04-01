@@ -138,12 +138,12 @@ data Axis3f = Axis3f {
 }
 
 data Axis3fSubSampler = Axis3fSubSampler { 
-    sum    :: Axis3f
+    sample :: Axis3f
+  , sum    :: Axis3f
   , count  :: SInt32
-  , sample :: Axis3f
 }
 
-subsampler_init = Axis3fSubSampler (Axis3f 0 0 0) 0 (Axis3f 0 0 0)
+subsampler_init = Axis3fSubSampler (Axis3f 0 0 0) (Axis3f 0 0 0) 0
 
 subsampler_finalize :: SBool -> (SFloat -> SFloat) -> Axis3fSubSampler -> 
   Axis3fSubSampler
@@ -160,24 +160,12 @@ subsampler_finalize shouldPredict converter subsamp = subsamp' where
 
   ssum = sum subsamp
 
-  subsamp' = subsamp
-
   x' = if shouldFinalize then (converter (x ssum)) / cnt else (x samp)
   y' = if shouldFinalize then (converter (y ssum)) / cnt else (y samp)
   z' = if shouldFinalize then (converter (z ssum)) / cnt else (z samp)
 
 
-{--
-  y' = if shouldFinalize then (conversionFun ysum) / (unsafeCast count) else y
-  z' = if shouldFinalize then (conversionFun zsum) / (unsafeCast count) else z
-
-  xsum' = 0
-  ysum' = 0
-  zsum' = 0
-
-  count' = 0
---}
-
+  subsamp' = Axis3fSubSampler (Axis3f x' y' z') (Axis3f 0 0 0) 0
 
 ------------------------------------------------------------------------------
 
