@@ -113,18 +113,6 @@ pinit =  array [--  z   dx  dy  dz  e0  e1  e2
 
 ------------------------------------------------------------------------------
 
-data VehicleState = VehicleState {
-    vz :: SFloat
-  , vdx :: SFloat
-  , vdy :: SFloat
-  , vdz :: SFloat
-  , phi :: SFloat
-  , theta :: SFloat
-  , psi :: SFloat
-}
-
-------------------------------------------------------------------------------
-
 updateQuatValue :: SBool -> SBool -> SFloat -> SFloat -> SFloat -> SFloat -> SFloat
 
 updateQuatValue shouldPredict isErrorSufficient tmpq norm init curr =
@@ -155,9 +143,7 @@ updateEkfValue shouldPredict curr predicted =
 
 ------------------------------------------------------------------------------
 
-step :: VehicleState
-
-step = VehicleState vz vdx vdy vdz phi theta psi where
+step = (vz, vdx, vdy, vdz, phi, theta, psi) where
 
     shouldPredict = ekfMode == mode_predict && nowMsec >= nextPredictionMsec
 
@@ -195,13 +181,13 @@ step = VehicleState vz vdx vdy vdz phi theta psi where
 
     e2 = updateEkfValue shouldPredict _e2 0
 
-    vz = 0
-    vdx = 0
-    vdy = 0
-    vdz = 0
-    phi = 0
-    theta = 0
-    psi = 0
+    vz = 0 :: SFloat
+    vdx = 0 :: SFloat
+    vdy = 0 :: SFloat
+    vdz = 0 :: SFloat
+    phi = 0 :: SFloat
+    theta = 0 :: SFloat
+    psi = 0 :: SFloat
 
     _qw = [1] ++ qw
     _qx = [1] ++ qx
@@ -224,17 +210,11 @@ step = VehicleState vz vdx vdy vdz phi theta psi where
 
 spec = do
 
-  let vstate =  step
+  let (vz, vdx, vdy, vdz, phi, theta, psi) = step
 
   trigger "setState" 
            (ekfMode == mode_get_state) 
-           [arg $ vz vstate, 
-            arg $ vdx vstate,
-            arg $ vdy vstate,
-            arg $ vdz vstate,
-            arg $ phi vstate,
-            arg $ theta vstate,
-            arg $ psi vstate]
+           [arg vz, arg vdx, arg vdy, arg vdz, arg phi, arg theta, arg psi]
 
 main = reify spec >>= 
 
