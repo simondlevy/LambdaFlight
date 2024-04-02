@@ -183,6 +183,16 @@ updateQuatValue shouldPredict isErrorSufficient tmpq norm init curr =
 
 ------------------------------------------------------------------------------
 
+updateRotationValue :: SFloat -> SFloat -> SFloat -> SFloat
+
+updateRotationValue init curr final = 
+
+  if ekfMode == mode_init then init
+  else if ekfMode == mode_finalize then final
+  else curr
+
+------------------------------------------------------------------------------
+
 step :: VehicleState
 
 step = VehicleState vz vdx vdy vdz phi theta psi where
@@ -202,9 +212,9 @@ step = VehicleState vz vdx vdy vdz phi theta psi where
     qy = updateQuatValue shouldPredict isErrorSufficient tmpq2 norm 0 _qy
     qz = updateQuatValue shouldPredict isErrorSufficient tmpq3 norm 0 _qz
 
-    rx = if ekfMode == mode_init then 0 
-         else if ekfMode == mode_finalize then 2 * _qx * _qz - 2 * _qw * _qy
-         else _rx
+    rx = updateRotationValue 0 _rx (2*_qx*_qz - 2*_qw*_qy)
+    ry = updateRotationValue 0 _ry (2*_qy*_qz + 2*_qw*_qx)
+    rz = updateRotationValue 1 _rz (_qw*_qw - _qx*_qx - _qy*_qy + _qz*_qz)
 
     vz = 0
     vdx = 0
@@ -220,6 +230,8 @@ step = VehicleState vz vdx vdy vdz phi theta psi where
     _qz = [1] ++ qz
  
     _rx = [0] ++ rx
+    _ry = [0] ++ ry
+    _rz = [0] ++ rz
 
 ------------------------------------------------------------------------------
 
