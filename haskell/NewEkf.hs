@@ -89,17 +89,14 @@ accelZ = extern "stream_accelZ" Nothing
 
 ------------------------------------------------------------------------------
 
-sqr :: SFloat -> SFloat
-sqr x = x * x
+type EkfMatrix = Array 7 (Array 7 SFloat)
+
+pinit :: EkfMatrix
 
 qq = sqr stdev_initial_position_z 
 dd = sqr stdev_initial_velocity 
 ee = sqr stdev_initial_attituderoll_pitch
 rr = sqr stdev_initial_attitude_yaw
-
-type EkfMatrix = Array 7 (Array 7 SFloat)
-
-pinit :: EkfMatrix
 
 pinit =  array [--  z   dx  dy  dz  e0  e1  e2
              array [qq,  0,  0,  0,  0,  0,  0], -- z
@@ -147,7 +144,7 @@ data VehicleState = VehicleState {
 
 ------------------------------------------------------------------------------
 
-data Axis3f = Axis3f {
+data Axis3 = Axis3 {
     x :: SFloat
   , y :: SFloat
   , z :: SFloat
@@ -156,8 +153,8 @@ data Axis3f = Axis3f {
 ------------------------------------------------------------------------------
 
 data SubSampler = SubSampler { 
-    sample :: Axis3f
-  , sum    :: Axis3f
+    sample :: Axis3
+  , sum    :: Axis3
   , count  :: SInt32
 }
 
@@ -165,7 +162,7 @@ data SubSampler = SubSampler {
 
 data Ekf = Ekf {
     p :: EkfMatrix
-  , r :: Axis3f
+  , r :: Axis3
   , quat :: Quaternion
   , ekfState :: EkfState
   , gyroSubSampler :: SubSampler
@@ -211,13 +208,36 @@ rotateQuat :: SFloat -> SFloat -> SFloat
 
 rotateQuat val initVal = val' where
 
-    keep = 1 - rollpitch_zero_reversion
+  keep = 1 - rollpitch_zero_reversion
 
-    val' = (val * (if isFlying then 1 else keep)) +
-        (if isFlying then 0 else rollpitch_zero_reversion * initVal)
+  val' = (val * (if isFlying then 1 else keep)) +
+      (if isFlying then 0 else rollpitch_zero_reversion * initVal)
 
 ------------------------------------------------------------------------------
 
+subSamplerInit = SubSampler sample sum count where
+
+  sum = Axis3 0 0 0
+  count = 0
+  sample = Axis3 0 0 0
+
+------------------------------------------------------------------------------
+
+ekfInit :: Ekf
+
+ekfInit = Ekf p r q s g a false 0 0 where 
+
+  p = pinit
+
+  r = Axis3 0 0 1
+
+  q = Quaternion 1 0 0 0
+
+  s = EkfState 0 0 0 0 0 0 0
+
+  g = subSamplerInit
+
+  a = subSamplerInit
 
 ------------------------------------------------------------------------------
 

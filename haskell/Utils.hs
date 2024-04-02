@@ -30,6 +30,9 @@ type SInt8 = Stream Int8
 type SInt16 = Stream Int16
 type SBool = Stream Bool
 
+sqr :: SFloat -> SFloat
+sqr x = x * x
+
 rescale :: SFloat -> SFloat -> SFloat -> SFloat -> SFloat -> SFloat
 rescale value oldmin oldmax newmin newmax =             
   (value - oldmin) / (oldmax - oldmin) * (newmax - newmin) + newmin
