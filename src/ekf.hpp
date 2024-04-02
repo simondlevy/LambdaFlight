@@ -638,6 +638,7 @@ class Ekf {
             // large enough
             multiply(AP, At, _Pmat, isErrorSufficient); // APA'
 
+            // finalize()
             // Convert the new attitude to a rotation matrix, such that we can
             // rotate body-frame velocity and acc
             _r.x = 2 * _qx * _qz - 2 * _qw * _qy;
