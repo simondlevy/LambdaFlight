@@ -112,6 +112,70 @@ pinit =  array [--  z   dx  dy  dz  e0  e1  e2
              ] 
 
 ------------------------------------------------------------------------------
+------------------------------------------------------------------------------
+
+data Quaternion = Quaternion {
+    qqw :: SFloat
+  , qqx :: SFloat
+  , qqy :: SFloat
+  , qqz :: SFloat
+}
+
+------------------------------------------------------------------------------
+
+data EkfState = EkfState {
+    ezz :: SFloat
+  , edx :: SFloat
+  , edy :: SFloat
+  , edz :: SFloat
+  , e0 :: SFloat
+  , e1 :: SFloat
+  , e2 :: SFloat
+}
+
+------------------------------------------------------------------------------
+
+data VehicleState = VehicleState {
+    vz :: SFloat
+  , vdx :: SFloat
+  , vdy :: SFloat
+  , vdz :: SFloat
+  , phi :: SFloat
+  , theta :: SFloat
+  , psi :: SFloat
+}
+
+------------------------------------------------------------------------------
+
+data Axis3f = Axis3f {
+    x :: SFloat
+  , y :: SFloat
+  , z :: SFloat
+}
+
+------------------------------------------------------------------------------
+
+data SubSampler = SubSampler { 
+    sample :: Axis3f
+  , sum    :: Axis3f
+  , count  :: SInt32
+}
+
+------------------------------------------------------------------------------
+
+data Ekf = Ekf {
+    p :: EkfMatrix
+  , r :: Axis3f
+  , quat :: Quaternion
+  , ekfState :: EkfState
+  , gyroSubSampler :: SubSampler
+  , accelSubSampler :: SubSampler
+  , isUpdated :: SBool
+  , lastPredictionMsec :: SInt32
+  , lastProcessedNoiseUpdateMsec :: SInt32
+}
+
+------------------------------------------------------------------------------
 
 updateQuatValue :: SBool -> SBool -> SFloat -> SFloat -> SFloat -> SFloat -> SFloat
 
@@ -151,6 +215,9 @@ rotateQuat val initVal = val' where
 
     val' = (val * (if isFlying then 1 else keep)) +
         (if isFlying then 0 else rollpitch_zero_reversion * initVal)
+
+------------------------------------------------------------------------------
+
 
 ------------------------------------------------------------------------------
 
@@ -299,6 +366,8 @@ step = (vz, vdx, vdy, vdz, phi, theta, psi) where
     phi = 0 :: SFloat
     theta = 0 :: SFloat
     psi = 0 :: SFloat
+
+    --------------------------------------------------------------------------
 
     _qw = [1] ++ qw
     _qx = [1] ++ qx
