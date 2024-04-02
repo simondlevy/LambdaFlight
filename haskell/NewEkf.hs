@@ -45,9 +45,6 @@ eps = 1e-6 :: SFloat
 
 type EkfMode = SInt8
 
-ekfMode :: EkfMode
-ekfMode = extern "stream_ekfMode" Nothing
-
 mode_init              = 0 :: EkfMode
 mode_predict           = 1 :: EkfMode
 mode_finalize          = 2 :: EkfMode
@@ -56,6 +53,12 @@ mode_update_with_gyro  = 4 :: EkfMode
 mode_update_with_accel = 5 :: EkfMode
 mode_update_with_range = 6 :: EkfMode
 mode_update_with_flow  = 7 :: EkfMode
+
+------------------------------------------------------------------------------
+
+
+ekfMode :: EkfMode
+ekfMode = extern "stream_ekfMode" Nothing
 
 nowMsec :: SInt32
 nowMsec = extern "stream_nowMsec" Nothing
@@ -118,22 +121,6 @@ data VehicleState = VehicleState {
   , phi :: SFloat
   , theta :: SFloat
   , psi :: SFloat
-}
-
-------------------------------------------------------------------------------
-
-data Axis3f = Axis3f {
-    x :: SFloat
-  , y :: SFloat
-  , z :: SFloat
-}
-
-------------------------------------------------------------------------------
-
-data SubSampler = SubSampler { 
-    sample :: Axis3f
-  , sum    :: Axis3f
-  , count  :: SInt32
 }
 
 ------------------------------------------------------------------------------
