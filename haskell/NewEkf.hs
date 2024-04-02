@@ -26,12 +26,6 @@ import Copilot.Compile.C99
 
 import Utils
 
--- Quaternion used for initial orientation
-qw_init = 1 :: SFloat
-qx_init = 0 :: SFloat
-qy_init = 0 :: SFloat
-qz_init = 0 :: SFloat
-
 -- Initial variances, uncertain of position, but know we're stationary and
 -- roughly flat
 stdev_initial_position_z         = 1.0  :: SFloat
@@ -179,6 +173,16 @@ data Ekf = Ekf {
 
 ------------------------------------------------------------------------------
 
+updateQuatValue :: SBool -> SBool -> SFloat -> SFloat -> SFloat -> SFloat -> SFloat
+
+updateQuatValue shouldPredict isErrorSufficient tmpq norm init curr =
+  if ekfMode == mode_init then init
+  else if shouldPredict then tmpq / norm
+  else if isErrorSufficient then tmpq / norm
+  else curr
+
+------------------------------------------------------------------------------
+
 step :: VehicleState
 
 step = VehicleState vz vdx vdy vdz phi theta psi where
@@ -187,13 +191,16 @@ step = VehicleState vz vdx vdy vdz phi theta psi where
 
     -- XXX need to compute these for real
     tmpq0 = 1
+    tmpq1 = 1
+    tmpq2 = 1
+    tmpq3 = 1
     norm = 1
     isErrorSufficient = ekfMode == mode_finalize && true
 
-    qw = if ekfMode == mode_init then qw_init 
-            else if shouldPredict then tmpq0 / norm
-            else if isErrorSufficient then tmpq0 / norm
-            else _qw
+    qw = updateQuatValue shouldPredict isErrorSufficient tmpq0 norm 1 _qw
+    qx = updateQuatValue shouldPredict isErrorSufficient tmpq1 norm 0 _qx
+    qy = updateQuatValue shouldPredict isErrorSufficient tmpq2 norm 0 _qy
+    qz = updateQuatValue shouldPredict isErrorSufficient tmpq3 norm 0 _qz
 
     vz = 0
     vdx = 0
@@ -204,6 +211,9 @@ step = VehicleState vz vdx vdy vdz phi theta psi where
     psi = 0
 
     _qw = [1] ++ qw
+    _qx = [1] ++ qx
+    _qy = [1] ++ qy
+    _qz = [1] ++ qz
 
 ------------------------------------------------------------------------------
 
