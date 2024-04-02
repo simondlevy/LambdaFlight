@@ -147,7 +147,70 @@ step = (vz, vdx, vdy, vdz, phi, theta, psi) where
 
     shouldPredict = ekfMode == mode_predict && nowMsec >= nextPredictionMsec
 
+    lastPredictionMsec = 
+        if ekfMode == mode_init then nowMsec else _lastPredictionMsec
+
+    dmsec = (unsafeCast $ nowMsec - lastPredictionMsec) :: SFloat
+
+    dt = dmsec / 1000.0
+
+    e0' = gyrox * dt / 2
+    e1' = gyroy * dt / 2
+    e2' = gyroz * dt / 2
+
+    -- Altitude from body-frame velocity
+    zdx = rx * dt
+    zdy = ry * dt
+    zdz = rz * dt
+
+    -- Altitude from attitude error
+    ze0 = (dy * rz - dz * ry) * dt
+    ze1 = (-dx * rz + dz * rx) * dt
+    ze2 = (dx * ry - dy * rx) * dt
+
+    -- Body-frame velocity from body-frame velocity
+    dxdx =  1 --drag negligible
+    dydx = -(gyroz * dt)
+    dzdx =  gyroy * dt
+
+    dxdy =  gyroz * dt
+    dydy =  1 --drag negligible
+    dzdy = -(gyrox * dt)
+
+    dxdz = -(gyroy * dt)
+    dydz =  gyrox * dt
+    dzdz =  1 --drag negligible
+
+    -- Body-frame velocity from attitude error
+    dxe0 =  0
+    dye0 = -(gravity_magnitude * rz * dt)
+    dze0 =  gravity_magnitude * ry * dt
+
+    dxe1 =  gravity_magnitude * rz * dt
+    dye1 =  0
+    dze1 = -(gravity_magnitude * rx * dt)
+
+    dxe2 = -(gravity_magnitude * ry * dt)
+    dye2 =  gravity_magnitude * rx * dt
+    dze2 =  0
+
+    e0e0 =  1 - e1 * e1/2 - e2 * e2/2
+    e0e1 =  e2 + e0 * e1/2
+    e0e2 = -e1 + e0 * e2/2
+
+    e1e0 = -e2 + e0 * e1/2
+    e1e1 =  1 - e0 * e0/2 - e2 * e2/2
+    e1e2 =  e0 + e1 * e2/2
+
+    e2e0 =  e1 + e0 * e2/2
+    e2e1 = -e0 + e1 * e2/2
+    e2e2 = 1 - e0 * e0/2 - e1 * e1/2
+
+ 
     -- XXX need to compute these for real
+    gyrox = 0
+    gyroy = 0
+    gyroz = 0
     tmpq0 = 1
     tmpq1 = 1
     tmpq2 = 1
@@ -205,6 +268,8 @@ step = (vz, vdx, vdy, vdz, phi, theta, psi) where
     _e0 = [0] ++ e0
     _e1 = [0] ++ e1
     _e2 = [0] ++ e2
+
+    _lastPredictionMsec = [0] ++ lastPredictionMsec
 
 ------------------------------------------------------------------------------
 
