@@ -110,9 +110,9 @@ pinit =  array [--  z   dx  dy  dz  e0  e1  e2
 
 ------------------------------------------------------------------------------
 
-afinalize :: (SFloat, SFloat, SFloat) -> EkfMatrix
+afinalize :: SFloat -> SFloat -> SFloat -> EkfMatrix
 
-afinalize (v0, v1, v2) = a where
+afinalize v0 v1 v2 = a where
 
   e0 = v0/2 
   e1 = v1/2 
@@ -131,13 +131,13 @@ afinalize (v0, v1, v2) = a where
   e2e2 = 1 - e0*e0/2 - e1*e1/2
 
   a = array [    --  z   dx  dy  dz  e0  e1  e2
-             array [1 , 0,  0,  0,  0,  0,  0], -- z
-             array [0,  1 , 0,  0,  0,  0,  0], -- dx
-             array [0,  0,  1 , 0,  0,  0,  0], -- dy
-             array [0,  0,  0,  1 , 0,  0,  0], -- dz
-             array [0,  0,  0,  0,  0, 0,  0], -- e0
-             array [0,  0,  0,  0,  0,  0,  0], -- e1
-             array [0,  0,  0,  0,  0,  0,  0]  -- e2
+             array [1 , 0,  0,  0,  0,    0,     0],    -- z
+             array [0,  1 , 0,  0,  0,    0,     0],    -- dx
+             array [0,  0,  1 , 0,  0,    0,     0],    -- dy
+             array [0,  0,  0,  1 , 0,    0,     0],    -- dz
+             array [0,  0,  0,  0,  e0e0, e0e1,  e0e2], -- e0
+             array [0,  0,  0,  0,  e1e0, e1e1,  e1e2], -- e1
+             array [0,  0,  0,  0,  e2e0, e2e1,  e2e2]  -- e2
              ] 
 
 ------------------------------------------------------------------------------
@@ -327,9 +327,7 @@ ekfFinalize ekf = ekf where
 
   -- The attitude error vector (v0,v1,v2) is small,  so we use a first-order
   -- approximation to e0 = tan(|v0|/2)*v0/|v0|
-  e0 = v0/2 
-  e1 = v1/2 
-  e2 = v2/2
+  a = afinalize v0 v1 v2
 
 ------------------------------------------------------------------------------
 
