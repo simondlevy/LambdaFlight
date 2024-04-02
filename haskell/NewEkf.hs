@@ -110,27 +110,6 @@ pinit =  array [--  z   dx  dy  dz  e0  e1  e2
 
 ------------------------------------------------------------------------------
 
-data Quaternion = Quaternion {
-    qqw :: SFloat
-  , qqx :: SFloat
-  , qqy :: SFloat
-  , qqz :: SFloat
-}
-
-------------------------------------------------------------------------------
-
-data EkfState = EkfState {
-    ezz :: SFloat
-  , edx :: SFloat
-  , edy :: SFloat
-  , edz :: SFloat
-  , e0 :: SFloat
-  , e1 :: SFloat
-  , e2 :: SFloat
-}
-
-------------------------------------------------------------------------------
-
 data VehicleState = VehicleState {
     vz :: SFloat
   , vdx :: SFloat
@@ -155,20 +134,6 @@ data SubSampler = SubSampler {
     sample :: Axis3f
   , sum    :: Axis3f
   , count  :: SInt32
-}
-
-------------------------------------------------------------------------------
-
-data Ekf = Ekf {
-    p :: EkfMatrix
-  , r :: Axis3f
-  , quat :: Quaternion
-  , ekfState :: EkfState
-  , gyroSubSampler :: SubSampler
-  , accelSubSampler :: SubSampler
-  , isUpdated :: SBool
-  , lastPredictionMsec :: SInt32
-  , lastProcessedNoiseUpdateMsec :: SInt32
 }
 
 ------------------------------------------------------------------------------
