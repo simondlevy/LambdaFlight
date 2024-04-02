@@ -177,18 +177,23 @@ data Ekf = Ekf {
   , lastProcessedNoiseUpdateMsec :: SInt32
 }
 
------------------------------------------------------------------------------
-
-predict :: SInt32 -> Ekf  -> Ekf
-predict lastPredictionMsec ekf = ekf' where
-
-  ekf' = ekf
-
 ------------------------------------------------------------------------------
 
 step :: VehicleState
 
 step = VehicleState vz vdx vdy vdz phi theta psi where
+
+    shouldPredict = ekfMode == mode_predict && nowMsec >= nextPredictionMsec
+
+    -- XXX need to compute these for real
+    tmpq0 = 1
+    norm = 1
+    isErrorSufficient = ekfMode == mode_finalize && true
+
+    qw = if ekfMode == mode_init then qw_init 
+            else if shouldPredict then tmpq0 / norm
+            else if isErrorSufficient then tmpq0 / norm
+            else _qw
 
     vz = 0
     vdx = 0
@@ -197,6 +202,8 @@ step = VehicleState vz vdx vdy vdz phi theta psi where
     phi = 0
     theta = 0
     psi = 0
+
+    _qw = [1] ++ qw
 
 ------------------------------------------------------------------------------
 

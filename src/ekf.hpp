@@ -258,6 +258,7 @@ class Ekf {
                          GRAVITY_MAGNITUDE * _r.z) :
                 0;
 
+            // predict()
             _qw = shouldPredict ? tmpq0/norm : _qw;
             _qx = shouldPredict ? tmpq1/norm : _qx; 
             _qy = shouldPredict ? tmpq2/norm : _qy; 
@@ -627,6 +628,7 @@ class Ekf {
                 (isErrorLarge(v0) || isErrorLarge(v1) || isErrorLarge(v2)) &&
                 isErrorInBounds(v0) && isErrorInBounds(v1) && isErrorInBounds(v2);
 
+            // finalize()
             _qw = isErrorSufficient ? tmpq0 / norm : _qw;
             _qx = isErrorSufficient ? tmpq1 / norm : _qx;
             _qy = isErrorSufficient ? tmpq2 / norm : _qy;
