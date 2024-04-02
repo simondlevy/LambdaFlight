@@ -95,23 +95,23 @@ accelZ = extern "stream_accelZ" Nothing
 sqr :: SFloat -> SFloat
 sqr x = x * x
 
-q = sqr stdev_initial_position_z 
-d = sqr stdev_initial_velocity 
-e = sqr stdev_initial_attituderoll_pitch
-r = sqr stdev_initial_attitude_yaw
+qq = sqr stdev_initial_position_z 
+dd = sqr stdev_initial_velocity 
+ee = sqr stdev_initial_attituderoll_pitch
+rr = sqr stdev_initial_attitude_yaw
 
 type EkfMatrix = Array 7 (Array 7 SFloat)
 
 pinit :: EkfMatrix
 
 pinit =  array [--  z   dx  dy  dz  e0  e1  e2
-             array [q,  0,  0,  0,  0,  0,  0], -- z
-             array [0,  d,  0,  0,  0,  0,  0], -- dx
-             array [0,  0,  d,  0,  0,  0,  0], -- dy
-             array [0,  0,  0,  d,  0,  0,  0], -- dz
-             array [0,  0,  0,  0,  e,  0,  0], -- e0
-             array [0,  0,  0,  0,  0,  e,  0], -- e1
-             array [0,  0,  0,  0,  0,  0,  r]  -- e2
+             array [qq,  0,  0,  0,  0,  0,  0], -- z
+             array [0,  dd,  0,  0,  0,  0,  0], -- dx
+             array [0,  0,  dd,  0,  0,  0,  0], -- dy
+             array [0,  0,  0,  dd,  0,  0,  0], -- dz
+             array [0,  0,  0,  0,  ee,  0,  0], -- e0
+             array [0,  0,  0,  0,  0,  ee,  0], -- e1
+             array [0,  0,  0,  0,  0,  0,  rr]  -- e2
              ] 
 
 ------------------------------------------------------------------------------
@@ -167,10 +167,14 @@ data SubSampler = SubSampler {
 
 data Ekf = Ekf {
     p :: EkfMatrix
+  , r :: Axis3f
   , quat :: Quaternion
   , ekfState :: EkfState
   , gyroSubSampler :: SubSampler
   , accelSubSampler :: SubSampler
+  , isUpdated :: SBool
+  , lastPredictionMsec :: SInt32
+  , lastProcessedNoiseUpdateMsec :: SInt32
 }
 
 -----------------------------------------------------------------------------
