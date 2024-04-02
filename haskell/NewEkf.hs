@@ -195,7 +195,7 @@ updateRotationValue init curr final =
 
 updateEkfValue :: SBool -> SFloat -> SFloat -> SFloat
 
-updateEkfValue shouldPredict predicted curr = 
+updateEkfValue shouldPredict curr predicted = 
 
   if ekfMode == mode_init then 0 
   else if shouldPredict then predicted
@@ -229,13 +229,19 @@ step = VehicleState vz vdx vdy vdz phi theta psi where
     rz = updateRotationValue 1 _rz (_qw*_qw - _qx*_qx - _qy*_qy + _qz*_qz)
 
     -- EKF state
-    zz = updateEkfValue shouldPredict 0 _zz
-    dx = updateEkfValue shouldPredict 0 _dx
-    dy = updateEkfValue shouldPredict 0 _dy
-    dz = updateEkfValue shouldPredict 0 _dz
-    e0 = updateEkfValue shouldPredict 0 _e0
-    e1 = updateEkfValue shouldPredict 0 _e1
-    e2 = updateEkfValue shouldPredict 0 _e2
+    zz = updateEkfValue shouldPredict _zz 0
+
+    dx = updateEkfValue shouldPredict _dx 0
+
+    dy = updateEkfValue shouldPredict _dy 0
+
+    dz = updateEkfValue shouldPredict _dz 0
+
+    e0 = updateEkfValue shouldPredict _e0 0
+
+    e1 = updateEkfValue shouldPredict _e1 0
+
+    e2 = updateEkfValue shouldPredict _e2 0
 
     vz = 0
     vdx = 0
