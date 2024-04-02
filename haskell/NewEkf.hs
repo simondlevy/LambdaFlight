@@ -226,7 +226,6 @@ step = (vz, vdx, vdy, vdz, phi, theta, psi) where
     accelx = 0
     accely = 0
     accelz = 0
-    norm = 1
     isErrorSufficient = ekfMode == mode_finalize && true
 
     -- Position updates in the body frame (will be rotated to inertial frame)
@@ -263,6 +262,9 @@ step = (vz, vdx, vdy, vdz, phi, theta, psi) where
     tmpq1 = rotateQuat (dqx*_qw + dqw*_qx + dqz*_qy - dqy*_qz) 0
     tmpq2 = rotateQuat (dqy*_qw - dqz*_qx + dqw*_qy + dqx*_qz) 0
     tmpq3 = rotateQuat (dqz*_qw + dqy*_qx - dqx*_qy + dqw*_qz) 0
+
+    -- Normalize and store the result
+    norm = sqrt (tmpq0*tmpq0 + tmpq1*tmpq1 + tmpq2*tmpq2 + tmpq3*tmpq3) + eps
 
     -- Quaternion
     qw = updateQuatValue shouldPredict isErrorSufficient tmpq0 norm 1 _qw
