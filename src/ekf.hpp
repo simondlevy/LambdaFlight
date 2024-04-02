@@ -73,9 +73,14 @@ class Ekf {
 
             // Reset all data to 0 (like upon system reset)
 
-            memset(&_ekfState, 0, sizeof(_ekfState));
-
-            memset(_Pmat, 0, sizeof(_Pmat));
+            // XXX init()
+            _ekfState.z = 0;
+            _ekfState.dx = 0;
+            _ekfState.dy = 0;
+            _ekfState.dz = 0;
+            _ekfState.e0 = 0;
+            _ekfState.e1 = 0;
+            _ekfState.e2 = 0;
 
             _qw = QW_INIT;
             _qx = QX_INIT;
@@ -234,6 +239,7 @@ class Ekf {
             // When flying, the accelerometer directly measures thrust (hence is useless
             // to estimate body angle while flying)
 
+            // XXX predict()
             // altitude update
             _ekfState.z += shouldPredict ? _r.x * dx + _r.y * dy + _r.z * dz - 
                 GRAVITY_MAGNITUDE * dt2 / 2 :
@@ -645,6 +651,7 @@ class Ekf {
             _r.z = _qw * _qw - _qx * _qx - _qy * _qy + _qz * _qz;
 
             // Reset the attitude error
+            // XXX finalize()
             _ekfState.e0 = 0;
             _ekfState.e1 = 0;
             _ekfState.e2 = 0;
@@ -766,6 +773,7 @@ class Ekf {
             };
 
             // Perform the state update
+            // XXX update()
             _ekfState.z  += shouldUpdate ? K[0] * error: 0;
             _ekfState.dx += shouldUpdate ? K[1] * error: 0;
             _ekfState.dy += shouldUpdate ? K[2] * error: 0;

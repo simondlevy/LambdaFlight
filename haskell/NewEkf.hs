@@ -280,17 +280,17 @@ step = (vz, vdx, vdy, vdz, phi, theta, psi) where
     -- EKF state
     zz = updateEkfValue shouldPredict _zz 0
 
-    dx = updateEkfValue shouldPredict _dx 0
+    dx = 0 :: SFloat
 
-    dy = updateEkfValue shouldPredict _dy 0
+    dy = 0 :: SFloat
 
-    dz = updateEkfValue shouldPredict _dz 0
+    dz = 0 :: SFloat
 
-    e0 = updateEkfValue shouldPredict _e0 0
+    e0 = 0 :: SFloat
 
-    e1 = updateEkfValue shouldPredict _e1 0
+    e1 = 0 :: SFloat
 
-    e2 = updateEkfValue shouldPredict _e2 0
+    e2 = 0 :: SFloat
 
     vz = 0 :: SFloat
     vdx = 0 :: SFloat
