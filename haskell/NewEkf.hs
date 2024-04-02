@@ -125,9 +125,9 @@ data EkfState = EkfState {
   , edx :: SFloat
   , edy :: SFloat
   , edz :: SFloat
-  , e0 :: SFloat
-  , e1 :: SFloat
-  , e2 :: SFloat
+  , ee0 :: SFloat
+  , ee1 :: SFloat
+  , ee2 :: SFloat
 }
 
 ------------------------------------------------------------------------------
@@ -225,7 +225,7 @@ subSamplerInit = SubSampler sample sum 0 where
 
 ekfInit :: Ekf
 
-ekfInit = Ekf p r q s g a false 0 0 where 
+ekfInit = Ekf p r q s g a false nowMsec nowMsec where 
 
   p = pinit
 
@@ -243,176 +243,220 @@ ekfInit = Ekf p r q s g a false 0 0 where
 
 ekfPredict :: Ekf -> Ekf
 
-ekfPredict ekf = ekf
+ekfPredict ekf = ekf {-- where
+
+  shouldPredict = ekfMode == mode_predict && nowMsec >= nextPredictionMsec
+
+  lastPredictionMsec = 
+      if ekfMode == mode_init then nowMsec else _lastPredictionMsec
+
+  dmsec = (unsafeCast $ nowMsec - lastPredictionMsec) :: SFloat
+
+  dt = dmsec / 1000.0
+
+  e0' = gyrox * dt / 2
+  e1' = gyroy * dt / 2
+  e2' = gyroz * dt / 2
+
+  -- Altitude from body-frame velocity
+  zdx = rx * dt
+  zdy = ry * dt
+  zdz = rz * dt
+
+  -- Altitude from attitude error
+  ze0 = (dy * rz - dz * ry) * dt
+  ze1 = (-dx * rz + dz * rx) * dt
+  ze2 = (dx * ry - dy * rx) * dt
+
+  -- Body-frame velocity from body-frame velocity
+  dxdx =  1 --drag negligible
+  dydx = -(gyroz * dt)
+  dzdx =  gyroy * dt
+
+  dxdy =  gyroz * dt
+  dydy =  1 --drag negligible
+  dzdy = -(gyrox * dt)
+
+  dxdz = -(gyroy * dt)
+  dydz =  gyrox * dt
+  dzdz =  1 --drag negligible
+
+  -- Body-frame velocity from attitude error
+  dxe0 =  0
+  dye0 = -(gravity_magnitude * rz * dt)
+  dze0 =  gravity_magnitude * ry * dt
+
+  dxe1 =  gravity_magnitude * rz * dt
+  dye1 =  0
+  dze1 = -(gravity_magnitude * rx * dt)
+
+  dxe2 = -(gravity_magnitude * ry * dt)
+  dye2 =  gravity_magnitude * rx * dt
+  dze2 =  0
+
+  e0e0 =  1 - e1 * e1/2 - e2 * e2/2
+  e0e1 =  e2 + e0 * e1/2
+  e0e2 = -e1 + e0 * e2/2
+
+  e1e0 = -e2 + e0 * e1/2
+  e1e1 =  1 - e0 * e0/2 - e2 * e2/2
+  e1e2 =  e0 + e1 * e2/2
+
+  e2e0 =  e1 + e0 * e2/2
+  e2e1 = -e0 + e1 * e2/2
+  e2e2 = 1 - e0 * e0/2 - e1 * e1/2
+
+  dt2 = dt * dt
+ 
+  -- XXX need to compute these for real
+  gyrox = 0
+  gyroy = 0
+  gyroz = 0
+  accelx = 0
+  accely = 0
+  accelz = 0
+  isErrorSufficient = ekfMode == mode_finalize && true
+
+  -- Position updates in the body frame (will be rotated to inertial frame)
+  -- thrust can only be produced in the body's Z direction
+  dx' = dx * dt + (if isFlying then 0 else accelx * dt2 / 2)
+  dy' = dy * dt + (if isFlying then 0 else accely * dt2 / 2)
+  dz' = dz * dt + accelz * dt2 / 2 
+
+  -- Keep previous time step's state for the update
+  tmpSDX = dx
+  tmpSDY = dy
+  tmpSDZ = dz
+
+  accelx' = if isFlying then 0 else accelx
+  accely' = if isFlying then 0 else accely
+
+  -- Attitude update (rotate by gyroscope), we do this in quaternions.
+  -- This is the gyroscope angular velocity integrated over the sample period
+  dtwx = dt * gyrox
+  dtwy = dt * gyroy
+  dtwz = dt * gyroz
+
+  -- Compute the quaternion values in [w,x,y,z] order
+  angle = sqrt (dtwx*dtwx + dtwy*dtwy + dtwz*dtwz) + eps
+  ca = cos $ angle/2
+  sa = sin $ angle/2
+  dqw = ca
+  dqx = sa * dtwx / angle
+  dqy = sa * dtwy / angle
+  dqz = sa * dtwz / angle
+
+  -- Rotate the quad's attitude by the delta quaternion vector computed above
+  tmpq0 = rotateQuat (dqw*_qw - dqx*_qx - dqy*_qy - dqz*_qz) 1
+  tmpq1 = rotateQuat (dqx*_qw + dqw*_qx + dqz*_qy - dqy*_qz) 0
+  tmpq2 = rotateQuat (dqy*_qw - dqz*_qx + dqw*_qy + dqx*_qz) 0
+  tmpq3 = rotateQuat (dqz*_qw + dqy*_qx - dqx*_qy + dqw*_qz) 0
+
+  -- Normalize and store the result
+  norm = sqrt (tmpq0*tmpq0 + tmpq1*tmpq1 + tmpq2*tmpq2 + tmpq3*tmpq3) + eps
+--}
+
+------------------------------------------------------------------------------
+
+ekfFinalize :: Ekf -> Ekf
+
+ekfFinalize ekf = ekf where
+
+  ekfs = ekfState ekf
+
+  v0 = ee0 ekfs
+  v1 = ee1 ekfs
+  v2 = ee2 ekfs
+
+  angle = sqrt (v0*v0 + v1*v1 + v2*v2) + eps
+  ca = cos $ angle / 2
+  sa = sin $ angle / 2
+
+  dqw = ca
+  dqx = sa * v0 / angle
+  dqy = sa * v1 / angle
+  dqz = sa * v2 / angle
+
+  q = quat ekf
+  qw = qqw q
+  qx = qqx q
+  qy = qqy q
+  qz = qqz q
+
+  -- Rotate the quad's attitude by the delta quaternion vector computed above
+  tmpq0 = dqw * qw - dqx * qx - dqy * qy - dqz * qz
+  tmpq1 = dqx * qw + dqw * qx + dqz * qy - dqy * qz
+  tmpq2 = dqy * qw - dqz * qx + dqw * qy + dqx * qz
+  tmpq3 = dqz * qw + dqy * qx - dqx * qy + dqw * qz
+
+  -- Normalize and store the result
+  norm = sqrt (tmpq0 * tmpq0 + tmpq1 * tmpq1 + tmpq2 * tmpq2 + tmpq3 * tmpq3) + eps
+
+  {-- Rotate the covariance, since we've rotated the body
+  
+   This comes from a second order approximation to:
+   Sigma_post = exps(-d) Sigma_pre exps(-d)'
+              ~ (I + [[-d]] + [[-d]]^2 / 2) 
+   Sigma_pre (I + [[-d]] + [[-d]]^2 / 2)'
+   where d is the attitude error expressed as Rodriges parameters, ie. 
+   d = tan(|v|/2)*v/|v|
+  
+   As derived in "Covariance Correction Step for Kalman Filtering with an 
+   Attitude" http://arc.aiaa.org/doi/abs/10.2514/1.G000848
+  --}
+
+  -- The attitude error vector (v0,v1,v2) is small,  so we use a first-order
+  -- approximation to e0 = tan(|v0|/2)*v0/|v0|
+  e0 = v0/2 
+  e1 = v1/2 
+  e2 = v2/2
+
+  e0e0 =  1 - e1*e1/2 - e2*e2/2
+  e0e1 =  e2 + e0*e1/2
+  e0e2 = -e1 + e0*e2/2
+
+  e1e0 =  -e2 + e0*e1/2
+  e1e1 = 1 - e0*e0/2 - e2*e2/2
+  e1e2 = e0 + e1*e2/2
+
+  e2e0 = e1 + e0*e2/2
+  e2e1 = -e0 + e1*e2/2
+  e2e2 = 1 - e0*e0/2 - e1*e1/2
 
 ------------------------------------------------------------------------------
 
 step = (vz, vdx, vdy, vdz, phi, theta, psi) where
 
-    shouldPredict = ekfMode == mode_predict && nowMsec >= nextPredictionMsec
+  vz = 0 :: SFloat
+  vdx = 0 :: SFloat
+  vdy = 0 :: SFloat
+  vdz = 0 :: SFloat
+  phi = 0 :: SFloat
+  theta = 0 :: SFloat
+  psi = 0 :: SFloat
 
-    lastPredictionMsec = 
-        if ekfMode == mode_init then nowMsec else _lastPredictionMsec
+  --------------------------------------------------------------------------
 
-    dmsec = (unsafeCast $ nowMsec - lastPredictionMsec) :: SFloat
-
-    dt = dmsec / 1000.0
-
-    e0' = gyrox * dt / 2
-    e1' = gyroy * dt / 2
-    e2' = gyroz * dt / 2
-
-    -- Altitude from body-frame velocity
-    zdx = rx * dt
-    zdy = ry * dt
-    zdz = rz * dt
-
-    -- Altitude from attitude error
-    ze0 = (dy * rz - dz * ry) * dt
-    ze1 = (-dx * rz + dz * rx) * dt
-    ze2 = (dx * ry - dy * rx) * dt
-
-    -- Body-frame velocity from body-frame velocity
-    dxdx =  1 --drag negligible
-    dydx = -(gyroz * dt)
-    dzdx =  gyroy * dt
-
-    dxdy =  gyroz * dt
-    dydy =  1 --drag negligible
-    dzdy = -(gyrox * dt)
-
-    dxdz = -(gyroy * dt)
-    dydz =  gyrox * dt
-    dzdz =  1 --drag negligible
-
-    -- Body-frame velocity from attitude error
-    dxe0 =  0
-    dye0 = -(gravity_magnitude * rz * dt)
-    dze0 =  gravity_magnitude * ry * dt
-
-    dxe1 =  gravity_magnitude * rz * dt
-    dye1 =  0
-    dze1 = -(gravity_magnitude * rx * dt)
-
-    dxe2 = -(gravity_magnitude * ry * dt)
-    dye2 =  gravity_magnitude * rx * dt
-    dze2 =  0
-
-    e0e0 =  1 - e1 * e1/2 - e2 * e2/2
-    e0e1 =  e2 + e0 * e1/2
-    e0e2 = -e1 + e0 * e2/2
-
-    e1e0 = -e2 + e0 * e1/2
-    e1e1 =  1 - e0 * e0/2 - e2 * e2/2
-    e1e2 =  e0 + e1 * e2/2
-
-    e2e0 =  e1 + e0 * e2/2
-    e2e1 = -e0 + e1 * e2/2
-    e2e2 = 1 - e0 * e0/2 - e1 * e1/2
-
-    dt2 = dt * dt
+{--
+  _qw = [1] ++ qw
+  _qx = [1] ++ qx
+  _qy = [1] ++ qy
+  _qz = [1] ++ qz
  
-    -- XXX need to compute these for real
-    gyrox = 0
-    gyroy = 0
-    gyroz = 0
-    accelx = 0
-    accely = 0
-    accelz = 0
-    isErrorSufficient = ekfMode == mode_finalize && true
+  _rx = [0] ++ rx
+  _ry = [0] ++ ry
+  _rz = [0] ++ rz
 
-    -- Position updates in the body frame (will be rotated to inertial frame)
-    -- thrust can only be produced in the body's Z direction
-    dx' = dx * dt + (if isFlying then 0 else accelx * dt2 / 2)
-    dy' = dy * dt + (if isFlying then 0 else accely * dt2 / 2)
-    dz' = dz * dt + accelz * dt2 / 2 
+  _zz = [0] ++ zz
+  _dx = [0] ++ dx
+  _dy = [0] ++ dy
+  _dz = [0] ++ dz
+  _e0 = [0] ++ e0
+  _e1 = [0] ++ e1
+  _e2 = [0] ++ e2
 
-    -- Keep previous time step's state for the update
-    tmpSDX = dx
-    tmpSDY = dy
-    tmpSDZ = dz
-
-    accelx' = if isFlying then 0 else accelx
-    accely' = if isFlying then 0 else accely
-
-    -- Attitude update (rotate by gyroscope), we do this in quaternions.
-    -- This is the gyroscope angular velocity integrated over the sample period
-    dtwx = dt * gyrox
-    dtwy = dt * gyroy
-    dtwz = dt * gyroz
-
-    -- Compute the quaternion values in [w,x,y,z] order
-    angle = sqrt (dtwx*dtwx + dtwy*dtwy + dtwz*dtwz) + eps
-    ca = cos $ angle/2
-    sa = sin $ angle/2
-    dqw = ca
-    dqx = sa * dtwx / angle
-    dqy = sa * dtwy / angle
-    dqz = sa * dtwz / angle
-
-    -- Rotate the quad's attitude by the delta quaternion vector computed above
-    tmpq0 = rotateQuat (dqw*_qw - dqx*_qx - dqy*_qy - dqz*_qz) 1
-    tmpq1 = rotateQuat (dqx*_qw + dqw*_qx + dqz*_qy - dqy*_qz) 0
-    tmpq2 = rotateQuat (dqy*_qw - dqz*_qx + dqw*_qy + dqx*_qz) 0
-    tmpq3 = rotateQuat (dqz*_qw + dqy*_qx - dqx*_qy + dqw*_qz) 0
-
-    -- Normalize and store the result
-    norm = sqrt (tmpq0*tmpq0 + tmpq1*tmpq1 + tmpq2*tmpq2 + tmpq3*tmpq3) + eps
-
-    -- Quaternion
-    qw = updateQuatValue shouldPredict isErrorSufficient tmpq0 norm 1 _qw
-    qx = updateQuatValue shouldPredict isErrorSufficient tmpq1 norm 0 _qx
-    qy = updateQuatValue shouldPredict isErrorSufficient tmpq2 norm 0 _qy
-    qz = updateQuatValue shouldPredict isErrorSufficient tmpq3 norm 0 _qz
-
-    -- Rotation vector
-    rx = updateRotationValue 0 _rx (2*_qx*_qz - 2*_qw*_qy)
-    ry = updateRotationValue 0 _ry (2*_qy*_qz + 2*_qw*_qx)
-    rz = updateRotationValue 1 _rz (_qw*_qw - _qx*_qx - _qy*_qy + _qz*_qz)
-
-    -- EKF state
-    zz = updateEkfValue shouldPredict _zz 0
-
-    dx = 0 :: SFloat
-
-    dy = 0 :: SFloat
-
-    dz = 0 :: SFloat
-
-    e0 = 0 :: SFloat
-
-    e1 = 0 :: SFloat
-
-    e2 = 0 :: SFloat
-
-    vz = 0 :: SFloat
-    vdx = 0 :: SFloat
-    vdy = 0 :: SFloat
-    vdz = 0 :: SFloat
-    phi = 0 :: SFloat
-    theta = 0 :: SFloat
-    psi = 0 :: SFloat
-
-    --------------------------------------------------------------------------
-
-    _qw = [1] ++ qw
-    _qx = [1] ++ qx
-    _qy = [1] ++ qy
-    _qz = [1] ++ qz
- 
-    _rx = [0] ++ rx
-    _ry = [0] ++ ry
-    _rz = [0] ++ rz
-
-    _zz = [0] ++ zz
-    _dx = [0] ++ dx
-    _dy = [0] ++ dy
-    _dz = [0] ++ dz
-    _e0 = [0] ++ e0
-    _e1 = [0] ++ e1
-    _e2 = [0] ++ e2
-
-    _lastPredictionMsec = [0] ++ lastPredictionMsec
+  _lastPredictionMsec = [0] ++ lastPredictionMsec
+--}
 
 ------------------------------------------------------------------------------
 
