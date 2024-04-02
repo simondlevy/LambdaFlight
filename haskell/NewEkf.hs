@@ -206,17 +206,50 @@ step = (vz, vdx, vdy, vdz, phi, theta, psi) where
     e2e1 = -e0 + e1 * e2/2
     e2e2 = 1 - e0 * e0/2 - e1 * e1/2
 
+    dt2 = dt * dt
  
     -- XXX need to compute these for real
     gyrox = 0
     gyroy = 0
     gyroz = 0
+    accelx = 0
+    accely = 0
+    accelz = 0
     tmpq0 = 1
     tmpq1 = 1
     tmpq2 = 1
     tmpq3 = 1
     norm = 1
     isErrorSufficient = ekfMode == mode_finalize && true
+
+    -- Position updates in the body frame (will be rotated to inertial frame)
+    -- thrust can only be produced in the body's Z direction
+    dx' = dx * dt + (if isFlying then 0 else accelx * dt2 / 2)
+    dy' = dy * dt + (if isFlying then 0 else accely * dt2 / 2)
+    dz' = dz * dt + accelz * dt2 / 2 
+
+    -- Keep previous time step's state for the update
+    tmpSDX = dx
+    tmpSDY = dy
+    tmpSDZ = dz
+
+    accelx' = if isFlying then 0 else accelx
+    accely' = if isFlying then 0 else accely
+
+    -- Attitude update (rotate by gyroscope), we do this in quaternions.
+    -- This is the gyroscope angular velocity integrated over the sample period
+    dtwx = dt * gyrox
+    dtwy = dt * gyroy
+    dtwz = dt * gyroz
+
+    -- Compute the quaternion values in [w,x,y,z] order
+    angle = sqrt (dtwx*dtwx + dtwy*dtwy + dtwz*dtwz) + eps
+    ca = cos $ angle/2
+    sa = sin $ angle/2
+    dqw = ca
+    dqx = sa * dtwx / angle
+    dqy = sa * dtwy / angle
+    dqz = sa * dtwz / angle
 
     -- Quaternion
     qw = updateQuatValue shouldPredict isErrorSufficient tmpq0 norm 1 _qw
