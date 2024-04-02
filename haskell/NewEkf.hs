@@ -184,9 +184,15 @@ predict lastPredictionMsec ekf = ekf' where
 
 step :: VehicleState
 
-step = vehicleState where
+step = VehicleState vz vdx vdy vdz phi theta psi where
 
-  vehicleState = VehicleState 0 0 0 0 0 0 0
+    vz = 0
+    vdx = 0
+    vdy = 0
+    vdz = 0
+    phi = 0
+    theta = 0
+    psi = 0
 
 ------------------------------------------------------------------------------
 
