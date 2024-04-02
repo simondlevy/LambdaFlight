@@ -241,6 +241,12 @@ ekfInit = Ekf p r q s g a false 0 0 where
 
 ------------------------------------------------------------------------------
 
+ekfPredict :: Ekf -> Ekf
+
+ekfPredict ekf = ekf
+
+------------------------------------------------------------------------------
+
 step = (vz, vdx, vdy, vdz, phi, theta, psi) where
 
     shouldPredict = ekfMode == mode_predict && nowMsec >= nextPredictionMsec
