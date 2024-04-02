@@ -623,12 +623,6 @@ class Ekf {
                 /*E2*/  {0, 0, 0, 0, e2e0, e2e1, e2e2}
             };
 
-            float At[KC_STATE_DIM][KC_STATE_DIM] = {};
-            transpose(A, At);     // A'
-
-            float AP[KC_STATE_DIM][KC_STATE_DIM] = {};
-            multiply(A, _Pmat, AP, true);  // AP
-
             const auto isErrorSufficient  = 
                 (isErrorLarge(v0) || isErrorLarge(v1) || isErrorLarge(v2)) &&
                 isErrorInBounds(v0) && isErrorInBounds(v1) && isErrorInBounds(v2);
@@ -641,6 +635,10 @@ class Ekf {
 
             // Move attitude error into attitude if any of the angle errors are
             // large enough
+            float At[KC_STATE_DIM][KC_STATE_DIM] = {};
+            transpose(A, At);     // A'
+            float AP[KC_STATE_DIM][KC_STATE_DIM] = {};
+            multiply(A, _Pmat, AP, true);  // AP
             multiply(AP, At, _Pmat, isErrorSufficient); // APA'
 
             // finalize()
