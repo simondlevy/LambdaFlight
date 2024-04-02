@@ -215,10 +215,10 @@ rotateQuat val initVal = val' where
 
 ------------------------------------------------------------------------------
 
-subSamplerInit = SubSampler sample sum count where
+subSamplerInit = SubSampler sample sum 0 where
 
   sum = Axis3 0 0 0
-  count = 0
+
   sample = Axis3 0 0 0
 
 ------------------------------------------------------------------------------
