@@ -143,6 +143,17 @@ updateEkfValue shouldPredict curr predicted =
 
 ------------------------------------------------------------------------------
 
+rotateQuat :: SFloat -> SFloat -> SFloat
+
+rotateQuat val initVal = val' where
+
+    keep = 1 - rollpitch_zero_reversion
+
+    val' = (val * (if isFlying then 1 else keep)) +
+        (if isFlying then 0 else rollpitch_zero_reversion * initVal)
+
+------------------------------------------------------------------------------
+
 step = (vz, vdx, vdy, vdz, phi, theta, psi) where
 
     shouldPredict = ekfMode == mode_predict && nowMsec >= nextPredictionMsec
@@ -215,10 +226,6 @@ step = (vz, vdx, vdy, vdz, phi, theta, psi) where
     accelx = 0
     accely = 0
     accelz = 0
-    tmpq0 = 1
-    tmpq1 = 1
-    tmpq2 = 1
-    tmpq3 = 1
     norm = 1
     isErrorSufficient = ekfMode == mode_finalize && true
 
@@ -250,6 +257,12 @@ step = (vz, vdx, vdy, vdz, phi, theta, psi) where
     dqx = sa * dtwx / angle
     dqy = sa * dtwy / angle
     dqz = sa * dtwz / angle
+
+    -- Rotate the quad's attitude by the delta quaternion vector computed above
+    tmpq0 = rotateQuat (dqw*_qw - dqx*_qx - dqy*_qy - dqz*_qz) 1
+    tmpq1 = rotateQuat (dqx*_qw + dqw*_qx + dqz*_qy - dqy*_qz) 0
+    tmpq2 = rotateQuat (dqy*_qw - dqz*_qx + dqw*_qy + dqx*_qz) 0
+    tmpq3 = rotateQuat (dqz*_qw + dqy*_qx - dqx*_qy + dqw*_qz) 0
 
     -- Quaternion
     qw = updateQuatValue shouldPredict isErrorSufficient tmpq0 norm 1 _qw
