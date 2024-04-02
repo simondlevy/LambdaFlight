@@ -202,6 +202,10 @@ step = VehicleState vz vdx vdy vdz phi theta psi where
     qy = updateQuatValue shouldPredict isErrorSufficient tmpq2 norm 0 _qy
     qz = updateQuatValue shouldPredict isErrorSufficient tmpq3 norm 0 _qz
 
+    rx = if ekfMode == mode_init then 0 
+         else if ekfMode == mode_finalize then 2 * _qx * _qz - 2 * _qw * _qy
+         else _rx
+
     vz = 0
     vdx = 0
     vdy = 0
@@ -214,6 +218,8 @@ step = VehicleState vz vdx vdy vdz phi theta psi where
     _qx = [1] ++ qx
     _qy = [1] ++ qy
     _qz = [1] ++ qz
+ 
+    _rx = [0] ++ rx
 
 ------------------------------------------------------------------------------
 
