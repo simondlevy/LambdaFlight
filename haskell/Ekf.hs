@@ -151,6 +151,19 @@ data SubSampler = SubSampler {
   , count  :: SInt32
 }
 
+------------------------------------------------------------------------------
+
+data Ekf = Ekf {
+
+    p :: EkfMatrix
+  , quat :: Quaternion
+  , ekfState :: EkfState
+  , gyroSubSampler :: SubSampler
+  , accelSubSampler :: SubSampler
+}
+
+------------------------------------------------------------------------------
+
 subsampler_init = SubSampler (Axis3f 0 0 0) (Axis3f 0 0 0) 0
 
 subsampler_finalize :: SBool -> (SFloat -> SFloat) -> SubSampler -> 
