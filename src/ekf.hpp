@@ -127,10 +127,6 @@ class Ekf {
 
             const float dt = (nowMs - _lastPredictionMs) / 1000.0f;
 
-            const auto e0 = gyro->x*dt/2;
-            const auto e1 = gyro->y*dt/2;
-            const auto e2 = gyro->z*dt/2;
-
             // altitude from body-frame velocity
             const auto zdx = _r.x*dt;
             const auto zdy = _r.y*dt;
@@ -166,18 +162,6 @@ class Ekf {
             const auto dxe2 = -GRAVITY_MAGNITUDE*_r.y*dt;
             const auto dye2 =  GRAVITY_MAGNITUDE*_r.x*dt;
             const auto dze2 =  0;
-
-            const auto e0e0 =  1 - e1*e1/2 - e2*e2/2;
-            const auto e0e1 =  e2 + e0*e1/2;
-            const auto e0e2 = -e1 + e0*e2/2;
-
-            const auto e1e0 = -e2 + e0*e1/2;
-            const auto e1e1 =  1 - e0*e0/2 - e2*e2/2;
-            const auto e1e2 =  e0 + e1*e2/2;
-
-            const auto e2e0 =  e1 + e0*e2/2;
-            const auto e2e1 = -e0 + e1*e2/2;
-            const auto e2e2 = 1 - e0*e0/2 - e1*e1/2;
 
             const auto dt2 = dt * dt;
 
@@ -278,6 +262,22 @@ class Ekf {
             const auto isDtPositive = dt1 > 0;
 
             // ====== COVARIANCE UPDATE ======
+
+            const auto e0 = gyro->x*dt/2;
+            const auto e1 = gyro->y*dt/2;
+            const auto e2 = gyro->z*dt/2;
+
+            const auto e0e0 =  1 - e1*e1/2 - e2*e2/2;
+            const auto e0e1 =  e2 + e0*e1/2;
+            const auto e0e2 = -e1 + e0*e2/2;
+
+            const auto e1e0 = -e2 + e0*e1/2;
+            const auto e1e1 =  1 - e0*e0/2 - e2*e2/2;
+            const auto e1e2 =  e0 + e1*e2/2;
+
+            const auto e2e0 =  e1 + e0*e2/2;
+            const auto e2e1 = -e0 + e1*e2/2;
+            const auto e2e2 = 1 - e0*e0/2 - e1*e1/2;
 
             const float A[KC_STATE_DIM][KC_STATE_DIM] = 
             { 

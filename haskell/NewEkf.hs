@@ -108,7 +108,8 @@ pinit =  array [--  z   dx  dy  dz  e0  e1  e2
              array [0,  0,  0,  0,  0,  0,  rr]  -- e2
              ] 
 
-------------------------------------------------------------------------------
+ainit 
+
 ------------------------------------------------------------------------------
 
 data Quaternion = Quaternion {
@@ -243,118 +244,7 @@ ekfInit = Ekf p r q s g a false nowMsec nowMsec where
 
 ekfPredict :: Ekf -> Ekf
 
-ekfPredict ekf = ekf {-- where
-
-  shouldPredict = ekfMode == mode_predict && nowMsec >= nextPredictionMsec
-
-  lastPredictionMsec = 
-      if ekfMode == mode_init then nowMsec else _lastPredictionMsec
-
-  dmsec = (unsafeCast $ nowMsec - lastPredictionMsec) :: SFloat
-
-  dt = dmsec / 1000.0
-
-  e0' = gyrox * dt / 2
-  e1' = gyroy * dt / 2
-  e2' = gyroz * dt / 2
-
-  -- Altitude from body-frame velocity
-  zdx = rx * dt
-  zdy = ry * dt
-  zdz = rz * dt
-
-  -- Altitude from attitude error
-  ze0 = (dy * rz - dz * ry) * dt
-  ze1 = (-dx * rz + dz * rx) * dt
-  ze2 = (dx * ry - dy * rx) * dt
-
-  -- Body-frame velocity from body-frame velocity
-  dxdx =  1 --drag negligible
-  dydx = -(gyroz * dt)
-  dzdx =  gyroy * dt
-
-  dxdy =  gyroz * dt
-  dydy =  1 --drag negligible
-  dzdy = -(gyrox * dt)
-
-  dxdz = -(gyroy * dt)
-  dydz =  gyrox * dt
-  dzdz =  1 --drag negligible
-
-  -- Body-frame velocity from attitude error
-  dxe0 =  0
-  dye0 = -(gravity_magnitude * rz * dt)
-  dze0 =  gravity_magnitude * ry * dt
-
-  dxe1 =  gravity_magnitude * rz * dt
-  dye1 =  0
-  dze1 = -(gravity_magnitude * rx * dt)
-
-  dxe2 = -(gravity_magnitude * ry * dt)
-  dye2 =  gravity_magnitude * rx * dt
-  dze2 =  0
-
-  e0e0 =  1 - e1 * e1/2 - e2 * e2/2
-  e0e1 =  e2 + e0 * e1/2
-  e0e2 = -e1 + e0 * e2/2
-
-  e1e0 = -e2 + e0 * e1/2
-  e1e1 =  1 - e0 * e0/2 - e2 * e2/2
-  e1e2 =  e0 + e1 * e2/2
-
-  e2e0 =  e1 + e0 * e2/2
-  e2e1 = -e0 + e1 * e2/2
-  e2e2 = 1 - e0 * e0/2 - e1 * e1/2
-
-  dt2 = dt * dt
- 
-  -- XXX need to compute these for real
-  gyrox = 0
-  gyroy = 0
-  gyroz = 0
-  accelx = 0
-  accely = 0
-  accelz = 0
-  isErrorSufficient = ekfMode == mode_finalize && true
-
-  -- Position updates in the body frame (will be rotated to inertial frame)
-  -- thrust can only be produced in the body's Z direction
-  dx' = dx * dt + (if isFlying then 0 else accelx * dt2 / 2)
-  dy' = dy * dt + (if isFlying then 0 else accely * dt2 / 2)
-  dz' = dz * dt + accelz * dt2 / 2 
-
-  -- Keep previous time step's state for the update
-  tmpSDX = dx
-  tmpSDY = dy
-  tmpSDZ = dz
-
-  accelx' = if isFlying then 0 else accelx
-  accely' = if isFlying then 0 else accely
-
-  -- Attitude update (rotate by gyroscope), we do this in quaternions.
-  -- This is the gyroscope angular velocity integrated over the sample period
-  dtwx = dt * gyrox
-  dtwy = dt * gyroy
-  dtwz = dt * gyroz
-
-  -- Compute the quaternion values in [w,x,y,z] order
-  angle = sqrt (dtwx*dtwx + dtwy*dtwy + dtwz*dtwz) + eps
-  ca = cos $ angle/2
-  sa = sin $ angle/2
-  dqw = ca
-  dqx = sa * dtwx / angle
-  dqy = sa * dtwy / angle
-  dqz = sa * dtwz / angle
-
-  -- Rotate the quad's attitude by the delta quaternion vector computed above
-  tmpq0 = rotateQuat (dqw*_qw - dqx*_qx - dqy*_qy - dqz*_qz) 1
-  tmpq1 = rotateQuat (dqx*_qw + dqw*_qx + dqz*_qy - dqy*_qz) 0
-  tmpq2 = rotateQuat (dqy*_qw - dqz*_qx + dqw*_qy + dqx*_qz) 0
-  tmpq3 = rotateQuat (dqz*_qw + dqy*_qx - dqx*_qy + dqw*_qz) 0
-
-  -- Normalize and store the result
-  norm = sqrt (tmpq0*tmpq0 + tmpq1*tmpq1 + tmpq2*tmpq2 + tmpq3*tmpq3) + eps
---}
+ekfPredict ekf = ekf 
 
 ------------------------------------------------------------------------------
 
