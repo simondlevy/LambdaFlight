@@ -193,6 +193,14 @@ updateRotationValue init curr final =
 
 ------------------------------------------------------------------------------
 
+updateEkfValue :: SBool -> SFloat -> SFloat
+
+updateEkfValue shouldPredict curr = 
+
+  if ekfMode == mode_init then 0 else curr
+
+------------------------------------------------------------------------------
+
 step :: VehicleState
 
 step = VehicleState vz vdx vdy vdz phi theta psi where
@@ -207,14 +215,25 @@ step = VehicleState vz vdx vdy vdz phi theta psi where
     norm = 1
     isErrorSufficient = ekfMode == mode_finalize && true
 
+    -- Quaternion
     qw = updateQuatValue shouldPredict isErrorSufficient tmpq0 norm 1 _qw
     qx = updateQuatValue shouldPredict isErrorSufficient tmpq1 norm 0 _qx
     qy = updateQuatValue shouldPredict isErrorSufficient tmpq2 norm 0 _qy
     qz = updateQuatValue shouldPredict isErrorSufficient tmpq3 norm 0 _qz
 
+    -- Rotation vector
     rx = updateRotationValue 0 _rx (2*_qx*_qz - 2*_qw*_qy)
     ry = updateRotationValue 0 _ry (2*_qy*_qz + 2*_qw*_qx)
     rz = updateRotationValue 1 _rz (_qw*_qw - _qx*_qx - _qy*_qy + _qz*_qz)
+
+    -- EKF state
+    zz = updateEkfValue shouldPredict _zz
+    dx = updateEkfValue shouldPredict _dx
+    dy = updateEkfValue shouldPredict _dy
+    dz = updateEkfValue shouldPredict _dz
+    e0 = updateEkfValue shouldPredict _e0
+    e1 = updateEkfValue shouldPredict _e1
+    e2 = updateEkfValue shouldPredict _e2
 
     vz = 0
     vdx = 0
@@ -232,6 +251,14 @@ step = VehicleState vz vdx vdy vdz phi theta psi where
     _rx = [0] ++ rx
     _ry = [0] ++ ry
     _rz = [0] ++ rz
+
+    _zz = [0] ++ zz
+    _dx = [0] ++ dx
+    _dy = [0] ++ dy
+    _dz = [0] ++ dz
+    _e0 = [0] ++ e0
+    _e1 = [0] ++ e1
+    _e2 = [0] ++ e2
 
 ------------------------------------------------------------------------------
 

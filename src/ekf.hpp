@@ -76,8 +76,6 @@ class Ekf {
             memset(&_ekfState, 0, sizeof(_ekfState));
             memset(_Pmat, 0, sizeof(_Pmat));
 
-            _ekfState.z = 0;
-
             _qw = QW_INIT;
             _qx = QX_INIT;
             _qy = QY_INIT;
