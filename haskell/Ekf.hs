@@ -24,6 +24,8 @@ module Main where
 import Language.Copilot hiding(atan2, sum)
 import Copilot.Compile.C99
 
+import Linear.Matrix
+
 import Utils
 
 -- Initial variances, uncertain of position, but know we're stationary and
@@ -154,10 +156,6 @@ data Ekf = Ekf {
 
 type EkfMatrix = Array 7 (Array 7 SFloat)
 
-rotate :: EkfMatrix -> EkfMatrix
-
-rotate a = a
-
 ------------------------------------------------------------------------------
 
 pinit :: EkfMatrix
@@ -176,6 +174,16 @@ pinit =  array [--  z   dx  dy  dz  e0  e1  e2
              array [0,  0,  0,  0,  0,  ee,  0], -- e1
              array [0,  0,  0,  0,  0,  0,  rr]  -- e2
              ] 
+
+m :: [[SFloat]]
+m = [ [ 0,1,2,3,4 ],
+      [ 1,2,3,4,0 ],
+      [ 2,3,4,0,1 ],
+      [ 3,4,0,1,2 ],
+      [ 4,0,1,2,3 ] ]
+
+msq :: [[SFloat]]
+msq = m !*! m
 
 ------------------------------------------------------------------------------
 
