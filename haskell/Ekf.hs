@@ -177,82 +177,6 @@ aLowerRight e0 e1 e2 =  (e00, e01, e02, e10, e11, e12, e20, e21, e22) where
 
 ------------------------------------------------------------------------------
 
-afinalize :: SFloat -> SFloat -> SFloat -> EkfMatrix
-
-afinalize v0 v1 v2 = a where
-
-  (e00, e01, e02, e10, e11, e12, e20, e21, e22) = aLowerRight (v0/2) (v1/2) (v2/2)
-
-  a =  [   --  z   dx  dy  dz  e0    e1     e2
-              [1 , 0,  0,  0,  0,    0,     0], -- z
-              [0,  1 , 0,  0,  0,    0,     0], -- dx
-              [0,  0,  1 , 0,  0,    0,     0], -- dy
-              [0,  0,  0,  1 , 0,    0,     0], -- dz
-              [0,  0,  0,  0,  e00, e01,  e02], -- e0
-              [0,  0,  0,  0,  e10, e11,  e12], -- e1
-              [0,  0,  0,  0,  e20, e21,  e22]  -- e2
-             ] 
-
-------------------------------------------------------------------------------
-
-apredict :: SFloat -> Axis3 -> EkfState -> Axis3 -> EkfMatrix
-
-apredict dt gyro ekfs r = a where
-
-  e0 = (x gyro) * dt / 2
-  e1 = (y gyro) * dt / 2
-  e2 = (z gyro) * dt / 2
-
-  (e00, e01, e02, e10, e11, e12, e20, e21, e22) = aLowerRight e0 e1 e2
-
-  -- altitude from body-frame velocity
-  zdx  = (x r) * dt
-  zdy  = (y r) * dt
-  zdz  = (z r) * dt
-
-  -- altitude from attitude error
-  ze0  = ((edy ekfs) * (z r) - (edz ekfs) * (y r)) * dt
-  ze1  = (- (edx ekfs) * (z r) + (edz ekfs) * (x r)) * dt
-  ze2  = ((edx ekfs) * (y r) - (edy ekfs) * (x r)) * dt
-
-  -- body-frame velocity from body-frame velocity
-  dxdx  = 1 --drag negligible
-  dydx =  -(z gyro) * dt
-  dzdx  = (y gyro) * dt
-
-  dxdy  = (z gyro) * dt
-  dydy  = 1 --drag negligible
-  dzdy  = (x gyro) * dt
-
-  dxdz =  (y gyro) * dt
-  dydz  = (x gyro) * dt
-  dzdz  = 1 --drag negligible
-
-  -- body-frame velocity from attitude error
-  dxe0  = 0
-  dye0  = -gravity_magnitude * (z r) * dt
-  dze0  = gravity_magnitude * (y r) * dt
-
-  dxe1  = gravity_magnitude * (z r) * dt
-  dye1  = 0
-  dze1  = -gravity_magnitude * (x r) * dt
-
-  dxe2  = -gravity_magnitude * (y r) * dt
-  dye2  = gravity_magnitude * (x r) * dt
-  dze2  = 0
-
-  a =  [  --  z   dx   dy    dz    e1    e1    e2
-             [0, zdx,  zdy,  zdz,  ze0,  ze1,  ze2],  -- z
-             [0, dxdx, dxdy, dxdz, dxe0, dxe1, dxe2], -- dx
-             [0, dydx, dydy, dydz, dye0, dye1, dye2], -- dy
-             [0, dzdx, dzdy, dzdz, dze0, dze1, dze2], -- dz
-             [0, 0,    0,    0,    e00,  e01,  e02],  -- e0
-             [0, 0,    0,    0,    e10,  e11,  e12],  -- e1
-             [0, 0,    0,    0,    e20,  e21,  e22]   -- e2
-       ] 
-
-------------------------------------------------------------------------------
-
 updateQuatValue :: SBool -> SBool -> SFloat -> SFloat -> SFloat -> SFloat -> SFloat
 
 updateQuatValue shouldPredict isErrorSufficient tmpq norm init curr =
@@ -343,7 +267,66 @@ ekfInit = Ekf p r q s g a false nowMsec nowMsec where
 
 ekfPredict :: Ekf -> Ekf
 
-ekfPredict ekf = ekf 
+ekfPredict ekf = ekf where
+
+  -- XXX
+  gyro = Axis3 0 0 0
+  accel = Axis3 0 0 0
+  ekfs = EkfState 0 0 0 0 0 0 0
+  dt = 1
+  r = Axis3 0 0 0
+
+  e0 = (x gyro) * dt / 2
+  e1 = (y gyro) * dt / 2
+  e2 = (z gyro) * dt / 2
+
+  (e00, e01, e02, e10, e11, e12, e20, e21, e22) = aLowerRight e0 e1 e2
+
+  -- altitude from body-frame velocity
+  zdx  = (x r) * dt
+  zdy  = (y r) * dt
+  zdz  = (z r) * dt
+
+  -- altitude from attitude error
+  ze0  = ((edy ekfs) * (z r) - (edz ekfs) * (y r)) * dt
+  ze1  = (- (edx ekfs) * (z r) + (edz ekfs) * (x r)) * dt
+  ze2  = ((edx ekfs) * (y r) - (edy ekfs) * (x r)) * dt
+
+  -- body-frame velocity from body-frame velocity
+  dxdx  = 1 --drag negligible
+  dydx =  -(z gyro) * dt
+  dzdx  = (y gyro) * dt
+
+  dxdy  = (z gyro) * dt
+  dydy  = 1 --drag negligible
+  dzdy  = (x gyro) * dt
+
+  dxdz =  (y gyro) * dt
+  dydz  = (x gyro) * dt
+  dzdz  = 1 --drag negligible
+
+  -- body-frame velocity from attitude error
+  dxe0  = 0
+  dye0  = -gravity_magnitude * (z r) * dt
+  dze0  = gravity_magnitude * (y r) * dt
+
+  dxe1  = gravity_magnitude * (z r) * dt
+  dye1  = 0
+  dze1  = -gravity_magnitude * (x r) * dt
+
+  dxe2  = -gravity_magnitude * (y r) * dt
+  dye2  = gravity_magnitude * (x r) * dt
+  dze2  = 0
+
+  a =  [  --  z   dx   dy    dz    e1    e1    e2
+             [0, zdx,  zdy,  zdz,  ze0,  ze1,  ze2],  -- z
+             [0, dxdx, dxdy, dxdz, dxe0, dxe1, dxe2], -- dx
+             [0, dydx, dydy, dydz, dye0, dye1, dye2], -- dy
+             [0, dzdx, dzdy, dzdz, dze0, dze1, dze2], -- dz
+             [0, 0,    0,    0,    e00,  e01,  e02],  -- e0
+             [0, 0,    0,    0,    e10,  e11,  e12],  -- e1
+             [0, 0,    0,    0,    e20,  e21,  e22]   -- e2
+       ] 
 
 ------------------------------------------------------------------------------
 
@@ -392,7 +375,16 @@ ekfFinalize ekf = ekf where
 
   -- Move attitude error into attitude if any of the angle errors are large
   -- enough
-  a = afinalize v0 v1 v2
+  (e00, e01, e02, e10, e11, e12, e20, e21, e22) = aLowerRight (v0/2) (v1/2) (v2/2)
+  a =  [ --  z   dx  dy  dz  e0    e1     e2
+            [1 , 0,  0,  0,  0,    0,     0], -- z
+            [0,  1 , 0,  0,  0,    0,     0], -- dx
+            [0,  0,  1 , 0,  0,    0,     0], -- dy
+            [0,  0,  0,  1 , 0,    0,     0], -- dz
+            [0,  0,  0,  0,  e00, e01,  e02], -- e0
+            [0,  0,  0,  0,  e10, e11,  e12], -- e1
+            [0,  0,  0,  0,  e20, e21,  e22]  -- e2
+       ] 
 
 ------------------------------------------------------------------------------
 
