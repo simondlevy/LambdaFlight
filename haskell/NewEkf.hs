@@ -246,6 +246,14 @@ rotateQuat val initVal = val' where
 
 ------------------------------------------------------------------------------
 
+isErrorLarge :: SFloat -> SBool 
+isErrorLarge v = abs v > 0.1e-3
+
+isErrorInBounds :: SFloat -> SBool 
+isErrorInBounds v = abs v < 10
+
+------------------------------------------------------------------------------
+
 subSamplerInit = SubSampler sample sum 0 where
 
   sum = Axis3 0 0 0
@@ -312,6 +320,11 @@ ekfFinalize ekf = ekf where
   -- Normalize and store the result
   norm = sqrt (tmpq0 * tmpq0 + tmpq1 * tmpq1 + tmpq2 * tmpq2 + tmpq3 * tmpq3) + eps
 
+  isErrorSufficient  = 
+                (isErrorLarge v0  || isErrorLarge v1  || isErrorLarge v2 ) &&
+                isErrorInBounds v0  && isErrorInBounds v1  && isErrorInBounds v2
+
+ 
   {-- Rotate the covariance, since we've rotated the body
   
    This comes from a second order approximation to:
