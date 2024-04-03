@@ -610,6 +610,16 @@ class Ekf {
             const auto e2e1 = -e0 + e1*e2/2;
             const auto e2e2 = 1 - e0*e0/2 - e1*e1/2;
 
+            const auto isErrorSufficient  = 
+                (isErrorLarge(v0) || isErrorLarge(v1) || isErrorLarge(v2)) &&
+                isErrorInBounds(v0) && isErrorInBounds(v1) && isErrorInBounds(v2);
+
+            // finalize()
+            _qw = isErrorSufficient ? tmpq0 / norm : _qw;
+            _qx = isErrorSufficient ? tmpq1 / norm : _qx;
+            _qy = isErrorSufficient ? tmpq2 / norm : _qy;
+            _qz = isErrorSufficient ? tmpq3 / norm : _qz;
+
             // Matrix to rotate the attitude covariances once updated
             const float A[KC_STATE_DIM][KC_STATE_DIM] = 
             { 
@@ -622,16 +632,6 @@ class Ekf {
                 /*E1*/  {0, 0, 0, 0, e1e0, e1e1, e1e2},
                 /*E2*/  {0, 0, 0, 0, e2e0, e2e1, e2e2}
             };
-
-            const auto isErrorSufficient  = 
-                (isErrorLarge(v0) || isErrorLarge(v1) || isErrorLarge(v2)) &&
-                isErrorInBounds(v0) && isErrorInBounds(v1) && isErrorInBounds(v2);
-
-            // finalize()
-            _qw = isErrorSufficient ? tmpq0 / norm : _qw;
-            _qx = isErrorSufficient ? tmpq1 / norm : _qx;
-            _qy = isErrorSufficient ? tmpq2 / norm : _qy;
-            _qz = isErrorSufficient ? tmpq3 / norm : _qz;
 
             // Move attitude error into attitude if any of the angle errors are
             // large enough

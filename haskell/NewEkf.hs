@@ -329,21 +329,8 @@ ekfFinalize ekf = ekf where
   qy' = if isErrorSufficient then tmpq2 / norm else qy
   qz' = if isErrorSufficient then tmpq3 / norm else qz
 
-  {-- Rotate the covariance, since we've rotated the body
-  
-   This comes from a second order approximation to:
-   Sigma_post = exps(-d) Sigma_pre exps(-d)'
-              ~ (I + [[-d]] + [[-d]]^2 / 2) 
-   Sigma_pre (I + [[-d]] + [[-d]]^2 / 2)'
-   where d is the attitude error expressed as Rodriges parameters, ie. 
-   d = tan(|v|/2)*v/|v|
-  
-   As derived in "Covariance Correction Step for Kalman Filtering with an 
-   Attitude" http://arc.aiaa.org/doi/abs/10.2514/1.G000848
-  --}
-
-  -- The attitude error vector (v0,v1,v2) is small,  so we use a first-order
-  -- approximation to e0 = tan(|v0|/2)*v0/|v0|
+  -- Move attitude error into attitude if any of the angle errors are large
+  -- enough
   a = afinalize v0 v1 v2
 
 ------------------------------------------------------------------------------
