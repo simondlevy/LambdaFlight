@@ -158,26 +158,6 @@ type EkfMatrix = [[SFloat]]
 
 ------------------------------------------------------------------------------
 
-pinit :: EkfMatrix
-
-qq = sqr stdev_initial_position_z 
-dd = sqr stdev_initial_velocity 
-ee = sqr stdev_initial_attituderoll_pitch
-rr = sqr stdev_initial_attitude_yaw
-
-pinit =  [--   z   dx  dy  dz  e0  e1  e2
-              [qq,  0,  0,  0,  0,  0,  0], -- z
-              [0,  dd,  0,  0,  0,  0,  0], -- dx
-              [0,  0,  dd,  0,  0,  0,  0], -- dy
-              [0,  0,  0,  dd,  0,  0,  0], -- dz
-              [0,  0,  0,  0,  ee,  0,  0], -- e0
-              [0,  0,  0,  0,  0,  ee,  0], -- e1
-              [0,  0,  0,  0,  0,  0,  rr]  -- e2
-          ] 
-
-
-------------------------------------------------------------------------------
-
 aLowerRight :: SFloat -> SFloat -> SFloat ->
   (SFloat, SFloat, SFloat, SFloat, SFloat, SFloat, SFloat, SFloat, SFloat)
 
@@ -334,7 +314,20 @@ ekfInit :: Ekf
 
 ekfInit = Ekf p r q s g a false nowMsec nowMsec where 
 
-  p = pinit
+  qq = sqr stdev_initial_position_z 
+  dd = sqr stdev_initial_velocity 
+  ee = sqr stdev_initial_attituderoll_pitch
+  rr = sqr stdev_initial_attitude_yaw
+
+  p     =  [--   z   dx  dy  dz  e0  e1  e2
+              [qq,  0,  0,  0,  0,  0,  0], -- z
+              [0,  dd,  0,  0,  0,  0,  0], -- dx
+              [0,  0,  dd,  0,  0,  0,  0], -- dy
+              [0,  0,  0,  dd,  0,  0,  0], -- dz
+              [0,  0,  0,  0,  ee,  0,  0], -- e0
+              [0,  0,  0,  0,  0,  ee,  0], -- e1
+              [0,  0,  0,  0,  0,  0,  rr]  -- e2
+          ] 
 
   r = Axis3 0 0 1
 
