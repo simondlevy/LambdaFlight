@@ -26,12 +26,6 @@ import Copilot.Compile.C99
 
 import Utils
 
--- Quaternion used for initial orientation
-qw_init = 1 :: SFloat
-qx_init = 0 :: SFloat
-qy_init = 0 :: SFloat
-qz_init = 0 :: SFloat
-
 -- Initial variances, uncertain of position, but know we're stationary and
 -- roughly flat
 stdev_initial_position_z         = 1.0  :: SFloat
@@ -51,9 +45,6 @@ eps = 1e-6 :: SFloat
 
 type EkfMode = SInt8
 
-ekfMode :: EkfMode
-ekfMode = extern "stream_ekfMode" Nothing
-
 mode_init              = 0 :: EkfMode
 mode_predict           = 1 :: EkfMode
 mode_finalize          = 2 :: EkfMode
@@ -62,6 +53,12 @@ mode_update_with_gyro  = 4 :: EkfMode
 mode_update_with_accel = 5 :: EkfMode
 mode_update_with_range = 6 :: EkfMode
 mode_update_with_flow  = 7 :: EkfMode
+
+------------------------------------------------------------------------------
+
+
+ekfMode :: EkfMode
+ekfMode = extern "stream_ekfMode" Nothing
 
 nowMsec :: SInt32
 nowMsec = extern "stream_nowMsec" Nothing
@@ -92,26 +89,61 @@ accelZ = extern "stream_accelZ" Nothing
 
 ------------------------------------------------------------------------------
 
-sqr :: SFloat -> SFloat
-sqr x = x * x
-
-q = sqr stdev_initial_position_z 
-d = sqr stdev_initial_velocity 
-e = sqr stdev_initial_attituderoll_pitch
-r = sqr stdev_initial_attitude_yaw
-
 type EkfMatrix = Array 7 (Array 7 SFloat)
+
+rotate :: EkfMatrix -> EkfMatrix
+
+rotate a = a
+
+------------------------------------------------------------------------------
 
 pinit :: EkfMatrix
 
+qq = sqr stdev_initial_position_z 
+dd = sqr stdev_initial_velocity 
+ee = sqr stdev_initial_attituderoll_pitch
+rr = sqr stdev_initial_attitude_yaw
+
 pinit =  array [--  z   dx  dy  dz  e0  e1  e2
-             array [q,  0,  0,  0,  0,  0,  0], -- z
-             array [0,  d,  0,  0,  0,  0,  0], -- dx
-             array [0,  0,  d,  0,  0,  0,  0], -- dy
-             array [0,  0,  0,  d,  0,  0,  0], -- dz
-             array [0,  0,  0,  0,  e,  0,  0], -- e0
-             array [0,  0,  0,  0,  0,  e,  0], -- e1
-             array [0,  0,  0,  0,  0,  0,  r]  -- e2
+             array [qq,  0,  0,  0,  0,  0,  0], -- z
+             array [0,  dd,  0,  0,  0,  0,  0], -- dx
+             array [0,  0,  dd,  0,  0,  0,  0], -- dy
+             array [0,  0,  0,  dd,  0,  0,  0], -- dz
+             array [0,  0,  0,  0,  ee,  0,  0], -- e0
+             array [0,  0,  0,  0,  0,  ee,  0], -- e1
+             array [0,  0,  0,  0,  0,  0,  rr]  -- e2
+             ] 
+
+------------------------------------------------------------------------------
+
+afinalize :: SFloat -> SFloat -> SFloat -> EkfMatrix
+
+afinalize v0 v1 v2 = a where
+
+  e0 = v0/2 
+  e1 = v1/2 
+  e2 = v2/2
+
+  e0e0 =  1 - e1*e1/2 - e2*e2/2
+  e0e1 =  e2 + e0*e1/2
+  e0e2 = (-e1) + e0*e2/2
+
+  e1e0 =  (-e2) + e0*e1/2
+  e1e1 = 1 - e0*e0/2 - e2*e2/2
+  e1e2 = e0 + e1*e2/2
+
+  e2e0 = e1 + e0*e2/2
+  e2e1 = (-e0) + e1*e2/2
+  e2e2 = 1 - e0*e0/2 - e1*e1/2
+
+  a = array [    --  z   dx  dy  dz  e0  e1  e2
+             array [1 , 0,  0,  0,  0,    0,     0],    -- z
+             array [0,  1 , 0,  0,  0,    0,     0],    -- dx
+             array [0,  0,  1 , 0,  0,    0,     0],    -- dy
+             array [0,  0,  0,  1 , 0,    0,     0],    -- dz
+             array [0,  0,  0,  0,  e0e0, e0e1,  e0e2], -- e0
+             array [0,  0,  0,  0,  e1e0, e1e1,  e1e2], -- e1
+             array [0,  0,  0,  0,  e2e0, e2e1,  e2e2]  -- e2
              ] 
 
 ------------------------------------------------------------------------------
@@ -126,18 +158,30 @@ data Quaternion = Quaternion {
 ------------------------------------------------------------------------------
 
 data EkfState = EkfState {
-    zz :: SFloat
-  , dx :: SFloat
-  , dy :: SFloat
-  , dz :: SFloat
-  , e0 :: SFloat
-  , e1 :: SFloat
-  , e2 :: SFloat
+    ezz :: SFloat
+  , edx :: SFloat
+  , edy :: SFloat
+  , edz :: SFloat
+  , ee0 :: SFloat
+  , ee1 :: SFloat
+  , ee2 :: SFloat
 }
 
 ------------------------------------------------------------------------------
 
-data Axis3f = Axis3f {
+data VehicleState = VehicleState {
+    vz :: SFloat
+  , vdx :: SFloat
+  , vdy :: SFloat
+  , vdz :: SFloat
+  , phi :: SFloat
+  , theta :: SFloat
+  , psi :: SFloat
+}
+
+------------------------------------------------------------------------------
+
+data Axis3 = Axis3 {
     x :: SFloat
   , y :: SFloat
   , z :: SFloat
@@ -146,309 +190,199 @@ data Axis3f = Axis3f {
 ------------------------------------------------------------------------------
 
 data SubSampler = SubSampler { 
-    sample :: Axis3f
-  , sum    :: Axis3f
+    sample :: Axis3
+  , sum    :: Axis3
   , count  :: SInt32
 }
 
 ------------------------------------------------------------------------------
 
 data Ekf = Ekf {
-
     p :: EkfMatrix
+  , r :: Axis3
   , quat :: Quaternion
   , ekfState :: EkfState
   , gyroSubSampler :: SubSampler
   , accelSubSampler :: SubSampler
+  , isUpdated :: SBool
+  , lastPredictionMsec :: SInt32
+  , lastProcessedNoiseUpdateMsec :: SInt32
 }
 
 ------------------------------------------------------------------------------
 
-subsampler_init = SubSampler (Axis3f 0 0 0) (Axis3f 0 0 0) 0
+updateQuatValue :: SBool -> SBool -> SFloat -> SFloat -> SFloat -> SFloat -> SFloat
 
-subsampler_finalize :: SBool -> (SFloat -> SFloat) -> SubSampler -> 
-  SubSampler
-
-subsampler_finalize shouldPredict converter subsamp = subsamp' where
-
-  cnt = unsafeCast (count subsamp) :: SFloat
-
-  isCountNonzero = cnt > 0
-
-  shouldFinalize = shouldPredict && isCountNonzero
- 
-  samp = sample subsamp
-
-  ssum = sum subsamp
-
-  x' = if shouldFinalize then (converter (x ssum)) / cnt else (x samp)
-  y' = if shouldFinalize then (converter (y ssum)) / cnt else (y samp)
-  z' = if shouldFinalize then (converter (z ssum)) / cnt else (z samp)
-
-  subsamp' = SubSampler (Axis3f x' y' z') (Axis3f 0 0 0) 0
-
-
------------------------------------------------------------------------------
-
-predict :: SInt32 -> EkfState -> Quaternion -> Axis3f ->  SubSampler -> SubSampler ->
-  (EkfState, Quaternion, SubSampler, SubSampler)
-
-predict lastPredictionMsec ekfState quat r gyroSubSampler accelSubSampler = 
-  (ekfState', quat', gyroSubSampler', accelSubSampler') where
-
-  shouldPredict = nowMsec >= nextPredictionMsec
-
-  gyroSubSampler' = subsampler_finalize shouldPredict deg2rad gyroSubSampler
-
-  gyro = (sample gyroSubSampler')
-
-  dmsec = (unsafeCast $ nowMsec - lastPredictionMsec) :: SFloat
-
-  dt = dmsec / 1000.0
-
-  e0' = (x gyro) * dt / 2
-  e1' = (y gyro) * dt / 2
-  e2' = (z gyro) * dt / 2
-
-  -- altitude from body-frame velocity
-  zdx = (x r) * dt
-  zdy = (y r) * dt
-  zdz = (z r) * dt
-
-  -- altitude from attitude error
-  ze0 = ((dy ekfState) * (z r) - (dz ekfState) * (y r)) * dt
-  ze1 = (- (dx ekfState) * (z r) + (dz ekfState) * (x r)) * dt
-  ze2 = ((dx ekfState) * (y r) - (dy ekfState) * (x r)) * dt
-
-  -- body-frame velocity from body-frame velocity
-  dxdx = 1 :: SFloat -- drag negligible
-  dydx = -(z gyro) * dt
-  dzdx =  (y gyro) *dt
-
-  dxdy =  (z gyro) * dt
-  dydy =  1 :: SFloat --drag negligible
-  dzdy = -(x gyro) * dt
-
-  dxdz = -(y gyro) * dt
-  dydz =  (x gyro) * dt
-  dzdz =  1 --drag negligible
-
-  -- body-frame velocity from attitude error
-  dxe0 =  0 :: SFloat
-  dye0 = -gravity_magnitude * (z r) * dt
-  dze0 =  gravity_magnitude * (y r) * dt
-
-  dxe1 =  gravity_magnitude * (z r) * dt
-  dye1 =  0 :: SFloat
-  dze1 = -gravity_magnitude * (x r) * dt
-
-  dxe2 = -gravity_magnitude * (y r) * dt
-  dye2 =  gravity_magnitude * (x r) * dt
-  dze2 =  0 :: SFloat
-
-  e0e0 =  1 - e1' * e1'/2 - e2' * e2'/2
-  e0e1 =  e2' + e0' * e1'/2
-  e0e2 = -e1' + e0' * e2'/2
-
-  e1e0 = (-e2') + e0' * e1'/2
-  e1e1 =  1 - e0' * e0' /2 - e2' * e2' /2
-  e1e2 =  e0' + e1' * e2'/2
-
-  e2e0 =  e1' + e0' * e2'/2
-  e2e1 = (-e0') + e1' * e2'/2
-  e2e2 = 1 - e0' * e0'/2 - e1' * e1'/2
-
-  a =  array [--    z   dx    dy    dz    e0    e1    e2
-             array [0,  zdx,  zdy,  zdz,  ze0,  ze1,  ze2], -- z
-             array [0, dxdx, dxdy, dxdz, dxe0, dxe1, dxe2], -- dx
-             array [0, dydx, dydy, dydz, dye0, dye1, dye2], -- dy
-             array [0, dzdx, dzdy, dzdz, dze0, dze1, dze2], -- dz
-             array [0, 0,    0,    0,    e0e0, e0e1, e0e2], -- e0
-             array [0, 0,    0,    0,    e1e0, e1e1, e1e2], -- e1
-             array [0, 0,    0,    0,    e2e0, e2e1, e2e2]  -- e2
-             ] :: EkfMatrix
-
-  dt2 = dt * dt
-
-  mss2g = \mss -> mss / gravity_magnitude
-  
-  accelSubSampler' = subsampler_finalize shouldPredict mss2g accelSubSampler
-
-  accel = (sample accelSubSampler')
-
-  -- Position updates in the body frame (will be rotated to inertial frame)
-  -- thrust can only be produced in the body's Z direction
-  dx' = (dx ekfState) * dt + (if isFlying then 0 else (x accel) * dt2 / 2)
-  dy' = (dy ekfState) * dt + (if isFlying then 0 else (y accel) * dt2 / 2)
-  dz' = (dz ekfState) * dt + (z accel)  * dt2 / 2 
-
-  -- Keep previous time step's state for the update
-  tmpSDX = (dx ekfState)
-  tmpSDY = (dy ekfState)
-  tmpSDZ = (dz ekfState)
-
-  accx = if isFlying then 0 else x accel
-  accy = if isFlying then 0 else y accel
- 
-  -- Attitude update (rotate by gyroscope), we do this in quaternions:
-  -- this is the gyroscope angular velocity integrated over the sample period
-  dtwx = dt * (x gyro)
-  dtwy = dt * (y gyro)
-  dtwz = dt * (z gyro)
-
-  -- Compute the quaternion values in [w,x,y,z] order
-  angle = (sqrt (dtwx * dtwx + dtwy * dtwy + dtwz * dtwz)) + eps
-  ca = cos (angle / 2)
-  sa = sin (angle / 2)
-  dqw = ca
-  dqx = sa * dtwx / angle
-  dqy = sa * dtwy / angle
-  dqz = sa * dtwz / angle
-
-  qw = qqw quat
-  qx = qqx quat
-  qy = qqy quat
-  qz = qqz quat
-
-  -- Rotate the quad's attitude by the delta quaternion vector computed above
-  tmpq0 = rotateQuat (dqw * qw - dqx * qx - dqy * qy - dqz * qz) qw_init isFlying
-  tmpq1 = rotateQuat (dqx * qw + dqw * qx + dqz * qy - dqy * qz) qx_init isFlying
-  tmpq2 = rotateQuat (dqy * qw - dqz * qx + dqw * qy + dqx * qz) qy_init isFlying
-  tmpq3 = rotateQuat (dqz * qw + dqy * qx - dqx * qy + dqw * qz) qz_init isFlying
-
-  -- Normalize and store the result
-  norm = sqrt (tmpq0*tmpq0 + tmpq1*tmpq1 + tmpq2*tmpq2 + tmpq3*tmpq3) + eps
-
-  -- Process noise is added after the return from the prediction step
-
-  -- ====== PREDICTION STEP ======
-  -- The prediction depends on whether we're on the ground, or in flight.
-  -- When flying, the accelerometer directly measures thrust (hence is useless
-  -- to estimate body angle while flying)
-
-  -- Altitude update
-  zz'' = (zz ekfState) + 
-                 if shouldPredict 
-                 then (x r) * dx' + (y r) * dy' + (z r) * dz' - 
-                     gravity_magnitude * dt2 / 2 
-                 else 0
-
-  -- Body-velocity update: accelerometers - gyros cross velocity
-  -- - gravity in body frame
-
-  dx'' = (dx ekfState) + if shouldPredict 
-                 then dt * (accx + (z gyro) * tmpSDY - (y gyro) * tmpSDZ - 
-                      gravity_magnitude * (x r)) 
-                 else 0
-
-  dy'' = (dy ekfState) + if shouldPredict 
-                 then dt * (accy + (z gyro) * tmpSDX - (x gyro) * tmpSDZ - 
-                      gravity_magnitude * (y r)) 
-                 else 0
-
-  dz'' = (dz ekfState) + if shouldPredict 
-                 then dt * ((z accel) + (y gyro) * tmpSDX - (x gyro) * tmpSDY - 
-                      gravity_magnitude * (z r)) 
-                 else 0
-
-  qw' = if shouldPredict then tmpq0/norm else qw
-  qx' = if shouldPredict then tmpq1/norm else qx 
-  qy' = if shouldPredict then tmpq2/norm else qy 
-  qz' = if shouldPredict then tmpq3/norm else qz
-
-  ekfState' = EkfState zz'' dx'' dy'' dz'' (e0 ekfState) (e1 ekfState) (e2 ekfState)
-
-  quat' = Quaternion qw' qx' qy' qz'
-
-
-rotateQuat :: SFloat -> SFloat -> SBool -> SFloat
-
-rotateQuat val initVal isFlying = val' where
-
-    keep = 1 - rollpitch_zero_reversion
-
-    val' = (val * (if isFlying then 1 else keep)) +
-        (if isFlying then 0 else rollpitch_zero_reversion * initVal)
-
-
+updateQuatValue shouldPredict isErrorSufficient tmpq norm init curr =
+  if ekfMode == mode_init then init
+  else if shouldPredict then tmpq / norm
+  else if isErrorSufficient then tmpq / norm
+  else curr
 
 ------------------------------------------------------------------------------
 
-step :: (SFloat, SFloat, SFloat, SFloat, SFloat, SFloat, SFloat) 
+updateRotationValue :: SFloat -> SFloat -> SFloat -> SFloat
 
-step = (z, dx, dy, dz, phi, theta, psi) where
+updateRotationValue init curr final = 
 
-   is_init = ekfMode == mode_init
+  if ekfMode == mode_init then init
+  else if ekfMode == mode_finalize then final
+  else curr
 
-   is_predict = ekfMode == mode_predict
+------------------------------------------------------------------------------
 
-   z = 0
-   dx = 0
-   dy = 0
-   dz = 0
+updateEkfValue :: SBool -> SFloat -> SFloat -> SFloat
 
-   ekfState = EkfState 0 0 0 0 0 0 0
+updateEkfValue shouldPredict curr predicted = 
 
-   quat = Quaternion _qw _qx _qy _qz
+  if ekfMode == mode_init then 0 
+  else if shouldPredict then predicted
+  else curr
 
-   r = Axis3f 0 0 0
+------------------------------------------------------------------------------
 
-   gyroSubSampler = subsampler_init
-   accelSubSampler = subsampler_init
+rotateQuat :: SFloat -> SFloat -> SFloat
 
-   (ekfState', quat', gyroSubSampler', accelSubSampler') = 
-     predict lastPredictionMsec ekfState quat r gyroSubSampler accelSubSampler
+rotateQuat val initVal = val' where
 
-   qw = if is_init then 1 else if is_predict then (qqw quat') else _qw
-   qx = if is_init then 0 else if is_predict then (qqx quat') else _qx
-   qy = if is_init then 0 else if is_predict then (qqy quat') else _qy
-   qz = if is_init then 0 else if is_predict then (qqz quat') else _qz
+  keep = 1 - rollpitch_zero_reversion
 
-   -- Set the is_initial rotation matrix to the identity. This only affects  the
-   -- first prediction step, since in the finalization, after shifting 
-   -- attitude errors into the attitude state, the rotation matrix is updated.
-   r20 = (if is_init then 0 else _r20) :: SFloat
-   r21 = (if is_init then 0 else _r21) :: SFloat
-   r22 = (if is_init then 1 else _r22) :: SFloat
+  val' = (val * (if isFlying then 1 else keep)) +
+      (if isFlying then 0 else rollpitch_zero_reversion * initVal)
 
-   isUpdated = if is_init then false else _isUpdated
+------------------------------------------------------------------------------
 
-   lastPredictionMsec = (if is_init then nowMsec else _lastPredictionMsec) :: SInt32
+isErrorLarge :: SFloat -> SBool 
+isErrorLarge v = abs v > 0.1e-3
 
-   lastProcessNoiseUpdateMsec = 
-     (if is_init then nowMsec else _lastProcessNoiseUpdateMsec) :: SInt32
+isErrorInBounds :: SFloat -> SBool 
+isErrorInBounds v = abs v < 10
 
-   phi = rad2deg $ atan2 (2 * (qy*qz + qw*qx)) (qw*qw - qx*qx - qy*qy + qz*qz)
+------------------------------------------------------------------------------
 
-   -- Negate for ENU
-   theta = -(rad2deg $ asin ((-2) * (qx*qz - qw*qy)))
+subSamplerInit = SubSampler sample sum 0 where
 
-   psi = rad2deg $ atan2 (2 * (qx*qy + qw*qz)) (qw*qw + qx*qx - qy*qy - qz*qz)
+  sum = Axis3 0 0 0
 
-   -- Quaternion
-   _qw = [0] ++ qw
-   _qx = [0] ++ qx
-   _qy = [0] ++ qy
-   _qz = [0] ++ qz
+  sample = Axis3 0 0 0
 
-   -- Rotation vector
-   _r20 = [0] ++ r20
-   _r21 = [0] ++ r21
-   _r22 = [1] ++ r22
+------------------------------------------------------------------------------
 
-   _isUpdated = [False] ++ isUpdated
-   _lastPredictionMsec = [0] ++ lastPredictionMsec
-   _lastProcessNoiseUpdateMsec = [0] ++ lastProcessNoiseUpdateMsec
+ekfInit :: Ekf
+
+ekfInit = Ekf p r q s g a false nowMsec nowMsec where 
+
+  p = pinit
+
+  r = Axis3 0 0 1
+
+  q = Quaternion 1 0 0 0
+
+  s = EkfState 0 0 0 0 0 0 0
+
+  g = subSamplerInit
+
+  a = subSamplerInit
+
+------------------------------------------------------------------------------
+
+ekfPredict :: Ekf -> Ekf
+
+ekfPredict ekf = ekf 
+
+------------------------------------------------------------------------------
+
+ekfFinalize :: Ekf -> Ekf
+
+ekfFinalize ekf = ekf where
+
+  ekfs = ekfState ekf
+
+  v0 = ee0 ekfs
+  v1 = ee1 ekfs
+  v2 = ee2 ekfs
+
+  angle = sqrt (v0*v0 + v1*v1 + v2*v2) + eps
+  ca = cos $ angle / 2
+  sa = sin $ angle / 2
+
+  dqw = ca
+  dqx = sa * v0 / angle
+  dqy = sa * v1 / angle
+  dqz = sa * v2 / angle
+
+  q = quat ekf
+  qw = qqw q
+  qx = qqx q
+  qy = qqy q
+  qz = qqz q
+
+  -- Rotate the quad's attitude by the delta quaternion vector computed above
+  tmpq0 = dqw * qw - dqx * qx - dqy * qy - dqz * qz
+  tmpq1 = dqx * qw + dqw * qx + dqz * qy - dqy * qz
+  tmpq2 = dqy * qw - dqz * qx + dqw * qy + dqx * qz
+  tmpq3 = dqz * qw + dqy * qx - dqx * qy + dqw * qz
+
+  -- Normalize and store the result
+  norm = sqrt (tmpq0 * tmpq0 + tmpq1 * tmpq1 + tmpq2 * tmpq2 + tmpq3 * tmpq3) + eps
+
+  isErrorSufficient  = 
+                (isErrorLarge v0  || isErrorLarge v1  || isErrorLarge v2 ) &&
+                isErrorInBounds v0  && isErrorInBounds v1  && isErrorInBounds v2
+
+  qw' = if isErrorSufficient then tmpq0 / norm else qw
+  qx' = if isErrorSufficient then tmpq1 / norm else qx
+  qy' = if isErrorSufficient then tmpq2 / norm else qy
+  qz' = if isErrorSufficient then tmpq3 / norm else qz
+
+  -- Move attitude error into attitude if any of the angle errors are large
+  -- enough
+  a = afinalize v0 v1 v2
+
+------------------------------------------------------------------------------
+
+step = (vz, vdx, vdy, vdz, phi, theta, psi) where
+
+  vz = 0 :: SFloat
+  vdx = 0 :: SFloat
+  vdy = 0 :: SFloat
+  vdz = 0 :: SFloat
+  phi = 0 :: SFloat
+  theta = 0 :: SFloat
+  psi = 0 :: SFloat
+
+  --------------------------------------------------------------------------
+
+{--
+  _qw = [1] ++ qw
+  _qx = [1] ++ qx
+  _qy = [1] ++ qy
+  _qz = [1] ++ qz
+ 
+  _rx = [0] ++ rx
+  _ry = [0] ++ ry
+  _rz = [0] ++ rz
+
+  _zz = [0] ++ zz
+  _dx = [0] ++ dx
+  _dy = [0] ++ dy
+  _dz = [0] ++ dz
+  _e0 = [0] ++ e0
+  _e1 = [0] ++ e1
+  _e2 = [0] ++ e2
+
+  _lastPredictionMsec = [0] ++ lastPredictionMsec
+--}
 
 ------------------------------------------------------------------------------
 
 spec = do
 
-  let (z, dx, dy, dz, phi, theta, psi) = step
+  let (vz, vdx, vdy, vdz, phi, theta, psi) = step
 
   trigger "setState" 
            (ekfMode == mode_get_state) 
-           [arg z, arg dx, arg dy, arg dz, arg phi, arg theta, arg psi]
+           [arg vz, arg vdx, arg vdy, arg vdz, arg phi, arg theta, arg psi]
 
 main = reify spec >>= 
 
