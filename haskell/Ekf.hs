@@ -226,6 +226,42 @@ apredict dt gyro ekfs r = a where
 
   (e00, e01, e02, e10, e11, e12, e20, e21, e22) = aLowerRight e0 e1 e2
 
+  -- altitude from body-frame velocity
+  zdx  = (x r) * dt
+  zdy  = (y r) * dt
+  zdz  = (z r) * dt
+
+  -- altitude from attitude error
+  ze0  = ((edy ekfs) * (z r) - (edz ekfs) * (y r)) * dt
+  ze1  = (- (edx ekfs) * (z r) + (edz ekfs) * (x r)) * dt
+  ze2  = ((edx ekfs) * (y r) - (edy ekfs) * (x r)) * dt
+
+  -- body-frame velocity from body-frame velocity
+  dxdx  = 1 --drag negligible
+  dydx =  -(z gyro) * dt
+  dzdx  = (y gyro) * dt
+
+  dxdy  = (z gyro) * dt
+  dydy  = 1 --drag negligible
+  dzdy  = (x gyro) * dt
+
+  dxdz =  (y gyro) * dt
+  dydz  = (x gyro) * dt
+  dzdz  = 1 --drag negligible
+
+  -- body-frame velocity from attitude error
+  dxe0  = 0
+  dye0  = -gravity_magnitude * (z r) * dt
+  dze0  = gravity_magnitude * (y r) * dt
+
+  dxe1  = gravity_magnitude * (z r) * dt
+  dye1  = 0
+  dze1  = -gravity_magnitude * (x r) * dt
+
+  dxe2  = -gravity_magnitude * (y r) * dt
+  dye2  = gravity_magnitude * (x r) * dt
+  dze2  = 0
+
   a = array [    --  z   dx  dy  dz  e0  e1  e2
              array [1 , 0,  0,  0,  0,    0,     0], -- z
              array [0,  1 , 0,  0,  0,    0,     0], -- dx
