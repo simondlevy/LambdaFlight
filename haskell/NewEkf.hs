@@ -324,7 +324,11 @@ ekfFinalize ekf = ekf where
                 (isErrorLarge v0  || isErrorLarge v1  || isErrorLarge v2 ) &&
                 isErrorInBounds v0  && isErrorInBounds v1  && isErrorInBounds v2
 
- 
+  qw' = if isErrorSufficient then tmpq0 / norm else qw
+  qx' = if isErrorSufficient then tmpq1 / norm else qx
+  qy' = if isErrorSufficient then tmpq2 / norm else qy
+  qz' = if isErrorSufficient then tmpq3 / norm else qz
+
   {-- Rotate the covariance, since we've rotated the body
   
    This comes from a second order approximation to:
