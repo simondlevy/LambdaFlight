@@ -89,65 +89,6 @@ accelZ = extern "stream_accelZ" Nothing
 
 ------------------------------------------------------------------------------
 
-type EkfMatrix = Array 7 (Array 7 SFloat)
-
-rotate :: EkfMatrix -> EkfMatrix
-
-rotate a = a
-
-------------------------------------------------------------------------------
-
-pinit :: EkfMatrix
-
-qq = sqr stdev_initial_position_z 
-dd = sqr stdev_initial_velocity 
-ee = sqr stdev_initial_attituderoll_pitch
-rr = sqr stdev_initial_attitude_yaw
-
-pinit =  array [--  z   dx  dy  dz  e0  e1  e2
-             array [qq,  0,  0,  0,  0,  0,  0], -- z
-             array [0,  dd,  0,  0,  0,  0,  0], -- dx
-             array [0,  0,  dd,  0,  0,  0,  0], -- dy
-             array [0,  0,  0,  dd,  0,  0,  0], -- dz
-             array [0,  0,  0,  0,  ee,  0,  0], -- e0
-             array [0,  0,  0,  0,  0,  ee,  0], -- e1
-             array [0,  0,  0,  0,  0,  0,  rr]  -- e2
-             ] 
-
-------------------------------------------------------------------------------
-
-afinalize :: SFloat -> SFloat -> SFloat -> EkfMatrix
-
-afinalize v0 v1 v2 = a where
-
-  e0 = v0/2 
-  e1 = v1/2 
-  e2 = v2/2
-
-  e0e0 =  1 - e1*e1/2 - e2*e2/2
-  e0e1 =  e2 + e0*e1/2
-  e0e2 = (-e1) + e0*e2/2
-
-  e1e0 =  (-e2) + e0*e1/2
-  e1e1 = 1 - e0*e0/2 - e2*e2/2
-  e1e2 = e0 + e1*e2/2
-
-  e2e0 = e1 + e0*e2/2
-  e2e1 = (-e0) + e1*e2/2
-  e2e2 = 1 - e0*e0/2 - e1*e1/2
-
-  a = array [    --  z   dx  dy  dz  e0  e1  e2
-             array [1 , 0,  0,  0,  0,    0,     0],    -- z
-             array [0,  1 , 0,  0,  0,    0,     0],    -- dx
-             array [0,  0,  1 , 0,  0,    0,     0],    -- dy
-             array [0,  0,  0,  1 , 0,    0,     0],    -- dz
-             array [0,  0,  0,  0,  e0e0, e0e1,  e0e2], -- e0
-             array [0,  0,  0,  0,  e1e0, e1e1,  e1e2], -- e1
-             array [0,  0,  0,  0,  e2e0, e2e1,  e2e2]  -- e2
-             ] 
-
-------------------------------------------------------------------------------
-
 data Quaternion = Quaternion {
     qqw :: SFloat
   , qqx :: SFloat
@@ -208,6 +149,92 @@ data Ekf = Ekf {
   , lastPredictionMsec :: SInt32
   , lastProcessedNoiseUpdateMsec :: SInt32
 }
+
+------------------------------------------------------------------------------
+
+type EkfMatrix = Array 7 (Array 7 SFloat)
+
+rotate :: EkfMatrix -> EkfMatrix
+
+rotate a = a
+
+------------------------------------------------------------------------------
+
+pinit :: EkfMatrix
+
+qq = sqr stdev_initial_position_z 
+dd = sqr stdev_initial_velocity 
+ee = sqr stdev_initial_attituderoll_pitch
+rr = sqr stdev_initial_attitude_yaw
+
+pinit =  array [--  z   dx  dy  dz  e0  e1  e2
+             array [qq,  0,  0,  0,  0,  0,  0], -- z
+             array [0,  dd,  0,  0,  0,  0,  0], -- dx
+             array [0,  0,  dd,  0,  0,  0,  0], -- dy
+             array [0,  0,  0,  dd,  0,  0,  0], -- dz
+             array [0,  0,  0,  0,  ee,  0,  0], -- e0
+             array [0,  0,  0,  0,  0,  ee,  0], -- e1
+             array [0,  0,  0,  0,  0,  0,  rr]  -- e2
+             ] 
+
+------------------------------------------------------------------------------
+
+aLowerRight :: SFloat -> SFloat -> SFloat ->
+  (SFloat, SFloat, SFloat, SFloat, SFloat, SFloat, SFloat, SFloat, SFloat)
+
+aLowerRight e0 e1 e2 =  (e00, e01, e02, e10, e11, e12, e20, e21, e22) where
+
+  e00 =  1 - e1*e1/2 - e2*e2/2
+  e01 =  e2 + e0*e1/2
+  e02 = (-e1) + e0*e2/2
+
+  e10 =  (-e2) + e0*e1/2
+  e11 = 1 - e0*e0/2 - e2*e2/2
+  e12 = e0 + e1*e2/2
+
+  e20 = e1 + e0*e2/2
+  e21 = (-e0) + e1*e2/2
+  e22 = 1 - e0*e0/2 - e1*e1/2
+
+------------------------------------------------------------------------------
+
+afinalize :: SFloat -> SFloat -> SFloat -> EkfMatrix
+
+afinalize v0 v1 v2 = a where
+
+  (e00, e01, e02, e10, e11, e12, e20, e21, e22) = aLowerRight (v0/2) (v1/2) (v2/2)
+
+  a = array [    --  z   dx  dy  dz  e0  e1  e2
+             array [1 , 0,  0,  0,  0,    0,     0], -- z
+             array [0,  1 , 0,  0,  0,    0,     0], -- dx
+             array [0,  0,  1 , 0,  0,    0,     0], -- dy
+             array [0,  0,  0,  1 , 0,    0,     0], -- dz
+             array [0,  0,  0,  0,  e00, e01,  e02], -- e0
+             array [0,  0,  0,  0,  e10, e11,  e12], -- e1
+             array [0,  0,  0,  0,  e20, e21,  e22]  -- e2
+             ] 
+
+------------------------------------------------------------------------------
+
+apredict :: SFloat -> Axis3 -> EkfState -> Axis3 -> EkfMatrix
+
+apredict dt gyro ekfs r = a where
+
+  e0 = (x gyro) * dt / 2
+  e1 = (y gyro) * dt / 2
+  e2 = (z gyro) * dt / 2
+
+  (e00, e01, e02, e10, e11, e12, e20, e21, e22) = aLowerRight e0 e1 e2
+
+  a = array [    --  z   dx  dy  dz  e0  e1  e2
+             array [1 , 0,  0,  0,  0,    0,     0], -- z
+             array [0,  1 , 0,  0,  0,    0,     0], -- dx
+             array [0,  0,  1 , 0,  0,    0,     0], -- dy
+             array [0,  0,  0,  1 , 0,    0,     0], -- dz
+             array [0,  0,  0,  0,  e00, e01,  e02], -- e0
+             array [0,  0,  0,  0,  e10, e11,  e12], -- e1
+             array [0,  0,  0,  0,  e20, e21,  e22]  -- e2
+             ] 
 
 ------------------------------------------------------------------------------
 
