@@ -578,38 +578,6 @@ class Ekf {
             const auto norm = sqrt(tmpq0 * tmpq0 + tmpq1 * tmpq1 + tmpq2 * tmpq2 + 
                     tmpq3 * tmpq3) + EPS;
 
-            /** Rotate the covariance, since we've rotated the body
-             *
-             * This comes from a second order approximation to:
-             * Sigma_post = exps(-d) Sigma_pre exps(-d)'
-             *            ~ (I + [[-d]] + [[-d]]^2 / 2) 
-             Sigma_pre (I + [[-d]] + [[-d]]^2 / 2)'
-             * where d is the attitude error expressed as Rodriges parameters, ie. 
-             d = tan(|v|/2)*v/|v|
-             *
-             * As derived in "Covariance Correction Step for Kalman Filtering with an 
-             Attitude"
-             * http://arc.aiaa.org/doi/abs/10.2514/1.G000848
-             */
-
-            // the attitude error vector (v0,v1,v2) is small,
-            // so we use a first order approximation to e0 = tan(|v0|/2)*v0/|v0|
-            const auto e0 = v0/2; 
-            const auto e1 = v1/2; 
-            const auto e2 = v2/2;
-
-            const auto e0e0 =  1 - e1*e1/2 - e2*e2/2;
-            const auto e0e1 =  e2 + e0*e1/2;
-            const auto e0e2 = -e1 + e0*e2/2;
-
-            const auto e1e0 =  -e2 + e0*e1/2;
-            const auto e1e1 = 1 - e0*e0/2 - e2*e2/2;
-            const auto e1e2 = e0 + e1*e2/2;
-
-            const auto e2e0 = e1 + e0*e2/2;
-            const auto e2e1 = -e0 + e1*e2/2;
-            const auto e2e2 = 1 - e0*e0/2 - e1*e1/2;
-
             const auto isErrorSufficient  = 
                 (isErrorLarge(v0) || isErrorLarge(v1) || isErrorLarge(v2)) &&
                 isErrorInBounds(v0) && isErrorInBounds(v1) && isErrorInBounds(v2);
@@ -620,21 +588,10 @@ class Ekf {
             _qy = isErrorSufficient ? tmpq2 / norm : _qy;
             _qz = isErrorSufficient ? tmpq3 / norm : _qz;
 
-            // Matrix to rotate the attitude covariances once updated
-            const float A[KC_STATE_DIM][KC_STATE_DIM] = 
-            { 
-                //    Z  DX DY DZ    E0     E1    E2
-                /*Z*/   {0, 0, 0, 0, 0,     0,    0},   
-                /*DX*/  {0, 1, 0, 0, 0,     0,    0},  
-                /*DY*/  {0, 0, 1, 0, 0,     0,    0}, 
-                /*DX*/  {0, 0, 0, 1, 0,     0,    0},  
-                /*E0*/  {0, 0, 0, 0, e0e0, e0e1, e0e2},
-                /*E1*/  {0, 0, 0, 0, e1e0, e1e1, e1e2},
-                /*E2*/  {0, 0, 0, 0, e2e0, e2e1, e2e2}
-            };
-
             // Move attitude error into attitude if any of the angle errors are
             // large enough
+            float A[KC_STATE_DIM][KC_STATE_DIM] = {};
+            afinalize(v0, v2, v2, A);
             float At[KC_STATE_DIM][KC_STATE_DIM] = {};
             transpose(A, At);     // A'
             float AP[KC_STATE_DIM][KC_STATE_DIM] = {};
@@ -838,6 +795,7 @@ class Ekf {
                 isVelocityWithinBounds(_ekfState.dz);
         }
 
+
         static bool isPositionWithinBounds(const float pos)
         {
             return fabs(pos) < MAX_POSITION;
@@ -847,4 +805,40 @@ class Ekf {
         {
             return fabs(vel) < MAX_VELOCITY;
         }
+
+        static void afinalize(const float v0, const float v1, const float v2,
+                float A[KC_STATE_DIM][KC_STATE_DIM])
+        {
+            // the attitude error vector (v0,v1,v2) is small,
+            // so we use a first order approximation to e0 = tan(|v0|/2)*v0/|v0|
+            const auto e0 = v0/2; 
+            const auto e1 = v1/2; 
+            const auto e2 = v2/2;
+
+            const auto e0e0 =  1 - e1*e1/2 - e2*e2/2;
+            const auto e0e1 =  e2 + e0*e1/2;
+            const auto e0e2 = -e1 + e0*e2/2;
+
+            const auto e1e0 =  -e2 + e0*e1/2;
+            const auto e1e1 = 1 - e0*e0/2 - e2*e2/2;
+            const auto e1e2 = e0 + e1*e2/2;
+
+            const auto e2e0 = e1 + e0*e2/2;
+            const auto e2e1 = -e0 + e1*e2/2;
+            const auto e2e2 = 1 - e0*e0/2 - e1*e1/2;
+
+            const float a[KC_STATE_DIM][KC_STATE_DIM] = 
+            { 
+                //    Z  DX DY DZ    E0     E1    E2
+                /*Z*/   {0, 0, 0, 0, 0,     0,    0},   
+                /*DX*/  {0, 1, 0, 0, 0,     0,    0},  
+                /*DY*/  {0, 0, 1, 0, 0,     0,    0}, 
+                /*DX*/  {0, 0, 0, 1, 0,     0,    0},  
+                /*E0*/  {0, 0, 0, 0, e0e0, e0e1, e0e2},
+                /*E1*/  {0, 0, 0, 0, e1e0, e1e1, e1e2},
+                /*E2*/  {0, 0, 0, 0, e2e0, e2e1, e2e2}
+            };
+
+            memcpy(A, a, 7*7*sizeof(float));
+        } 
 };
