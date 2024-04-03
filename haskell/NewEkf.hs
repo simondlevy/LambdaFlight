@@ -91,6 +91,12 @@ accelZ = extern "stream_accelZ" Nothing
 
 type EkfMatrix = Array 7 (Array 7 SFloat)
 
+rotate :: EkfMatrix -> EkfMatrix
+
+rotate a = a
+
+------------------------------------------------------------------------------
+
 pinit :: EkfMatrix
 
 qq = sqr stdev_initial_position_z 

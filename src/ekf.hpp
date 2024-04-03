@@ -123,45 +123,7 @@ class Ekf {
 
             axis3fSubSamplerFinalize(&_gyroSubSampler, shouldPredict);
 
-            const Axis3f * gyro = &_gyroSubSampler.subSample; 
-
             const float dt = (nowMs - _lastPredictionMs) / 1000.0f;
-
-            // altitude from body-frame velocity
-            const auto zdx = _r.x*dt;
-            const auto zdy = _r.y*dt;
-            const auto zdz = _r.z*dt;
-
-            // altitude from attitude error
-            const auto ze0 = (_ekfState.dy*_r.z - _ekfState.dz*_r.y)*dt;
-            const auto ze1 = (- _ekfState.dx*_r.z + _ekfState.dz*_r.x)*dt;
-            const auto ze2 = (_ekfState.dx*_r.y - _ekfState.dy*_r.x)*dt;
-
-            // body-frame velocity from body-frame velocity
-            const auto dxdx = 1; //drag negligible
-            const auto dydx =-gyro->z*dt;
-            const auto dzdx = gyro->y*dt;
-
-            const auto dxdy = gyro->z*dt;
-            const auto dydy = 1; //drag negligible
-            const auto dzdy =-gyro->x*dt;
-
-            const auto dxdz =-gyro->y*dt;
-            const auto dydz = gyro->x*dt;
-            const auto dzdz = 1; //drag negligible
-
-            // body-frame velocity from attitude error
-            const auto dxe0 =  0;
-            const auto dye0 = -GRAVITY_MAGNITUDE*_r.z*dt;
-            const auto dze0 =  GRAVITY_MAGNITUDE*_r.y*dt;
-
-            const auto dxe1 =  GRAVITY_MAGNITUDE*_r.z*dt;
-            const auto dye1 =  0;
-            const auto dze1 = -GRAVITY_MAGNITUDE*_r.x*dt;
-
-            const auto dxe2 = -GRAVITY_MAGNITUDE*_r.y*dt;
-            const auto dye2 =  GRAVITY_MAGNITUDE*_r.x*dt;
-            const auto dze2 =  0;
 
             const auto dt2 = dt * dt;
 
@@ -181,6 +143,8 @@ class Ekf {
 
             const auto accx = isFlying ? 0 : acc->x;
             const auto accy = isFlying ? 0 : acc->y;
+
+            const Axis3f * gyro = &_gyroSubSampler.subSample; 
 
             // attitude update (rotate by gyroscope), we do this in quaternions
             // this is the gyroscope angular velocity integrated over the sample period
@@ -257,45 +221,17 @@ class Ekf {
 
             _lastPredictionMs = shouldPredict ? nowMs : _lastPredictionMs;
 
-            const auto dt1 = (nowMs - _lastProcessNoiseUpdateMs) / 1000.0f;
-
-            const auto isDtPositive = dt1 > 0;
-
             // ====== COVARIANCE UPDATE ======
-
-            const auto e0 = gyro->x*dt/2;
-            const auto e1 = gyro->y*dt/2;
-            const auto e2 = gyro->z*dt/2;
-
-            const auto e0e0 =  1 - e1*e1/2 - e2*e2/2;
-            const auto e0e1 =  e2 + e0*e1/2;
-            const auto e0e2 = -e1 + e0*e2/2;
-
-            const auto e1e0 = -e2 + e0*e1/2;
-            const auto e1e1 =  1 - e0*e0/2 - e2*e2/2;
-            const auto e1e2 =  e0 + e1*e2/2;
-
-            const auto e2e0 =  e1 + e0*e2/2;
-            const auto e2e1 = -e0 + e1*e2/2;
-            const auto e2e2 = 1 - e0*e0/2 - e1*e1/2;
-
-            const float A[KC_STATE_DIM][KC_STATE_DIM] = 
-            { 
-                //        Z  DX    DY    DZ    E0    E1    E2
-                /*Z*/    {0, zdx,  zdy,  zdz,  ze0,  ze1,  ze2}, 
-                /*DX*/   {0, dxdx, dxdy, dxdz, dxe0, dxe1, dxe2}, 
-                /*DY*/   {0, dydx, dydy, dydz, dye0, dye1, dye2},
-                /*DZ*/   {0, dzdx, dzdy, dzdz, dze0, dze1, dze2},
-                /*E0*/   {0, 0,    0,    0,    e0e0, e0e1, e0e2}, 
-                /*E1*/   {0, 0,    0,    0,    e1e0, e1e1, e1e2}, 
-                /*E2*/   {0, 0,    0,    0,    e2e0, e2e1, e2e2}  
-            };
-
+            float A[KC_STATE_DIM][KC_STATE_DIM] = {};
+            apredict(dt, *gyro, _ekfState, _r, A);
             float At[KC_STATE_DIM][KC_STATE_DIM] = {};
             transpose(A, At);     // A'
             float AP[KC_STATE_DIM][KC_STATE_DIM] = {};
             multiply(A, _Pmat, AP, true);  // AP
             multiply(AP, At, _Pmat, shouldPredict); // APA'
+
+            const auto dt1 = (nowMs - _lastProcessNoiseUpdateMs) / 1000.0f;
+            const auto isDtPositive = dt1 > 0;
 
             // add process noise on position
             _Pmat[KC_STATE_Z][KC_STATE_Z] += isDtPositive ?
@@ -806,7 +742,10 @@ class Ekf {
             return fabs(vel) < MAX_VELOCITY;
         }
 
-        static void afinalize(const float v0, const float v1, const float v2,
+        static void afinalize(
+                const float v0, 
+                const float v1, 
+                const float v2,
                 float A[KC_STATE_DIM][KC_STATE_DIM])
         {
             // the attitude error vector (v0,v1,v2) is small,
@@ -837,6 +776,80 @@ class Ekf {
                 /*E0*/  {0, 0, 0, 0, e0e0, e0e1, e0e2},
                 /*E1*/  {0, 0, 0, 0, e1e0, e1e1, e1e2},
                 /*E2*/  {0, 0, 0, 0, e2e0, e2e1, e2e2}
+            };
+
+            memcpy(A, a, 7*7*sizeof(float));
+        } 
+
+        static void apredict(
+                const float dt,
+                const Axis3f & gyro,
+                const ekfState_t & ekfState,
+                const Axis3f & r,
+                float A[KC_STATE_DIM][KC_STATE_DIM])
+        {
+            const auto e0 = gyro.x*dt/2;
+            const auto e1 = gyro.y*dt/2;
+            const auto e2 = gyro.z*dt/2;
+
+            const auto e0e0 =  1 - e1*e1/2 - e2*e2/2;
+            const auto e0e1 =  e2 + e0*e1/2;
+            const auto e0e2 = -e1 + e0*e2/2;
+
+            const auto e1e0 =  -e2 + e0*e1/2;
+            const auto e1e1 = 1 - e0*e0/2 - e2*e2/2;
+            const auto e1e2 = e0 + e1*e2/2;
+
+            const auto e2e0 = e1 + e0*e2/2;
+            const auto e2e1 = -e0 + e1*e2/2;
+            const auto e2e2 = 1 - e0*e0/2 - e1*e1/2;
+
+            // altitude from body-frame velocity
+            const auto zdx  = r.x*dt;
+            const auto zdy  = r.y*dt;
+            const auto zdz  = r.z*dt;
+
+            // altitude from attitude error
+            const auto ze0  = (ekfState.dy*r.z - ekfState.dz*r.y)*dt;
+            const auto ze1  = (- ekfState.dx*r.z + ekfState.dz*r.x)*dt;
+            const auto ze2  = (ekfState.dx*r.y - ekfState.dy*r.x)*dt;
+
+            // body-frame velocity from body-frame velocity
+            const auto dxdx  = 1; //drag negligible
+            const auto dydx =  -gyro.z*dt;
+            const auto dzdx  = gyro.y*dt;
+
+            const auto dxdy  = gyro.z*dt;
+            const auto dydy  = 1; //drag negligible
+            const auto dzdy  = gyro.x*dt;
+
+            const auto dxdz =  gyro.y*dt;
+            const auto dydz  = gyro.x*dt;
+            const auto dzdz  = 1; //drag negligible
+
+            // body-frame velocity from attitude error
+            const auto dxe0  = 0;
+            const auto dye0  = -GRAVITY_MAGNITUDE*r.z*dt;
+            const auto dze0  = GRAVITY_MAGNITUDE*r.y*dt;
+
+            const auto dxe1  = GRAVITY_MAGNITUDE*r.z*dt;
+            const auto dye1  = 0;
+            const auto dze1  = -GRAVITY_MAGNITUDE*r.x*dt;
+
+            const auto dxe2  = -GRAVITY_MAGNITUDE*r.y*dt;
+            const auto dye2  = GRAVITY_MAGNITUDE*r.x*dt;
+            const auto dze2  = 0;
+
+            const float a[KC_STATE_DIM][KC_STATE_DIM] = 
+            { 
+                //        Z  DX    DY    DZ    E0    E1    E2
+                /*Z*/    {0, zdx,  zdy,  zdz,  ze0,  ze1,  ze2}, 
+                /*DX*/   {0, dxdx, dxdy, dxdz, dxe0, dxe1, dxe2}, 
+                /*DY*/   {0, dydx, dydy, dydz, dye0, dye1, dye2},
+                /*DZ*/   {0, dzdx, dzdy, dzdz, dze0, dze1, dze2},
+                /*E0*/   {0, 0,    0,    0,    e0e0, e0e1, e0e2}, 
+                /*E1*/   {0, 0,    0,    0,    e1e0, e1e1, e1e2}, 
+                /*E2*/   {0, 0,    0,    0,    e2e0, e2e1, e2e2}  
             };
 
             memcpy(A, a, 7*7*sizeof(float));
