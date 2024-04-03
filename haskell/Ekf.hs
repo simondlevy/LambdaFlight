@@ -262,14 +262,14 @@ apredict dt gyro ekfs r = a where
   dye2  = gravity_magnitude * (x r) * dt
   dze2  = 0
 
-  a = array [    --  z   dx  dy  dz  e0  e1  e2
-             array [1 , 0,  0,  0,  0,    0,     0], -- z
-             array [0,  1 , 0,  0,  0,    0,     0], -- dx
-             array [0,  0,  1 , 0,  0,    0,     0], -- dy
-             array [0,  0,  0,  1 , 0,    0,     0], -- dz
-             array [0,  0,  0,  0,  e00, e01,  e02], -- e0
-             array [0,  0,  0,  0,  e10, e11,  e12], -- e1
-             array [0,  0,  0,  0,  e20, e21,  e22]  -- e2
+  a = array [      --  z   dx   dy    dz    e1    e1    e2
+                array [0, zdx,  zdy,  zdz,  ze0,  ze1,  ze2],  -- z
+                array [0, dxdx, dxdy, dxdz, dxe0, dxe1, dxe2], -- dx
+                array [0, dydx, dydy, dydz, dye0, dye1, dye2], -- dy
+                array [0, dzdx, dzdy, dzdz, dze0, dze1, dze2], -- dz
+                array [0, 0,    0,    0,    e00,  e01,  e02],  -- e0
+                array [0, 0,    0,    0,    e10,  e11,  e12],  -- e1
+                array [0, 0,    0,    0,    e20,  e21,  e22]   -- e2
              ] 
 
 ------------------------------------------------------------------------------
