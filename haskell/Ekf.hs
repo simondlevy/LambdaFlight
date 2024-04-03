@@ -154,9 +154,7 @@ data Ekf = Ekf {
 
 ------------------------------------------------------------------------------
 
-type EkfMatrix = Array 7 (Array 7 SFloat)
-
-type EkfMatrix' = [[SFloat]]
+type EkfMatrix = [[SFloat]]
 
 ------------------------------------------------------------------------------
 
@@ -167,19 +165,7 @@ dd = sqr stdev_initial_velocity
 ee = sqr stdev_initial_attituderoll_pitch
 rr = sqr stdev_initial_attitude_yaw
 
-pinit =  array [--  z   dx  dy  dz  e0  e1  e2
-             array [qq,  0,  0,  0,  0,  0,  0], -- z
-             array [0,  dd,  0,  0,  0,  0,  0], -- dx
-             array [0,  0,  dd,  0,  0,  0,  0], -- dy
-             array [0,  0,  0,  dd,  0,  0,  0], -- dz
-             array [0,  0,  0,  0,  ee,  0,  0], -- e0
-             array [0,  0,  0,  0,  0,  ee,  0], -- e1
-             array [0,  0,  0,  0,  0,  0,  rr]  -- e2
-             ] 
-
-pinit' :: EkfMatrix'
-
-pinit' =  [--  z   dx  dy  dz  e0  e1  e2
+pinit =  [--   z   dx  dy  dz  e0  e1  e2
               [qq,  0,  0,  0,  0,  0,  0], -- z
               [0,  dd,  0,  0,  0,  0,  0], -- dx
               [0,  0,  dd,  0,  0,  0,  0], -- dy
@@ -217,14 +203,14 @@ afinalize v0 v1 v2 = a where
 
   (e00, e01, e02, e10, e11, e12, e20, e21, e22) = aLowerRight (v0/2) (v1/2) (v2/2)
 
-  a = array [    --  z   dx  dy  dz  e0  e1  e2
-             array [1 , 0,  0,  0,  0,    0,     0], -- z
-             array [0,  1 , 0,  0,  0,    0,     0], -- dx
-             array [0,  0,  1 , 0,  0,    0,     0], -- dy
-             array [0,  0,  0,  1 , 0,    0,     0], -- dz
-             array [0,  0,  0,  0,  e00, e01,  e02], -- e0
-             array [0,  0,  0,  0,  e10, e11,  e12], -- e1
-             array [0,  0,  0,  0,  e20, e21,  e22]  -- e2
+  a =  [   --  z   dx  dy  dz  e0    e1     e2
+              [1 , 0,  0,  0,  0,    0,     0], -- z
+              [0,  1 , 0,  0,  0,    0,     0], -- dx
+              [0,  0,  1 , 0,  0,    0,     0], -- dy
+              [0,  0,  0,  1 , 0,    0,     0], -- dz
+              [0,  0,  0,  0,  e00, e01,  e02], -- e0
+              [0,  0,  0,  0,  e10, e11,  e12], -- e1
+              [0,  0,  0,  0,  e20, e21,  e22]  -- e2
              ] 
 
 ------------------------------------------------------------------------------
@@ -275,15 +261,15 @@ apredict dt gyro ekfs r = a where
   dye2  = gravity_magnitude * (x r) * dt
   dze2  = 0
 
-  a = array [      --  z   dx   dy    dz    e1    e1    e2
-                array [0, zdx,  zdy,  zdz,  ze0,  ze1,  ze2],  -- z
-                array [0, dxdx, dxdy, dxdz, dxe0, dxe1, dxe2], -- dx
-                array [0, dydx, dydy, dydz, dye0, dye1, dye2], -- dy
-                array [0, dzdx, dzdy, dzdz, dze0, dze1, dze2], -- dz
-                array [0, 0,    0,    0,    e00,  e01,  e02],  -- e0
-                array [0, 0,    0,    0,    e10,  e11,  e12],  -- e1
-                array [0, 0,    0,    0,    e20,  e21,  e22]   -- e2
-             ] 
+  a =  [  --  z   dx   dy    dz    e1    e1    e2
+             [0, zdx,  zdy,  zdz,  ze0,  ze1,  ze2],  -- z
+             [0, dxdx, dxdy, dxdz, dxe0, dxe1, dxe2], -- dx
+             [0, dydx, dydy, dydz, dye0, dye1, dye2], -- dy
+             [0, dzdx, dzdy, dzdz, dze0, dze1, dze2], -- dz
+             [0, 0,    0,    0,    e00,  e01,  e02],  -- e0
+             [0, 0,    0,    0,    e10,  e11,  e12],  -- e1
+             [0, 0,    0,    0,    e20,  e21,  e22]   -- e2
+       ] 
 
 ------------------------------------------------------------------------------
 
