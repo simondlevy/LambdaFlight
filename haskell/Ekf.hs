@@ -265,9 +265,47 @@ ekfInit = Ekf p r q s g a false nowMsec nowMsec where
 
 ------------------------------------------------------------------------------
 
+subSamplerFinalize :: SBool -> SubSampler -> SFloat -> SubSampler
+
+subSamplerFinalize shouldPredict subSampler conversionFactor = subSampler' where
+
+  count' = count subSampler
+
+  shouldFinalize = shouldPredict &&  count' > 0
+
+  x' = if shouldFinalize 
+       then (x (sum subSampler)) * conversionFactor / (unsafeCast count')
+       else (x (sample subSampler))
+
+{--
+  subSampler->subSample.x = shouldFinalize ? 
+                subSampler->sum.x * subSampler->conversionFactor / count :
+                subSampler->subSample.x
+
+  subSampler->subSample.y = shouldFinalize ?
+                subSampler->sum.y * subSampler->conversionFactor / count :
+                subSampler->subSample.y
+
+  subSampler->subSample.z = shouldFinalize ?
+                subSampler->sum.z * subSampler->conversionFactor / count :
+                subSampler->subSample.z
+
+  -- Reset
+  subSampler->count = 0
+  subSampler->sum = (Axis3f){.axis={0}}
+--}
+
+  subSampler' = subSampler
+ 
+------------------------------------------------------------------------------
+
 ekfPredict :: Ekf -> Ekf
 
 ekfPredict ekf = ekf where
+
+  shouldPredict = nowMsec >= nextPredictionMsec
+
+  gyroSubSampler' = subSamplerFinalize shouldPredict (gyroSubSampler ekf)
 
   -- XXX
   gyro = Axis3 0 0 0
