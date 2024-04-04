@@ -225,6 +225,9 @@
 <text x="14.986" y="0.762" size="0.8128" layer="25">GD</text>
 <text x="17.526" y="0.762" size="0.8128" layer="25">5V</text>
 <text x="19.304" y="0.762" size="0.8128" layer="25">SBUS</text>
+<text x="8.35611875" y="28.98153125" size="1.016" layer="25">R</text>
+<text x="10.77499375" y="32.08946875" size="1.016" layer="25" rot="R45">LED</text>
+<text x="9.6640625" y="23.368" size="1.016" layer="25">R</text>
 </plain>
 <libraries>
 <library name="SparkFun-Connectors">
@@ -625,11 +628,11 @@ design rules under a new name.</description>
 <element name="J3" library="SparkFun-Connectors" package="1X14_NO_SILK" value="" x="2.54" y="10.16" smashed="yes">
 <attribute name="VALUE" x="1.27" y="8.128" size="0.6096" layer="27" font="vector" ratio="20"/>
 </element>
-<element name="D1" library="SparkFun-LED" package="LED-0603" value="WHITE" x="11.5" y="32" smashed="yes" rot="R45">
-<attribute name="PROD_ID" value="DIO-09004" x="11.5" y="32" size="1.778" layer="27" rot="R45" display="off"/>
+<element name="D1" library="SparkFun-LED" package="LED-0603" value="WHITE" x="12.278584375" y="32.640265625" smashed="yes" rot="R45">
+<attribute name="PROD_ID" value="DIO-09004" x="12.278584375" y="32.640265625" size="1.778" layer="27" rot="R45" display="off"/>
 </element>
-<element name="R1" library="SparkFun-Resistors" package="0603" value="22" x="10.12456875" y="28.458459375" smashed="yes" rot="R90">
-<attribute name="PROD_ID" value="RES-08698" x="10.12456875" y="28.458459375" size="1.778" layer="27" rot="R90" display="off"/>
+<element name="R1" library="SparkFun-Resistors" package="0603" value="22" x="10.159171875" y="29.3929" smashed="yes" rot="R90">
+<attribute name="PROD_ID" value="RES-08698" x="10.159171875" y="29.3929" size="1.778" layer="27" rot="R90" display="off"/>
 </element>
 </elements>
 <signals>
@@ -662,8 +665,8 @@ design rules under a new name.</description>
 <wire x1="17.05" y1="3.81" x2="15.78" y2="2.54" width="0.254" layer="1"/>
 <contactref element="D1" pad="C"/>
 <wire x1="25.32" y1="29.21" x2="20.53" y2="34" width="0.254" layer="1"/>
-<wire x1="20.53" y1="34" x2="13.5" y2="34" width="0.254" layer="1"/>
-<wire x1="13.5" y1="34" x2="12.12013125" y2="32.62013125" width="0.254" layer="1"/>
+<wire x1="20.53" y1="34" x2="13.63831875" y2="34" width="0.254" layer="1"/>
+<wire x1="13.63831875" y1="34" x2="12.898715625" y2="33.260396875" width="0.254" layer="1"/>
 </signal>
 <signal name="5V">
 <contactref element="J1" pad="4"/>
@@ -777,16 +780,16 @@ design rules under a new name.</description>
 <signal name="R2">
 <contactref element="D1" pad="A"/>
 <contactref element="R1" pad="2"/>
-<wire x1="10.879865625" y1="31.379865625" x2="10.879865625" y2="31.300015625" width="0.2032" layer="1"/>
-<wire x1="10.879865625" y1="31.300015625" x2="10.113484375" y2="30.533634375" width="0.2032" layer="1"/>
-<wire x1="10.113484375" y1="30.533634375" x2="10.113484375" y2="29.31954375" width="0.2032" layer="1"/>
-<wire x1="10.113484375" y1="29.31954375" x2="10.12456875" y2="29.308459375" width="0.2032" layer="1"/>
+<wire x1="11.65845" y1="32.02013125" x2="11.59998125" y2="32.02013125" width="0.2032" layer="1"/>
+<wire x1="11.59998125" y1="32.02013125" x2="10.113484375" y2="30.533634375" width="0.2032" layer="1"/>
+<wire x1="10.113484375" y1="30.533634375" x2="10.113484375" y2="30.2885875" width="0.2032" layer="1"/>
+<wire x1="10.113484375" y1="30.2885875" x2="10.159171875" y2="30.2429" width="0.2032" layer="1"/>
 </signal>
 <signal name="R1">
 <contactref element="R1" pad="1"/>
 <contactref element="J2" pad="4"/>
-<wire x1="10.16" y1="25.4" x2="10.16" y2="27.573028125" width="0.2032" layer="1"/>
-<wire x1="10.16" y1="27.573028125" x2="10.12456875" y2="27.608459375" width="0.2032" layer="1"/>
+<wire x1="10.16" y1="25.4" x2="10.16" y2="28.542071875" width="0.2032" layer="1"/>
+<wire x1="10.16" y1="28.542071875" x2="10.159171875" y2="28.5429" width="0.2032" layer="1"/>
 </signal>
 </signals>
 <mfgpreviewcolors>
