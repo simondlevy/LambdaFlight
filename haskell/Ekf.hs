@@ -306,11 +306,11 @@ ekfPredict ekf = ekf where
 
   ekfs = ekfState ekf
 
-  sec = unsafeCast (nowMsec - (lastPredictionMsec ekf)) :: SFloat
+  sec = unsafeCase (nowMsec - (lastPredictionMsec ekf)) SFloat
 
   dt = sec / 1000
 
-  r = Axis3 0 0 0
+  r' = (r ekfState)
 
   e0 = (x gyro) * dt / 2
   e1 = (y gyro) * dt / 2
@@ -319,14 +319,14 @@ ekfPredict ekf = ekf where
   (e00, e01, e02, e10, e11, e12, e20, e21, e22) = aLowerRight e0 e1 e2
 
   -- altitude from body-frame velocity
-  zdx  = (x r) * dt
-  zdy  = (y r) * dt
-  zdz  = (z r) * dt
+  zdx  = (x r') * dt
+  zdy  = (y r') * dt
+  zdz  = (z r') * dt
 
   -- altitude from attitude error
-  ze0  = ((edy ekfs) * (z r) - (edz ekfs) * (y r)) * dt
-  ze1  = (- (edx ekfs) * (z r) + (edz ekfs) * (x r)) * dt
-  ze2  = ((edx ekfs) * (y r) - (edy ekfs) * (x r)) * dt
+  ze0  = ((edy ekfs) * (z r') - (edz ekfs) * (y r')) * dt
+  ze1  = (- (edx ekfs) * (z r') + (edz ekfs) * (x r')) * dt
+  ze2  = ((edx ekfs) * (y r') - (edy ekfs) * (x r')) * dt
 
   -- body-frame velocity from body-frame velocity
   dxdx  = 1 --drag negligible
@@ -343,15 +343,15 @@ ekfPredict ekf = ekf where
 
   -- body-frame velocity from attitude error
   dxe0  = 0
-  dye0  = -mss_to_gs * (z r) * dt
-  dze0  = mss_to_gs * (y r) * dt
+  dye0  = -mss_to_gs * (z r') * dt
+  dze0  = mss_to_gs * (y r') * dt
 
-  dxe1  = mss_to_gs * (z r) * dt
+  dxe1  = mss_to_gs * (z r') * dt
   dye1  = 0
-  dze1  = -mss_to_gs * (x r) * dt
+  dze1  = -mss_to_gs * (x r') * dt
 
-  dxe2  = -mss_to_gs * (y r) * dt
-  dye2  = mss_to_gs * (x r) * dt
+  dxe2  = -mss_to_gs * (y r') * dt
+  dye2  = mss_to_gs * (x r') * dt
   dze2  = 0
 
   a =  [  --  z   dx   dy    dz    e1    e1    e2
