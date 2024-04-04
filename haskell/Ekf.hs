@@ -265,6 +265,13 @@ ekfInit = Ekf p r q s g a false nowMsec nowMsec where
 
 ------------------------------------------------------------------------------
 
+updateSum subSampler accessor shouldFinalize conversionFactor count = 
+
+  if shouldFinalize 
+  then (accessor (sum subSampler)) * conversionFactor / count
+  else (accessor (sample subSampler))
+
+
 subSamplerFinalize :: SBool -> SubSampler -> SFloat -> SubSampler
 
 subSamplerFinalize shouldPredict subSampler conversionFactor = subSampler' where
@@ -273,17 +280,9 @@ subSamplerFinalize shouldPredict subSampler conversionFactor = subSampler' where
 
   shouldFinalize = shouldPredict &&  count' > 0
 
-  x' = if shouldFinalize 
-       then (x (sum subSampler)) * conversionFactor / count'
-       else (x (sample subSampler))
-
-  y' = if shouldFinalize 
-       then (y (sum subSampler)) * conversionFactor / count'
-       else (y (sample subSampler))
-
-  z' = if shouldFinalize 
-       then (z (sum subSampler)) * conversionFactor / count'
-       else (z (sample subSampler))
+  x' = updateSum subSampler x shouldFinalize conversionFactor count'
+  y' = updateSum subSampler y shouldFinalize conversionFactor count'
+  z' = updateSum subSampler z shouldFinalize conversionFactor count'
 
   subSampler' = SubSampler (Axis3 x' y' z') (Axis3 0 0 0) 0
  
