@@ -38,7 +38,9 @@ stdev_initial_attitude_yaw       = 0.01 :: SFloat
 --The reversion of pitch and roll to zero
 rollpitch_zero_reversion = 0.001 :: SFloat
 
-gravity_magnitude = 9.81 :: SFloat
+mss_to_gs = 9.81 :: SFloat
+
+rad_to_deg = 180 / pi :: SFloat
 
 -- Small number epsilon, to prevent dividing by zero
 eps = 1e-6 :: SFloat
@@ -294,12 +296,16 @@ ekfPredict ekf = ekf where
 
   shouldPredict = nowMsec >= nextPredictionMsec
 
-  gyroSubSampler' = subSamplerFinalize shouldPredict (gyroSubSampler ekf)
+  gyroSubSampler' = subSamplerFinalize shouldPredict (gyroSubSampler ekf) rad_to_deg
 
-  -- XXX
-  gyro = Axis3 0 0 0
-  accel = Axis3 0 0 0
-  ekfs = EkfState 0 0 0 0 0 0 0
+  accelSubSampler' = subSamplerFinalize shouldPredict (accelSubSampler ekf) mss_to_gs
+
+  gyro = sample gyroSubSampler'
+
+  accel = sample accelSubSampler'
+
+  ekfs = ekfState ekf
+
   dt = 1
   r = Axis3 0 0 0
 
@@ -334,15 +340,15 @@ ekfPredict ekf = ekf where
 
   -- body-frame velocity from attitude error
   dxe0  = 0
-  dye0  = -gravity_magnitude * (z r) * dt
-  dze0  = gravity_magnitude * (y r) * dt
+  dye0  = -mss_to_gs * (z r) * dt
+  dze0  = mss_to_gs * (y r) * dt
 
-  dxe1  = gravity_magnitude * (z r) * dt
+  dxe1  = mss_to_gs * (z r) * dt
   dye1  = 0
-  dze1  = -gravity_magnitude * (x r) * dt
+  dze1  = -mss_to_gs * (x r) * dt
 
-  dxe2  = -gravity_magnitude * (y r) * dt
-  dye2  = gravity_magnitude * (x r) * dt
+  dxe2  = -mss_to_gs * (y r) * dt
+  dye2  = mss_to_gs * (x r) * dt
   dze2  = 0
 
   a =  [  --  z   dx   dy    dz    e1    e1    e2
