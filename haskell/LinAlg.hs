@@ -1,4 +1,4 @@
-module LinAlg where
+module Main where
 
 import Linear.Matrix
 

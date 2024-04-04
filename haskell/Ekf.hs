@@ -469,4 +469,4 @@ spec = do
 
 main = reify spec >>= 
 
-  compileWith (CSettings "foo" ".") "foo"
+  compileWith (CSettings "ekf_step" ".") "ekf"
