@@ -306,11 +306,11 @@ ekfPredict ekf = ekf where
 
   ekfs = ekfState ekf
 
-  sec = unsafeCase (nowMsec - (lastPredictionMsec ekf)) SFloat
+  sec = unsafeCast (nowMsec - (lastPredictionMsec ekf)) :: SFloat
 
   dt = sec / 1000
 
-  r' = (r ekfState)
+  r' = (r ekf)
 
   e0 = (x gyro) * dt / 2
   e1 = (y gyro) * dt / 2
