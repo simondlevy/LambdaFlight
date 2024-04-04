@@ -277,25 +277,25 @@ subSamplerFinalize shouldPredict subSampler conversionFactor = subSampler' where
        then (x (sum subSampler)) * conversionFactor / (unsafeCast count')
        else (x (sample subSampler))
 
+  y' = if shouldFinalize 
+       then (y (sum subSampler)) * conversionFactor / (unsafeCast count')
+       else (y (sample subSampler))
+
+  z' = if shouldFinalize 
+       then (z (sum subSampler)) * conversionFactor / (unsafeCast count')
+       else (z (sample subSampler))
+
+  sample' = Axis3 x' y' z'
+
+  sum' = Axis3 0 0 0
+
 {--
-  subSampler->subSample.x = shouldFinalize ? 
-                subSampler->sum.x * subSampler->conversionFactor / count :
-                subSampler->subSample.x
-
-  subSampler->subSample.y = shouldFinalize ?
-                subSampler->sum.y * subSampler->conversionFactor / count :
-                subSampler->subSample.y
-
-  subSampler->subSample.z = shouldFinalize ?
-                subSampler->sum.z * subSampler->conversionFactor / count :
-                subSampler->subSample.z
-
   -- Reset
   subSampler->count = 0
   subSampler->sum = (Axis3f){.axis={0}}
 --}
 
-  subSampler' = subSampler
+  subSampler' = SubSampler sample' sum' 0
  
 ------------------------------------------------------------------------------
 
