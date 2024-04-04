@@ -269,33 +269,23 @@ subSamplerFinalize :: SBool -> SubSampler -> SFloat -> SubSampler
 
 subSamplerFinalize shouldPredict subSampler conversionFactor = subSampler' where
 
-  count' = count subSampler
+  count' = (unsafeCast (count subSampler)) :: SFloat
 
   shouldFinalize = shouldPredict &&  count' > 0
 
   x' = if shouldFinalize 
-       then (x (sum subSampler)) * conversionFactor / (unsafeCast count')
+       then (x (sum subSampler)) * conversionFactor / count'
        else (x (sample subSampler))
 
   y' = if shouldFinalize 
-       then (y (sum subSampler)) * conversionFactor / (unsafeCast count')
+       then (y (sum subSampler)) * conversionFactor / count'
        else (y (sample subSampler))
 
   z' = if shouldFinalize 
-       then (z (sum subSampler)) * conversionFactor / (unsafeCast count')
+       then (z (sum subSampler)) * conversionFactor / count'
        else (z (sample subSampler))
 
-  sample' = Axis3 x' y' z'
-
-  sum' = Axis3 0 0 0
-
-{--
-  -- Reset
-  subSampler->count = 0
-  subSampler->sum = (Axis3f){.axis={0}}
---}
-
-  subSampler' = SubSampler sample' sum' 0
+  subSampler' = SubSampler (Axis3 x' y' z') (Axis3 0 0 0) 0
  
 ------------------------------------------------------------------------------
 
