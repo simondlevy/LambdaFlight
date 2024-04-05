@@ -306,13 +306,21 @@ a ! (i, j) = (a !! i) !! j
 
 ------------------------------------------------------------------------------
 
-updateCovariance :: Matrix -> SBool -> Matrix
+-- Enforce symmetry of covariance matrix, ensuring values stay bounded
 
-updateCovariance a b = a' where 
+updateCovarianceCell :: SFloat -> SBool -> SFloat
+
+updateCovarianceCell x shouldUpdate = x' where
+
+  x' = x
+
+updateCovarianceMatrix :: Matrix -> SBool -> Matrix
+
+updateCovarianceMatrix p shouldUpdate = p' where 
 
   idx = [1..7]
 
-  a' = [[if true then 0 else a!(i,j) | i <- idx] | j <- idx]
+  p' = [[(updateCovarianceCell (p!(i,j)) shouldUpdate) | i <- idx] | j <- idx]
 
 ------------------------------------------------------------------------------
 
@@ -528,7 +536,7 @@ ekfPredict ekf = ekf where
             sqr (meas_noise_gyro_roll_yaw * dt' + proc_noise_att)
           ]
 
-  p'' = updateCovariance (addNoiseDiagonal p' noise isDtPositive) isDtPositive
+  p'' = updateCovarianceMatrix (addNoiseDiagonal p' noise isDtPositive) isDtPositive
 
 ------------------------------------------------------------------------------
 
