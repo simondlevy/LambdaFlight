@@ -24,7 +24,8 @@ module Main where
 import Language.Copilot hiding(atan2, sum)
 import Copilot.Compile.C99
 
-import Linear.Matrix
+import Linear.Matrix hiding(transpose)
+import Data.List hiding(sum) -- gives us transpose
 
 import Utils
 
