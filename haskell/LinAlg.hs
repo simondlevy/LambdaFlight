@@ -10,16 +10,22 @@ msq :: Matrix -> Matrix
 msq a = a !*! a
 
 
+printvec' :: Vector -> Int -> IO()
+printvec' _ 0 = do
+  putStrLn ""  
+printvec' x cols = do
+    putStr . show $ head x
+    putStr " "
+    printvec' (tail x) (cols - 1)
+
+
 printvec :: Vector -> IO()
 printvec x = do
-    print $ x
-    putStrLn ""
+    printvec' x (length x)
 
 printmat' :: Matrix -> Int -> IO()
-
 printmat' _ 0 = do
   putStrLn ""  
-
 printmat' a rows = do
     printvec $ head a
     printmat' (tail a) (rows - 1)
