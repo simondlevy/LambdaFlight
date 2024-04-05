@@ -7,14 +7,19 @@ type Matrix = [[Float]]
 msq :: Matrix -> Matrix
 msq a = a !*! a
 
-
 main = do
 
-    let m = [ [ 0,1,2,3,4 ],
+    let a = [ [ 0,1,2,3,4 ],
               [ 1,2,3,4,0 ],
               [ 2,3,4,0,1 ],
               [ 3,4,0,1,2 ],
-              [ 4,0,1,2,3 ] ] :: Matrix
+              [ 4,0,1,2,3 ] ]
 
-    print $ msq m
+    let b = msq a 
+
+    print $ b!!0
+    print $ b!!1
+    print $ b!!2
+    print $ b!!3
+    print $ b!!4
 
