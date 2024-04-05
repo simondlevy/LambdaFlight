@@ -312,7 +312,9 @@ a ! (i, j) = (a !! i) !! j
 
 updateCovarianceCell :: Matrix -> Index -> Index -> SFloat -> SBool -> SFloat
 
-updateCovarianceCell p i j variance shouldUpdate  = 0
+updateCovarianceCell p i j variance shouldUpdate  = newval where
+
+  newval = 0
 
 updateCovarianceMatrix :: Matrix -> SBool -> Matrix
 
@@ -326,20 +328,20 @@ updateCovarianceMatrix p shouldUpdate = p' where
 
 addNoiseDiagonal :: Matrix -> Vector -> SBool -> Matrix
 
-addNoiseDiagonal a d b = a' where
+addNoiseDiagonal p d b = p' where
 
 
-  diag j = a!(j,j) + if b then d!!j else 0
+  diag j = p!(j,j) + if b then d!!j else 0
 
 
-  a' = [ 
-         [diag 0,  a'!(0,1), a'!(0,2), a'!(0,3), a'!(0,4), a'!(0,5), a'!(0,6)],
-         [a!(1,0), diag 1,   a'!(1,2), a'!(1,3), a'!(1,4), a'!(1,5), a'!(1,6)],
-         [a!(2,0), a'!(2,1), diag 2,   a'!(2,3), a'!(2,4), a'!(2,5), a'!(2,6)],
-         [a!(3,0), a'!(3,1), a'!(3,2), diag 3,   a'!(3,4), a'!(3,5), a'!(3,6)],
-         [a!(4,0), a'!(4,1), a'!(4,2), a'!(4,3), diag 4,   a'!(4,5), a'!(4,6)],
-         [a!(5,0), a'!(5,1), a'!(5,2), a'!(5,3), a'!(5,4), diag 5,   a'!(5,6)],
-         [a!(6,0), a'!(6,1), a'!(6,2), a'!(6,3), a'!(6,4), a'!(6,5), diag 6]
+  p' = [ 
+         [diag 0,  p!(0,1), p!(0,2), p!(0,3), p!(0,4), p!(0,5), p!(0,6)],
+         [p!(1,0), diag 1,   p!(1,2), p!(1,3), p!(1,4), p!(1,5), p!(1,6)],
+         [p!(2,0), p!(2,1), diag 2,   p!(2,3), p!(2,4), p!(2,5), p!(2,6)],
+         [p!(3,0), p!(3,1), p!(3,2), diag 3,   p!(3,4), p!(3,5), p!(3,6)],
+         [p!(4,0), p!(4,1), p!(4,2), p!(4,3), diag 4,   p!(4,5), p!(4,6)],
+         [p!(5,0), p!(5,1), p!(5,2), p!(5,3), p!(5,4), diag 5,   p!(5,6)],
+         [p!(6,0), p!(6,1), p!(6,2), p!(6,3), p!(6,4), p!(6,5), diag 6]
        ]
 
 
