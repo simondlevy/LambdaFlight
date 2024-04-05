@@ -10,9 +10,13 @@ msq a = a !*! a
 printmat :: Matrix -> IO()
 printmat a = do
     print $ a!!0
+    putStrLn ""
     print $ a!!1
+    putStrLn ""
     print $ a!!2
+    putStrLn ""
     print $ a!!3
+    putStrLn ""
     print $ a!!4
 
 main = do
