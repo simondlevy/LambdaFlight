@@ -310,7 +310,9 @@ updateCovariance :: Matrix -> SBool -> Matrix
 
 updateCovariance a b = a' where 
 
-  a' = a
+  idx = [1..7]
+
+  a' = [[if true then 0 else a!(i,j) | i <- idx] | j <- idx]
 
 ------------------------------------------------------------------------------
 
@@ -332,7 +334,6 @@ addNoiseDiagonal a d b = a' where
          [a!(6,0), a'!(6,1), a'!(6,2), a'!(6,3), a'!(6,4), a'!(6,5), diag 6]
        ]
 
-  a'' = [[if true then a!(i,j) else (diag i) | i <- [1..7]] | j <- [1..7]]
 
 ------------------------------------------------------------------------------
 
