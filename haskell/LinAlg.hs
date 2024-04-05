@@ -2,18 +2,19 @@ module Main where
 
 import Linear.Matrix
 
-m :: [[Float]]
-m = [ [ 0,1,2,3,4 ],
-      [ 1,2,3,4,0 ],
-      [ 2,3,4,0,1 ],
-      [ 3,4,0,1,2 ],
-      [ 4,0,1,2,3 ] ]
+type Matrix = [[Float]]
 
-msq :: [[Float]]
-msq = m !*! m
+msq :: Matrix -> Matrix
+msq a = a !*! a
 
 
 main = do
 
-    print msq
+    let m = [ [ 0,1,2,3,4 ],
+              [ 1,2,3,4,0 ],
+              [ 2,3,4,0,1 ],
+              [ 3,4,0,1,2 ],
+              [ 4,0,1,2,3 ] ] :: Matrix
+
+    print $ msq m
 

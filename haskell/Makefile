@@ -2,6 +2,9 @@
 
 all: LinAlg ekf.cpp
 
+show: LinAlg
+	./LinAlg
+
 ekf.cpp : Ekf.hs
 	ghc -package linear Ekf.hs
 	./Ekf
