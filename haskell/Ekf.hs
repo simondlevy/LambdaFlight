@@ -310,6 +310,14 @@ ekfPredict ekf = ekf where
 
   dt = sec / 1000
 
+  dt2 = dt * dt
+
+  -- Position updates in the body frame (will be rotated to inertial frame)
+  -- thrust can only be produced in the body's Z direction
+  dx = (edx ekfs) * dt + if isFlying then 0 else (x accel) * dt2 / 2
+  dy = (edy ekfs) * dt + if isFlying then 0 else (y accel) * dt2 / 2
+  dz = (edz ekfs) * dt + (z accel) * dt2 / 2 
+
   r' = (r ekf)
 
   e0 = (x gyro) * dt / 2
