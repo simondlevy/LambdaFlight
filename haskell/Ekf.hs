@@ -486,10 +486,18 @@ ekfPredict ekf = ekf where
   dt' = getDt nowMsec  (lastProcessNoiseUpdateMsec ekf)
   isDtPositive = dt' > 0
 
-  -- Add process noise on position
-  --_Pmat[KC_STATE_Z][KC_STATE_Z] += isDtPositive ?
-  --              powf(PROC_NOISE_ACC_Z*dt'*dt' + PROC_NOISE_VEL*dt' + 
-  --                      PROC_NOISE_POS, 2) : 0  
+  -- Add process noise 
+  noise = [
+            sqr (proc_noise_acc_z*dt'*dt' + proc_noise_vel*dt' + proc_noise_pos),
+            sqr (proc_noise_acc_xy*dt' + proc_noise_vel),
+            sqr (proc_noise_acc_xy*dt' + proc_noise_vel), 
+            sqr (proc_noise_acc_z*dt' + proc_noise_vel),
+            sqr (meas_noise_gyro_roll_pitch * dt' + proc_noise_att),
+            sqr (meas_noise_gyro_roll_pitch * dt' + proc_noise_att),
+            sqr (meas_noise_gyro_roll_yaw * dt' + proc_noise_att)
+          ]
+
+  p'' = addNoiseDiagonal p' noise isDtPositive
 
 ------------------------------------------------------------------------------
 
