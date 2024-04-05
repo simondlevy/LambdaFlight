@@ -354,18 +354,35 @@ ekfPredict ekf = ekf where
   tmpq2 = rotateQuat (dqy*qw - dqz*qx + dqw*qy + dqx*qz) 0
   tmpq3 = rotateQuat (dqz*qw + dqy*qx - dqx*qy + dqw*qz) 0
 
-  -- normalize and store the result
-  -- norm = sqrt (tmpq0*tmpq0 + tmpq1*tmpq1 + tmpq2*tmpq2 + tmpq3*tmpq3) + EPS
+  -- Normalize and store the result
+  norm = sqrt (tmpq0*tmpq0 + tmpq1*tmpq1 + tmpq2*tmpq2 + tmpq3*tmpq3) + eps
 
+  -- Process noise is added after the return from the prediction step
 
-
-
-
-
-
-
+  -- ====== PREDICTION STEP ======
+  -- The prediction depends on whether we're on the ground, or in flight.
+  -- When flying, the accelerometer directly measures thrust (hence is useless
+  -- to estimate body angle while flying)
 
   r' = (r ekf)
+  rx = x r'
+  ry = y r'
+  rz = z r'
+
+  -- altitude update
+  z' = (ezz ekfs) + 
+    (if shouldPredict 
+     then rx * dx + ry * dy +  rz * dz - mss_to_gs * dt2 / 2
+     else 0)
+
+
+
+
+
+
+
+
+
 
   e0 = (x gyro) * dt / 2
   e1 = (y gyro) * dt / 2
@@ -374,14 +391,14 @@ ekfPredict ekf = ekf where
   (e00, e01, e02, e10, e11, e12, e20, e21, e22) = aLowerRight e0 e1 e2
 
   -- altitude from body-frame velocity
-  zdx  = (x r') * dt
-  zdy  = (y r') * dt
-  zdz  = (z r') * dt
+  zdx  = rx * dt
+  zdy  = ry * dt
+  zdz  = rz * dt
 
   -- altitude from attitude error
-  ze0  = ((edy ekfs) * (z r') - (edz ekfs) * (y r')) * dt
-  ze1  = (- (edx ekfs) * (z r') + (edz ekfs) * (x r')) * dt
-  ze2  = ((edx ekfs) * (y r') - (edy ekfs) * (x r')) * dt
+  ze0  = ((edy ekfs) * rz - (edz ekfs) * ry) * dt
+  ze1  = (- (edx ekfs) * rz + (edz ekfs) * rx) * dt
+  ze2  = ((edx ekfs) * ry - (edy ekfs) * rx) * dt
 
   -- body-frame velocity from body-frame velocity
   dxdx  = 1 --drag negligible

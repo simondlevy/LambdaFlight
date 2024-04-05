@@ -27,7 +27,7 @@ static const float PROC_NOISE_ATT = 0;
 static const float MEAS_NOISE_GYRO_ROLL_PITCH = 0.1; // radians per second
 static const float MEAS_NOISE_GYRO_ROLL_YAW = 0.1;   // radians per second
 
-static const float GRAVITY_MAGNITUDE = 9.81;
+static const float MSS_TO_GS = 9.81;
 
 static const float DEGREES_TO_RADIANS = M_PI / 180.0f;
 static const float RADIANS_TO_DEGREES = 180.0f / M_PI;
@@ -68,7 +68,7 @@ class Ekf {
 
         void init(const uint32_t nowMs)
         {
-            axis3fSubSamplerInit(&_accSubSampler, GRAVITY_MAGNITUDE);
+            axis3fSubSamplerInit(&_accSubSampler, MSS_TO_GS);
             axis3fSubSamplerInit(&_gyroSubSampler, DEGREES_TO_RADIANS);
 
             // Reset all data to 0 (like upon system reset)
@@ -190,7 +190,7 @@ class Ekf {
             // XXX predict()
             // altitude update
             _ekfState.z += shouldPredict ? _r.x * dx + _r.y * dy + _r.z * dz - 
-                GRAVITY_MAGNITUDE * dt2 / 2 :
+                MSS_TO_GS * dt2 / 2 :
                 0;
 
             // body-velocity update: accelerometers - gyros cross velocity
@@ -198,17 +198,17 @@ class Ekf {
 
             _ekfState.dx += shouldPredict ? 
                 dt * (accx + gyro->z * tmpSDY - gyro->y * tmpSDZ - 
-                        GRAVITY_MAGNITUDE * _r.x) : 
+                        MSS_TO_GS * _r.x) : 
                 0;
 
             _ekfState.dy += shouldPredict ?
                 dt * (accy - gyro->z * tmpSDX + gyro->x * tmpSDZ - 
-                        GRAVITY_MAGNITUDE * _r.y) : 
+                        MSS_TO_GS * _r.y) : 
                 0;
 
             _ekfState.dz += shouldPredict ?
                 dt * (acc->z + gyro->y * tmpSDX - gyro->x * tmpSDY - 
-                         GRAVITY_MAGNITUDE * _r.z) :
+                         MSS_TO_GS * _r.z) :
                 0;
 
             // predict()
@@ -264,15 +264,15 @@ class Ekf {
 
             // body-frame velocity from attitude error
             const auto dxe0  = 0;
-            const auto dye0  = -GRAVITY_MAGNITUDE*_r.z*dt;
-            const auto dze0  = GRAVITY_MAGNITUDE*_r.y*dt;
+            const auto dye0  = -MSS_TO_GS*_r.z*dt;
+            const auto dze0  = MSS_TO_GS*_r.y*dt;
 
-            const auto dxe1  = GRAVITY_MAGNITUDE*_r.z*dt;
+            const auto dxe1  = MSS_TO_GS*_r.z*dt;
             const auto dye1  = 0;
-            const auto dze1  = -GRAVITY_MAGNITUDE*_r.x*dt;
+            const auto dze1  = -MSS_TO_GS*_r.x*dt;
 
-            const auto dxe2  = -GRAVITY_MAGNITUDE*_r.y*dt;
-            const auto dye2  = GRAVITY_MAGNITUDE*_r.x*dt;
+            const auto dxe2  = -MSS_TO_GS*_r.y*dt;
+            const auto dye2  = MSS_TO_GS*_r.x*dt;
             const auto dze2  = 0;
 
             const float A[KC_STATE_DIM][KC_STATE_DIM] = 
