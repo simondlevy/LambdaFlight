@@ -2,10 +2,14 @@ module Main where
 
 import Linear.Matrix
 
-type Matrix = [[Float]]
+type Vector = [Float]
+
+type Matrix = [Vector]
 
 msq :: Matrix -> Matrix
 msq a = a !*! a
+
+
 
 printmat :: Matrix -> IO()
 printmat a = do
