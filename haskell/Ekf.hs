@@ -332,6 +332,16 @@ ekfPredict ekf = ekf where
   dtwy = dt * (y gyro)
   dtwz = dt * (z gyro)
 
+  -- Compute the quaternion values in [w,x,y,z] order
+  angle = sqrt (dtwx*dtwx + dtwy*dtwy + dtwz*dtwz) + eps
+  ca = cos $ angle / 2
+  sa = sin $ angle / 2
+  dqw = ca
+  dqx = sa * dtwx / angle
+  dqy = sa * dtwy / angle
+  dqz = sa * dtwz / angle
+
+
 
 
 
