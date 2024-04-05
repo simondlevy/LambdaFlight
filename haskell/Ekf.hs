@@ -291,6 +291,11 @@ subSamplerFinalize shouldPredict subSampler conversionFactor = subSampler' where
  
 ------------------------------------------------------------------------------
 
+getDt :: SInt32 -> SInt32 -> SFloat
+getDt msec1 msec2 = (unsafeCast (msec1 - msec2)) / 1000
+
+------------------------------------------------------------------------------
+
 ekfPredict :: Ekf -> Ekf
 
 ekfPredict ekf = ekf where
@@ -307,9 +312,7 @@ ekfPredict ekf = ekf where
 
   ekfs = ekfState ekf
 
-  sec = unsafeCast (nowMsec - (lastPredictionMsec ekf)) :: SFloat
-
-  dt = sec / 1000
+  dt = getDt nowMsec (lastPredictionMsec ekf)
 
   dt2 = dt * dt
 
@@ -463,6 +466,9 @@ ekfPredict ekf = ekf where
        ] 
 
   p' = a !*! (p ekf) !*! (transpose a)  -- P <- APA'
+
+  --dt1 = (nowMs - _lastProcessNoiseUpdateMs) / 1000.0f;
+  --isDtPositive = dt1 > 0
 
 
 ------------------------------------------------------------------------------
