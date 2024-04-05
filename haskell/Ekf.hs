@@ -407,11 +407,7 @@ ekfPredict ekf = ekf where
 
   lastPredictionMsec' = if shouldPredict then nowMsec else (lastPredictionMsec ekf)
 
-
-
-
-
-
+  -- ====== COVARIANCE UPDATE ======
 
   e0 = (x gyro) * dt / 2
   e1 = (y gyro) * dt / 2
