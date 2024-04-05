@@ -398,6 +398,11 @@ ekfPredict ekf = ekf where
       else 0)
 
 
+  qw' = if shouldPredict then tmpq0/norm else qw
+  qx' = if shouldPredict then tmpq1/norm else qx 
+  qy' = if shouldPredict then tmpq2/norm else qy
+  qz' = if shouldPredict then tmpq3/norm else qz
+
 
 
 
