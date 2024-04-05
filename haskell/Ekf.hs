@@ -308,11 +308,11 @@ a ! (i, j) = (a !! i) !! j
 
 -- Enforce symmetry of covariance matrix, ensuring values stay bounded
 
-updateCovarianceCell :: SFloat -> SBool -> SFloat
+updateCovarianceCell :: SFloat -> SFloat -> SBool -> SFloat
 
-updateCovarianceCell x shouldUpdate = x' where
+updateCovarianceCell value variance shouldUpdate = value' where
 
-  x' = x
+  value' = value
 
 updateCovarianceMatrix :: Matrix -> SBool -> Matrix
 
@@ -320,7 +320,7 @@ updateCovarianceMatrix p shouldUpdate = p' where
 
   idx = [1..7]
 
-  p' = [[(updateCovarianceCell (p!(i,j)) shouldUpdate) | i <- idx] | j <- idx]
+  p' = [[(updateCovarianceCell (p!(i,j)) 0 shouldUpdate) | i <- idx] | j <- idx]
 
 ------------------------------------------------------------------------------
 
