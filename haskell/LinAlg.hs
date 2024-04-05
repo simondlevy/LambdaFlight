@@ -8,12 +8,12 @@ msq :: Matrix -> Matrix
 msq a = a !*! a
 
 printmat :: Matrix -> IO()
-printmat b = do
-    print $ b!!0
-    print $ b!!1
-    print $ b!!2
-    print $ b!!3
-    print $ b!!4
+printmat a = do
+    print $ a!!0
+    print $ a!!1
+    print $ a!!2
+    print $ a!!3
+    print $ a!!4
 
 main = do
 
@@ -23,6 +23,4 @@ main = do
               [ 3,4,0,1,2 ],
               [ 4,0,1,2,3 ] ]
 
-    let b = msq a 
-
-    printmat b
+    printmat $ msq a
