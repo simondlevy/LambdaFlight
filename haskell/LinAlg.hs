@@ -13,18 +13,16 @@ msq a = a !*! a
 printvec :: Vector -> IO()
 printvec x = do
     print $ x
+    putStrLn ""
 
 printmat' :: Matrix -> Int -> IO()
+
+printmat' _ 0 = do
+  putStrLn ""  
+
 printmat' a rows = do
-    printvec $ a!!0
-    putStrLn ""
-    printvec $ a!!1
-    putStrLn ""
-    printvec $ a!!2
-    putStrLn ""
-    printvec $ a!!3
-    putStrLn ""
-    printvec $ a!!4
+    printvec $ head a
+    printmat' (tail a) (rows - 1)
 
  
 printmat :: Matrix -> IO()
