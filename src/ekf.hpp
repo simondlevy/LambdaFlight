@@ -296,34 +296,20 @@ class Ekf {
             const auto dt1 = (nowMs - _lastProcessNoiseUpdateMs) / 1000.0f;
             const auto isDtPositive = dt1 > 0;
 
-            // add process noise on position
-            _Pmat[KC_STATE_Z][KC_STATE_Z] += isDtPositive ?
-                powf(PROC_NOISE_ACC_Z*dt1*dt1 + PROC_NOISE_VEL*dt1 + 
-                        PROC_NOISE_POS, 2) : 0;  
 
-            // add process noise on velocity
-            _Pmat[KC_STATE_DX][KC_STATE_DX] += isDtPositive ? 
-                powf(PROC_NOISE_ACC_XY*dt1 + 
-                        PROC_NOISE_VEL, 2) : 0; 
+            // Add process noise
 
-            // add process noise on velocity
-            _Pmat[KC_STATE_DY][KC_STATE_DY] += isDtPositive ?
-                powf(PROC_NOISE_ACC_XY*dt1 + 
-                        PROC_NOISE_VEL, 2) : 0; 
+            const float noise[KC_STATE_DIM] = {
+                powf(PROC_NOISE_ACC_Z*dt1*dt1 + PROC_NOISE_VEL*dt1 + PROC_NOISE_POS, 2), 
+                powf(PROC_NOISE_ACC_XY*dt1 + PROC_NOISE_VEL, 2), 
+                powf(PROC_NOISE_ACC_XY*dt1 + PROC_NOISE_VEL, 2), 
+                powf(PROC_NOISE_ACC_Z*dt1 + PROC_NOISE_VEL, 2), 
+                powf(MEAS_NOISE_GYRO_ROLL_PITCH * dt1 + PROC_NOISE_ATT, 2), 
+                powf(MEAS_NOISE_GYRO_ROLL_PITCH * dt1 + PROC_NOISE_ATT, 2), 
+                powf(MEAS_NOISE_GYRO_ROLL_YAW * dt1 + PROC_NOISE_ATT, 2) 
+            };
 
-            // add process noise on velocity
-            _Pmat[KC_STATE_DZ][KC_STATE_DZ] += isDtPositive ?
-                powf(PROC_NOISE_ACC_Z*dt1 + 
-                        PROC_NOISE_VEL, 2) : 0; 
-
-            _Pmat[KC_STATE_E0][KC_STATE_E0] += isDtPositive ?
-                powf(MEAS_NOISE_GYRO_ROLL_PITCH * dt1 + PROC_NOISE_ATT, 2) : 0;
-
-            _Pmat[KC_STATE_E1][KC_STATE_E1] += isDtPositive ?
-                powf(MEAS_NOISE_GYRO_ROLL_PITCH * dt1 + PROC_NOISE_ATT, 2) : 0;
-
-            _Pmat[KC_STATE_E2][KC_STATE_E2] += isDtPositive ?
-                powf(MEAS_NOISE_GYRO_ROLL_YAW * dt1 + PROC_NOISE_ATT, 2) : 0;
+            addNoiseDiagonal(_Pmat, noise, isDtPositive);
 
             updateCovarianceMatrix(isDtPositive);
 
@@ -843,4 +829,20 @@ class Ekf {
 
             memcpy(A, a, 7*7*sizeof(float));
         } 
+
+        static void addNoiseDiagonal(
+                float a[KC_STATE_DIM][KC_STATE_DIM],
+                const float d[KC_STATE_DIM],
+                const bool doit)
+
+        {
+            a[0][0] += doit ? d[0] : 0;
+            a[1][1] += doit ? d[1] : 0;
+            a[2][2] += doit ? d[2] : 0;
+            a[3][3] += doit ? d[3] : 0;
+            a[4][4] += doit ? d[4] : 0;
+            a[5][5] += doit ? d[5] : 0;
+            a[6][6] += doit ? d[6] : 0;
+        }
+
 };
