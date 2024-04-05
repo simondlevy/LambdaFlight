@@ -169,6 +169,8 @@ type Vector = [SFloat]
 
 type Matrix = [Vector]
 
+type Index = Int8
+
 ------------------------------------------------------------------------------
 
 aLowerRight :: SFloat -> SFloat -> SFloat ->
@@ -308,7 +310,7 @@ a ! (i, j) = (a !! i) !! j
 
 -- Enforce symmetry of covariance matrix, ensuring values stay bounded
 
-updateCovarianceCell :: Matrix -> Int8 -> Int8 -> SFloat -> SBool -> SFloat
+updateCovarianceCell :: Matrix -> Index -> Index -> SFloat -> SBool -> SFloat
 
 updateCovarianceCell p i j variance shouldUpdate  = 0
 
