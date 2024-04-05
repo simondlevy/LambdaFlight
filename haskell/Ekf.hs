@@ -304,11 +304,23 @@ subSamplerFinalize shouldPredict subSampler conversionFactor = subSampler' where
 (!) :: Matrix -> (Int, Int) -> SFloat
 a ! (i, j) = (a !! i) !! j
 
+------------------------------------------------------------------------------
+
+updateCovariance :: Matrix -> SBool -> Matrix
+
+updateCovariance a b = a' where 
+
+  a' = a
+
+------------------------------------------------------------------------------
+
 addNoiseDiagonal :: Matrix -> Vector -> SBool -> Matrix
 
 addNoiseDiagonal a d b = a' where
 
+
   diag j = a!(j,j) + if b then d!!j else 0
+
 
   a' = [ 
          [diag 0,  a'!(0,1), a'!(0,2), a'!(0,3), a'!(0,4), a'!(0,5), a'!(0,6)],
@@ -320,6 +332,7 @@ addNoiseDiagonal a d b = a' where
          [a!(6,0), a'!(6,1), a'!(6,2), a'!(6,3), a'!(6,4), a'!(6,5), diag 6]
        ]
 
+  a'' = [[if true then a!(i,j) else (diag i) | i <- [1..7]] | j <- [1..7]]
 
 ------------------------------------------------------------------------------
 
@@ -514,7 +527,7 @@ ekfPredict ekf = ekf where
             sqr (meas_noise_gyro_roll_yaw * dt' + proc_noise_att)
           ]
 
-  p'' = addNoiseDiagonal p' noise isDtPositive
+  p'' = updateCovariance (addNoiseDiagonal p' noise isDtPositive) isDtPositive
 
 ------------------------------------------------------------------------------
 
