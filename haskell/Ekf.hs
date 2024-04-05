@@ -152,7 +152,7 @@ data SubSampler = SubSampler {
 ------------------------------------------------------------------------------
 
 data Ekf = Ekf {
-    p :: EkfMatrix
+    p :: Matrix
   , r :: Axis3
   , quat :: Quaternion
   , ekfState :: EkfState
@@ -165,7 +165,9 @@ data Ekf = Ekf {
 
 ------------------------------------------------------------------------------
 
-type EkfMatrix = [[SFloat]]
+type Vector = [SFloat]
+
+type Matrix = [Vector]
 
 ------------------------------------------------------------------------------
 
@@ -297,6 +299,12 @@ subSamplerFinalize shouldPredict subSampler conversionFactor = subSampler' where
 
   subSampler' = SubSampler (Axis3 x' y' z') (Axis3 0 0 0) 0
  
+------------------------------------------------------------------------------
+
+addNoiseDiagonal :: Matrix -> Vector -> SBool -> Matrix
+
+addNoiseDiagonal a d b = a
+
 ------------------------------------------------------------------------------
 
 getDt :: SInt32 -> SInt32 -> SFloat

@@ -834,7 +834,6 @@ class Ekf {
                 float a[KC_STATE_DIM][KC_STATE_DIM],
                 const float d[KC_STATE_DIM],
                 const bool doit)
-
         {
             a[0][0] += doit ? d[0] : 0;
             a[1][1] += doit ? d[1] : 0;
