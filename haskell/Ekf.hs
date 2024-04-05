@@ -318,6 +318,27 @@ ekfPredict ekf = ekf where
   dy = (edy ekfs) * dt + if isFlying then 0 else (y accel) * dt2 / 2
   dz = (edz ekfs) * dt + (z accel) * dt2 / 2 
 
+  -- Keep previous time step's state for the update
+  tmpSDX = (edx ekfs)
+  tmpSDY = (edx ekfs)
+  tmpSDZ = (edz ekfs)
+
+  accx = if isFlying then 0 else x accel
+  accy = if isFlying then 0 else y accel
+
+  -- Attitude update (rotate by gyroscope), we do this in quaternions.
+  -- This is the gyroscope angular velocity integrated over the sample period.
+  dtwx = dt * (x gyro)
+  dtwy = dt * (y gyro)
+  dtwz = dt * (z gyro)
+
+
+
+
+
+
+
+
   r' = (r ekf)
 
   e0 = (x gyro) * dt / 2
