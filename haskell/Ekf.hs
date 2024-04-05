@@ -323,14 +323,18 @@ ekfPredict ekf = ekf where
   tmpSDY = (edx ekfs)
   tmpSDZ = (edz ekfs)
 
-  accx = if isFlying then 0 else x accel
-  accy = if isFlying then 0 else y accel
+  accelx = if isFlying then 0 else x accel
+  accely = if isFlying then 0 else y accel
+
+  gyrox = x gyro
+  gyroy = y gyro
+  gyroz = z gyro
 
   -- Attitude update (rotate by gyroscope), we do this in quaternions.
   -- This is the gyroscope angular velocity integrated over the sample period.
-  dtwx = dt * (x gyro)
-  dtwy = dt * (y gyro)
-  dtwz = dt * (z gyro)
+  dtwx = dt * gyrox
+  dtwy = dt * gyroy
+  dtwz = dt * gyroz
 
   -- Compute the quaternion values in [w,x,y,z] order
   angle = sqrt (dtwx*dtwx + dtwy*dtwy + dtwz*dtwz) + eps
@@ -375,6 +379,14 @@ ekfPredict ekf = ekf where
      then rx * dx + ry * dy +  rz * dz - mss_to_gs * dt2 / 2
      else 0)
 
+   -- body-velocity update: accelerometers - gyros cross velocity
+   -- - gravity in body frame
+
+  dx' = (edx ekfs) + 
+     (if shouldPredict 
+      then dt * (accelx + gyroz * tmpSDY - gyroy * tmpSDZ - mss_to_gs * rx) 
+      else 0)
+
 
 
 
@@ -402,15 +414,15 @@ ekfPredict ekf = ekf where
 
   -- body-frame velocity from body-frame velocity
   dxdx  = 1 --drag negligible
-  dydx =  -(z gyro) * dt
-  dzdx  = (y gyro) * dt
+  dydx =  -gyroz * dt
+  dzdx  = gyroy * dt
 
-  dxdy  = (z gyro) * dt
+  dxdy  = gyroz * dt
   dydy  = 1 --drag negligible
-  dzdy  = (x gyro) * dt
+  dzdy  = gyrox * dt
 
-  dxdz =  (y gyro) * dt
-  dydz  = (x gyro) * dt
+  dxdz =  gyroy * dt
+  dydz  = gyrox * dt
   dzdz  = 1 --drag negligible
 
   -- body-frame velocity from attitude error
