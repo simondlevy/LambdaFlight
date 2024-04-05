@@ -21,7 +21,7 @@
 
 module Main where
 
-import Language.Copilot hiding(atan2, sum)
+import Language.Copilot hiding(atan2, sum, (!!))
 import Copilot.Compile.C99
 
 import Linear.Matrix hiding(transpose)
@@ -301,13 +301,30 @@ subSamplerFinalize shouldPredict subSampler conversionFactor = subSampler' where
  
 ------------------------------------------------------------------------------
 
+(!) :: Matrix -> (Int, Int) -> SFloat
+a ! (i, j) = (a !! i) !! j
+
 addNoiseDiagonal :: Matrix -> Vector -> SBool -> Matrix
 
-addNoiseDiagonal a d b = a
+addNoiseDiagonal a d b = a' where
+
+  diag j = a!(j,j) + if b then d!!j else 0
+
+  a' = [ 
+         [diag 0,  a'!(0,1), a'!(0,2), a'!(0,3), a'!(0,4), a'!(0,5), a'!(0,6)],
+         [a!(1,0), diag 1,   a'!(1,2), a'!(1,3), a'!(1,4), a'!(1,5), a'!(1,6)],
+         [a!(2,0), a'!(2,1), diag 2,   a'!(2,3), a'!(2,4), a'!(2,5), a'!(2,6)],
+         [a!(3,0), a'!(3,1), a'!(3,2), diag 3,   a'!(3,4), a'!(3,5), a'!(3,6)],
+         [a!(4,0), a'!(4,1), a'!(4,2), a'!(4,3), diag 4,   a'!(4,5), a'!(4,6)],
+         [a!(5,0), a'!(5,1), a'!(5,2), a'!(5,3), a'!(5,4), diag 5,   a'!(5,6)],
+         [a!(6,0), a'!(6,1), a'!(6,2), a'!(6,3), a'!(6,4), a'!(6,5), diag 6]
+       ]
+
 
 ------------------------------------------------------------------------------
 
 getDt :: SInt32 -> SInt32 -> SFloat
+
 getDt msec1 msec2 = (unsafeCast (msec1 - msec2)) / 1000
 
 ------------------------------------------------------------------------------
