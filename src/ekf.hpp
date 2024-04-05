@@ -756,12 +756,12 @@ class Ekf {
                 const float variance,
                 const bool shouldUpdate)
         {
-            const auto p = (_Pmat[i][j] + _Pmat[j][i]) / 2 + variance;
+            const auto pval = (_Pmat[i][j] + _Pmat[j][i]) / 2 + variance;
 
             _Pmat[i][j] = !shouldUpdate ? _Pmat[i][j] :
-                (isnan(p) || p > MAX_COVARIANCE) ?  MAX_COVARIANCE :
-                (i==j && p < MIN_COVARIANCE) ?  MIN_COVARIANCE :
-                p;
+                (isnan(pval) || pval > MAX_COVARIANCE) ?  MAX_COVARIANCE :
+                (i==j && pval < MIN_COVARIANCE) ?  MIN_COVARIANCE :
+                pval;
 
             _Pmat[j][i] = shouldUpdate ? _Pmat[i][j] : _Pmat[j][i];
         }

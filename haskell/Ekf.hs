@@ -54,6 +54,10 @@ rad_to_deg = 180 / pi :: SFloat
 -- Small number epsilon, to prevent dividing by zero
 eps = 1e-6 :: SFloat
 
+-- Bounds on the covariance, these shouldn't be hit, but sometimes are... why?
+max_covariance = 100 :: SFloat
+min_covariance = 1e-6 :: SFloat
+
 ------------------------------------------------------------------------------
 
 type EkfMode = SInt8
@@ -312,9 +316,14 @@ a ! (i, j) = (a !! i) !! j
 
 updateCovarianceCell :: Matrix -> Index -> Index -> SFloat -> SBool -> SFloat
 
-updateCovarianceCell p i j variance shouldUpdate  = newval where
+updateCovarianceCell p i j variance shouldUpdate  = pval' where
 
-  newval = p!(i,j)
+  pval = (p!(i,j) + p!(j,i)) / 2 + variance
+
+  pval' = if not shouldUpdate then p!(i,j)
+          else if pval > max_covariance then max_covariance
+          -- else if i == j && pval < min_covariance then min_covariance
+          else pval
 
 updateCovarianceMatrix :: Matrix -> SBool -> Matrix
 
