@@ -10,18 +10,26 @@ msq :: Matrix -> Matrix
 msq a = a !*! a
 
 
+printvec :: Vector -> IO()
+printvec x = do
+    print $ x
 
+printmat' :: Matrix -> Int -> IO()
+printmat' a rows = do
+    printvec $ a!!0
+    putStrLn ""
+    printvec $ a!!1
+    putStrLn ""
+    printvec $ a!!2
+    putStrLn ""
+    printvec $ a!!3
+    putStrLn ""
+    printvec $ a!!4
+
+ 
 printmat :: Matrix -> IO()
 printmat a = do
-    print $ a!!0
-    putStrLn ""
-    print $ a!!1
-    putStrLn ""
-    print $ a!!2
-    putStrLn ""
-    print $ a!!3
-    putStrLn ""
-    print $ a!!4
+    printmat' a (length a)
 
 main = do
 
