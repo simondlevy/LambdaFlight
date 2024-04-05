@@ -341,6 +341,22 @@ ekfPredict ekf = ekf where
   dqy = sa * dtwy / angle
   dqz = sa * dtwz / angle
 
+  -- Rotate the quad's attitude by the delta quaternion vector computed above
+
+  quat' = (quat ekf)
+  qw = qqw quat'
+  qx = qqx quat'
+  qy = qqy quat'
+  qz = qqz quat'
+
+  tmpq0 = rotateQuat (dqw*qw - dqx*qx - dqy*qy - dqz*qz) 1
+  tmpq1 = rotateQuat (dqx*qw + dqw*qx + dqz*qy - dqy*qz) 0
+  tmpq2 = rotateQuat (dqy*qw - dqz*qx + dqw*qy + dqx*qz) 0
+  tmpq3 = rotateQuat (dqz*qw + dqy*qx - dqx*qy + dqw*qz) 0
+
+  -- normalize and store the result
+  -- norm = sqrt (tmpq0*tmpq0 + tmpq1*tmpq1 + tmpq2*tmpq2 + tmpq3*tmpq3) + EPS
+
 
 
 
