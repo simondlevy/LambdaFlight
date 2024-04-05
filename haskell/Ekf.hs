@@ -169,7 +169,7 @@ type Vector = [SFloat]
 
 type Matrix = [Vector]
 
-type Index = Int8
+type Index = Int
 
 ------------------------------------------------------------------------------
 
@@ -303,7 +303,7 @@ subSamplerFinalize shouldPredict subSampler conversionFactor = subSampler' where
  
 ------------------------------------------------------------------------------
 
-(!) :: Matrix -> (Int, Int) -> SFloat
+(!) :: Matrix -> (Index, Index) -> SFloat
 a ! (i, j) = (a !! i) !! j
 
 ------------------------------------------------------------------------------
@@ -314,7 +314,7 @@ updateCovarianceCell :: Matrix -> Index -> Index -> SFloat -> SBool -> SFloat
 
 updateCovarianceCell p i j variance shouldUpdate  = newval where
 
-  newval = 0
+  newval = p!(i,j)
 
 updateCovarianceMatrix :: Matrix -> SBool -> Matrix
 
@@ -332,7 +332,6 @@ addNoiseDiagonal p d b = p' where
 
 
   diag j = p!(j,j) + if b then d!!j else 0
-
 
   p' = [ 
          [diag 0,  p!(0,1), p!(0,2), p!(0,3), p!(0,4), p!(0,5), p!(0,6)],
