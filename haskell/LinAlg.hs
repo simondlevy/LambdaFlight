@@ -12,7 +12,7 @@ msq a = a !*! a
 
 printvec' :: Vector -> Int -> IO()
 printvec' _ 0 = do
-  putStrLn ""  
+  putStrLn "\n"  
 printvec' x cols = do
     putStr . show $ head x
     putStr " "
@@ -25,7 +25,7 @@ printvec x = do
 
 printmat' :: Matrix -> Int -> IO()
 printmat' _ 0 = do
-  putStrLn ""  
+  putStr ""  
 printmat' a rows = do
     printvec $ head a
     printmat' (tail a) (rows - 1)
