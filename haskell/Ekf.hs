@@ -36,6 +36,14 @@ stdev_initial_velocity           = 0.01 :: SFloat
 stdev_initial_attituderoll_pitch = 0.01 :: SFloat
 stdev_initial_attitude_yaw       = 0.01 :: SFloat
 
+proc_noise_acc_xy = 0.5 :: SFloat
+proc_noise_acc_z = 1.0 :: SFloat
+proc_noise_vel = 0 :: SFloat
+proc_noise_pos = 0 :: SFloat
+proc_noise_att = 0 :: SFloat
+meas_noise_gyro_roll_pitch = 0.1 :: SFloat -- radians per second
+meas_noise_gyro_roll_yaw = 0.1   :: SFloat -- radians per second
+
 --The reversion of pitch and roll to zero
 rollpitch_zero_reversion = 0.001 :: SFloat
 
@@ -152,7 +160,7 @@ data Ekf = Ekf {
   , accelSubSampler :: SubSampler
   , isUpdated :: SBool
   , lastPredictionMsec :: SInt32
-  , lastProcessedNoiseUpdateMsec :: SInt32
+  , lastProcessNoiseUpdateMsec :: SInt32
 }
 
 ------------------------------------------------------------------------------
@@ -467,9 +475,13 @@ ekfPredict ekf = ekf where
 
   p' = a !*! (p ekf) !*! (transpose a)  -- P <- APA'
 
-  --dt1 = (nowMs - _lastProcessNoiseUpdateMs) / 1000.0f;
-  --isDtPositive = dt1 > 0
+  dt' = getDt nowMsec  (lastProcessNoiseUpdateMsec ekf)
+  isDtPositive = dt' > 0
 
+  -- Add process noise on position
+  --_Pmat[KC_STATE_Z][KC_STATE_Z] += isDtPositive ?
+  --              powf(PROC_NOISE_ACC_Z*dt'*dt' + PROC_NOISE_VEL*dt' + 
+  --                      PROC_NOISE_POS, 2) : 0  
 
 ------------------------------------------------------------------------------
 
