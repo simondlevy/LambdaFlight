@@ -387,6 +387,16 @@ ekfPredict ekf = ekf where
       then dt * (accelx + gyroz * tmpSDY - gyroy * tmpSDZ - mss_to_gs * rx) 
       else 0)
 
+  dy' = (edy ekfs) + 
+     (if shouldPredict 
+      then dt * (accely - gyroz * tmpSDX + gyrox * tmpSDZ - mss_to_gs * ry)
+      else 0)
+
+  dz' = (edz ekfs) + 
+     (if shouldPredict 
+      then dt * ((z accel) + gyroy * tmpSDX - gyrox * tmpSDY - mss_to_gs * rz) 
+      else 0)
+
 
 
 
