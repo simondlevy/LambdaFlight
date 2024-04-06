@@ -679,9 +679,16 @@ ekfUpdateWithGyro :: Axis3 -> Ekf -> Ekf
 
 ekfUpdateWithGyro gyro ekf = ekf' where
 
-  gyroSubsampler' = subSamplerAccumulate gyro (gyroSubSampler ekf)
-
-  ekf' = ekf
+  ekf' = Ekf (p ekf)
+             (r ekf)
+             (quat ekf)
+             (ekfState ekf)
+             (subSamplerAccumulate gyro (gyroSubSampler ekf))
+             (accelSubSampler ekf)
+             gyro
+             (isUpdated ekf)
+             (lastPredictionMsec ekf)
+             (lastProcessNoiseUpdateMsec ekf)
 
 ------------------------------------------------------------------------------
 
