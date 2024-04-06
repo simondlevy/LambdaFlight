@@ -27,6 +27,7 @@ import Copilot.Compile.C99
 import Linear.Matrix hiding(transpose)
 import Data.List hiding(sum) -- gives us transpose
 
+import State
 import Utils
 
 -- Initial variances, uncertain of position, but know we're stationary and
@@ -103,18 +104,6 @@ accelY = extern "stream_accelY" Nothing
 
 accelZ :: SFloat
 accelZ = extern "stream_accelZ" Nothing
-
-------------------------------------------------------------------------------
-
-data VehicleState = VehicleState {
-    vz :: SFloat
-  , vdx :: SFloat
-  , vdy :: SFloat
-  , vdz :: SFloat
-  , phi :: SFloat
-  , theta :: SFloat
-  , psi :: SFloat
-}
 
 ------------------------------------------------------------------------------
 
@@ -640,9 +629,9 @@ ekfFinalize ekf = ekf where
 
 ------------------------------------------------------------------------------
 
-ekfGetVehicleState :: Ekf -> VehicleState
+ekfGetVehicleState :: Ekf -> State
 
-ekfGetVehicleState ekf = VehicleState zz dx dy dz phi theta psi where
+ekfGetVehicleState ekf = State dx dy zz dz phi dphi theta dtheta psi dpsi where
 
   ekfs = ekfState ekf
 
@@ -673,9 +662,10 @@ ekfGetVehicleState ekf = VehicleState zz dx dy dz phi theta psi where
                            (qw*qw + qx*qx - qy*qy - qz*qz)
 
   --  Get angular velocities directly from gyro
-  dphi =   0 --  _gyroLatest.x
-  dtheta = 0 -- -_gyroLatest.y // negate for ENU
-  dpsi =   0 --  _gyroLatest.z
+  gyroLatest' = gyroLatest ekf
+  dphi =     x gyroLatest'
+  dtheta = -(y gyroLatest') --  negate for ENU
+  dpsi =     z gyroLatest'
  
 ------------------------------------------------------------------------------
 

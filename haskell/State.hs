@@ -35,7 +35,7 @@ import Utils
 data StateStruct = StateStruct { 
     dx'     :: Field "dx" Float 
   , dy'     :: Field "dy" Float 
-  , z'      :: Field "z" Float 
+  , zz'     :: Field "z" Float 
   , dz'     :: Field "dz" Float 
   , phi'    :: Field "phi" Float 
   , dphi'   :: Field "dphi" Float 
@@ -48,7 +48,7 @@ data StateStruct = StateStruct {
 data State = State { 
     dx     :: SFloat 
   , dy     :: SFloat 
-  , z      :: SFloat 
+  , zz     :: SFloat 
   , dz     :: SFloat 
   , phi    :: SFloat 
   , dphi   :: SFloat 
@@ -64,7 +64,7 @@ instance Struct StateStruct where
 
     toValues v = [ Value Float (dx' v)
                  , Value Float (dy' v)
-                 , Value Float (z' v)
+                 , Value Float (zz' v)
                  , Value Float (dz' v)
                  , Value Float (phi' v)
                  , Value Float (dphi' v)
@@ -92,7 +92,7 @@ instance Typed StateStruct where
 liftState :: Stream StateStruct -> State
 liftState state = State (state # dx') 
                         (state # dy') 
-                        (state # z') 
+                        (state # zz') 
                         (state # dz') 
                         (state # phi') 
                         (state # dphi') 

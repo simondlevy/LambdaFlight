@@ -47,7 +47,7 @@ altitudePid flying dt state demands = demands'  where
   -- target altitude in meters
   target = rescale thrustraw (-1) 1 0.2 2.0
 
-  error = target - (z state)
+  error = target - (zz state)
 
   -- Reset integral when not in flying mode (flying)
   integ = if flying 
