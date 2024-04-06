@@ -36,6 +36,8 @@ dot :: Vector -> Vector -> Float
 dot (x:xs) (y:ys) = x * y + (dot xs ys)
 dot [] [] = 0
 
+outer :: Vector -> Vector -> Matrix
+outer x y = map (\l -> l!!0) [[x] !!* k | k <- y]
 
 main = do
 
@@ -45,7 +47,13 @@ main = do
 
     let x = [29, 31, 37]
 
-    print $ dot x x
+    let v = [0, 2, 4]
+    let w = [1, 3, 5]
+
+    -- print $ dot x x
+
+    -- printmat $ map (\x -> x!!0) [[v] !!* k | k <- w]
+    printmat $ outer v w
 
     -- printvec $ a !* x
     -- printmat $ transpose a

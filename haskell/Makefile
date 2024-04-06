@@ -2,7 +2,7 @@
 
 all: LinAlg ekf.cpp
 
-show: LinAlg
+run: LinAlg
 	./LinAlg
 
 ekf.cpp : Ekf.hs
