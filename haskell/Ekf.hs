@@ -162,6 +162,7 @@ data Ekf = Ekf {
   , ekfState :: EkfState
   , gyroSubSampler :: SubSampler
   , accelSubSampler :: SubSampler
+  , gyroLatest :: Axis3
   , isUpdated :: SBool
   , lastPredictionMsec :: SInt32
   , lastProcessNoiseUpdateMsec :: SInt32
@@ -255,7 +256,7 @@ subSamplerInit = SubSampler sample sum 0 where
 
 ekfInit :: Ekf
 
-ekfInit = Ekf p r q s g a false nowMsec nowMsec where 
+ekfInit =  ekf where 
 
   qq = sqr stdev_initial_position_z 
   dd = sqr stdev_initial_velocity 
@@ -274,13 +275,26 @@ ekfInit = Ekf p r q s g a false nowMsec nowMsec where
 
   r = Axis3 0 0 1
 
-  q = Quaternion 1 0 0 0
+  quat = Quaternion 1 0 0 0
 
-  s = EkfState 0 0 0 0 0 0 0
+  ekfs = EkfState 0 0 0 0 0 0 0
 
-  g = subSamplerInit
+  gyroSubSampler = subSamplerInit
 
-  a = subSamplerInit
+  accelSubSampler = subSamplerInit
+
+  gyroLatest = Axis3 0 0 0
+
+  ekf = Ekf p 
+            r 
+            quat 
+            ekfs 
+            gyroSubSampler 
+            accelSubSampler 
+            gyroLatest
+            false 
+            nowMsec  
+            nowMsec
 
 ------------------------------------------------------------------------------
 
@@ -561,6 +575,7 @@ ekfPredict ekf = ekf' where
              (EkfState zz' dx' dy' dz' (ee0 ekfs) (ee1 ekfs) (ee2 ekfs))
              gyroSubSampler' 
              accelSubSampler' 
+             (gyroLatest ekf)
              isUpdated' 
              lastPredictionMsec'
              lastProcessNoiseUpdateMsec'
