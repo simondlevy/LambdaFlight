@@ -106,6 +106,18 @@ accelZ = extern "stream_accelZ" Nothing
 
 ------------------------------------------------------------------------------
 
+data VehicleState = VehicleState {
+    vz :: SFloat
+  , vdx :: SFloat
+  , vdy :: SFloat
+  , vdz :: SFloat
+  , phi :: SFloat
+  , theta :: SFloat
+  , psi :: SFloat
+}
+
+------------------------------------------------------------------------------
+
 data Quaternion = Quaternion {
     qqw :: SFloat
   , qqx :: SFloat
@@ -610,6 +622,12 @@ ekfFinalize ekf = ekf where
             [0,  0,  0,  0,  e10, e11,  e12], -- e1
             [0,  0,  0,  0,  e20, e21,  e22]  -- e2
        ] 
+
+------------------------------------------------------------------------------
+
+ekfGetVehicleState :: Ekf -> VehicleState
+
+ekfGetVehicleState ekf = VehicleState 0 0 0 0 0 0 0
 
 ------------------------------------------------------------------------------
 
