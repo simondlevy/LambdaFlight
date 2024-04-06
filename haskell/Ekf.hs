@@ -435,7 +435,7 @@ ekfPredict ekf = ekf' where
   rz = z r'
 
   -- altitude update
-  z' = (ezz ekfs) + 
+  zz' = (ezz ekfs) + 
     (if shouldPredict 
      then rx * dx + ry * dy +  rz * dz - mss_to_gs * dt2 / 2
      else 0)
@@ -541,9 +541,17 @@ ekfPredict ekf = ekf' where
   p'' = updateCovarianceMatrix (addNoiseDiagonal p' noise isDtPositive) isDtPositive
 
   lastProcessNoiseUpdateMsec' = 
-    if isDtPositive then nowMsec else  (lastProcessNoiseUpdateMsec ekf)
+    if isDtPositive then nowMsec else (lastProcessNoiseUpdateMsec ekf)
 
-  ekf' = ekf
+  ekf' = Ekf p'' 
+             r' 
+             (Quaternion qw' qx' qy' qz')
+             (EkfState zz' dx' dy' dz' (ee0 ekfs) (ee1 ekfs) (ee2 ekfs))
+             gyroSubSampler' 
+             accelSubSampler' 
+             isUpdated' 
+             lastPredictionMsec'
+             lastProcessNoiseUpdateMsec'
 
 ------------------------------------------------------------------------------
 
