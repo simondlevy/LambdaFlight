@@ -391,10 +391,9 @@ scalarUpdate ekf h error stdMeasNoise shouldUpdate = ekf' where
   ekf' = ekf
 
   --  ====== INNOVATION COVARIANCE ======
-  -- float Ph[KC_STATE_DIM] = {};
-  -- multiply(_Pmat, h, Ph);
+  ph = (p ekf) !* h
   rr = sqr stdMeasNoise
-  -- auto HPHR = R; // HPH' + R
+  hphr = rr -- HPH' + R
 
 -- ===========================================================================
 
