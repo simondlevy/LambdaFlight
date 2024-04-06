@@ -37,7 +37,7 @@ dot (x:xs) (y:ys) = x * y + (dot xs ys)
 dot [] [] = 0
 
 outer :: Vector -> Vector -> Matrix
-outer x y = map (!!0) [[x] !!* k | k <- y]
+outer x y = map (!!0) [[y] !!* k | k <- x]
 
 main = do
 
