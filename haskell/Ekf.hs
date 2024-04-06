@@ -312,7 +312,17 @@ subSamplerFinalize shouldPredict subSampler conversionFactor = subSampler' where
 
 subSamplerAccumulate :: Axis3 -> SubSampler -> SubSampler
 
-subSamplerAccumulate axes subSampler = subSampler -- XXX
+subSamplerAccumulate newsamp subSampler = subSampler' where
+
+  oldsum = sum subSampler
+
+  newsum = Axis3 ((x oldsum) + (x newsum))
+                 ((y oldsum) + (y newsum))
+                 ((z oldsum) + (z newsum))
+
+  subSampler' = SubSampler (sample subSampler) 
+                           newsum
+                           ((count subSampler) + 1)
 
 ------------------------------------------------------------------------------
 
