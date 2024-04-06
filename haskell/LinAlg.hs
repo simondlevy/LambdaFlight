@@ -7,9 +7,6 @@ type Vector = [Float]
 
 type Matrix = [Vector]
 
-msq :: Matrix -> Matrix
-msq a = a !*! a
-
 printvec' :: Vector -> Int -> IO()
 printvec' _ 0 = do
   putStrLn "\n"  
@@ -41,7 +38,8 @@ main = do
               [ 7,  11, 13],
               [ 17, 19, 23 ] ]
 
-    let x = [[29, 31, 37]]
+    let x = [29, 31, 37]
 
-    printmat $ transpose (a !*! (transpose x))
+    printvec $ a !* x
+
     -- printmat $ transpose a
