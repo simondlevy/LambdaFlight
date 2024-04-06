@@ -1,8 +1,16 @@
 #pragma once
 
+#include <stdio.h>
 #include <stdint.h>
 
-static const uint8_t N = 3; // 7;
+static const uint8_t N =
+#ifdef _TEST
+3
+#else
+7
+#endif
+;
+
 
 static void transpose(const float a[N][N], float at[N][N])
 {
@@ -13,6 +21,17 @@ static void transpose(const float a[N][N], float at[N][N])
             at[j][i] = tmp;
         }
     }
+}
+
+static float dot(const float x[N], const float y[N]) 
+{
+    float d = 0;
+
+    for (uint8_t k=0; k<N; k++) {
+        d += x[k] * y[k];
+    }
+
+    return d;
 }
 
 static float dot(const float a[N][N], const float b[N][N], 
@@ -61,12 +80,14 @@ static void multiply(const float x[N], const float y[N], float a[N][N])
     }
 }
 
+#ifdef _TEST
+
 static void show(const float a[N][N])
 {
     for (uint8_t i=0; i<N; ++i) {
 
         for (uint8_t j=0; j<N; ++j) {
-            printf("%3.0f ", a[i][j]);
+            printf("%3.0f ", (double)a[i][j]);
         }
 
         printf("\n");
@@ -76,7 +97,8 @@ static void show(const float a[N][N])
 static void show(const float x[N])
 {
     for (uint8_t i=0; i<N; ++i) {
-        printf("%3.0f ", x[i]);
+        printf("%3.0f ", (double)x[i]);
     }
     printf("\n");
 }
+#endif

@@ -690,14 +690,7 @@ class Ekf {
             float Ph[KC_STATE_DIM] = {};
             multiply(_Pmat, h, Ph);
             const auto R = stdMeasNoise * stdMeasNoise;
-            auto HPHR = R; // HPH' + R
-            for (int i=0; i<KC_STATE_DIM; i++) { 
-
-                // Add the element of HPH' to the above
-
-                // this obviously only works if the update is scalar (as in this function)
-                HPHR += h[i]*Ph[i]; 
-            }
+            const auto HPHR = R + dot(h, Ph); // HPH' + R
 
             // Compute the Kalman gain as a column vector
             const float K[KC_STATE_DIM] = {
