@@ -314,42 +314,44 @@ a ! (i, j) = (a !! i) !! j
 
 -- Enforce symmetry of covariance matrix, ensuring values stay bounded
 
-updateCovarianceCell :: Matrix -> Index -> Index -> SFloat -> SBool -> SFloat
-
-updateCovarianceCell p i j variance shouldUpdate  = pval' where
-
-  pval = (p!(i,j) + p!(j,i)) / 2 + variance
-
-  pval' = if not shouldUpdate then p!(i,j)
-          else if pval > max_covariance then max_covariance
-          -- else if i == j && pval < min_covariance then min_covariance
-          else pval
-
 updateCovarianceMatrix :: Matrix -> SBool -> Matrix
 
 updateCovarianceMatrix p shouldUpdate = p' where 
 
-  idx = [1..7]
+  d j = let pval = p!(j,j) in 
+    if shouldUpdate && pval < min_covariance then min_covariance else pval
 
-  p' = [[(updateCovarianceCell p i j 0 shouldUpdate) | i <- idx] | j <- idx]
+  o i j = let pval = p!(i,j) in 
+    if shouldUpdate && pval > max_covariance then max_covariance else pval
+
+  p' = [ 
+         [d 0,   o 0 1, o 0 2, o 0 3, o 0 4, o 0 5, o 0 6],
+         [o 1 0, d 1,   o 1 2, o 1 3, o 1 4, o 1 5, o 1 6],
+         [o 2 0, o 2 1, d 2,   o 2 3, o 2 4, o 2 5, o 2 6],
+         [o 3 0, o 3 1, o 3 2, d 3,   o 3 4, o 3 5, o 3 6],
+         [o 4 0, o 4 1, o 4 2, o 4 3, d 4,   o 4 5, o 4 6],
+         [o 5 0, o 5 1, o 5 2, o 5 3, o 5 4, d 5,   o 5 6],
+         [o 6 0, o 6 1, o 6 2, o 6 3, o 6 4, o 6 5, d 6]
+       ]
+
 
 ------------------------------------------------------------------------------
 
 addNoiseDiagonal :: Matrix -> Vector -> SBool -> Matrix
 
-addNoiseDiagonal p d b = p' where
+addNoiseDiagonal p diag shouldUpdate = p' where
 
 
-  diag j = p!(j,j) + if b then d!!j else 0
+  d j = p!(j,j) + if shouldUpdate then diag!!j else 0
 
   p' = [ 
-         [diag 0,  p!(0,1), p!(0,2), p!(0,3), p!(0,4), p!(0,5), p!(0,6)],
-         [p!(1,0), diag 1,   p!(1,2), p!(1,3), p!(1,4), p!(1,5), p!(1,6)],
-         [p!(2,0), p!(2,1), diag 2,   p!(2,3), p!(2,4), p!(2,5), p!(2,6)],
-         [p!(3,0), p!(3,1), p!(3,2), diag 3,   p!(3,4), p!(3,5), p!(3,6)],
-         [p!(4,0), p!(4,1), p!(4,2), p!(4,3), diag 4,   p!(4,5), p!(4,6)],
-         [p!(5,0), p!(5,1), p!(5,2), p!(5,3), p!(5,4), diag 5,   p!(5,6)],
-         [p!(6,0), p!(6,1), p!(6,2), p!(6,3), p!(6,4), p!(6,5), diag 6]
+         [d 0,     p!(0,1), p!(0,2), p!(0,3), p!(0,4), p!(0,5), p!(0,6)],
+         [p!(1,0), d 1,     p!(1,2), p!(1,3), p!(1,4), p!(1,5), p!(1,6)],
+         [p!(2,0), p!(2,1), d 2,     p!(2,3), p!(2,4), p!(2,5), p!(2,6)],
+         [p!(3,0), p!(3,1), p!(3,2), d 3,     p!(3,4), p!(3,5), p!(3,6)],
+         [p!(4,0), p!(4,1), p!(4,2), p!(4,3), d 4,     p!(4,5), p!(4,6)],
+         [p!(5,0), p!(5,1), p!(5,2), p!(5,3), p!(5,4), d 5,     p!(5,6)],
+         [p!(6,0), p!(6,1), p!(6,2), p!(6,3), p!(6,4), p!(6,5), d 6]
        ]
 
 
