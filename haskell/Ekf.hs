@@ -384,6 +384,14 @@ getDt msec1 msec2 = (unsafeCast (msec1 - msec2)) / 1000
 
 ------------------------------------------------------------------------------
 
+scalarUpdate :: Ekf -> Vector -> SFloat -> SFloat -> SBool -> Ekf
+
+scalarUpdate ekf h error stdMeasNoise shouldUpdate = ekf'
+
+  where ekf' = ekf
+
+-- ===========================================================================
+
 ekfPredict :: Ekf -> Ekf
 
 ekfPredict ekf = ekf' where
