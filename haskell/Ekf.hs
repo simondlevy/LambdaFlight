@@ -431,10 +431,15 @@ scalarUpdate ekf h error stdMeasNoise shouldUpdate = ekf' where
 
   -- ====== COVARIANCE UPDATE ======
 
+  -- (KH - I) * P * (KH - I)'
   gh = (outer g h) !-! idmat
   ght = transpose gh
   ghip = gh !*! (p ekf)
   p' = ghip !*! ght
+
+  -- Add the measurement variance and ensure boundedness and symmetry
+
+  isUpdated' = if shouldUpdate then true else (isUpdated ekf)
 
 -- ===========================================================================
 
