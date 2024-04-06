@@ -399,7 +399,7 @@ scalarUpdate ekf h error stdMeasNoise shouldUpdate = ekf' where
   --  ====== INNOVATION COVARIANCE ======
   ph = (p ekf) !* h
   rr = sqr stdMeasNoise
-  hphr = rr -- HPH' + R
+  hphr = rr + (dot h ph) -- HPH' + R
 
 -- ===========================================================================
 

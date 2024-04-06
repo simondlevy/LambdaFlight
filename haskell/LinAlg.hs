@@ -32,9 +32,6 @@ printmat :: Matrix -> IO()
 printmat a = do
     printmat' a (length a)
 
---dot :: Vector -> Vector -> Float
---dot = (sum.) . zipWith (*)
-
 dot :: Vector -> Vector -> Float
 dot (x:xs) (y:ys) = x * y + (dot xs ys)
 dot [] [] = 0
