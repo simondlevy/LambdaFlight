@@ -39,6 +39,10 @@ dot [] [] = 0
 outer :: Vector -> Vector -> Matrix
 outer x y = map (!!0) [[y] !!* k | k <- x]
 
+idmat = [[1, 0, 0],
+         [0, 1, 0],
+         [0, 0, 1]]
+
 main = do
 
     let a = [ [ 2,   3,  5],
@@ -53,7 +57,7 @@ main = do
     -- print $ dot x x
 
     -- printmat $ map (\x -> x!!0) [[v] !!* k | k <- w]
-    printmat $ outer v w
-
+    printmat $ (outer v w) !-! idmat
+  
     -- printvec $ a !* x
     -- printmat $ transpose a

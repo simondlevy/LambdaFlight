@@ -339,6 +339,16 @@ x !/ c = map (/c) x
 outer :: Vector -> Vector -> Matrix
 outer x y = map (!!0) [[y] !!* k | k <- x]
 
+idmat = [
+          [1, 0, 0, 0, 0, 0, 0],
+          [0, 1, 0, 0, 0, 0, 0],
+          [0, 0, 1, 0, 0, 0, 0],
+          [0, 0, 0, 1, 0, 0, 0],
+          [0, 0, 0, 0, 1, 0, 0],
+          [0, 0, 0, 0, 0, 1, 0],
+          [0, 0, 0, 0, 0, 0, 1]
+        ]
+
 ------------------------------------------------------------------------------
 
 -- Enforce symmetry of covariance matrix, ensuring values stay bounded
@@ -421,7 +431,7 @@ scalarUpdate ekf h error stdMeasNoise shouldUpdate = ekf' where
 
   -- ====== COVARIANCE UPDATE ======
 
-  gh = outer g h
+  gh = (outer g h) !-! idmat
 
 
 -- ===========================================================================
