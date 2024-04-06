@@ -692,6 +692,23 @@ ekfUpdateWithGyro gyro ekf = ekf' where
 
 ------------------------------------------------------------------------------
 
+ekfUpdateWithAccel :: Axis3 -> Ekf -> Ekf
+
+ekfUpdateWithAccel accel ekf = ekf' where
+
+  ekf' = Ekf (p ekf)
+             (r ekf)
+             (quat ekf)
+             (ekfState ekf)
+             (gyroSubSampler ekf)
+             (subSamplerAccumulate accel (accelSubSampler ekf))
+             (gyroLatest ekf)
+             (isUpdated ekf)
+             (lastPredictionMsec ekf)
+             (lastProcessNoiseUpdateMsec ekf)
+
+------------------------------------------------------------------------------
+
 step = (vz, vdx, vdy, vdz, phi, theta, psi) where
 
   vz = 0 :: SFloat
