@@ -310,6 +310,12 @@ subSamplerFinalize shouldPredict subSampler conversionFactor = subSampler' where
  
 ------------------------------------------------------------------------------
 
+subSamplerAccumulate :: Axis3 -> SubSampler -> SubSampler
+
+subSamplerAccumulate axes subSampler = subSampler -- XXX
+
+------------------------------------------------------------------------------
+
 (!) :: Matrix -> (Index, Index) -> SFloat
 a ! (i, j) = (a !! i) !! j
 
@@ -672,6 +678,8 @@ ekfGetVehicleState ekf = State dx dy zz dz phi dphi theta dtheta psi dpsi where
 ekfUpdateWithGyro :: Axis3 -> Ekf -> Ekf
 
 ekfUpdateWithGyro gyro ekf = ekf' where
+
+  gyroSubsampler' = subSamplerAccumulate gyro (gyroSubSampler ekf)
 
   ekf' = ekf
 
