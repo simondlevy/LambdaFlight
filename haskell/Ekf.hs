@@ -127,18 +127,6 @@ data EkfState = EkfState {
 
 ------------------------------------------------------------------------------
 
-data VehicleState = VehicleState {
-    vz :: SFloat
-  , vdx :: SFloat
-  , vdy :: SFloat
-  , vdz :: SFloat
-  , phi :: SFloat
-  , theta :: SFloat
-  , psi :: SFloat
-}
-
-------------------------------------------------------------------------------
-
 data Axis3 = Axis3 {
     x :: SFloat
   , y :: SFloat
@@ -367,7 +355,7 @@ getDt msec1 msec2 = (unsafeCast (msec1 - msec2)) / 1000
 
 ekfPredict :: Ekf -> Ekf
 
-ekfPredict ekf = ekf where
+ekfPredict ekf = ekf' where
 
   shouldPredict = nowMsec >= nextPredictionMsec
 
@@ -539,7 +527,7 @@ ekfPredict ekf = ekf where
   dt' = getDt nowMsec  (lastProcessNoiseUpdateMsec ekf)
   isDtPositive = dt' > 0
 
-  -- Add process noise 
+  -- Add process noise to covariance matrix diagonal
   noise = [
             sqr (proc_noise_acc_z*dt'*dt' + proc_noise_vel*dt' + proc_noise_pos),
             sqr (proc_noise_acc_xy*dt' + proc_noise_vel),
@@ -551,6 +539,11 @@ ekfPredict ekf = ekf where
           ]
 
   p'' = updateCovarianceMatrix (addNoiseDiagonal p' noise isDtPositive) isDtPositive
+
+  lastProcessNoiseUpdateMsec' = 
+    if isDtPositive then nowMsec else  (lastProcessNoiseUpdateMsec ekf)
+
+  ekf' = ekf
 
 ------------------------------------------------------------------------------
 
