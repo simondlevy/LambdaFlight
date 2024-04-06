@@ -669,6 +669,14 @@ ekfGetVehicleState ekf = State dx dy zz dz phi dphi theta dtheta psi dpsi where
  
 ------------------------------------------------------------------------------
 
+ekfUpdateWithGyro :: Axis3 -> Ekf -> Ekf
+
+ekfUpdateWithGyro gyro ekf = ekf' where
+
+  ekf' = ekf
+
+------------------------------------------------------------------------------
+
 step = (vz, vdx, vdy, vdz, phi, theta, psi) where
 
   vz = 0 :: SFloat
