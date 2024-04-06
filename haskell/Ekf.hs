@@ -432,7 +432,9 @@ scalarUpdate ekf h error stdMeasNoise shouldUpdate = ekf' where
   -- ====== COVARIANCE UPDATE ======
 
   gh = (outer g h) !-! idmat
-
+  ght = transpose gh
+  ghip = gh !*! (p ekf)
+  p' = ghip !*! ght
 
 -- ===========================================================================
 
