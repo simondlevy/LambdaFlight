@@ -41,12 +41,12 @@ transp = transpose . map reverse
 
 main = do
 
-    let a = [ [ 0,1,2],
-              [ 3,4,5],
-              [ 6,7,8 ] ]
+    let a = [ [ 2,   3,  5],
+              [ 7,  11, 13],
+              [ 17, 19, 23 ] ]
+
+    let x = [[29, 31, 37]]
 
     let b = transpose a
 
-    printmat $ a
-    print "---------------------"
-    printmat $ b
+    printmat $ a !*! x

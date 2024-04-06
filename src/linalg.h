@@ -1,6 +1,8 @@
 #pragma once
 
-static const uint8_t N = 7;
+#include <stdint.h>
+
+static const uint8_t N = 3; // 7;
 
 static void transpose(const float a[N][N], float at[N][N])
 {
@@ -56,5 +58,17 @@ static void multiply(const float x[N], const float y[N], float a[N][N])
         for (uint8_t j=0; j<N; j++) {
             a[i][j] = x[i] * y[j];
         }
+    }
+}
+
+static void show(const float a[N][N])
+{
+    for (uint8_t i=0; i<N; ++i) {
+
+        for (uint8_t j=0; j<N; ++j) {
+            printf("%3.0f ", a[i][j]);
+        }
+
+        printf("\n");
     }
 }

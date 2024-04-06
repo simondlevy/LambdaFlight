@@ -386,9 +386,15 @@ getDt msec1 msec2 = (unsafeCast (msec1 - msec2)) / 1000
 
 scalarUpdate :: Ekf -> Vector -> SFloat -> SFloat -> SBool -> Ekf
 
-scalarUpdate ekf h error stdMeasNoise shouldUpdate = ekf'
+scalarUpdate ekf h error stdMeasNoise shouldUpdate = ekf' where 
 
-  where ekf' = ekf
+  ekf' = ekf
+
+  --  ====== INNOVATION COVARIANCE ======
+  -- float Ph[KC_STATE_DIM] = {};
+  -- multiply(_Pmat, h, Ph);
+  rr = sqr stdMeasNoise
+  -- auto HPHR = R; // HPH' + R
 
 -- ===========================================================================
 
