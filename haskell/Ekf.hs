@@ -167,12 +167,6 @@ type Index = Int
 
 ------------------------------------------------------------------------------
 
-dot :: Vector -> Vector -> SFloat
-dot (x:xs) (y:ys) = x * y + (dot xs ys)
-dot [] [] = 0
-
-------------------------------------------------------------------------------
-
 aLowerRight :: SFloat -> SFloat -> SFloat ->
   (SFloat, SFloat, SFloat, SFloat, SFloat, SFloat, SFloat, SFloat, SFloat)
 
@@ -335,6 +329,13 @@ subSamplerAccumulate newsamp subSampler = subSampler' where
 (!) :: Matrix -> (Index, Index) -> SFloat
 a ! (i, j) = (a !! i) !! j
 
+dot :: Vector -> Vector -> SFloat
+dot (x:xs) (y:ys) = x * y + (dot xs ys)
+dot [] [] = 0
+
+(!/) :: Vector -> SFloat -> Vector
+x !/ c = x
+
 ------------------------------------------------------------------------------
 
 -- Enforce symmetry of covariance matrix, ensuring values stay bounded
@@ -402,6 +403,7 @@ scalarUpdate ekf h error stdMeasNoise shouldUpdate = ekf' where
   hphr = rr + (dot h ph) -- HPH' + R
 
   -- Compute the Kalman gain as a column vector
+  g = ph !/ hphr
 
 -- ===========================================================================
 
