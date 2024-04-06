@@ -14,9 +14,12 @@ int main(int argc, char ** argv)
     // show(at);
 
     const float x[N] = {29, 31, 37};
-    float y[N] = {};
-    multiply(a, x, y);
-    show(y);
+
+    //float y[N] = {};
+    //multiply(a, x, y);
+    //show(y);
+
+    printf("%f\n", dot(x, x));
 
     return 0;
 }

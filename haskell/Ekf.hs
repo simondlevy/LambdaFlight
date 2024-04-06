@@ -21,11 +21,11 @@
 
 module Main where
 
-import Language.Copilot hiding(atan2, sum, (!!))
+import Language.Copilot hiding(atan2, (!!))
 import Copilot.Compile.C99
 
 import Linear.Matrix hiding(transpose)
-import Data.List hiding(sum) -- gives us transpose
+import Data.List -- gives us transpose
 
 import State
 import Utils
@@ -138,7 +138,7 @@ data Axis3 = Axis3 {
 
 data SubSampler = SubSampler { 
     sample :: Axis3
-  , sum    :: Axis3
+  , ssum   :: Axis3
   , count  :: SInt32
 }
 
@@ -164,6 +164,12 @@ type Vector = [SFloat]
 type Matrix = [Vector]
 
 type Index = Int
+
+------------------------------------------------------------------------------
+
+dot :: Vector -> Vector -> SFloat
+dot (x:xs) (y:ys) = x * y + (dot xs ys)
+dot [] [] = 0
 
 ------------------------------------------------------------------------------
 
@@ -235,9 +241,9 @@ isErrorInBounds v = abs v < 10
 
 ------------------------------------------------------------------------------
 
-subSamplerInit = SubSampler sample sum 0 where
+subSamplerInit = SubSampler sample ssum 0 where
 
-  sum = Axis3 0 0 0
+  ssum = Axis3 0 0 0
 
   sample = Axis3 0 0 0
 
@@ -290,7 +296,7 @@ ekfInit =  ekf where
 updateSum subSampler accessor shouldFinalize conversionFactor count = 
 
   if shouldFinalize 
-  then (accessor (sum subSampler)) * conversionFactor / count
+  then (accessor (ssum subSampler)) * conversionFactor / count
   else (accessor (sample subSampler))
 
 
@@ -314,7 +320,7 @@ subSamplerAccumulate :: Axis3 -> SubSampler -> SubSampler
 
 subSamplerAccumulate newsamp subSampler = subSampler' where
 
-  oldsum = sum subSampler
+  oldsum = ssum subSampler
 
   newsum = Axis3 ((x oldsum) + (x newsum))
                  ((y oldsum) + (y newsum))

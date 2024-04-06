@@ -32,6 +32,14 @@ printmat :: Matrix -> IO()
 printmat a = do
     printmat' a (length a)
 
+--dot :: Vector -> Vector -> Float
+--dot = (sum.) . zipWith (*)
+
+dot :: Vector -> Vector -> Float
+dot (x:xs) (y:ys) = x * y + (dot xs ys)
+dot [] [] = 0
+
+
 main = do
 
     let a = [ [ 2,   3,  5],
@@ -40,6 +48,7 @@ main = do
 
     let x = [29, 31, 37]
 
-    printvec $ a !* x
+    print $ dot x x
 
+    -- printvec $ a !* x
     -- printmat $ transpose a
