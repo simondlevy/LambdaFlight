@@ -641,21 +641,21 @@ ekfGetVehicleState ekf = VehicleState zz dx dy dz phi theta psi where
 
   dz = (x r') * dx + (y r') * dy + (z r') * dz
 
-  phi = 0
-  theta = 0
-  psi = 0
+  q = quat ekf
 
-{--
-  phi = RADIANS_TO_DEGREES * atan2((2 * (_qy*_qz + _qw*_qx)),
-                    (_qw*_qw - _qx*_qx - _qy*_qy + _qz*_qz))
+  qw = qqw q
+  qx = qqx q
+  qy = qqy q
+  qz = qqz q
+
+  phi = rad_to_deg * atan2 (2 * (qy*qz + qw*qx)) 
+                           (qw*qw - qx*qx - qy*qy + qz*qz)
 
   -- Negate for ENU
-  theta = -RADIANS_TO_DEGREES * asin((-2) * (_qx*_qz - _qw*_qy))
+  theta = -rad_to_deg * asin ((-2) * (qx*qz - qw*qy))
 
-  psi = RADIANS_TO_DEGREES * atan2((2 * (_qx*_qy + _qw*_qz)),
-                    (_qw*_qw + _qx*_qx - _qy*_qy - _qz*_qz))
-
---}
+  psi = rad_to_deg * atan2 (2 * (qx*qy + qw*qz))
+                           (qw*qw + qx*qx - qy*qy - qz*qz)
 
   --  Get angular velocities directly from gyro
   dphi =   0 --  _gyroLatest.x
