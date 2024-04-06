@@ -627,8 +627,41 @@ ekfFinalize ekf = ekf where
 
 ekfGetVehicleState :: Ekf -> VehicleState
 
-ekfGetVehicleState ekf = VehicleState 0 0 0 0 0 0 0
+ekfGetVehicleState ekf = VehicleState zz dx dy dz phi theta psi where
 
+  ekfs = ekfState ekf
+
+  dx = edx ekfs
+
+  dy = edy ekfs
+
+  zz = ezz ekfs
+
+  r' = r ekf
+
+  dz = (x r') * dx + (y r') * dy + (z r') * dz
+
+  phi = 0
+  theta = 0
+  psi = 0
+
+{--
+  phi = RADIANS_TO_DEGREES * atan2((2 * (_qy*_qz + _qw*_qx)),
+                    (_qw*_qw - _qx*_qx - _qy*_qy + _qz*_qz))
+
+  -- Negate for ENU
+  theta = -RADIANS_TO_DEGREES * asin((-2) * (_qx*_qz - _qw*_qy))
+
+  psi = RADIANS_TO_DEGREES * atan2((2 * (_qx*_qy + _qw*_qz)),
+                    (_qw*_qw + _qx*_qx - _qy*_qy - _qz*_qz))
+
+--}
+
+  --  Get angular velocities directly from gyro
+  dphi =   0 --  _gyroLatest.x
+  dtheta = 0 -- -_gyroLatest.y // negate for ENU
+  dpsi =   0 --  _gyroLatest.z
+ 
 ------------------------------------------------------------------------------
 
 step = (vz, vdx, vdy, vdz, phi, theta, psi) where
