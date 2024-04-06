@@ -25,7 +25,7 @@ import Language.Copilot hiding(atan2, (!!))
 import Copilot.Compile.C99
 
 import Linear.Matrix hiding(transpose)
-import Data.List -- gives us transpose
+import Data.List hiding(sum) -- gives us transpose
 
 import State
 import Utils
@@ -404,6 +404,17 @@ scalarUpdate ekf h error stdMeasNoise shouldUpdate = ekf' where
 
   -- Compute the Kalman gain as a column vector
   g = ph !/ hphr
+
+  -- Perform the state update
+  ekfs = ekfState ekf
+  update val idx = (val ekfs) + if shouldUpdate then g!!idx else 0
+  ezz' = update ezz 0
+  edx' = update edx 1
+  edy' = update edy 2
+  edz' = update edz 3
+  ee0' = update ee0 4
+  ee1' = update ee1 5
+  ee2' = update ee2 6
 
 -- ===========================================================================
 
