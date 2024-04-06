@@ -1,10 +1,10 @@
-all: show
+all: test
 
-show: show.o
-	g++ -o show show.o
+test: test.o
+	g++ -o test test.o
 
-show.o: show.cpp linalg.h
-	g++ -c show.cpp
+test.o: test.cpp linalg.h
+	g++ -c test.cpp
 
-run: show
-	./show
+run: test
+	./test

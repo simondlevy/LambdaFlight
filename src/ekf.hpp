@@ -687,38 +687,38 @@ class Ekf {
         {
 
             // ====== INNOVATION COVARIANCE ======
-            float Ph[KC_STATE_DIM] = {};
-            multiply(_Pmat, h, Ph);
-            const auto R = stdMeasNoise * stdMeasNoise;
-            const auto HPHR = R + dot(h, Ph); // HPH' + R
+            float ph[KC_STATE_DIM] = {};
+            multiply(_Pmat, h, ph);
+            const auto r = stdMeasNoise * stdMeasNoise;
+            const auto hphr = r + dot(h, ph); // HPH' + R
 
             // Compute the Kalman gain as a column vector
-            const float G[KC_STATE_DIM] = {
+            const float g[KC_STATE_DIM] = {
 
                 // kalman gain = (PH' (HPH' + R )^-1)
-                Ph[0] / HPHR, 
-                Ph[1] / HPHR, 
-                Ph[2] / HPHR, 
-                Ph[3] / HPHR, 
-                Ph[4] / HPHR, 
-                Ph[5] / HPHR, 
-                Ph[6] / HPHR
+                ph[0] / hphr, 
+                ph[1] / hphr, 
+                ph[2] / hphr, 
+                ph[3] / hphr, 
+                ph[4] / hphr, 
+                ph[5] / hphr, 
+                ph[6] / hphr
             };
 
             // Perform the state update
             // XXX update()
-            _ekfState.z  += shouldUpdate ? G[0] * error: 0;
-            _ekfState.dx += shouldUpdate ? G[1] * error: 0;
-            _ekfState.dy += shouldUpdate ? G[2] * error: 0;
-            _ekfState.dz += shouldUpdate ? G[3] * error: 0;
-            _ekfState.e0 += shouldUpdate ? G[4] * error: 0;
-            _ekfState.e1 += shouldUpdate ? G[5] * error: 0;
-            _ekfState.e2 += shouldUpdate ? G[6] * error: 0;
+            _ekfState.z  += shouldUpdate ? g[0] * error: 0;
+            _ekfState.dx += shouldUpdate ? g[1] * error: 0;
+            _ekfState.dy += shouldUpdate ? g[2] * error: 0;
+            _ekfState.dz += shouldUpdate ? g[3] * error: 0;
+            _ekfState.e0 += shouldUpdate ? g[4] * error: 0;
+            _ekfState.e1 += shouldUpdate ? g[5] * error: 0;
+            _ekfState.e2 += shouldUpdate ? g[6] * error: 0;
 
             // ====== COVARIANCE UPDATE ======
 
             float GH[KC_STATE_DIM][KC_STATE_DIM] = {};
-            multiply(G, h, GH); // KH
+            multiply(g, h, GH); // KH
 
             for (int i=0; i<KC_STATE_DIM; i++) { 
                 GH[i][i] -= 1;
@@ -736,7 +736,7 @@ class Ekf {
             for (int i=0; i<KC_STATE_DIM; i++) {
                 for (int j=i; j<KC_STATE_DIM; j++) {
 
-                    updateCovarianceCell(i, j, G[i] * R * G[j], shouldUpdate);
+                    updateCovarianceCell(i, j, g[i] * r * g[j], shouldUpdate);
                 }
             }
 

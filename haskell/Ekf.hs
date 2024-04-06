@@ -416,6 +416,12 @@ scalarUpdate ekf h error stdMeasNoise shouldUpdate = ekf' where
   ee1' = update ee1 5
   ee2' = update ee2 6
 
+  -- ====== COVARIANCE UPDATE ======
+
+  --float GH[KC_STATE_DIM][KC_STATE_DIM] = {};
+  --multiply(G, h, GH); // KH
+
+
 -- ===========================================================================
 
 ekfPredict :: Ekf -> Ekf

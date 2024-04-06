@@ -1,5 +1,6 @@
 #include <stdio.h>
 
+#define _TEST
 #include "linalg.h"
 
 int main(int argc, char ** argv)
@@ -9,9 +10,9 @@ int main(int argc, char ** argv)
                             {17, 19, 23} };
 
 
-    //float at[N][N] = {};
-    //transpose(a, at);
-    // show(at);
+    float at[N][N] = {};
+    transpose(a, at);
+     show(at);
 
     const float x[N] = {29, 31, 37};
 
