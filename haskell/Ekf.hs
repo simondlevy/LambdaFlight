@@ -336,6 +336,9 @@ dot [] [] = 0
 (!/) :: Vector -> SFloat -> Vector
 x !/ c = map (/c) x
 
+outer :: Vector -> Vector -> Matrix
+outer x y = map (!!0) [[y] !!* k | k <- x]
+
 ------------------------------------------------------------------------------
 
 -- Enforce symmetry of covariance matrix, ensuring values stay bounded
@@ -418,8 +421,7 @@ scalarUpdate ekf h error stdMeasNoise shouldUpdate = ekf' where
 
   -- ====== COVARIANCE UPDATE ======
 
-  --float GH[KC_STATE_DIM][KC_STATE_DIM] = {};
-  --multiply(G, h, GH); // KH
+  gh = outer g h
 
 
 -- ===========================================================================
