@@ -35,10 +35,6 @@ printmat :: Matrix -> IO()
 printmat a = do
     printmat' a (length a)
 
--- https://stackoverflow.com/questions/34423279/rotate-a-matrix-in-haskell
-transp :: Matrix -> Matrix
-transp = transpose . map reverse
-
 main = do
 
     let a = [ [ 2,   3,  5],
@@ -47,6 +43,5 @@ main = do
 
     let x = [[29, 31, 37]]
 
-    let b = transpose a
-
-    printmat $ a !*! x
+    printmat $ transpose (a !*! (transpose x))
+    -- printmat $ transpose a

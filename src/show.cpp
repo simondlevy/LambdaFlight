@@ -8,7 +8,15 @@ int main(int argc, char ** argv)
                             {7, 11, 13},
                             {17, 19, 23} };
 
-    show(a);
+
+    //float at[N][N] = {};
+    //transpose(a, at);
+    // show(at);
+
+    const float x[N] = {29, 31, 37};
+    float y[N] = {};
+    multiply(a, x, y);
+    show(y);
 
     return 0;
 }

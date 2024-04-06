@@ -72,3 +72,11 @@ static void show(const float a[N][N])
         printf("\n");
     }
 }
+
+static void show(const float x[N])
+{
+    for (uint8_t i=0; i<N; ++i) {
+        printf("%3.0f ", x[i]);
+    }
+    printf("\n");
+}
