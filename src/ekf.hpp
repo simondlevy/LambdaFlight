@@ -693,7 +693,7 @@ class Ekf {
             const auto HPHR = R + dot(h, Ph); // HPH' + R
 
             // Compute the Kalman gain as a column vector
-            const float K[KC_STATE_DIM] = {
+            const float G[KC_STATE_DIM] = {
 
                 // kalman gain = (PH' (HPH' + R )^-1)
                 Ph[0] / HPHR, 
@@ -707,36 +707,36 @@ class Ekf {
 
             // Perform the state update
             // XXX update()
-            _ekfState.z  += shouldUpdate ? K[0] * error: 0;
-            _ekfState.dx += shouldUpdate ? K[1] * error: 0;
-            _ekfState.dy += shouldUpdate ? K[2] * error: 0;
-            _ekfState.dz += shouldUpdate ? K[3] * error: 0;
-            _ekfState.e0 += shouldUpdate ? K[4] * error: 0;
-            _ekfState.e1 += shouldUpdate ? K[5] * error: 0;
-            _ekfState.e2 += shouldUpdate ? K[6] * error: 0;
+            _ekfState.z  += shouldUpdate ? G[0] * error: 0;
+            _ekfState.dx += shouldUpdate ? G[1] * error: 0;
+            _ekfState.dy += shouldUpdate ? G[2] * error: 0;
+            _ekfState.dz += shouldUpdate ? G[3] * error: 0;
+            _ekfState.e0 += shouldUpdate ? G[4] * error: 0;
+            _ekfState.e1 += shouldUpdate ? G[5] * error: 0;
+            _ekfState.e2 += shouldUpdate ? G[6] * error: 0;
 
             // ====== COVARIANCE UPDATE ======
 
-            float KH[KC_STATE_DIM][KC_STATE_DIM] = {};
-            multiply(K, h, KH); // KH
+            float GH[KC_STATE_DIM][KC_STATE_DIM] = {};
+            multiply(G, h, GH); // KH
 
             for (int i=0; i<KC_STATE_DIM; i++) { 
-                KH[i][i] -= 1;
+                GH[i][i] -= 1;
             } // KH - I
 
-            float KHt[KC_STATE_DIM][KC_STATE_DIM] = {};
-            transpose(KH, KHt);      // (KH - I)'
+            float GHt[KC_STATE_DIM][KC_STATE_DIM] = {};
+            transpose(GH, GHt);      // (KH - I)'
 
-            float KHIP[KC_STATE_DIM][KC_STATE_DIM] = {};
-            multiply(KH, _Pmat, KHIP, true);  // (KH - I)*P
+            float GHIP[KC_STATE_DIM][KC_STATE_DIM] = {};
+            multiply(GH, _Pmat, GHIP, true);  // (KH - I)*P
 
-            multiply(KHIP, KHt, _Pmat, shouldUpdate); // (KH - I)*P*(KH - I)'
+            multiply(GHIP, GHt, _Pmat, shouldUpdate); // (KH - I)*P*(KH - I)'
 
             // Add the measurement variance and ensure boundedness and symmetry
             for (int i=0; i<KC_STATE_DIM; i++) {
                 for (int j=i; j<KC_STATE_DIM; j++) {
 
-                    updateCovarianceCell(i, j, K[i] * R * K[j], shouldUpdate);
+                    updateCovarianceCell(i, j, G[i] * R * G[j], shouldUpdate);
                 }
             }
 

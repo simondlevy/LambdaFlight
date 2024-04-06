@@ -401,6 +401,8 @@ scalarUpdate ekf h error stdMeasNoise shouldUpdate = ekf' where
   rr = sqr stdMeasNoise
   hphr = rr + (dot h ph) -- HPH' + R
 
+  -- Compute the Kalman gain as a column vector
+
 -- ===========================================================================
 
 ekfPredict :: Ekf -> Ekf
