@@ -103,7 +103,7 @@ typedef struct {
     float e1;
     float e2;
 
-} ekf_t;
+} ekfState_t;
 
 static const float max(const float val, const float maxval)
 {
@@ -206,7 +206,7 @@ static bool scalarUpdate(
         const float stdMeasNoise,
         const bool shouldUpdate,
         matrix_t & p,
-        ekf_t & ekf)
+        ekfState_t & ekfs)
 {
 
     // ====== INNOVATION COVARIANCE ======
@@ -230,13 +230,13 @@ static bool scalarUpdate(
 
     // Perform the state update
     // XXX update()
-    ekf.z  += shouldUpdate ? g[0] * error: 0;
-    ekf.dx += shouldUpdate ? g[1] * error: 0;
-    ekf.dy += shouldUpdate ? g[2] * error: 0;
-    ekf.dz += shouldUpdate ? g[3] * error: 0;
-    ekf.e0 += shouldUpdate ? g[4] * error: 0;
-    ekf.e1 += shouldUpdate ? g[5] * error: 0;
-    ekf.e2 += shouldUpdate ? g[6] * error: 0;
+    ekfs.z  += shouldUpdate ? g[0] * error: 0;
+    ekfs.dx += shouldUpdate ? g[1] * error: 0;
+    ekfs.dy += shouldUpdate ? g[2] * error: 0;
+    ekfs.dz += shouldUpdate ? g[3] * error: 0;
+    ekfs.e0 += shouldUpdate ? g[4] * error: 0;
+    ekfs.e1 += shouldUpdate ? g[5] * error: 0;
+    ekfs.e2 += shouldUpdate ? g[6] * error: 0;
 
     // ====== COVARIANCE UPDATE ======
 
@@ -287,14 +287,13 @@ static bool isErrorInBounds(const float v)
 }
 
 
-static bool isStateWithinBounds(
-        const float z, const float dx, const float dy, const float dz)
+static bool isStateWithinBounds(const ekfState_t & ekfs)
 {
     return 
-        isPositionWithinBounds(z) &&
-        isVelocityWithinBounds(dx) &&
-        isVelocityWithinBounds(dy) &&
-        isVelocityWithinBounds(dz);
+        isPositionWithinBounds(ekfs.z) &&
+        isVelocityWithinBounds(ekfs.dx) &&
+        isVelocityWithinBounds(ekfs.dy) &&
+        isVelocityWithinBounds(ekfs.dz);
 }
 
 static void afinalize(
@@ -359,7 +358,7 @@ static bool ekf_predict(
         axisSubSampler_t & gyroSubSampler,
         axisSubSampler_t & accelSubSampler,
         matrix_t & p,
-        ekf_t & ekf) 
+        ekfState_t & ekfs) 
 {
     subSamplerFinalize(&gyroSubSampler, DEGREES_TO_RADIANS);
 
@@ -373,14 +372,14 @@ static bool ekf_predict(
 
     // Position updates in the body frame (will be rotated to inertial frame);
     // thrust can only be produced in the body's Z direction
-    const auto dx = ekf.dx * dt + stream_isFlying ? 0 : acc->x * dt2 / 2;
-    const auto dy = ekf.dy * dt + stream_isFlying ? 0 : acc->y * dt2 / 2;
-    const auto dz = ekf.dz * dt + acc->z * dt2 / 2; 
+    const auto dx = ekfs.dx * dt + stream_isFlying ? 0 : acc->x * dt2 / 2;
+    const auto dy = ekfs.dy * dt + stream_isFlying ? 0 : acc->y * dt2 / 2;
+    const auto dz = ekfs.dz * dt + acc->z * dt2 / 2; 
 
     // keep previous time step's state for the update
-    const auto tmpSDX = ekf.dx;
-    const auto tmpSDY = ekf.dy;
-    const auto tmpSDZ = ekf.dz;
+    const auto tmpSDX = ekfs.dx;
+    const auto tmpSDY = ekfs.dy;
+    const auto tmpSDZ = ekfs.dz;
 
     const auto accx = stream_isFlying ? 0 : acc->x;
     const auto accy = stream_isFlying ? 0 : acc->y;
@@ -422,18 +421,18 @@ static bool ekf_predict(
     // to estimate body angle while flying)
 
     // altitude update
-    ekf.z += r.x * dx + r.y * dy + r.z * dz - MSS_TO_GS * dt2 / 2;
+    ekfs.z += r.x * dx + r.y * dy + r.z * dz - MSS_TO_GS * dt2 / 2;
 
     // body-velocity update: accelerometers - gyros cross velocity
     // - gravity in body frame
 
-    ekf.dx += 
+    ekfs.dx += 
         dt * (accx + gyro->z * tmpSDY - gyro->y * tmpSDZ - MSS_TO_GS * r.x);
 
-    ekf.dy += 
+    ekfs.dy += 
         dt * (accy - gyro->z * tmpSDX + gyro->x * tmpSDZ - MSS_TO_GS * r.y); 
 
-    ekf.dz += 
+    ekfs.dz += 
         dt * (acc->z + gyro->y * tmpSDX - gyro->x * tmpSDY - MSS_TO_GS * r.z);
 
     // predict()
@@ -466,9 +465,9 @@ static bool ekf_predict(
     const auto zdz  = r.z*dt;
 
     // altitude from attitude error
-    const auto ze0  = (ekf.dy*r.z - ekf.dz*r.y)*dt;
-    const auto ze1  = (- ekf.dx*r.z + ekf.dz*r.x)*dt;
-    const auto ze2  = (ekf.dx*r.y - ekf.dy*r.x)*dt;
+    const auto ze0  = (ekfs.dy*r.z - ekfs.dz*r.y)*dt;
+    const auto ze1  = (- ekfs.dx*r.z + ekfs.dz*r.x)*dt;
+    const auto ze2  = (ekfs.dx*r.y - ekfs.dy*r.x)*dt;
 
     // body-frame velocity from body-frame velocity
     const auto dxdx  = 1; //drag negligible
@@ -539,13 +538,13 @@ static bool ekf_predict(
 static bool ekf_updateWithRange(
         const float rz,
         matrix_t & p,
-        ekf_t & ekf)
+        ekfState_t & ekfs)
 {
     const auto angle = max( 0, 
             fabsf(acosf(rz)) - 
             DEGREES_TO_RADIANS * (15.0f / 2.0f));
 
-    const auto predictedDistance = ekf.z / cosf(angle);
+    const auto predictedDistance = ekfs.z / cosf(angle);
     const auto measuredDistance = stream_range.distance; // [m]
 
     // The sensor model (Pg.95-96,
@@ -574,14 +573,14 @@ static bool ekf_updateWithRange(
             stream_range.stdDev, 
             shouldUpdate,
             p,
-            ekf);
+            ekfs);
 }
 
 static bool ekf_updateWithFlow(
         const float rz,
         const Axis3f & gyroLatest,
         matrix_t & p,
-        ekf_t & ekf) 
+        ekfState_t & ekfs) 
 {
     // Inclusion of flow measurements in the EKF done by two scalar updates
 
@@ -600,11 +599,11 @@ static bool ekf_updateWithFlow(
     const auto omegax_b = gyroLatest.x * DEGREES_TO_RADIANS;
     const auto omegay_b = gyroLatest.y * DEGREES_TO_RADIANS;
 
-    const auto dx_g = ekf.dx;
-    const auto dy_g = ekf.dy;
+    const auto dx_g = ekfs.dx;
+    const auto dy_g = ekfs.dy;
 
     // Saturate elevation in prediction and correction to avoid singularities
-    const auto z_g = ekf.z < 0.1f ? 0.1f : ekf.z;
+    const auto z_g = ekfs.z < 0.1f ? 0.1f : ekfs.z;
 
     // ~~~ X velocity prediction and update ~~~
     // predicts the number of accumulated pixels in the x-direction
@@ -626,7 +625,7 @@ static bool ekf_updateWithFlow(
             stream_flow.stdDevX*FLOW_RESOLUTION, 
             true,
             p,
-            ekf);
+            ekfs);
 
     // ~~~ Y velocity prediction and update ~~~
     float hy[KC_STATE_DIM] = {};
@@ -646,19 +645,19 @@ static bool ekf_updateWithFlow(
             stream_flow.stdDevY*FLOW_RESOLUTION, 
             true,
             p,
-            ekf);
+            ekfs);
 }
 
 static bool ekf_finalize(
         const new_quat_t & q,
         matrix_t & p,
-        ekf_t & ekf,
+        ekfState_t & ekfs,
         new_quat_t & q_out)
 {
     // Incorporate the attitude error (Kalman filter state) with the attitude
-    const auto v0 = ekf.e0;
-    const auto v1 = ekf.e1;
-    const auto v2 = ekf.e2;
+    const auto v0 = ekfs.e0;
+    const auto v1 = ekfs.e1;
+    const auto v2 = ekfs.e2;
 
     const auto angle = sqrt(v0*v0 + v1*v1 + v2*v2) + EPS;
     const auto ca = cos(angle / 2.0f);
@@ -702,23 +701,23 @@ static bool ekf_finalize(
 
     updateCovarianceMatrix(p.dat, true);
 
-    return isStateWithinBounds(ekf.z, ekf.dx, ekf.dy, ekf.dz);
+    return isStateWithinBounds(ekfs);
 } 
 
 static void ekf_getState(
-        const ekf_t & ekf, 
+        const ekfState_t & ekfs, 
         const Axis3f & gyroLatest,
         const new_quat_t & q,
         const axis3_t & r,
         vehicleState_t & state)
 {
-    state.dx = ekf.dx;
+    state.dx = ekfs.dx;
 
-    state.dy = ekf.dy;
+    state.dy = ekfs.dy;
 
-    state.z = ekf.z;
+    state.z = ekfs.z;
 
-    state.dz = r.x * ekf.dx + r.y * ekf.dy + r.z * ekf.dz;
+    state.dz = r.x * ekfs.dx + r.y * ekfs.dy + r.z * ekfs.dz;
 
     state.phi = RADIANS_TO_DEGREES * atan2((2 * (q.y*q.z + q.w*q.x)),
             (q.w*q.w - q.x*q.x - q.y*q.y + q.z*q.z));
@@ -739,7 +738,7 @@ static void ekf_getState(
 
 static void ekf_step(void)
 {
-    static ekf_t _ekf;
+    static ekfState_t _ekfs;
 
     static matrix_t _p;
 
@@ -784,13 +783,13 @@ static void ekf_step(void)
                 _gyroSubSampler,
                 _accelSubSampler,
                 _p,
-                _ekf);
+                _ekfs);
 
     new_quat_t quat_finalized = {};
     const auto isStateInBounds = 
         _isUpdated && stream_ekfAction == EKF_FINALIZE ? 
-        ekf_finalize(quat, _p, _ekf, quat_finalized) :
-        isStateWithinBounds(_ekf.z, _ekf.dx, _ekf.dy, _ekf.dz);
+        ekf_finalize(quat, _p, _ekfs, quat_finalized) :
+        isStateWithinBounds(_ekfs);
 
     switch (stream_ekfAction) {
 
@@ -799,7 +798,7 @@ static void ekf_step(void)
             break;
 
         case EKF_GET_STATE:
-            ekf_getState(_ekf, _gyroLatest, quat, r, vehicleState);
+            ekf_getState(_ekfs, _gyroLatest, quat, r, vehicleState);
             setState(vehicleState);
             break;
 
@@ -813,11 +812,11 @@ static void ekf_step(void)
             break;
 
         case EKF_UPDATE_WITH_FLOW:
-            didUpdateFlow = ekf_updateWithFlow(_rz, _gyroLatest, _p, _ekf);
+            didUpdateFlow = ekf_updateWithFlow(_rz, _gyroLatest, _p, _ekfs);
             break;
 
         case EKF_UPDATE_WITH_RANGE:
-            didUpdateRange = ekf_updateWithRange(_rz, _p, _ekf);
+            didUpdateRange = ekf_updateWithRange(_rz, _p, _ekfs);
             break;
 
         default:
@@ -859,14 +858,14 @@ static void ekf_step(void)
         finalizing ? _qw*_qw-_qx*_qx-_qy*_qy+_qz*_qz:
         _rz;
 
-    _ekf.z = initializing ? 0 : _ekf.z;
-    _ekf.dx = initializing ? 0 : _ekf.dx;
-    _ekf.dy = initializing ? 0 : _ekf.dy;
-    _ekf.dz = initializing ? 0 : _ekf.dz;
+    _ekfs.z = initializing ? 0 : _ekfs.z;
+    _ekfs.dx = initializing ? 0 : _ekfs.dx;
+    _ekfs.dy = initializing ? 0 : _ekfs.dy;
+    _ekfs.dz = initializing ? 0 : _ekfs.dz;
 
-    _ekf.e0 = initializing || finalizing ? 0 : _ekf.e0;
-    _ekf.e1 = initializing || finalizing ? 0 : _ekf.e1;
-    _ekf.e2 = initializing || finalizing ? 0 : _ekf.e2;
+    _ekfs.e0 = initializing || finalizing ? 0 : _ekfs.e0;
+    _ekfs.e1 = initializing || finalizing ? 0 : _ekfs.e1;
+    _ekfs.e2 = initializing || finalizing ? 0 : _ekfs.e2;
 
     if (finalizing) {
         setStateIsInBounds(isStateInBounds);
