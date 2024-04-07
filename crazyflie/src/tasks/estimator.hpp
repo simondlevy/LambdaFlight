@@ -19,8 +19,7 @@
 #include <semphr.h>
 
 #include <crossplatform.h>
-//#include <ekf.hpp>
-#include <new_ekf.hpp>
+#include <ekf.hpp>
 #include <rateSupervisor.hpp>
 #include <safety.hpp>
 #include <task.hpp>
@@ -144,8 +143,7 @@ class EstimatorTask : public FreeRTOSTask {
 
         void initEkf(const uint32_t nowMsec)
         {
-            //_ekf.init(nowMsec);
-            new_ekf_step(EKF_INIT, nowMsec);
+            ekf_step(EKF_INIT, nowMsec);
         }
 
         uint32_t step(const uint32_t nowMsec, uint32_t nextPredictionMsec) 
@@ -157,8 +155,7 @@ class EstimatorTask : public FreeRTOSTask {
                 didResetEstimation = false;
             }
 
-            //_ekf.predict(nowMsec, nextPredictionMsec, _safety->isFlying());
-            new_ekf_step(EKF_PREDICT, nowMsec, nextPredictionMsec,_safety->isFlying());
+            ekf_step(EKF_PREDICT, nowMsec, nextPredictionMsec,_safety->isFlying());
 
             // Run the system dynamics to predict the state forward.
             if (nowMsec >= nextPredictionMsec) {
@@ -184,8 +181,7 @@ class EstimatorTask : public FreeRTOSTask {
                 switch (measurement.type) {
 
                     case MeasurementTypeRange:
-                        //_ekf.updateWithRange(&measurement.data.range);
-                        new_ekf_step(EKF_UPDATE_WITH_RANGE,
+                        ekf_step(EKF_UPDATE_WITH_RANGE,
                                 0,
                                 0,
                                 false,
@@ -196,8 +192,7 @@ class EstimatorTask : public FreeRTOSTask {
                         break;
 
                     case MeasurementTypeFlow:
-                        //_ekf.updateWithFlow(&measurement.data.flow);
-                        new_ekf_step(EKF_UPDATE_WITH_FLOW,
+                        ekf_step(EKF_UPDATE_WITH_FLOW,
                                 0,
                                 0,
                                 false,
@@ -207,8 +202,7 @@ class EstimatorTask : public FreeRTOSTask {
                          break;
 
                     case MeasurementTypeGyroscope:
-                        //_ekf.updateWithGyro(&measurement.data.gyroscope.gyro);
-                        new_ekf_step(EKF_UPDATE_WITH_GYRO,
+                        ekf_step(EKF_UPDATE_WITH_GYRO,
                                 0,
                                 0,
                                 false,
@@ -216,8 +210,7 @@ class EstimatorTask : public FreeRTOSTask {
                          break;
 
                     case MeasurementTypeAcceleration:
-                        //_ekf.updateWithAccel(&measurement.data.acceleration.acc);
-                        new_ekf_step(EKF_UPDATE_WITH_ACCEL,
+                        ekf_step(EKF_UPDATE_WITH_ACCEL,
                                 0,
                                 0,
                                 false,
@@ -230,8 +223,7 @@ class EstimatorTask : public FreeRTOSTask {
                 }
             }
 
-            // auto isStateInBounds = _ekf.finalize();
-            auto isStateInBounds = new_ekf_step(EKF_FINALIZE);
+            auto isStateInBounds = ekf_step(EKF_FINALIZE);
 
             if (!isStateInBounds) { 
 
@@ -245,9 +237,7 @@ class EstimatorTask : public FreeRTOSTask {
 
             xSemaphoreTake(_dataMutex, portMAX_DELAY);
 
-            //_ekf.getState(_state); 
-
-            new_ekf_step(EKF_GET_STATE,
+            ekf_step(EKF_GET_STATE,
                     0,
                     0,
                     false,
@@ -269,8 +259,6 @@ class EstimatorTask : public FreeRTOSTask {
 
         void run(void)
         {
-            (void)new_ekf_step;
-
             consolePrintf("ESTIMATOR: running\n");
 
             systemWaitStart();
