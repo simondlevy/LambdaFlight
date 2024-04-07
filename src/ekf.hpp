@@ -72,7 +72,6 @@ typedef struct {
 typedef struct {
 
     axisSubSampler_t accelSubSampler;
-    axisSubSampler_t gyroSubSampler;
 
     float z;
     float dx;
@@ -352,9 +351,10 @@ static bool ekf_predict(
         float & qx_out,
         float & qy_out,
         float & qz_out,
+        axisSubSampler_t & gyroSubSampler,
         ekf_t & ekf) 
 {
-    subSamplerFinalize(&ekf.gyroSubSampler, DEGREES_TO_RADIANS);
+    subSamplerFinalize(&gyroSubSampler, DEGREES_TO_RADIANS);
 
     const float dt = (stream_nowMsec - lastPredictionMsec) / 1000.0f;
 
@@ -378,7 +378,7 @@ static bool ekf_predict(
     const auto accx = stream_isFlying ? 0 : acc->x;
     const auto accy = stream_isFlying ? 0 : acc->y;
 
-    const Axis3f * gyro = &ekf.gyroSubSampler.subSample; 
+    const Axis3f * gyro = &gyroSubSampler.subSample; 
 
     // attitude update (rotate by gyroscope), we do this in quaternions
     // this is the gyroscope angular velocity integrated over the sample period
@@ -726,6 +726,8 @@ static void ekf_step(void)
 {
     static ekf_t _ekf;
 
+    static axisSubSampler_t _gyroSubSampler;
+
     static bool _isUpdated;
     static uint32_t _lastPredictionMsec;
     static uint32_t _lastProcessNoiseUpdateMsec;
@@ -757,6 +759,7 @@ static void ekf_step(void)
                 _rx, _ry, _rz, 
                 _lastPredictionMsec, _lastProcessNoiseUpdateMsec,
                 qwp, qxp, qyp, qzp,
+                _gyroSubSampler,
                 _ekf);
 
     float qwf=0, qxf=0, qyf=0, qzf=0;
@@ -778,7 +781,7 @@ static void ekf_step(void)
             break;
 
         case EKF_UPDATE_WITH_GYRO:
-            subSamplerAccumulate(&_ekf.gyroSubSampler, &stream_gyro);
+            subSamplerAccumulate(&_gyroSubSampler, &stream_gyro);
             memcpy(&_gyroLatest, &stream_gyro, sizeof(Axis3f));
             break;
 
