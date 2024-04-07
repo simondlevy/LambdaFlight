@@ -109,7 +109,7 @@ typedef struct {
 
     newquat_t quat;
 
-    Axis3f _gyroLatest;
+    Axis3f gyroLatest;
 
     axisSubSampler_t accelSubSampler;
     axisSubSampler_t gyroSubSampler;
@@ -127,6 +127,17 @@ typedef struct {
     uint32_t lastProcessNoiseUpdateMs;
 
 } ekf_t;
+
+static void subSamplerAccumulate(
+        axisSubSampler_t * subSampler,
+        const Axis3f * sample) 
+{
+    subSampler->sum.x += sample->x;
+    subSampler->sum.y += sample->y;
+    subSampler->sum.z += sample->z;
+
+    subSampler->count++;
+}
 
 static Axis3f* subSamplerFinalize(
         axisSubSampler_t* subSampler,
@@ -209,6 +220,7 @@ static void updateCovarianceMatrix(
         }
     }
 }
+
 
 // ===========================================================================
 
@@ -441,6 +453,15 @@ static void ekf_predict(
         ekf.lastProcessNoiseUpdateMs;
 }
 
+static void updateWithGyro(ekf_t & ekf, const Axis3f * gyro)
+{
+    subSamplerAccumulate(&ekf.gyroSubSampler, gyro);
+
+    memcpy(&ekf.gyroLatest, gyro, sizeof(Axis3f));
+}
+
+// ===========================================================================
+
 
 static void new_ekf_step(
         const new_ekfAction_e action,
@@ -458,8 +479,8 @@ static void new_ekf_step(
     ekf_t ekf2 = {};
     ekf_predict(ekf2, nowMsec, isFlying);
 
+    (void)updateWithGyro;
     (void)shouldPredict;
     (void)action;
-
     (void)_ekf;
 }
