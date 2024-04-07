@@ -765,6 +765,9 @@ static void ekf_step(void)
 
     vehicleState_t vehicleState = {};
 
+    const auto ekfs = ekfState_t {
+        _ekfs.z, _ekfs.dx, _ekfs.dy, _ekfs.dz, _ekfs.e0, _ekfs.e1, _ekfs.e2};
+
     const auto quat = new_quat_t {_qw, _qx, _qy, _qz };
     const auto r = axis3_t {_rx, _ry, _rz};
 
@@ -798,7 +801,7 @@ static void ekf_step(void)
             break;
 
         case EKF_GET_STATE:
-            ekf_getState(_ekfs, _gyroLatest, quat, r, vehicleState);
+            ekf_getState(ekfs, _gyroLatest, quat, r, vehicleState);
             setState(vehicleState);
             break;
 
