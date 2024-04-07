@@ -460,6 +460,46 @@ static void updateWithGyro(ekf_t & ekf, const Axis3f * gyro)
     memcpy(&ekf.gyroLatest, gyro, sizeof(Axis3f));
 }
 
+static void updateWithAccel(ekf_t & ekf, const Axis3f * accel)
+{
+    subSamplerAccumulate(&ekf.accelSubSampler, accel);
+}
+
+static void getState(ekf_t & ekf, vehicleState_t & state)
+{
+    state.dx = ekf.ekfState.dx;
+
+    state.dy = ekf.ekfState.dy;
+
+    state.z = ekf.ekfState.z;
+
+    state.dz = 
+        ekf.r.x * ekf.ekfState.dx +
+        ekf.r.y * ekf.ekfState.dy +
+        ekf.r.z * ekf.ekfState.dz;
+
+    const auto quat = ekf.quat;
+    const auto qw = quat.w;
+    const auto qx = quat.x;
+    const auto qy = quat.y;
+    const auto qz = quat.z;
+
+    state.phi = RADIANS_TO_DEGREES * atan2((2 * (qy*qz + qw*qx)),
+            (qw*qw - qx*qx - qy*qy + qz*qz));
+
+    // Negate for ENU
+    state.theta = -RADIANS_TO_DEGREES * asin((-2) * (qx*qz - qw*qy));
+
+    state.psi = RADIANS_TO_DEGREES * atan2((2 * (qx*qy + qw*qz)),
+            (qw*qw + qx*qx - qy*qy - qz*qz));
+
+    // Get angular velocities directly from gyro
+    state.dphi =    ekf.gyroLatest.x;
+    state.dtheta = -ekf.gyroLatest.y; // negate for ENU
+    state.dpsi =    ekf.gyroLatest.z;
+}
+
+
 // ===========================================================================
 
 
@@ -480,6 +520,8 @@ static void new_ekf_step(
     ekf_predict(ekf2, nowMsec, isFlying);
 
     (void)updateWithGyro;
+    (void)updateWithAccel;
+    (void)getState;
     (void)shouldPredict;
     (void)action;
     (void)_ekf;
