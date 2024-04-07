@@ -318,14 +318,6 @@ static void afinalize(
 
 static void ekf_init(ekf_t & ekf)
 {
-    ekf.z = 0;
-    ekf.dx = 0;
-    ekf.dy = 0;
-    ekf.dz = 0;
-    ekf.e0 = 0;
-    ekf.e1 = 0;
-    ekf.e2 = 0;
-
     memset(&ekf.p, 0, sizeof(ekf.p));
     ekf.p[KC_STATE_Z][KC_STATE_Z] = powf(STDEV_INITIAL_POSITION_Z, 2);
     ekf.p[KC_STATE_DX][KC_STATE_DX] = powf(STDEV_INITIAL_VELOCITY, 2);
@@ -558,8 +550,12 @@ static bool ekf_updateWithRange(
     // Only update the filter if the measurement is reliable 
     // (\hat{h} -> infty when R[2][2] -> 0)
     const auto shouldUpdate = fabs(rz) > 0.1f && rz > 0;
-    return scalarUpdate(ekf, h, measuredDistance-predictedDistance, 
-            stream_range.stdDev, shouldUpdate);
+    return scalarUpdate(
+            ekf, 
+            h , 
+            measuredDistance-predictedDistance, 
+            stream_range.stdDev, 
+            shouldUpdate);
 }
 
 static bool ekf_updateWithFlow(
@@ -604,8 +600,12 @@ static bool ekf_updateWithFlow(
         (rz / z_g);
 
     //First update
-    scalarUpdate(ekf, hx, (measuredNX-predictedNX), 
-            stream_flow.stdDevX*FLOW_RESOLUTION, true);
+    scalarUpdate(
+            ekf, 
+            hx, 
+            measuredNX-predictedNX, 
+            stream_flow.stdDevX*FLOW_RESOLUTION, 
+            true);
 
     // ~~~ Y velocity prediction and update ~~~
     float hy[KC_STATE_DIM] = {};
@@ -672,12 +672,6 @@ static bool ekf_finalize(
     float AP[KC_STATE_DIM][KC_STATE_DIM] = {};
     multiply(A, ekf.p, AP, true);  // AP
     multiply(AP, At, ekf.p, isErrorSufficient); // APA'
-
-    // Reset the attitude error
-    // XXX finalize()
-    ekf.e0 = 0;
-    ekf.e1 = 0;
-    ekf.e2 = 0;
 
     updateCovarianceMatrix(ekf.p, true);
 
@@ -836,6 +830,15 @@ static void ekf_step(void)
     _rz = initializing ? 1 : 
         finalizing ? _qw*_qw-_qx*_qx-_qy*_qy+_qz*_qz:
         _rz;
+
+    _ekf.z = initializing ? 0 : _ekf.z;
+    _ekf.dx = initializing ? 0 : _ekf.dx;
+    _ekf.dy = initializing ? 0 : _ekf.dy;
+    _ekf.dz = initializing ? 0 : _ekf.dz;
+
+    _ekf.e0 = initializing || finalizing ? 0 : _ekf.e0;
+    _ekf.e1 = initializing || finalizing ? 0 : _ekf.e1;
+    _ekf.e2 = initializing || finalizing ? 0 : _ekf.e2;
 
     if (finalizing) {
         setStateIsInBounds(isStateInBounds);
