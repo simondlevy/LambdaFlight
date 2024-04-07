@@ -31,6 +31,9 @@ SOFTWARE.
 
 #include <m_pi.h>
 
+static const float DEGREES_TO_RADIANS = M_PI / 180.0f;
+static const float RADIANS_TO_DEGREES = 180.0f / M_PI;
+
 // ----------------------------- scalars --------------------------------
 
 static inline float fsqr(float x) { return x * x; }
