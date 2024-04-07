@@ -780,18 +780,20 @@ static void ekf_step(void)
 
     vehicleState_t vehicleState = {};
 
+
+    const auto shouldPredict = stream_ekfAction == EKF_PREDICT && 
+        stream_nowMsec >= stream_nextPredictionMsec;
+
+    if (shouldPredict) {
+        ekf_predict(_ekf, _lastPredictionMsec);
+        _lastPredictionMsec =  stream_nowMsec;
+    }
+
     switch (stream_ekfAction) {
 
         case EKF_INIT:
             ekf_init(_ekf);
             _lastPredictionMsec = stream_nowMsec;
-            break;
-
-        case EKF_PREDICT:
-            if (stream_nowMsec >= stream_nextPredictionMsec) {
-                ekf_predict(_ekf, _lastPredictionMsec);
-                _lastPredictionMsec =  stream_nowMsec;
-            }
             break;
 
         case EKF_FINALIZE:
@@ -818,6 +820,9 @@ static void ekf_step(void)
 
         case EKF_UPDATE_WITH_RANGE:
             didUpdateRange = ekf_updateWithRange(_ekf);
+            break;
+
+        default:
             break;
     }
 
