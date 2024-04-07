@@ -201,12 +201,13 @@ static void updateCovarianceMatrix(
 }
 
 static bool scalarUpdate(
+        const ekfState_t & ekfs_in,
         const float h[KC_STATE_DIM],
         const float error, 
         const float stdMeasNoise,
         const bool shouldUpdate,
         matrix_t & p,
-        ekfState_t & ekfs)
+        ekfState_t & ekfs_out)
 {
 
     // ====== INNOVATION COVARIANCE ======
@@ -230,13 +231,13 @@ static bool scalarUpdate(
 
     // Perform the state update
     // XXX update()
-    ekfs.z  += shouldUpdate ? g[0] * error: 0;
-    ekfs.dx += shouldUpdate ? g[1] * error: 0;
-    ekfs.dy += shouldUpdate ? g[2] * error: 0;
-    ekfs.dz += shouldUpdate ? g[3] * error: 0;
-    ekfs.e0 += shouldUpdate ? g[4] * error: 0;
-    ekfs.e1 += shouldUpdate ? g[5] * error: 0;
-    ekfs.e2 += shouldUpdate ? g[6] * error: 0;
+    ekfs_out.z  = ekfs_in.z  + (shouldUpdate ? g[0] * error: 0);
+    ekfs_out.dx = ekfs_in.dx + (shouldUpdate ? g[1] * error: 0);
+    ekfs_out.dy = ekfs_in.dy + (shouldUpdate ? g[2] * error: 0);
+    ekfs_out.dz = ekfs_in.dz + (shouldUpdate ? g[3] * error: 0);
+    ekfs_out.e0 = ekfs_in.e0 + (shouldUpdate ? g[4] * error: 0);
+    ekfs_out.e1 = ekfs_in.e1 + (shouldUpdate ? g[5] * error: 0);
+    ekfs_out.e2 = ekfs_in.e2 + (shouldUpdate ? g[6] * error: 0);
 
     // ====== COVARIANCE UPDATE ======
 
@@ -568,6 +569,7 @@ static bool ekf_updateWithRange(
     // (\hat{h} -> infty when R[2][2] -> 0)
     const auto shouldUpdate = fabs(rz) > 0.1f && rz > 0;
     return scalarUpdate(
+            ekfs,
             h , 
             measuredDistance-predictedDistance, 
             stream_range.stdDev, 
@@ -620,6 +622,7 @@ static bool ekf_updateWithFlow(
 
     //First update
     scalarUpdate(
+            ekfs,
             hx, 
             measuredNX-predictedNX, 
             stream_flow.stdDevX*FLOW_RESOLUTION, 
@@ -640,6 +643,7 @@ static bool ekf_updateWithFlow(
 
     // Second update
     return scalarUpdate(
+            ekfs,
             hy, 
             measuredNY-predictedNY, 
             stream_flow.stdDevY*FLOW_RESOLUTION, 
