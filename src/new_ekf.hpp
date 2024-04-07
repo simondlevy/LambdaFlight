@@ -820,6 +820,10 @@ static bool new_ekf_step(
         const uint32_t nowMsec,
         const uint32_t nextPredictionMsec,
         const bool isFlying,
+        const Axis3f * gyro,
+        const Axis3f * accel,
+        const flowMeasurement_t *flow, 
+        const rangeMeasurement_t *range,
         vehicleState_t & vehicleState)
 {
     static ekf_t _ekf;
@@ -847,23 +851,21 @@ static bool new_ekf_step(
             break;
 
         case EKF_UPDATE_WITH_GYRO:
+            ekf_updateWithGyro(_ekf, gyro);
             break;
 
         case EKF_UPDATE_WITH_ACCEL:
+            ekf_updateWithAccel(_ekf, accel);
             break;
 
         case EKF_UPDATE_WITH_FLOW:
+            ekf_updateWithFlow(_ekf, flow);
             break;
 
         case EKF_UPDATE_WITH_RANGE:
+            ekf_updateWithRange(_ekf, range);
             break;
     }
-
-
-    (void)ekf_updateWithGyro;
-    (void)ekf_updateWithAccel;
-    (void)ekf_updateWithRange;
-    (void)ekf_updateWithFlow;
 
     return result;
 }
