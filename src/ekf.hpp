@@ -650,16 +650,10 @@ static bool ekf_updateWithFlow(
 }
 
 static bool ekf_finalize(
-        const float qw, 
-        const float qx, 
-        const float qy, 
-        const float qz,
+        const new_quat_t & q,
         matrix_t & p,
         ekf_t & ekf,
-        float & qw_out, 
-        float & qx_out, 
-        float & qy_out, 
-        float & qz_out)
+        new_quat_t & q_out)
 {
     // Incorporate the attitude error (Kalman filter state) with the attitude
     const auto v0 = ekf.e0;
@@ -677,10 +671,10 @@ static bool ekf_finalize(
 
     // Rotate the quad's attitude by the delta quaternion vector
     // computed above
-    const auto tmpq0 = dqw * qw - dqx * qx - dqy * qy - dqz * qz;
-    const auto tmpq1 = dqx * qw + dqw * qx + dqz * qy - dqy * qz;
-    const auto tmpq2 = dqy * qw - dqz * qx + dqw * qy + dqx * qz;
-    const auto tmpq3 = dqz * qw + dqy * qx - dqx * qy + dqw * qz;
+    const auto tmpq0 = dqw * q.w - dqx * q.x - dqy * q.y - dqz * q.z;
+    const auto tmpq1 = dqx * q.w + dqw * q.x + dqz * q.y - dqy * q.z;
+    const auto tmpq2 = dqy * q.w - dqz * q.x + dqw * q.y + dqx * q.z;
+    const auto tmpq3 = dqz * q.w + dqy * q.x - dqx * q.y + dqw * q.z;
 
     // normalize and store the result
     const auto norm = sqrt(tmpq0 * tmpq0 + tmpq1 * tmpq1 + tmpq2 * tmpq2 + 
@@ -691,10 +685,10 @@ static bool ekf_finalize(
         isErrorInBounds(v0) && isErrorInBounds(v1) && isErrorInBounds(v2);
 
     // finalize()
-    qw_out = isErrorSufficient ? tmpq0 / norm : qw;
-    qx_out = isErrorSufficient ? tmpq1 / norm : qx;
-    qy_out = isErrorSufficient ? tmpq2 / norm : qy;
-    qz_out = isErrorSufficient ? tmpq3 / norm : qz;
+    q_out.w = isErrorSufficient ? tmpq0 / norm : q.w;
+    q_out.x = isErrorSufficient ? tmpq1 / norm : q.x;
+    q_out.y = isErrorSufficient ? tmpq2 / norm : q.y;
+    q_out.z = isErrorSufficient ? tmpq3 / norm : q.z;
 
     // Move attitude error into attitude if any of the angle errors are
     // large enough
@@ -778,7 +772,6 @@ static void ekf_step(void)
     const auto shouldPredict = stream_ekfAction == EKF_PREDICT && 
         stream_nowMsec >= stream_nextPredictionMsec;
 
-
     new_quat_t quat_predicted = {};
     const auto didPredict = 
         shouldPredict && 
@@ -793,10 +786,10 @@ static void ekf_step(void)
                 _p,
                 _ekf);
 
-    float qwf=0, qxf=0, qyf=0, qzf=0;
+    new_quat_t quat_finalized = {};
     const auto isStateInBounds = 
         _isUpdated && stream_ekfAction == EKF_FINALIZE ? 
-        ekf_finalize(_qw, _qx, _qy, _qz, _p, _ekf, qwf, qxf, qyf, qzf) :
+        ekf_finalize(quat, _p, _ekf, quat_finalized) :
         isStateWithinBounds(_ekf.z, _ekf.dx, _ekf.dy, _ekf.dz);
 
     switch (stream_ekfAction) {
@@ -835,22 +828,22 @@ static void ekf_step(void)
     const auto finalizing = stream_ekfAction == EKF_FINALIZE;
 
     _qw = initializing ? 1 : 
-        finalizing ? qwf :
+        finalizing ? quat_finalized.w :
         didPredict ? quat_predicted.w :
         _qw;
 
     _qx = initializing ? 0 : 
-        finalizing ? qxf :
+        finalizing ? quat_finalized.x :
         didPredict ? quat_predicted.x :
         _qx;
 
     _qy = initializing ? 0 : 
-        finalizing ? qyf :
+        finalizing ? quat_finalized.y :
         didPredict ? quat_predicted.y :
         _qy;
 
     _qz = initializing ? 0 : 
-        finalizing ? qzf :
+        finalizing ? quat_finalized.z :
         didPredict ? quat_predicted.z :
         _qz;
 
