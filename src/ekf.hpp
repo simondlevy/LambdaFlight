@@ -108,9 +108,9 @@ typedef struct {
 
     float p[KC_STATE_DIM][KC_STATE_DIM];
 
-    uint32_t lastPredictionMs;
+    uint32_t lastPredictionMsec;
 
-    uint32_t lastProcessNoiseUpdateMs;
+    uint32_t lastProcessNoiseUpdateMsec;
 
 } ekf_t;
 
@@ -446,15 +446,15 @@ static void ekf_init(ekf_t & ekf)
     ekf.p[KC_STATE_E1][KC_STATE_E1] = powf(STDEV_INITIAL_ATTITUDE_ROLL_PITCH, 2);
     ekf.p[KC_STATE_E2][KC_STATE_E2] = powf(STDEV_INITIAL_ATTITUDE_YAW, 2);
 
-    ekf.lastPredictionMs = stream_nowMsec;
-    ekf.lastProcessNoiseUpdateMs = stream_nowMsec;
+    ekf.lastPredictionMsec = stream_nowMsec;
+    ekf.lastProcessNoiseUpdateMsec = stream_nowMsec;
 }
 
 static void ekf_predict(ekf_t & ekf) 
 {
     subSamplerFinalize(&ekf.gyroSubSampler, DEGREES_TO_RADIANS);
 
-    const float dt = (stream_nowMsec - ekf.lastPredictionMs) / 1000.0f;
+    const float dt = (stream_nowMsec - ekf.lastPredictionMsec) / 1000.0f;
 
     const auto dt2 = dt * dt;
 
@@ -540,8 +540,6 @@ static void ekf_predict(ekf_t & ekf)
     ekf.quat.y = tmpq2/norm; 
     ekf.quat.z = tmpq3/norm;
 
-    ekf.lastPredictionMs =  stream_nowMsec;
-
     // ====== COVARIANCE UPDATE ======
 
     const auto e0 = gyro->x*dt/2;
@@ -614,7 +612,7 @@ static void ekf_predict(ekf_t & ekf)
     multiply(A, ekf.p, AP, true);  // AP
     multiply(AP, At, ekf.p); // APA'
 
-    const auto dt1 = (stream_nowMsec - ekf.lastProcessNoiseUpdateMs) / 1000.0f;
+    const auto dt1 = (stream_nowMsec - ekf.lastProcessNoiseUpdateMsec) / 1000.0f;
     const auto isDtPositive = dt1 > 0;
 
     // Add process noise
@@ -633,8 +631,10 @@ static void ekf_predict(ekf_t & ekf)
 
     updateCovarianceMatrix(ekf.p, isDtPositive);
 
-    ekf.lastProcessNoiseUpdateMs = isDtPositive ?  stream_nowMsec : 
-        ekf.lastProcessNoiseUpdateMs;
+    ekf.lastProcessNoiseUpdateMsec = isDtPositive ?  stream_nowMsec : 
+        ekf.lastProcessNoiseUpdateMsec;
+
+    ekf.lastPredictionMsec =  stream_nowMsec;
 }
 
 static bool ekf_updateWithRange(ekf_t & ekf)
