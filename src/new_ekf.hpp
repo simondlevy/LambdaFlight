@@ -111,7 +111,7 @@ typedef struct {
 
     Axis3f _gyroLatest;
 
-    axisSubSampler_t accSubSampler;
+    axisSubSampler_t accelSubSampler;
     axisSubSampler_t gyroSubSampler;
 
     ekfState_t ekfState;
@@ -127,6 +127,90 @@ typedef struct {
     uint32_t lastProcessNoiseUpdateMs;
 
 } ekf_t;
+
+static Axis3f* subSamplerFinalize(
+        axisSubSampler_t* subSampler,
+        const float conversionFactor)
+{
+    const auto count  = subSampler->count; 
+    const auto isCountNonzero = count > 0;
+
+    subSampler->subSample.x = isCountNonzero ? 
+        subSampler->sum.x * conversionFactor / count :
+        subSampler->subSample.x;
+
+    subSampler->subSample.y = isCountNonzero ?
+        subSampler->sum.y * conversionFactor / count :
+        subSampler->subSample.y;
+
+    subSampler->subSample.z = isCountNonzero ?
+        subSampler->sum.z * conversionFactor / count :
+        subSampler->subSample.z;
+
+    // Reset
+    subSampler->count = 0;
+    subSampler->sum = (Axis3f){.axis={0}};
+
+    return &subSampler->subSample;
+}
+
+static float rotateQuat(
+        const float val, 
+        const float initVal,
+        const bool isFlying)
+{
+    const auto keep = 1.0f - ROLLPITCH_ZERO_REVERSION;
+
+    return (val * (isFlying ? 1: keep)) +
+        (isFlying ? 0 : ROLLPITCH_ZERO_REVERSION * initVal);
+}
+
+static void addNoiseDiagonal(
+        float a[KC_STATE_DIM][KC_STATE_DIM],
+        const float d[KC_STATE_DIM],
+        const bool doit)
+{
+    a[0][0] += doit ? d[0] : 0;
+    a[1][1] += doit ? d[1] : 0;
+    a[2][2] += doit ? d[2] : 0;
+    a[3][3] += doit ? d[3] : 0;
+    a[4][4] += doit ? d[4] : 0;
+    a[5][5] += doit ? d[5] : 0;
+    a[6][6] += doit ? d[6] : 0;
+}
+
+static void updateCovarianceCell(
+        float p[KC_STATE_DIM][KC_STATE_DIM],
+        const int i, 
+        const int j, 
+        const float variance,
+        const bool shouldUpdate)
+{
+    const auto pval = (p[i][j] + p[j][i]) / 2 + variance;
+
+    p[i][j] = !shouldUpdate ? p[i][j] :
+        (isnan(pval) || pval > MAX_COVARIANCE) ?  MAX_COVARIANCE :
+        (i==j && pval < MIN_COVARIANCE) ?  MIN_COVARIANCE :
+        pval;
+
+    p[j][i] = shouldUpdate ? p[i][j] : p[j][i];
+}
+
+
+static void updateCovarianceMatrix(
+        float p[KC_STATE_DIM][KC_STATE_DIM],
+        const bool shouldUpdate)
+{
+    // Enforce symmetry of the covariance matrix, and ensure the
+    // values stay bounded
+    for (int i=0; i<KC_STATE_DIM; i++) {
+        for (int j=i; j<KC_STATE_DIM; j++) {
+            updateCovarianceCell(p, i, j, 0, shouldUpdate);
+        }
+    }
+}
+
+// ===========================================================================
 
 static void ekf_init(ekf_t & ekf, const uint32_t nowMsec)
 {
@@ -160,44 +244,18 @@ static void ekf_init(ekf_t & ekf, const uint32_t nowMsec)
     ekf.lastProcessNoiseUpdateMs = nowMsec;
 }
 
-static Axis3f* subSamplerFinalize(
-        axisSubSampler_t* subSampler,
-        const float conversionFactor)
-{
-    const auto count  = subSampler->count; 
-    const auto isCountNonzero = count > 0;
-
-    subSampler->subSample.x = isCountNonzero ? 
-        subSampler->sum.x * conversionFactor / count :
-        subSampler->subSample.x;
-
-    subSampler->subSample.y = isCountNonzero ?
-        subSampler->sum.y * conversionFactor / count :
-        subSampler->subSample.y;
-
-    subSampler->subSample.z = isCountNonzero ?
-        subSampler->sum.z * conversionFactor / count :
-        subSampler->subSample.z;
-
-    // Reset
-    subSampler->count = 0;
-    subSampler->sum = (Axis3f){.axis={0}};
-
-    return &subSampler->subSample;
-}
-
-
-static void ekf_predict(ekf_t & ekf, const bool isFlying) 
+static void ekf_predict(
+        ekf_t & ekf, const uint32_t nowMsec, const bool isFlying) 
 {
     subSamplerFinalize(&ekf.gyroSubSampler, DEGREES_TO_RADIANS);
 
-#if 0
     const float dt = (nowMsec - ekf.lastPredictionMs) / 1000.0f;
 
     const auto dt2 = dt * dt;
 
-    axis3fSubSamplerFinalize(&_accSubSampler, shouldPredict);
-    const Axis3f * acc = &_accSubSampler.subSample; 
+    subSamplerFinalize(&ekf.accelSubSampler, MSS_TO_GS);
+
+    const Axis3f * acc = &ekf.accelSubSampler.subSample; 
 
     // Position updates in the body frame (will be rotated to inertial frame);
     // thrust can only be produced in the body's Z direction
@@ -213,7 +271,7 @@ static void ekf_predict(ekf_t & ekf, const bool isFlying)
     const auto accx = isFlying ? 0 : acc->x;
     const auto accy = isFlying ? 0 : acc->y;
 
-    const Axis3f * gyro = &_gyroSubSampler.subSample; 
+    const Axis3f * gyro = &ekf.gyroSubSampler.subSample; 
 
     // attitude update (rotate by gyroscope), we do this in quaternions
     // this is the gyroscope angular velocity integrated over the sample period
@@ -232,17 +290,22 @@ static void ekf_predict(ekf_t & ekf, const bool isFlying)
 
     // rotate the quad's attitude by the delta quaternion vector computed above
 
+    const auto qw = ekf.quat.w;
+    const auto qx = ekf.quat.x;
+    const auto qy = ekf.quat.y;
+    const auto qz = ekf.quat.z;
+
     const auto tmpq0 = rotateQuat(
-            dqw*_qw - dqx*_qx - dqy*_qy - dqz*_qz, QW_INIT, isFlying);
+            dqw*qw - dqx*qx - dqy*qy - dqz*qz, QW_INIT, isFlying);
 
     const auto tmpq1 = rotateQuat(
-            dqx*_qw + dqw*_qx + dqz*_qy - dqy*_qz, QX_INIT, isFlying);
+            dqx*qw + dqw*qx + dqz*qy - dqy*qz, QX_INIT, isFlying);
 
     const auto tmpq2 = rotateQuat(
-            dqy*_qw - dqz*_qx + dqw*_qy + dqx*_qz, QY_INIT, isFlying);
+            dqy*qw - dqz*qx + dqw*qy + dqx*qz, QY_INIT, isFlying);
 
     const auto tmpq3 = rotateQuat(
-            dqz*_qw + dqy*_qx - dqx*_qy + dqw*_qz, QZ_INIT, isFlying);
+            dqz*qw + dqy*qx - dqx*qy + dqw*qz, QZ_INIT, isFlying);
 
     // normalize and store the result
     const auto norm = 
@@ -258,37 +321,30 @@ static void ekf_predict(ekf_t & ekf, const bool isFlying)
 
     // XXX predict()
     // altitude update
-    ekf.ekfState.z += shouldPredict ? ekf.r.x * dx + ekf.r.y * dy + ekf.r.z * dz - 
-        MSS_TO_GS * dt2 / 2 :
-        0;
+    ekf.ekfState.z += 
+        ekf.r.x * dx + ekf.r.y * dy + ekf.r.z * dz - MSS_TO_GS * dt2 / 2;
 
     // body-velocity update: accelerometers - gyros cross velocity
     // - gravity in body frame
 
-    ekf.ekfState.dx += shouldPredict ? 
-        dt * (accx + gyro->z * tmpSDY - gyro->y * tmpSDZ - 
-                MSS_TO_GS * ekf.r.x) : 
-        0;
+    ekf.ekfState.dx += 
+        dt * (accx + gyro->z * tmpSDY - gyro->y * tmpSDZ - MSS_TO_GS * ekf.r.x);
 
-    ekf.ekfState.dy += shouldPredict ?
-        dt * (accy - gyro->z * tmpSDX + gyro->x * tmpSDZ - 
-                MSS_TO_GS * ekf.r.y) : 
-        0;
+    ekf.ekfState.dy += 
+        dt * (accy - gyro->z * tmpSDX + gyro->x * tmpSDZ - MSS_TO_GS * ekf.r.y); 
 
-    ekf.ekfState.dz += shouldPredict ?
-        dt * (acc->z + gyro->y * tmpSDX - gyro->x * tmpSDY - 
-                MSS_TO_GS * ekf.r.z) :
-        0;
+    ekf.ekfState.dz += 
+        dt * (acc->z + gyro->y * tmpSDX - gyro->x * tmpSDY - MSS_TO_GS * ekf.r.z);
 
     // predict()
-    ekf.qw = shouldPredict ? tmpq0/norm : ekf.qw;
-    ekf.qx = shouldPredict ? tmpq1/norm : ekf.qx; 
-    ekf.qy = shouldPredict ? tmpq2/norm : ekf.qy; 
-    ekf.qz = shouldPredict ? tmpq3/norm : ekf.qz;
+    ekf.quat.w = tmpq0/norm;
+    ekf.quat.x = tmpq1/norm; 
+    ekf.quat.y = tmpq2/norm; 
+    ekf.quat.z = tmpq3/norm;
 
-    ekf.isUpdated = shouldPredict ? true : ekf.isUpdated;
+    ekf.isUpdated =  true;
 
-    ekf.lastPredictionMs = shouldPredict ? nowMsec : ekf.lastPredictionMs;
+    ekf.lastPredictionMs =  nowMsec;
 
     // ====== COVARIANCE UPDATE ======
 
@@ -314,9 +370,9 @@ static void ekf_predict(ekf_t & ekf, const bool isFlying)
     const auto zdz  = ekf.r.z*dt;
 
     // altitude from attitude error
-    const auto ze0  = (_ekfState.dy*_r.z - ekf.ekfState.dz*_r.y)*dt;
-    const auto ze1  = (- ekf.ekfState.dx*_r.z + ekf.ekfState.dz*_r.x)*dt;
-    const auto ze2  = (_ekfState.dx*_r.y - ekf.ekfState.dy*_r.x)*dt;
+    const auto ze0  = (ekf.ekfState.dy*ekf.r.z - ekf.ekfState.dz*ekf.r.y)*dt;
+    const auto ze1  = (- ekf.ekfState.dx*ekf.r.z + ekf.ekfState.dz*ekf.r.x)*dt;
+    const auto ze2  = (ekf.ekfState.dx*ekf.r.y - ekf.ekfState.dy*ekf.r.x)*dt;
 
     // body-frame velocity from body-frame velocity
     const auto dxdx  = 1; //drag negligible
@@ -333,15 +389,15 @@ static void ekf_predict(ekf_t & ekf, const bool isFlying)
 
     // body-frame velocity from attitude error
     const auto dxe0  = 0;
-    const auto dye0  = -MSS_TO_GS*_r.z*dt;
-    const auto dze0  = MSS_TO_GS*_r.y*dt;
+    const auto dye0  = -MSS_TO_GS*ekf.r.z*dt;
+    const auto dze0  = MSS_TO_GS*ekf.r.y*dt;
 
-    const auto dxe1  = MSS_TO_GS*_r.z*dt;
+    const auto dxe1  = MSS_TO_GS*ekf.r.z*dt;
     const auto dye1  = 0;
-    const auto dze1  = -MSS_TO_GS*_r.x*dt;
+    const auto dze1  = -MSS_TO_GS*ekf.r.x*dt;
 
-    const auto dxe2  = -MSS_TO_GS*_r.y*dt;
-    const auto dye2  = MSS_TO_GS*_r.x*dt;
+    const auto dxe2  = -MSS_TO_GS*ekf.r.y*dt;
+    const auto dye2  = MSS_TO_GS*ekf.r.x*dt;
     const auto dze2  = 0;
 
     const float A[KC_STATE_DIM][KC_STATE_DIM] = 
@@ -359,12 +415,11 @@ static void ekf_predict(ekf_t & ekf, const bool isFlying)
     float At[KC_STATE_DIM][KC_STATE_DIM] = {};
     transpose(A, At);     // A'
     float AP[KC_STATE_DIM][KC_STATE_DIM] = {};
-    multiply(A, ekf.Pmat, AP, true);  // AP
-    multiply(AP, At, ekf.Pmat, shouldPredict); // APA'
+    multiply(A, ekf.p, AP, true);  // AP
+    multiply(AP, At, ekf.p); // APA'
 
     const auto dt1 = (nowMsec - ekf.lastProcessNoiseUpdateMs) / 1000.0f;
     const auto isDtPositive = dt1 > 0;
-
 
     // Add process noise
 
@@ -378,13 +433,12 @@ static void ekf_predict(ekf_t & ekf, const bool isFlying)
         powf(MEAS_NOISE_GYRO_ROLL_YAW * dt1 + PROC_NOISE_ATT, 2) 
     };
 
-    addNoiseDiagonal(_Pmat, noise, isDtPositive);
+    addNoiseDiagonal(ekf.p, noise, isDtPositive);
 
-    updateCovarianceMatrix(isDtPositive);
+    updateCovarianceMatrix(ekf.p, isDtPositive);
 
     ekf.lastProcessNoiseUpdateMs = isDtPositive ?  nowMsec : 
         ekf.lastProcessNoiseUpdateMs;
-#endif
 }
 
 
@@ -402,7 +456,7 @@ static void new_ekf_step(
     const bool shouldPredict = nowMsec >= nextPredictionMsec;
 
     ekf_t ekf2 = {};
-    ekf_predict(ekf2, isFlying);
+    ekf_predict(ekf2, nowMsec, isFlying);
 
     (void)shouldPredict;
     (void)action;
