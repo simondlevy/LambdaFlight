@@ -102,9 +102,14 @@ class EstimatorTask : public FreeRTOSTask {
             enqueue(&m, isInInterrupt);
         }
 
-        void setStateInBounds(const bool inBounds)
+        void setStateIsInBounds(const bool inBounds)
         {
             _isStateInBounds = inBounds;
+        }
+
+        void setState(const vehicleState_t & state)
+        {
+            memcpy(&_state, &state, sizeof(_state));
         }
 
     private:
@@ -241,10 +246,8 @@ class EstimatorTask : public FreeRTOSTask {
             }
 
             xSemaphoreTake(_dataMutex, portMAX_DELAY);
-
             stream_ekfAction = EKF_GET_STATE;
-            ekf_step(&_state);
-
+            ekf_step();
             xSemaphoreGive(_dataMutex);
 
             return nextPredictionMsec;

@@ -82,9 +82,14 @@ void setMotors(float m1, float m2, float m3, float m4)
     coreTask.setMotors(m1, m2, m3, m4);
 }
 
-void setStateInBounds(const bool inBounds)
+void setStateIsInBounds(const bool inBounds)
 {
-    estimatorTask.setStateInBounds(inBounds);
+    estimatorTask.setStateIsInBounds(inBounds);
+}
+
+void setState(const vehicleState_t & state)
+{
+    estimatorTask.setState(state);
 }
 
 // ---------------------------------------------------------------------------

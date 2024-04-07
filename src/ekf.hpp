@@ -761,15 +761,15 @@ static void ekf_updateWithFlow(ekf_t & ekf, const flowMeasurement_t *flow)
 }
 
 
-static void ekf_getState(ekf_t & ekf, vehicleState_t * state)
+static void ekf_getState(const ekf_t & ekf, vehicleState_t & state)
 {
-    state->dx = ekf.ekfState.dx;
+    state.dx = ekf.ekfState.dx;
 
-    state->dy = ekf.ekfState.dy;
+    state.dy = ekf.ekfState.dy;
 
-    state->z = ekf.ekfState.z;
+    state.z = ekf.ekfState.z;
 
-    state->dz = 
+    state.dz = 
         ekf.r.x * ekf.ekfState.dx +
         ekf.r.y * ekf.ekfState.dy +
         ekf.r.z * ekf.ekfState.dz;
@@ -779,19 +779,19 @@ static void ekf_getState(ekf_t & ekf, vehicleState_t * state)
     const auto qy = ekf.quat.y;
     const auto qz = ekf.quat.z;
 
-    state->phi = RADIANS_TO_DEGREES * atan2((2 * (qy*qz + qw*qx)),
+    state.phi = RADIANS_TO_DEGREES * atan2((2 * (qy*qz + qw*qx)),
             (qw*qw - qx*qx - qy*qy + qz*qz));
 
     // Negate for ENU
-    state->theta = -RADIANS_TO_DEGREES * asin((-2) * (qx*qz - qw*qy));
+    state.theta = -RADIANS_TO_DEGREES * asin((-2) * (qx*qz - qw*qy));
 
-    state->psi = RADIANS_TO_DEGREES * atan2((2 * (qx*qy + qw*qz)),
+    state.psi = RADIANS_TO_DEGREES * atan2((2 * (qx*qy + qw*qz)),
             (qw*qw + qx*qx - qy*qy - qz*qz));
 
     // Get angular velocities directly from gyro
-    state->dphi =    ekf.gyroLatest.x;
-    state->dtheta = -ekf.gyroLatest.y; // negate for ENU
-    state->dpsi =    ekf.gyroLatest.z;
+    state.dphi =    ekf.gyroLatest.x;
+    state.dtheta = -ekf.gyroLatest.y; // negate for ENU
+    state.dpsi =    ekf.gyroLatest.z;
 }
 
 static bool ekf_finalize(ekf_t & ekf)
@@ -802,9 +802,11 @@ static bool ekf_finalize(ekf_t & ekf)
 
 // ===========================================================================
 
-static void ekf_step(vehicleState_t * vehicleState=NULL)
+static void ekf_step(void)
 {
     static ekf_t _ekf;
+
+    vehicleState_t vehicleState = {};
 
     switch (stream_ekfAction) {
 
@@ -819,11 +821,12 @@ static void ekf_step(vehicleState_t * vehicleState=NULL)
             break;
 
         case EKF_FINALIZE:
-            setStateInBounds(ekf_finalize(_ekf));
+            setStateIsInBounds(ekf_finalize(_ekf));
             break;
 
         case EKF_GET_STATE:
             ekf_getState(_ekf, vehicleState);
+            setState(vehicleState);
             break;
 
         case EKF_UPDATE_WITH_GYRO:

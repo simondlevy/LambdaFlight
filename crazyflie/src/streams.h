@@ -23,4 +23,5 @@ EXTERN Axis3f stream_accel;
 EXTERN flowMeasurement_t stream_flow; 
 EXTERN rangeMeasurement_t stream_range;
 
-void setStateInBounds(const bool inBounds);
+void setStateIsInBounds(const bool inBounds);
+void setState(const vehicleState_t & state);
