@@ -568,6 +568,67 @@ static void ekf_updateWithRange(ekf_t & ekf, const rangeMeasurement_t *range)
             range->stdDev, shouldUpdate);
 }
 
+static void ekf_updateWithFlow(ekf_t & ekf, const flowMeasurement_t *flow) 
+{
+    const Axis3f *gyro = &ekf.gyroLatest;
+
+    // Inclusion of flow measurements in the EKF done by two scalar updates
+
+    // ~~~ Camera constants ~~~
+    // The angle of aperture is guessed from the raw data register and
+    // thankfully look to be symmetric
+
+    float Npix = 35.0;                      // [pixels] (same in x and y)
+
+    // 2*sin(42/2); 42degree is the agnle of aperture, here we computed the
+    // corresponding ground length
+    float thetapix = 0.71674f;
+
+    //~~~ Body rates ~~~
+    // TODO check if this is feasible or if some filtering has to be done
+    const auto omegax_b = gyro->x * DEGREES_TO_RADIANS;
+    const auto omegay_b = gyro->y * DEGREES_TO_RADIANS;
+
+    const auto dx_g = ekf.ekfState.dx;
+    const auto dy_g = ekf.ekfState.dy;
+
+    // Saturate elevation in prediction and correction to avoid singularities
+    const auto z_g = ekf.ekfState.z < 0.1f ? 0.1f : ekf.ekfState.z;
+
+    // ~~~ X velocity prediction and update ~~~
+    // predicts the number of accumulated pixels in the x-direction
+    float hx[KC_STATE_DIM] = {};
+    auto predictedNX = (flow->dt * Npix / thetapix ) * 
+        ((dx_g * ekf.r.z / z_g) - omegay_b);
+    auto measuredNX = flow->dpixelx*FLOW_RESOLUTION;
+
+    // derive measurement equation with respect to dx (and z?)
+    hx[KC_STATE_Z] = (Npix * flow->dt / thetapix) * 
+        ((ekf.r.z * dx_g) / (-z_g * z_g));
+    hx[KC_STATE_DX] = (Npix * flow->dt / thetapix) * 
+        (ekf.r.z / z_g);
+
+    //First update
+    scalarUpdate(ekf, hx, (measuredNX-predictedNX), 
+            flow->stdDevX*FLOW_RESOLUTION, true);
+
+    // ~~~ Y velocity prediction and update ~~~
+    float hy[KC_STATE_DIM] = {};
+    auto predictedNY = (flow->dt * Npix / thetapix ) * 
+        ((dy_g * ekf.r.z / z_g) + omegax_b);
+    auto measuredNY = flow->dpixely*FLOW_RESOLUTION;
+
+    // derive measurement equation with respect to dy (and z?)
+    hy[KC_STATE_Z] = (Npix * flow->dt / thetapix) * 
+        ((ekf.r.z * dy_g) / (-z_g * z_g));
+    hy[KC_STATE_DY] = (Npix * flow->dt / thetapix) * (ekf.r.z / z_g);
+
+    // Second update
+    scalarUpdate(ekf, hy, (measuredNY-predictedNY), 
+            flow->stdDevY*FLOW_RESOLUTION, true);
+}
+
+
 static void ekf_getState(ekf_t & ekf, vehicleState_t & state)
 {
     state.dx = ekf.ekfState.dx;
@@ -625,6 +686,7 @@ static void new_ekf_step(
     (void)ekf_updateWithGyro;
     (void)ekf_updateWithAccel;
     (void)ekf_updateWithRange;
+    (void)ekf_updateWithFlow;
     (void)ekf_getState;
 
     (void)shouldPredict;
