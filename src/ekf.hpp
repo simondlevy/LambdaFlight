@@ -351,19 +351,11 @@ static void ekf_init(matrix_t & p)
 }
 
 static bool ekf_predict(
-        const float qw,
-        const float qx,
-        const float qy,
-        const float qz,
-        const float rx,
-        const float ry,
-        const float rz,
+        const new_quat_t & q,
+        const axis3_t & r,
         const uint32_t lastProcessNoiseUpdateMsec, 
         const uint32_t lastPredictionMsec, 
-        float & qw_out,
-        float & qx_out,
-        float & qy_out,
-        float & qz_out,
+        new_quat_t & quat_out,
         axisSubSampler_t & gyroSubSampler,
         axisSubSampler_t & accelSubSampler,
         matrix_t & p,
@@ -412,10 +404,10 @@ static bool ekf_predict(
 
     // rotate the quad's attitude by the delta quaternion vector computed above
 
-    const auto tmpq0 = rotateQuat(dqw*qw - dqx*qx - dqy*qy - dqz*qz, QW_INIT);
-    const auto tmpq1 = rotateQuat(dqx*qw + dqw*qx + dqz*qy - dqy*qz, QX_INIT);
-    const auto tmpq2 = rotateQuat(dqy*qw - dqz*qx + dqw*qy + dqx*qz, QY_INIT);
-    const auto tmpq3 = rotateQuat(dqz*qw + dqy*qx - dqx*qy + dqw*qz, QZ_INIT);
+    const auto tmpq0 = rotateQuat(dqw*q.w - dqx*q.x - dqy*q.y - dqz*q.z, QW_INIT);
+    const auto tmpq1 = rotateQuat(dqx*q.w + dqw*q.x + dqz*q.y - dqy*q.z, QX_INIT);
+    const auto tmpq2 = rotateQuat(dqy*q.w - dqz*q.x + dqw*q.y + dqx*q.z, QY_INIT);
+    const auto tmpq3 = rotateQuat(dqz*q.w + dqy*q.x - dqx*q.y + dqw*q.z, QZ_INIT);
 
     // normalize and store the result
     const auto norm = 
@@ -430,25 +422,25 @@ static bool ekf_predict(
     // to estimate body angle while flying)
 
     // altitude update
-    ekf.z += rx * dx + ry * dy + rz * dz - MSS_TO_GS * dt2 / 2;
+    ekf.z += r.x * dx + r.y * dy + r.z * dz - MSS_TO_GS * dt2 / 2;
 
     // body-velocity update: accelerometers - gyros cross velocity
     // - gravity in body frame
 
     ekf.dx += 
-        dt * (accx + gyro->z * tmpSDY - gyro->y * tmpSDZ - MSS_TO_GS * rx);
+        dt * (accx + gyro->z * tmpSDY - gyro->y * tmpSDZ - MSS_TO_GS * r.x);
 
     ekf.dy += 
-        dt * (accy - gyro->z * tmpSDX + gyro->x * tmpSDZ - MSS_TO_GS * ry); 
+        dt * (accy - gyro->z * tmpSDX + gyro->x * tmpSDZ - MSS_TO_GS * r.y); 
 
     ekf.dz += 
-        dt * (acc->z + gyro->y * tmpSDX - gyro->x * tmpSDY - MSS_TO_GS * rz);
+        dt * (acc->z + gyro->y * tmpSDX - gyro->x * tmpSDY - MSS_TO_GS * r.z);
 
     // predict()
-    qw_out = tmpq0/norm;
-    qx_out = tmpq1/norm; 
-    qy_out = tmpq2/norm; 
-    qz_out = tmpq3/norm;
+    quat_out.w = tmpq0/norm;
+    quat_out.x = tmpq1/norm; 
+    quat_out.y = tmpq2/norm; 
+    quat_out.z = tmpq3/norm;
 
     // ====== COVARIANCE UPDATE ======
 
@@ -469,14 +461,14 @@ static bool ekf_predict(
     const auto e2e2 = 1 - e0*e0/2 - e1*e1/2;
 
     // altitude from body-frame velocity
-    const auto zdx  = rx*dt;
-    const auto zdy  = ry*dt;
-    const auto zdz  = rz*dt;
+    const auto zdx  = r.x*dt;
+    const auto zdy  = r.y*dt;
+    const auto zdz  = r.z*dt;
 
     // altitude from attitude error
-    const auto ze0  = (ekf.dy*rz - ekf.dz*ry)*dt;
-    const auto ze1  = (- ekf.dx*rz + ekf.dz*rx)*dt;
-    const auto ze2  = (ekf.dx*ry - ekf.dy*rx)*dt;
+    const auto ze0  = (ekf.dy*r.z - ekf.dz*r.y)*dt;
+    const auto ze1  = (- ekf.dx*r.z + ekf.dz*r.x)*dt;
+    const auto ze2  = (ekf.dx*r.y - ekf.dy*r.x)*dt;
 
     // body-frame velocity from body-frame velocity
     const auto dxdx  = 1; //drag negligible
@@ -493,15 +485,15 @@ static bool ekf_predict(
 
     // body-frame velocity from attitude error
     const auto dxe0  = 0;
-    const auto dye0  = -MSS_TO_GS*rz*dt;
-    const auto dze0  = MSS_TO_GS*ry*dt;
+    const auto dye0  = -MSS_TO_GS*r.z*dt;
+    const auto dze0  = MSS_TO_GS*r.y*dt;
 
-    const auto dxe1  = MSS_TO_GS*rz*dt;
+    const auto dxe1  = MSS_TO_GS*r.z*dt;
     const auto dye1  = 0;
-    const auto dze1  = -MSS_TO_GS*rx*dt;
+    const auto dze1  = -MSS_TO_GS*r.x*dt;
 
-    const auto dxe2  = -MSS_TO_GS*ry*dt;
-    const auto dye2  = MSS_TO_GS*rx*dt;
+    const auto dxe2  = -MSS_TO_GS*r.y*dt;
+    const auto dye2  = MSS_TO_GS*r.x*dt;
     const auto dze2  = 0;
 
     const float A[KC_STATE_DIM][KC_STATE_DIM] = 
@@ -780,17 +772,22 @@ static void ekf_step(void)
 
     vehicleState_t vehicleState = {};
 
+    const auto quat = new_quat_t {_qw, _qx, _qy, _qz };
+    const auto r = axis3_t {_rx, _ry, _rz};
+
     const auto shouldPredict = stream_ekfAction == EKF_PREDICT && 
         stream_nowMsec >= stream_nextPredictionMsec;
 
-    float qwp=0, qxp=0, qyp=0, qzp=0;
+
+    new_quat_t quat_predicted = {};
     const auto didPredict = 
         shouldPredict && 
         ekf_predict(
-                _qw, _qx, _qy, _qz,
-                _rx, _ry, _rz, 
-                _lastPredictionMsec, _lastProcessNoiseUpdateMsec,
-                qwp, qxp, qyp, qzp,
+                quat,
+                r,
+                _lastPredictionMsec, 
+                _lastProcessNoiseUpdateMsec,
+                quat_predicted,
                 _gyroSubSampler,
                 _accelSubSampler,
                 _p,
@@ -801,10 +798,6 @@ static void ekf_step(void)
         _isUpdated && stream_ekfAction == EKF_FINALIZE ? 
         ekf_finalize(_qw, _qx, _qy, _qz, _p, _ekf, qwf, qxf, qyf, qzf) :
         isStateWithinBounds(_ekf.z, _ekf.dx, _ekf.dy, _ekf.dz);
-
-    const auto quat = new_quat_t {_qw, _qx, _qy, _qz };
-
-    const auto r = axis3_t {_rx, _ry, _rz};
 
     switch (stream_ekfAction) {
 
@@ -843,22 +836,22 @@ static void ekf_step(void)
 
     _qw = initializing ? 1 : 
         finalizing ? qwf :
-        didPredict ? qwp :
+        didPredict ? quat_predicted.w :
         _qw;
 
     _qx = initializing ? 0 : 
         finalizing ? qxf :
-        didPredict ? qxp :
+        didPredict ? quat_predicted.x :
         _qx;
 
     _qy = initializing ? 0 : 
         finalizing ? qyf :
-        didPredict ? qyp :
+        didPredict ? quat_predicted.y :
         _qy;
 
     _qz = initializing ? 0 : 
         finalizing ? qzf :
-        didPredict ? qzp :
+        didPredict ? quat_predicted.z :
         _qz;
 
     _rx = initializing ? 0 : 
