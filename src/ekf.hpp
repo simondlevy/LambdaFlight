@@ -108,8 +108,6 @@ typedef struct {
 
     float p[KC_STATE_DIM][KC_STATE_DIM];
 
-    uint32_t lastProcessNoiseUpdateMsec;
-
 } ekf_t;
 
 static const float max(const float val, const float maxval)
@@ -443,11 +441,12 @@ static void ekf_init(ekf_t & ekf)
     ekf.p[KC_STATE_DZ][KC_STATE_DZ] = powf(STDEV_INITIAL_VELOCITY, 2);
     ekf.p[KC_STATE_E1][KC_STATE_E1] = powf(STDEV_INITIAL_ATTITUDE_ROLL_PITCH, 2);
     ekf.p[KC_STATE_E2][KC_STATE_E2] = powf(STDEV_INITIAL_ATTITUDE_YAW, 2);
-
-    ekf.lastProcessNoiseUpdateMsec = stream_nowMsec;
 }
 
-static void ekf_predict(ekf_t & ekf, const uint32_t lastPredictionMsec) 
+static bool ekf_predict(
+        ekf_t & ekf, 
+        const uint32_t lastProcessNoiseUpdateMsec, 
+        const uint32_t lastPredictionMsec) 
 {
     subSamplerFinalize(&ekf.gyroSubSampler, DEGREES_TO_RADIANS);
 
@@ -514,7 +513,6 @@ static void ekf_predict(ekf_t & ekf, const uint32_t lastPredictionMsec)
     // When flying, the accelerometer directly measures thrust (hence is useless
     // to estimate body angle while flying)
 
-    // XXX predict()
     // altitude update
     ekf.ekfState.z += 
         ekf.r.x * dx + ekf.r.y * dy + ekf.r.z * dz - MSS_TO_GS * dt2 / 2;
@@ -609,7 +607,7 @@ static void ekf_predict(ekf_t & ekf, const uint32_t lastPredictionMsec)
     multiply(A, ekf.p, AP, true);  // AP
     multiply(AP, At, ekf.p); // APA'
 
-    const auto dt1 = (stream_nowMsec - ekf.lastProcessNoiseUpdateMsec) / 1000.0f;
+    const auto dt1 = (stream_nowMsec - lastProcessNoiseUpdateMsec) / 1000.0f;
     const auto isDtPositive = dt1 > 0;
 
     // Add process noise
@@ -628,9 +626,7 @@ static void ekf_predict(ekf_t & ekf, const uint32_t lastPredictionMsec)
 
     updateCovarianceMatrix(ekf.p, isDtPositive);
 
-    ekf.lastProcessNoiseUpdateMsec = isDtPositive ?  stream_nowMsec : 
-        ekf.lastProcessNoiseUpdateMsec;
-
+    return isDtPositive;
 }
 
 static bool ekf_updateWithRange(ekf_t & ekf)
@@ -774,6 +770,7 @@ static void ekf_step(void)
 
     static bool _isUpdated;
     static uint32_t _lastPredictionMsec;
+    static uint32_t _lastProcessNoiseUpdateMsec;
 
     bool didUpdateFlow = false;
     bool didUpdateRange = false;
@@ -784,9 +781,9 @@ static void ekf_step(void)
     const auto shouldPredict = stream_ekfAction == EKF_PREDICT && 
         stream_nowMsec >= stream_nextPredictionMsec;
 
-    if (shouldPredict) {
-        ekf_predict(_ekf, _lastPredictionMsec);
-    }
+    const auto didPredict = 
+        shouldPredict && 
+        ekf_predict(_ekf, _lastPredictionMsec, _lastProcessNoiseUpdateMsec);
 
     switch (stream_ekfAction) {
 
@@ -823,6 +820,11 @@ static void ekf_step(void)
         default:
             break;
     }
+
+    _lastProcessNoiseUpdateMsec = 
+        stream_ekfAction == EKF_INIT ? stream_nowMsec :
+        didPredict ? stream_nowMsec :
+        _lastProcessNoiseUpdateMsec;
 
     _lastPredictionMsec = 
         stream_ekfAction == EKF_INIT ? stream_nowMsec :
