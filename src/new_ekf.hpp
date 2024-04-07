@@ -663,15 +663,23 @@ static void ekf_getState(ekf_t & ekf, vehicleState_t & state)
     state.dpsi =    ekf.gyroLatest.z;
 }
 
+static bool ekf_finalize(ekf_t & ekf)
+{
+    (void)ekf;
+    // Only finalize if data is updated
+    //return _isUpdated ? doFinalize() : isStateWithinBounds();
+    return false;
+}
+
 
 // ===========================================================================
 
-
-static void new_ekf_step(
+static bool new_ekf_step(
         const new_ekfAction_e action,
         const uint32_t nowMsec,
         const uint32_t nextPredictionMsec,
-        const bool isFlying)
+        const bool isFlying,
+        vehicleState_t & vehicleState)
 {
     static ekf_t _ekf;
 
@@ -688,8 +696,13 @@ static void new_ekf_step(
     (void)ekf_updateWithRange;
     (void)ekf_updateWithFlow;
     (void)ekf_getState;
+    (void)ekf_finalize;
 
-    (void)shouldPredict;
     (void)action;
+    (void)shouldPredict;
+    (void)vehicleState;
+
     (void)_ekf;
+
+    return false;
 }
