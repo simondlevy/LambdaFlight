@@ -83,11 +83,6 @@ typedef struct {
 
 typedef struct {
 
-    float qw;
-    float qx;
-    float qy;
-    float qz;
-
     Axis3f gyroLatest;
 
     axisSubSampler_t accelSubSampler;
@@ -341,11 +336,6 @@ static void ekf_init(ekf_t & ekf)
     ekf.ekfState.e1 = 0;
     ekf.ekfState.e2 = 0;
 
-    ekf.qw = QW_INIT;
-    ekf.qx = QX_INIT;
-    ekf.qy = QY_INIT;
-    ekf.qz = QZ_INIT;
-
     memset(&ekf.p, 0, sizeof(ekf.p));
     ekf.p[KC_STATE_Z][KC_STATE_Z] = powf(STDEV_INITIAL_POSITION_Z, 2);
     ekf.p[KC_STATE_DX][KC_STATE_DX] = powf(STDEV_INITIAL_VELOCITY, 2);
@@ -356,12 +346,20 @@ static void ekf_init(ekf_t & ekf)
 }
 
 static bool ekf_predict(
-        ekf_t & ekf, 
+        const float qw,
+        const float qx,
+        const float qy,
+        const float qz,
         const float rx,
         const float ry,
         const float rz,
         const uint32_t lastProcessNoiseUpdateMsec, 
-        const uint32_t lastPredictionMsec) 
+        const uint32_t lastPredictionMsec, 
+        float & qw_out,
+        float & qx_out,
+        float & qy_out,
+        float & qz_out,
+        ekf_t & ekf) 
 {
     subSamplerFinalize(&ekf.gyroSubSampler, DEGREES_TO_RADIANS);
 
@@ -406,11 +404,6 @@ static bool ekf_predict(
 
     // rotate the quad's attitude by the delta quaternion vector computed above
 
-    const auto qw = ekf.qw;
-    const auto qx = ekf.qx;
-    const auto qy = ekf.qy;
-    const auto qz = ekf.qz;
-
     const auto tmpq0 = rotateQuat(dqw*qw - dqx*qx - dqy*qy - dqz*qz, QW_INIT);
     const auto tmpq1 = rotateQuat(dqx*qw + dqw*qx + dqz*qy - dqy*qz, QX_INIT);
     const auto tmpq2 = rotateQuat(dqy*qw - dqz*qx + dqw*qy + dqx*qz, QY_INIT);
@@ -444,10 +437,10 @@ static bool ekf_predict(
         dt * (acc->z + gyro->y * tmpSDX - gyro->x * tmpSDY - MSS_TO_GS * rz);
 
     // predict()
-    ekf.qw = tmpq0/norm;
-    ekf.qx = tmpq1/norm; 
-    ekf.qy = tmpq2/norm; 
-    ekf.qz = tmpq3/norm;
+    qw_out = tmpq0/norm;
+    qx_out = tmpq1/norm; 
+    qy_out = tmpq2/norm; 
+    qz_out = tmpq3/norm;
 
     // ====== COVARIANCE UPDATE ======
 
@@ -638,7 +631,10 @@ static bool ekf_updateWithFlow(ekf_t & ekf,
             stream_flow.stdDevY*FLOW_RESOLUTION, true);
 }
 
-static bool ekf_finalize(ekf_t & ekf)
+static bool ekf_finalize(
+        const float qw, const float qx, const float qy, const float qz,
+        ekf_t & ekf,
+        float & qw_out, float & qx_out, float & qy_out, float & qz_out)
 {
     // Incorporate the attitude error (Kalman filter state) with the attitude
     const auto v0 = ekf.ekfState.e0;
@@ -653,11 +649,6 @@ static bool ekf_finalize(ekf_t & ekf)
     const auto dqx = sa * v0 / angle;
     const auto dqy = sa * v1 / angle;
     const auto dqz = sa * v2 / angle;
-
-    const auto qw = ekf.qw;
-    const auto qx = ekf.qx;
-    const auto qy = ekf.qy;
-    const auto qz = ekf.qz;
 
     // Rotate the quad's attitude by the delta quaternion vector
     // computed above
@@ -675,10 +666,10 @@ static bool ekf_finalize(ekf_t & ekf)
         isErrorInBounds(v0) && isErrorInBounds(v1) && isErrorInBounds(v2);
 
     // finalize()
-    ekf.qw = isErrorSufficient ? tmpq0 / norm : ekf.qw;
-    ekf.qx = isErrorSufficient ? tmpq1 / norm : ekf.qx;
-    ekf.qy = isErrorSufficient ? tmpq2 / norm : ekf.qy;
-    ekf.qz = isErrorSufficient ? tmpq3 / norm : ekf.qz;
+    qw_out = isErrorSufficient ? tmpq0 / norm : qw;
+    qx_out = isErrorSufficient ? tmpq1 / norm : qx;
+    qy_out = isErrorSufficient ? tmpq2 / norm : qy;
+    qz_out = isErrorSufficient ? tmpq3 / norm : qz;
 
     // Move attitude error into attitude if any of the angle errors are
     // large enough
@@ -703,6 +694,10 @@ static bool ekf_finalize(ekf_t & ekf)
 
 static void ekf_getState(
         const ekf_t & ekf, 
+        const float qw,
+        const float qx,
+        const float qy,
+        const float qz,
         const float rx,
         const float ry,
         const float rz,
@@ -716,11 +711,6 @@ static void ekf_getState(
 
     state.dz =
         rx * ekf.ekfState.dx + ry * ekf.ekfState.dy + rz * ekf.ekfState.dz;
-
-    const auto qw = ekf.qw;
-    const auto qx = ekf.qx;
-    const auto qy = ekf.qy;
-    const auto qz = ekf.qz;
 
     state.phi = RADIANS_TO_DEGREES * atan2((2 * (qy*qz + qw*qx)),
             (qw*qw - qx*qx - qy*qy + qz*qz));
@@ -752,6 +742,11 @@ static void ekf_step(void)
     static float _ry;
     static float _rz;
 
+    static float _qw;
+    static float _qx;
+    static float _qy;
+    static float _qz;
+
     bool didUpdateFlow = false;
     bool didUpdateRange = false;
 
@@ -760,14 +755,20 @@ static void ekf_step(void)
     const auto shouldPredict = stream_ekfAction == EKF_PREDICT && 
         stream_nowMsec >= stream_nextPredictionMsec;
 
+    float qwp=0, qxp=0, qyp=0, qzp=0;
     const auto didPredict = 
         shouldPredict && 
-        ekf_predict(_ekf, _rx, _ry, _rz, 
-                _lastPredictionMsec, _lastProcessNoiseUpdateMsec);
+        ekf_predict(
+                _qw, _qx, _qy, _qz,
+                _rx, _ry, _rz, 
+                _lastPredictionMsec, _lastProcessNoiseUpdateMsec,
+                qwp, qxp, qyp, qzp,
+                _ekf);
 
+    float qwf=0, qxf=0, qyf=0, qzf=0;
     const auto isStateInBounds = 
         _isUpdated && stream_ekfAction == EKF_FINALIZE ? 
-        ekf_finalize(_ekf) :
+        ekf_finalize(_qw, _qx, _qy, _qz, _ekf, qwf, qxf, qyf, qzf) :
         isStateWithinBounds(_ekf);
 
     switch (stream_ekfAction) {
@@ -777,7 +778,7 @@ static void ekf_step(void)
             break;
 
         case EKF_GET_STATE:
-            ekf_getState(_ekf, _rx, _ry, _rz, vehicleState);
+            ekf_getState(_ekf, _qw, _qx, _qy, _qz, _rx, _ry, _rz, vehicleState);
             setState(vehicleState);
             break;
 
@@ -805,16 +806,36 @@ static void ekf_step(void)
     const auto initializing = stream_ekfAction == EKF_INIT;
     const auto finalizing = stream_ekfAction == EKF_FINALIZE;
 
+    _qw = initializing ? 1 : 
+        finalizing ? qwf :
+        didPredict ? qwp :
+        _qw;
+
+    _qx = initializing ? 0 : 
+        finalizing ? qxf :
+        didPredict ? qxp :
+        _qx;
+
+    _qy = initializing ? 0 : 
+        finalizing ? qyf :
+        didPredict ? qyp :
+        _qy;
+
+    _qz = initializing ? 0 : 
+        finalizing ? qzf :
+        didPredict ? qzp :
+        _qz;
+
     _rx = initializing ? 0 : 
-        finalizing ? 2 * _ekf.qx * _ekf.qz - 2 * _ekf.qw * _ekf.qy :
+        finalizing ? 2 * _qx * _qz - 2 * _qw * _qy :
         _rx;
 
     _ry = initializing ? 0 : 
-        finalizing ? 2 * _ekf.qy * _ekf.qz + 2 * _ekf.qw * _ekf.qx :
+        finalizing ? 2 * _qy * _qz + 2 * _qw * _qx :
         _ry;
 
     _rz = initializing ? 1 : 
-        finalizing ? _ekf.qw*_ekf.qw-_ekf.qx*_ekf.qx-_ekf.qy*_ekf.qy+_ekf.qz*_ekf.qz:
+        finalizing ? _qw*_qw-_qx*_qx-_qy*_qy+_qz*_qz:
         _rz;
 
     if (finalizing) {
