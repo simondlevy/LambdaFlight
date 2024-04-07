@@ -523,19 +523,19 @@ static void ekf_predict(
         ekf.lastProcessNoiseUpdateMs;
 }
 
-static void updateWithGyro(ekf_t & ekf, const Axis3f * gyro)
+static void ekf_updateWithGyro(ekf_t & ekf, const Axis3f * gyro)
 {
     subSamplerAccumulate(&ekf.gyroSubSampler, gyro);
 
     memcpy(&ekf.gyroLatest, gyro, sizeof(Axis3f));
 }
 
-static void updateWithAccel(ekf_t & ekf, const Axis3f * accel)
+static void ekf_updateWithAccel(ekf_t & ekf, const Axis3f * accel)
 {
     subSamplerAccumulate(&ekf.accelSubSampler, accel);
 }
 
-static void updateWithRange(ekf_t & ekf, const rangeMeasurement_t *range)
+static void ekf_updateWithRange(ekf_t & ekf, const rangeMeasurement_t *range)
 {
     const auto angle = max( 0, 
             fabsf(acosf(ekf.r.z)) - 
@@ -568,7 +568,7 @@ static void updateWithRange(ekf_t & ekf, const rangeMeasurement_t *range)
             range->stdDev, shouldUpdate);
 }
 
-static void getState(ekf_t & ekf, vehicleState_t & state)
+static void ekf_getState(ekf_t & ekf, vehicleState_t & state)
 {
     state.dx = ekf.ekfState.dx;
 
@@ -622,10 +622,11 @@ static void new_ekf_step(
     ekf_t ekf2 = {};
     ekf_predict(ekf2, nowMsec, isFlying);
 
-    (void)updateWithGyro;
-    (void)updateWithAccel;
-    (void)updateWithRange;
-    (void)getState;
+    (void)ekf_updateWithGyro;
+    (void)ekf_updateWithAccel;
+    (void)ekf_updateWithRange;
+    (void)ekf_getState;
+
     (void)shouldPredict;
     (void)action;
     (void)_ekf;
