@@ -75,6 +75,15 @@ typedef struct {
 
 } new_quat_t;
 
+
+typedef struct {
+
+    float x;
+    float y;
+    float z;
+
+} axis3_t;
+
 typedef struct {
 
     Axis3f sum;
@@ -536,8 +545,6 @@ static bool ekf_predict(
 }
 
 static bool ekf_updateWithRange(
-        const float rx, 
-        const float ry, 
         const float rz,
         matrix_t & p,
         ekf_t & ekf)
@@ -579,9 +586,7 @@ static bool ekf_updateWithRange(
 }
 
 static bool ekf_updateWithFlow(
-        const float rx, 
-        const float ry, 
-        const float rz, 
+        const float rz,
         const Axis3f & gyroLatest,
         matrix_t & p,
         ekf_t & ekf) 
@@ -718,9 +723,7 @@ static void ekf_getState(
         const ekf_t & ekf, 
         const Axis3f & gyroLatest,
         const new_quat_t & q,
-        const float rx,
-        const float ry,
-        const float rz,
+        const axis3_t & r,
         vehicleState_t & state)
 {
     state.dx = ekf.dx;
@@ -729,7 +732,7 @@ static void ekf_getState(
 
     state.z = ekf.z;
 
-    state.dz = rx * ekf.dx + ry * ekf.dy + rz * ekf.dz;
+    state.dz = r.x * ekf.dx + r.y * ekf.dy + r.z * ekf.dz;
 
     state.phi = RADIANS_TO_DEGREES * atan2((2 * (q.y*q.z + q.w*q.x)),
             (q.w*q.w - q.x*q.x - q.y*q.y + q.z*q.z));
@@ -801,6 +804,8 @@ static void ekf_step(void)
 
     const auto quat = new_quat_t {_qw, _qx, _qy, _qz };
 
+    const auto r = axis3_t {_rx, _ry, _rz};
+
     switch (stream_ekfAction) {
 
         case EKF_INIT:
@@ -808,7 +813,7 @@ static void ekf_step(void)
             break;
 
         case EKF_GET_STATE:
-            ekf_getState(_ekf, _gyroLatest, quat, _rx, _ry, _rz, vehicleState);
+            ekf_getState(_ekf, _gyroLatest, quat, r, vehicleState);
             setState(vehicleState);
             break;
 
@@ -822,11 +827,11 @@ static void ekf_step(void)
             break;
 
         case EKF_UPDATE_WITH_FLOW:
-            didUpdateFlow = ekf_updateWithFlow(_rx, _ry, _rz, _gyroLatest, _p, _ekf);
+            didUpdateFlow = ekf_updateWithFlow(_rz, _gyroLatest, _p, _ekf);
             break;
 
         case EKF_UPDATE_WITH_RANGE:
-            didUpdateRange = ekf_updateWithRange(_rx, _ry, _rz, _p, _ekf);
+            didUpdateRange = ekf_updateWithRange(_rz, _p, _ekf);
             break;
 
         default:
