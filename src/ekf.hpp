@@ -579,10 +579,11 @@ static bool ekf_updateWithRange(
 }
 
 static bool ekf_updateWithFlow(
+        const ekfState_t & ekfs_in,
         const float rz,
         const Axis3f & gyroLatest,
         matrix_t & p,
-        ekfState_t & ekfs) 
+        ekfState_t & ekfs_out) 
 {
     // Inclusion of flow measurements in the EKF done by two scalar updates
 
@@ -601,11 +602,11 @@ static bool ekf_updateWithFlow(
     const auto omegax_b = gyroLatest.x * DEGREES_TO_RADIANS;
     const auto omegay_b = gyroLatest.y * DEGREES_TO_RADIANS;
 
-    const auto dx_g = ekfs.dx;
-    const auto dy_g = ekfs.dy;
+    const auto dx_g = ekfs_in.dx;
+    const auto dy_g = ekfs_in.dy;
 
     // Saturate elevation in prediction and correction to avoid singularities
-    const auto z_g = ekfs.z < 0.1f ? 0.1f : ekfs.z;
+    const auto z_g = ekfs_in.z < 0.1f ? 0.1f : ekfs_in.z;
 
     // ~~~ X velocity prediction and update ~~~
     // predicts the number of accumulated pixels in the x-direction
@@ -620,15 +621,17 @@ static bool ekf_updateWithFlow(
     hx[KC_STATE_DX] = (Npix * stream_flow.dt / thetapix) * 
         (rz / z_g);
 
+    ekfState_t ekfs_first = {};
+
     //First update
     scalarUpdate(
-            ekfs,
+            ekfs_in,
             hx, 
             measuredNX-predictedNX, 
             stream_flow.stdDevX*FLOW_RESOLUTION, 
             true,
             p,
-            ekfs);
+            ekfs_first);
 
     // ~~~ Y velocity prediction and update ~~~
     float hy[KC_STATE_DIM] = {};
@@ -643,13 +646,13 @@ static bool ekf_updateWithFlow(
 
     // Second update
     return scalarUpdate(
-            ekfs,
+            ekfs_first,
             hy, 
             measuredNY-predictedNY, 
             stream_flow.stdDevY*FLOW_RESOLUTION, 
             true,
             p,
-            ekfs);
+            ekfs_out);
 }
 
 static bool ekf_finalize(
@@ -819,7 +822,7 @@ static void ekf_step(void)
             break;
 
         case EKF_UPDATE_WITH_FLOW:
-            didUpdateFlow = ekf_updateWithFlow(_rz, _gyroLatest, _p, _ekfs);
+            didUpdateFlow = ekf_updateWithFlow(ekfs, _rz, _gyroLatest, _p, _ekfs);
             break;
 
         case EKF_UPDATE_WITH_RANGE:
