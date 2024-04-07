@@ -108,8 +108,6 @@ typedef struct {
 
     float p[KC_STATE_DIM][KC_STATE_DIM];
 
-    bool isUpdated;
-
     uint32_t lastPredictionMs;
 
     uint32_t lastProcessNoiseUpdateMs;
@@ -211,7 +209,7 @@ static void updateCovarianceMatrix(
     }
 }
 
-static void scalarUpdate(
+static bool scalarUpdate(
         ekf_t & ekf,
         const float h[KC_STATE_DIM],
         const float error, 
@@ -273,7 +271,7 @@ static void scalarUpdate(
         }
     }
 
-    ekf.isUpdated = shouldUpdate ? true : ekf.isUpdated;
+    return shouldUpdate;
 }
 
 static bool isPositionWithinBounds(const float pos)
@@ -415,8 +413,6 @@ static bool doFinalize(ekf_t & ekf)
 
     updateCovarianceMatrix(ekf.p, true);
 
-    ekf.isUpdated = false;
-
     return isStateWithinBounds(ekf);
 }
 
@@ -450,7 +446,6 @@ static void ekf_init(ekf_t & ekf)
     ekf.p[KC_STATE_E1][KC_STATE_E1] = powf(STDEV_INITIAL_ATTITUDE_ROLL_PITCH, 2);
     ekf.p[KC_STATE_E2][KC_STATE_E2] = powf(STDEV_INITIAL_ATTITUDE_YAW, 2);
 
-    ekf.isUpdated = false;
     ekf.lastPredictionMs = stream_nowMsec;
     ekf.lastProcessNoiseUpdateMs = stream_nowMsec;
 }
@@ -544,8 +539,6 @@ static void ekf_predict(ekf_t & ekf)
     ekf.quat.x = tmpq1/norm; 
     ekf.quat.y = tmpq2/norm; 
     ekf.quat.z = tmpq3/norm;
-
-    ekf.isUpdated =  true;
 
     ekf.lastPredictionMs =  stream_nowMsec;
 
@@ -644,7 +637,7 @@ static void ekf_predict(ekf_t & ekf)
         ekf.lastProcessNoiseUpdateMs;
 }
 
-static void ekf_updateWithRange(ekf_t & ekf)
+static bool ekf_updateWithRange(ekf_t & ekf)
 {
     const auto angle = max( 0, 
             fabsf(acosf(ekf.r.z)) - 
@@ -673,11 +666,11 @@ static void ekf_updateWithRange(ekf_t & ekf)
     // Only update the filter if the measurement is reliable 
     // (\hat{h} -> infty when R[2][2] -> 0)
     const auto shouldUpdate = fabs(ekf.r.z) > 0.1f && ekf.r.z > 0;
-    scalarUpdate(ekf, h, measuredDistance-predictedDistance, 
+    return scalarUpdate(ekf, h, measuredDistance-predictedDistance, 
             stream_range.stdDev, shouldUpdate);
 }
 
-static void ekf_updateWithFlow(ekf_t & ekf) 
+static bool ekf_updateWithFlow(ekf_t & ekf) 
 {
     const Axis3f *gyro = &ekf.gyroLatest;
 
@@ -733,7 +726,7 @@ static void ekf_updateWithFlow(ekf_t & ekf)
     hy[KC_STATE_DY] = (Npix * stream_flow.dt / thetapix) * (ekf.r.z / z_g);
 
     // Second update
-    scalarUpdate(ekf, hy, (measuredNY-predictedNY), 
+    return scalarUpdate(ekf, hy, (measuredNY-predictedNY), 
             stream_flow.stdDevY*FLOW_RESOLUTION, true);
 }
 
@@ -771,10 +764,10 @@ static void ekf_getState(const ekf_t & ekf, vehicleState_t & state)
     state.dpsi =    ekf.gyroLatest.z;
 }
 
-static bool ekf_finalize(ekf_t & ekf)
+static bool ekf_finalize(ekf_t & ekf, const bool isUpdated)
 {
     // Only finalize if data is updated
-    return ekf.isUpdated ? doFinalize(ekf) : isStateWithinBounds(ekf);
+    return isUpdated ? doFinalize(ekf) : isStateWithinBounds(ekf);
 }
 
 // ===========================================================================
@@ -782,6 +775,11 @@ static bool ekf_finalize(ekf_t & ekf)
 static void ekf_step(void)
 {
     static ekf_t _ekf;
+
+    static bool _isUpdated;
+
+    bool didUpdateFlow = false;
+    bool didUpdateRange = false;
 
     vehicleState_t vehicleState = {};
 
@@ -798,7 +796,7 @@ static void ekf_step(void)
             break;
 
         case EKF_FINALIZE:
-            setStateIsInBounds(ekf_finalize(_ekf));
+            setStateIsInBounds(ekf_finalize(_ekf, _isUpdated));
             break;
 
         case EKF_GET_STATE:
@@ -816,11 +814,19 @@ static void ekf_step(void)
             break;
 
         case EKF_UPDATE_WITH_FLOW:
-            ekf_updateWithFlow(_ekf);
+            didUpdateFlow = ekf_updateWithFlow(_ekf);
             break;
 
         case EKF_UPDATE_WITH_RANGE:
-            ekf_updateWithRange(_ekf);
+            didUpdateRange = ekf_updateWithRange(_ekf);
             break;
     }
+
+    _isUpdated = 
+        stream_ekfAction == EKF_INIT ? false :
+        stream_ekfAction == EKF_FINALIZE ? false :
+        stream_ekfAction == EKF_PREDICT ? true :
+        didUpdateFlow ? true :
+        didUpdateRange ? true :
+        _isUpdated;
 }
