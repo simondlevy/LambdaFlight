@@ -423,7 +423,7 @@ static bool doFinalize(ekf_t & ekf)
 
 // ===========================================================================
 
-static void ekf_init(ekf_t & ekf, const uint32_t stream_nowMsec)
+static void ekf_init(ekf_t & ekf)
 {
     ekf.ekfState.z = 0;
     ekf.ekfState.dx = 0;
@@ -800,7 +800,7 @@ static void ekf_step(void)
     switch (stream_ekfAction) {
 
         case EKF_INIT:
-            ekf_init(_ekf, stream_nowMsec);
+            ekf_init(_ekf);
             break;
 
         case EKF_PREDICT:
