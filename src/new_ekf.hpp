@@ -824,6 +824,33 @@ static bool new_ekf_step(
 {
     static ekf_t _ekf;
 
+    switch (action) {
+
+        case EKF_INIT:
+            break;
+
+        case EKF_PREDICT:
+            break;
+
+        case EKF_FINALIZE:
+            break;
+
+        case EKF_GET_STATE:
+            break;
+
+        case EKF_UPDATE_WITH_GYRO:
+            break;
+
+        case EKF_UPDATE_WITH_ACCEL:
+            break;
+
+        case EKF_UPDATE_WITH_FLOW:
+            break;
+
+        case EKF_UPDATE_WITH_RANGE:
+            break;
+    }
+
     ekf_t ekf1 = {};
     ekf_init(ekf1, nowMsec);
 
@@ -839,7 +866,6 @@ static bool new_ekf_step(
     (void)ekf_getState;
     (void)ekf_finalize;
 
-    (void)action;
     (void)shouldPredict;
     (void)vehicleState;
 
