@@ -814,25 +814,25 @@ static void ekf_step(void)
             break;
     }
 
-    if (stream_ekfAction == EKF_FINALIZE) {
+    const auto initializing = stream_ekfAction == EKF_INIT;
+    const auto finalizing = stream_ekfAction == EKF_FINALIZE;
+
+    if (finalizing) {
         setStateIsInBounds(isStateInBounds);
     }
 
     _lastProcessNoiseUpdateMsec = 
-        stream_ekfAction == EKF_INIT ? stream_nowMsec :
-        didPredict ? stream_nowMsec :
+        initializing || didPredict ?  
+        stream_nowMsec : 
         _lastProcessNoiseUpdateMsec;
 
     _lastPredictionMsec = 
-        stream_ekfAction == EKF_INIT ? stream_nowMsec :
-        shouldPredict ? stream_nowMsec :
+        initializing || shouldPredict ? stream_nowMsec :
         _lastPredictionMsec;
 
     _isUpdated = 
-        stream_ekfAction == EKF_INIT ? false :
-        stream_ekfAction == EKF_FINALIZE ? false :
+        initializing || finalizing ? false :
         stream_ekfAction == EKF_PREDICT ? true :
-        didUpdateFlow ? true :
-        didUpdateRange ? true :
+        didUpdateFlow || didUpdateRange ? true :
         _isUpdated;
 }
