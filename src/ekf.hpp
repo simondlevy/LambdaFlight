@@ -108,8 +108,6 @@ typedef struct {
 
     float p[KC_STATE_DIM][KC_STATE_DIM];
 
-    uint32_t lastPredictionMsec;
-
     uint32_t lastProcessNoiseUpdateMsec;
 
 } ekf_t;
@@ -446,15 +444,14 @@ static void ekf_init(ekf_t & ekf)
     ekf.p[KC_STATE_E1][KC_STATE_E1] = powf(STDEV_INITIAL_ATTITUDE_ROLL_PITCH, 2);
     ekf.p[KC_STATE_E2][KC_STATE_E2] = powf(STDEV_INITIAL_ATTITUDE_YAW, 2);
 
-    ekf.lastPredictionMsec = stream_nowMsec;
     ekf.lastProcessNoiseUpdateMsec = stream_nowMsec;
 }
 
-static void ekf_predict(ekf_t & ekf) 
+static void ekf_predict(ekf_t & ekf, const uint32_t lastPredictionMsec) 
 {
     subSamplerFinalize(&ekf.gyroSubSampler, DEGREES_TO_RADIANS);
 
-    const float dt = (stream_nowMsec - ekf.lastPredictionMsec) / 1000.0f;
+    const float dt = (stream_nowMsec - lastPredictionMsec) / 1000.0f;
 
     const auto dt2 = dt * dt;
 
@@ -634,7 +631,6 @@ static void ekf_predict(ekf_t & ekf)
     ekf.lastProcessNoiseUpdateMsec = isDtPositive ?  stream_nowMsec : 
         ekf.lastProcessNoiseUpdateMsec;
 
-    ekf.lastPredictionMsec =  stream_nowMsec;
 }
 
 static bool ekf_updateWithRange(ekf_t & ekf)
@@ -777,6 +773,7 @@ static void ekf_step(void)
     static ekf_t _ekf;
 
     static bool _isUpdated;
+    static uint32_t _lastPredictionMsec;
 
     bool didUpdateFlow = false;
     bool didUpdateRange = false;
@@ -787,11 +784,13 @@ static void ekf_step(void)
 
         case EKF_INIT:
             ekf_init(_ekf);
+            _lastPredictionMsec = stream_nowMsec;
             break;
 
         case EKF_PREDICT:
             if (stream_nowMsec >= stream_nextPredictionMsec) {
-                ekf_predict(_ekf);
+                ekf_predict(_ekf, _lastPredictionMsec);
+                _lastPredictionMsec =  stream_nowMsec;
             }
             break;
 
