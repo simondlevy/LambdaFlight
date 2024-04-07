@@ -340,79 +340,6 @@ static void afinalize(
 } 
 
 
-static bool doFinalize(ekf_t & ekf)
-{
-    // Incorporate the attitude error (Kalman filter state) with the attitude
-    const auto v0 = ekf.ekfState.e0;
-    const auto v1 = ekf.ekfState.e1;
-    const auto v2 = ekf.ekfState.e2;
-
-    const auto angle = sqrt(v0*v0 + v1*v1 + v2*v2) + EPS;
-    const auto ca = cos(angle / 2.0f);
-    const auto sa = sin(angle / 2.0f);
-
-    const auto dqw = ca;
-    const auto dqx = sa * v0 / angle;
-    const auto dqy = sa * v1 / angle;
-    const auto dqz = sa * v2 / angle;
-
-    const auto qw = ekf.quat.w;
-    const auto qx = ekf.quat.x;
-    const auto qy = ekf.quat.y;
-    const auto qz = ekf.quat.z;
-
-    // Rotate the quad's attitude by the delta quaternion vector
-    // computed above
-    const auto tmpq0 = dqw * qw - dqx * qx - dqy * qy - dqz * qz;
-    const auto tmpq1 = dqx * qw + dqw * qx + dqz * qy - dqy * qz;
-    const auto tmpq2 = dqy * qw - dqz * qx + dqw * qy + dqx * qz;
-    const auto tmpq3 = dqz * qw + dqy * qx - dqx * qy + dqw * qz;
-
-    // normalize and store the result
-    const auto norm = sqrt(tmpq0 * tmpq0 + tmpq1 * tmpq1 + tmpq2 * tmpq2 + 
-            tmpq3 * tmpq3) + EPS;
-
-    const auto isErrorSufficient  = 
-        (isErrorLarge(v0) || isErrorLarge(v1) || isErrorLarge(v2)) &&
-        isErrorInBounds(v0) && isErrorInBounds(v1) && isErrorInBounds(v2);
-
-    // finalize()
-    ekf.quat.w = isErrorSufficient ? tmpq0 / norm : ekf.quat.w;
-    ekf.quat.x = isErrorSufficient ? tmpq1 / norm : ekf.quat.x;
-    ekf.quat.y = isErrorSufficient ? tmpq2 / norm : ekf.quat.y;
-    ekf.quat.z = isErrorSufficient ? tmpq3 / norm : ekf.quat.z;
-
-    // Move attitude error into attitude if any of the angle errors are
-    // large enough
-    float A[KC_STATE_DIM][KC_STATE_DIM] = {};
-    afinalize(v0, v2, v2, A);
-    float At[KC_STATE_DIM][KC_STATE_DIM] = {};
-    transpose(A, At);     // A'
-    float AP[KC_STATE_DIM][KC_STATE_DIM] = {};
-    multiply(A, ekf.p, AP, true);  // AP
-    multiply(AP, At, ekf.p, isErrorSufficient); // APA'
-
-    // finalize()
-    // Convert the new attitude to a rotation matrix, such that we can
-    // rotate body-frame velocity and acc
-    ekf.r.x = 2 * ekf.quat.x * ekf.quat.z - 2 * ekf.quat.w * ekf.quat.y;
-    ekf.r.y = 2 * ekf.quat.y * ekf.quat.z + 2 * ekf.quat.w * ekf.quat.x;
-    ekf.r.z = ekf.quat.w * ekf.quat.w - 
-        ekf.quat.x * ekf.quat.x - ekf.quat.y * ekf.quat.y + 
-        ekf.quat.z * ekf.quat.z;
-
-    // Reset the attitude error
-    // XXX finalize()
-    ekf.ekfState.e0 = 0;
-    ekf.ekfState.e1 = 0;
-    ekf.ekfState.e2 = 0;
-
-    updateCovarianceMatrix(ekf.p, true);
-
-    return isStateWithinBounds(ekf);
-}
-
-
 // ===========================================================================
 
 static void ekf_init(ekf_t & ekf)
@@ -722,6 +649,77 @@ static bool ekf_updateWithFlow(ekf_t & ekf)
             stream_flow.stdDevY*FLOW_RESOLUTION, true);
 }
 
+static bool ekf_finalize(ekf_t & ekf)
+{
+    // Incorporate the attitude error (Kalman filter state) with the attitude
+    const auto v0 = ekf.ekfState.e0;
+    const auto v1 = ekf.ekfState.e1;
+    const auto v2 = ekf.ekfState.e2;
+
+    const auto angle = sqrt(v0*v0 + v1*v1 + v2*v2) + EPS;
+    const auto ca = cos(angle / 2.0f);
+    const auto sa = sin(angle / 2.0f);
+
+    const auto dqw = ca;
+    const auto dqx = sa * v0 / angle;
+    const auto dqy = sa * v1 / angle;
+    const auto dqz = sa * v2 / angle;
+
+    const auto qw = ekf.quat.w;
+    const auto qx = ekf.quat.x;
+    const auto qy = ekf.quat.y;
+    const auto qz = ekf.quat.z;
+
+    // Rotate the quad's attitude by the delta quaternion vector
+    // computed above
+    const auto tmpq0 = dqw * qw - dqx * qx - dqy * qy - dqz * qz;
+    const auto tmpq1 = dqx * qw + dqw * qx + dqz * qy - dqy * qz;
+    const auto tmpq2 = dqy * qw - dqz * qx + dqw * qy + dqx * qz;
+    const auto tmpq3 = dqz * qw + dqy * qx - dqx * qy + dqw * qz;
+
+    // normalize and store the result
+    const auto norm = sqrt(tmpq0 * tmpq0 + tmpq1 * tmpq1 + tmpq2 * tmpq2 + 
+            tmpq3 * tmpq3) + EPS;
+
+    const auto isErrorSufficient  = 
+        (isErrorLarge(v0) || isErrorLarge(v1) || isErrorLarge(v2)) &&
+        isErrorInBounds(v0) && isErrorInBounds(v1) && isErrorInBounds(v2);
+
+    // finalize()
+    ekf.quat.w = isErrorSufficient ? tmpq0 / norm : ekf.quat.w;
+    ekf.quat.x = isErrorSufficient ? tmpq1 / norm : ekf.quat.x;
+    ekf.quat.y = isErrorSufficient ? tmpq2 / norm : ekf.quat.y;
+    ekf.quat.z = isErrorSufficient ? tmpq3 / norm : ekf.quat.z;
+
+    // Move attitude error into attitude if any of the angle errors are
+    // large enough
+    float A[KC_STATE_DIM][KC_STATE_DIM] = {};
+    afinalize(v0, v2, v2, A);
+    float At[KC_STATE_DIM][KC_STATE_DIM] = {};
+    transpose(A, At);     // A'
+    float AP[KC_STATE_DIM][KC_STATE_DIM] = {};
+    multiply(A, ekf.p, AP, true);  // AP
+    multiply(AP, At, ekf.p, isErrorSufficient); // APA'
+
+    // finalize()
+    // Convert the new attitude to a rotation matrix, such that we can
+    // rotate body-frame velocity and acc
+    ekf.r.x = 2 * ekf.quat.x * ekf.quat.z - 2 * ekf.quat.w * ekf.quat.y;
+    ekf.r.y = 2 * ekf.quat.y * ekf.quat.z + 2 * ekf.quat.w * ekf.quat.x;
+    ekf.r.z = ekf.quat.w * ekf.quat.w - 
+        ekf.quat.x * ekf.quat.x - ekf.quat.y * ekf.quat.y + 
+        ekf.quat.z * ekf.quat.z;
+
+    // Reset the attitude error
+    // XXX finalize()
+    ekf.ekfState.e0 = 0;
+    ekf.ekfState.e1 = 0;
+    ekf.ekfState.e2 = 0;
+
+    updateCovarianceMatrix(ekf.p, true);
+
+    return isStateWithinBounds(ekf);
+} 
 
 static void ekf_getState(const ekf_t & ekf, vehicleState_t & state)
 {
@@ -756,11 +754,6 @@ static void ekf_getState(const ekf_t & ekf, vehicleState_t & state)
     state.dpsi =    ekf.gyroLatest.z;
 }
 
-static bool ekf_finalize(ekf_t & ekf, const bool isUpdated)
-{
-    // Only finalize if data is updated
-    return isUpdated ? doFinalize(ekf) : isStateWithinBounds(ekf);
-}
 
 // ===========================================================================
 
@@ -777,7 +770,6 @@ static void ekf_step(void)
 
     vehicleState_t vehicleState = {};
 
-
     const auto shouldPredict = stream_ekfAction == EKF_PREDICT && 
         stream_nowMsec >= stream_nextPredictionMsec;
 
@@ -785,14 +777,15 @@ static void ekf_step(void)
         shouldPredict && 
         ekf_predict(_ekf, _lastPredictionMsec, _lastProcessNoiseUpdateMsec);
 
+    const auto isStateInBounds = 
+        _isUpdated && stream_ekfAction == EKF_FINALIZE ? 
+        ekf_finalize(_ekf) :
+        isStateWithinBounds(_ekf);
+
     switch (stream_ekfAction) {
 
         case EKF_INIT:
             ekf_init(_ekf);
-            break;
-
-        case EKF_FINALIZE:
-            setStateIsInBounds(ekf_finalize(_ekf, _isUpdated));
             break;
 
         case EKF_GET_STATE:
@@ -819,6 +812,10 @@ static void ekf_step(void)
 
         default:
             break;
+    }
+
+    if (stream_ekfAction == EKF_FINALIZE) {
+        setStateIsInBounds(isStateInBounds);
     }
 
     _lastProcessNoiseUpdateMsec = 
