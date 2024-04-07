@@ -786,14 +786,12 @@ static void ekf_step(void)
 
     if (shouldPredict) {
         ekf_predict(_ekf, _lastPredictionMsec);
-        _lastPredictionMsec =  stream_nowMsec;
     }
 
     switch (stream_ekfAction) {
 
         case EKF_INIT:
             ekf_init(_ekf);
-            _lastPredictionMsec = stream_nowMsec;
             break;
 
         case EKF_FINALIZE:
@@ -825,6 +823,11 @@ static void ekf_step(void)
         default:
             break;
     }
+
+    _lastPredictionMsec = 
+        stream_ekfAction == EKF_INIT ? stream_nowMsec :
+        shouldPredict ? stream_nowMsec :
+        _lastPredictionMsec;
 
     _isUpdated = 
         stream_ekfAction == EKF_INIT ? false :
