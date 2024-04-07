@@ -108,6 +108,8 @@ typedef struct {
 
 typedef struct {
 
+    newquat_t quat;
+
     Axis3f _gyroLatest;
 
     axis3fSubSampler_t accSubSampler;
@@ -127,17 +129,47 @@ typedef struct {
 
 } ekf_t;
 
-static void ekf_init(ekf_t & ekf)
+static void ekf_init(ekf_t & ekf, const uint32_t nowMsec)
 {
-    (void)ekf;
+    ekf.ekfState.z = 0;
+    ekf.ekfState.dx = 0;
+    ekf.ekfState.dy = 0;
+    ekf.ekfState.dz = 0;
+    ekf.ekfState.e0 = 0;
+    ekf.ekfState.e1 = 0;
+    ekf.ekfState.e2 = 0;
+
+    ekf.quat.w = QW_INIT;
+    ekf.quat.x = QX_INIT;
+    ekf.quat.y = QY_INIT;
+    ekf.quat.z = QZ_INIT;
+
+    ekf.r.x = 0;
+    ekf.r.y = 0;
+    ekf.r.z = 1;
+
+    memset(&ekf.p, 0, sizeof(ekf.p));
+
+    ekf.p[KC_STATE_Z][KC_STATE_Z] = powf(STDEV_INITIAL_POSITION_Z, 2);
+    ekf.p[KC_STATE_DX][KC_STATE_DX] = powf(STDEV_INITIAL_VELOCITY, 2);
+    ekf.p[KC_STATE_DY][KC_STATE_DY] = powf(STDEV_INITIAL_VELOCITY, 2);
+    ekf.p[KC_STATE_DZ][KC_STATE_DZ] = powf(STDEV_INITIAL_VELOCITY, 2);
+    ekf.p[KC_STATE_E1][KC_STATE_E1] = powf(STDEV_INITIAL_ATTITUDE_ROLL_PITCH, 2);
+    ekf.p[KC_STATE_E2][KC_STATE_E2] = powf(STDEV_INITIAL_ATTITUDE_YAW, 2);
+
+    ekf.isUpdated = false;
+    ekf.lastPredictionMs = nowMsec;
+    ekf.lastProcessNoiseUpdateMs = nowMsec;
 }
 
-static void new_ekf_step(const new_ekfAction_e action)
+static void new_ekf_step(
+        const new_ekfAction_e action,
+        const uint32_t nowMsec)
 {
     static ekf_t _ekf;
 
     ekf_t ekf = {};
-    ekf_init(ekf);
+    ekf_init(ekf, nowMsec);
 
     (void)action;
 

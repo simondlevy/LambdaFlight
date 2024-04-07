@@ -10,14 +10,13 @@ class Ekf {
 
     public:
 
-        void init(const uint32_t nowMs)
+        void init(const uint32_t nowMsec)
         {
             axis3fSubSamplerInit(&_accSubSampler, MSS_TO_GS);
             axis3fSubSamplerInit(&_gyroSubSampler, DEGREES_TO_RADIANS);
 
             // Reset all data to 0 (like upon system reset)
 
-            // XXX init()
             _ekfState.z = 0;
             _ekfState.dx = 0;
             _ekfState.dy = 0;
@@ -44,30 +43,27 @@ class Ekf {
 
             // initialize state variances
             _Pmat[KC_STATE_Z][KC_STATE_Z] = powf(STDEV_INITIAL_POSITION_Z, 2);
-
             _Pmat[KC_STATE_DX][KC_STATE_DX] = powf(STDEV_INITIAL_VELOCITY, 2);
             _Pmat[KC_STATE_DY][KC_STATE_DY] = powf(STDEV_INITIAL_VELOCITY, 2);
             _Pmat[KC_STATE_DZ][KC_STATE_DZ] = powf(STDEV_INITIAL_VELOCITY, 2);
-
-            
             _Pmat[KC_STATE_E1][KC_STATE_E1] = powf(STDEV_INITIAL_ATTITUDE_ROLL_PITCH, 2);
             _Pmat[KC_STATE_E2][KC_STATE_E2] = powf(STDEV_INITIAL_ATTITUDE_YAW, 2);
 
             _isUpdated = false;
-            _lastPredictionMs = nowMs;
-            _lastProcessNoiseUpdateMs = nowMs;
+            _lastPredictionMs = nowMsec;
+            _lastProcessNoiseUpdateMs = nowMsec;
         }
 
         void predict(
-                const uint32_t nowMs, 
-                const uint32_t nextPredictionMs,
+                const uint32_t nowMsec, 
+                const uint32_t nextPredictionMsec,
                 const bool isFlying) 
         {
-            const bool shouldPredict = nowMs >= nextPredictionMs;
+            const bool shouldPredict = nowMsec >= nextPredictionMsec;
 
             axis3fSubSamplerFinalize(&_gyroSubSampler, shouldPredict);
 
-            const float dt = (nowMs - _lastPredictionMs) / 1000.0f;
+            const float dt = (nowMsec - _lastPredictionMs) / 1000.0f;
 
             const auto dt2 = dt * dt;
 
@@ -163,7 +159,7 @@ class Ekf {
 
             _isUpdated = shouldPredict ? true : _isUpdated;
 
-            _lastPredictionMs = shouldPredict ? nowMs : _lastPredictionMs;
+            _lastPredictionMs = shouldPredict ? nowMsec : _lastPredictionMs;
 
             // ====== COVARIANCE UPDATE ======
 
@@ -237,7 +233,7 @@ class Ekf {
             multiply(A, _Pmat, AP, true);  // AP
             multiply(AP, At, _Pmat, shouldPredict); // APA'
 
-            const auto dt1 = (nowMs - _lastProcessNoiseUpdateMs) / 1000.0f;
+            const auto dt1 = (nowMsec - _lastProcessNoiseUpdateMs) / 1000.0f;
             const auto isDtPositive = dt1 > 0;
 
 
@@ -257,7 +253,7 @@ class Ekf {
 
             updateCovarianceMatrix(isDtPositive);
 
-            _lastProcessNoiseUpdateMs = isDtPositive ?  nowMs : 
+            _lastProcessNoiseUpdateMs = isDtPositive ?  nowMsec : 
 
                 _lastProcessNoiseUpdateMs;
         }
