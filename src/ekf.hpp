@@ -644,14 +644,14 @@ static void ekf_predict(ekf_t & ekf)
         ekf.lastProcessNoiseUpdateMs;
 }
 
-static void ekf_updateWithRange(ekf_t & ekf, const rangeMeasurement_t *range)
+static void ekf_updateWithRange(ekf_t & ekf)
 {
     const auto angle = max( 0, 
             fabsf(acosf(ekf.r.z)) - 
             DEGREES_TO_RADIANS * (15.0f / 2.0f));
 
     const auto predictedDistance = ekf.ekfState.z / cosf(angle);
-    const auto measuredDistance = range->distance; // [m]
+    const auto measuredDistance = stream_range.distance; // [m]
 
     // The sensor model (Pg.95-96,
     // https://lup.lub.lu.se/student-papers/search/publication/8905295)
@@ -674,10 +674,10 @@ static void ekf_updateWithRange(ekf_t & ekf, const rangeMeasurement_t *range)
     // (\hat{h} -> infty when R[2][2] -> 0)
     const auto shouldUpdate = fabs(ekf.r.z) > 0.1f && ekf.r.z > 0;
     scalarUpdate(ekf, h, measuredDistance-predictedDistance, 
-            range->stdDev, shouldUpdate);
+            stream_range.stdDev, shouldUpdate);
 }
 
-static void ekf_updateWithFlow(ekf_t & ekf, const flowMeasurement_t *flow) 
+static void ekf_updateWithFlow(ekf_t & ekf) 
 {
     const Axis3f *gyro = &ekf.gyroLatest;
 
@@ -707,34 +707,34 @@ static void ekf_updateWithFlow(ekf_t & ekf, const flowMeasurement_t *flow)
     // ~~~ X velocity prediction and update ~~~
     // predicts the number of accumulated pixels in the x-direction
     float hx[KC_STATE_DIM] = {};
-    auto predictedNX = (flow->dt * Npix / thetapix ) * 
+    auto predictedNX = (stream_flow.dt * Npix / thetapix ) * 
         ((dx_g * ekf.r.z / z_g) - omegay_b);
-    auto measuredNX = flow->dpixelx*FLOW_RESOLUTION;
+    auto measuredNX = stream_flow.dpixelx*FLOW_RESOLUTION;
 
     // derive measurement equation with respect to dx (and z?)
-    hx[KC_STATE_Z] = (Npix * flow->dt / thetapix) * 
+    hx[KC_STATE_Z] = (Npix * stream_flow.dt / thetapix) * 
         ((ekf.r.z * dx_g) / (-z_g * z_g));
-    hx[KC_STATE_DX] = (Npix * flow->dt / thetapix) * 
+    hx[KC_STATE_DX] = (Npix * stream_flow.dt / thetapix) * 
         (ekf.r.z / z_g);
 
     //First update
     scalarUpdate(ekf, hx, (measuredNX-predictedNX), 
-            flow->stdDevX*FLOW_RESOLUTION, true);
+            stream_flow.stdDevX*FLOW_RESOLUTION, true);
 
     // ~~~ Y velocity prediction and update ~~~
     float hy[KC_STATE_DIM] = {};
-    auto predictedNY = (flow->dt * Npix / thetapix ) * 
+    auto predictedNY = (stream_flow.dt * Npix / thetapix ) * 
         ((dy_g * ekf.r.z / z_g) + omegax_b);
-    auto measuredNY = flow->dpixely*FLOW_RESOLUTION;
+    auto measuredNY = stream_flow.dpixely*FLOW_RESOLUTION;
 
     // derive measurement equation with respect to dy (and z?)
-    hy[KC_STATE_Z] = (Npix * flow->dt / thetapix) * 
+    hy[KC_STATE_Z] = (Npix * stream_flow.dt / thetapix) * 
         ((ekf.r.z * dy_g) / (-z_g * z_g));
-    hy[KC_STATE_DY] = (Npix * flow->dt / thetapix) * (ekf.r.z / z_g);
+    hy[KC_STATE_DY] = (Npix * stream_flow.dt / thetapix) * (ekf.r.z / z_g);
 
     // Second update
     scalarUpdate(ekf, hy, (measuredNY-predictedNY), 
-            flow->stdDevY*FLOW_RESOLUTION, true);
+            stream_flow.stdDevY*FLOW_RESOLUTION, true);
 }
 
 
@@ -816,11 +816,11 @@ static void ekf_step(void)
             break;
 
         case EKF_UPDATE_WITH_FLOW:
-            ekf_updateWithFlow(_ekf, &stream_flow);
+            ekf_updateWithFlow(_ekf);
             break;
 
         case EKF_UPDATE_WITH_RANGE:
-            ekf_updateWithRange(_ekf, &stream_range);
+            ekf_updateWithRange(_ekf);
             break;
     }
 }
