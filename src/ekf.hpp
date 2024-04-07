@@ -71,8 +71,6 @@ typedef struct {
 
 typedef struct {
 
-    axisSubSampler_t accelSubSampler;
-
     float z;
     float dx;
     float dy;
@@ -352,6 +350,7 @@ static bool ekf_predict(
         float & qy_out,
         float & qz_out,
         axisSubSampler_t & gyroSubSampler,
+        axisSubSampler_t & accelSubSampler,
         ekf_t & ekf) 
 {
     subSamplerFinalize(&gyroSubSampler, DEGREES_TO_RADIANS);
@@ -360,9 +359,9 @@ static bool ekf_predict(
 
     const auto dt2 = dt * dt;
 
-    subSamplerFinalize(&ekf.accelSubSampler, MSS_TO_GS);
+    subSamplerFinalize(&accelSubSampler, MSS_TO_GS);
 
-    const Axis3f * acc = &ekf.accelSubSampler.subSample; 
+    const Axis3f * acc = &accelSubSampler.subSample; 
 
     // Position updates in the body frame (will be rotated to inertial frame);
     // thrust can only be produced in the body's Z direction
@@ -727,6 +726,7 @@ static void ekf_step(void)
     static ekf_t _ekf;
 
     static axisSubSampler_t _gyroSubSampler;
+    static axisSubSampler_t _accelSubSampler;
 
     static bool _isUpdated;
     static uint32_t _lastPredictionMsec;
@@ -760,6 +760,7 @@ static void ekf_step(void)
                 _lastPredictionMsec, _lastProcessNoiseUpdateMsec,
                 qwp, qxp, qyp, qzp,
                 _gyroSubSampler,
+                _accelSubSampler,
                 _ekf);
 
     float qwf=0, qxf=0, qyf=0, qzf=0;
@@ -786,7 +787,7 @@ static void ekf_step(void)
             break;
 
         case EKF_UPDATE_WITH_ACCEL:
-            subSamplerAccumulate(&_ekf.accelSubSampler, &stream_accel);
+            subSamplerAccumulate(&_accelSubSampler, &stream_accel);
             break;
 
         case EKF_UPDATE_WITH_FLOW:
