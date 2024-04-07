@@ -102,6 +102,11 @@ class EstimatorTask : public FreeRTOSTask {
             enqueue(&m, isInInterrupt);
         }
 
+        void setStateInBounds(const bool inBounds)
+        {
+            _isStateInBounds = inBounds;
+        }
+
     private:
 
         static const uint32_t WARNING_HOLD_BACK_TIME_MS = 2000;
@@ -117,6 +122,8 @@ class EstimatorTask : public FreeRTOSTask {
         xQueueHandle _measurementsQueue;
 
         RateSupervisor _rateSupervisor;
+
+        bool _isStateInBounds; // set by callback from EKF
 
         // Mutex to protect data that is shared between the task and
         // functions called by the stabilizer loop
@@ -220,9 +227,10 @@ class EstimatorTask : public FreeRTOSTask {
             }
 
             stream_ekfAction = EKF_FINALIZE;
-            auto isStateInBounds = ekf_step();
 
-            if (!isStateInBounds) { 
+            ekf_step(); // sets _isStateInBounds
+
+            if (!_isStateInBounds) { 
 
                 didResetEstimation = true;
 

@@ -802,11 +802,9 @@ static bool ekf_finalize(ekf_t & ekf)
 
 // ===========================================================================
 
-static bool ekf_step(vehicleState_t * vehicleState=NULL)
+static void ekf_step(vehicleState_t * vehicleState=NULL)
 {
     static ekf_t _ekf;
-
-    bool result = false;
 
     switch (stream_ekfAction) {
 
@@ -821,7 +819,7 @@ static bool ekf_step(vehicleState_t * vehicleState=NULL)
             break;
 
         case EKF_FINALIZE:
-            result = ekf_finalize(_ekf);
+            setStateInBounds(ekf_finalize(_ekf));
             break;
 
         case EKF_GET_STATE:
@@ -844,6 +842,4 @@ static bool ekf_step(vehicleState_t * vehicleState=NULL)
             ekf_updateWithRange(_ekf, &stream_range);
             break;
     }
-
-    return result;
 }
