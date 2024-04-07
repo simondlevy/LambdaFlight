@@ -6,61 +6,8 @@
 #include "datatypes.h"
 #include "linalg.h"
 
-// Quaternion used for initial orientation
-static const float QW_INIT = 1;
-static const float QX_INIT = 0;
-static const float QY_INIT = 0;
-static const float QZ_INIT = 0;
-
-// Initial variances, uncertain of position, but know we're
-// stationary and roughly flat
-static const float STDEV_INITIAL_POSITION_Z = 1;
-static const float STDEV_INITIAL_VELOCITY = 0.01;
-static const float STDEV_INITIAL_ATTITUDE_ROLL_PITCH = 0.01;
-static const float STDEV_INITIAL_ATTITUDE_YAW = 0.01;
-
-static const float PROC_NOISE_ACC_XY = 0.5;
-static const float PROC_NOISE_ACC_Z = 1.0;
-static const float PROC_NOISE_VEL = 0;
-static const float PROC_NOISE_POS = 0;
-static const float PROC_NOISE_ATT = 0;
-static const float MEAS_NOISE_GYRO_ROLL_PITCH = 0.1; // radians per second
-static const float MEAS_NOISE_GYRO_ROLL_YAW = 0.1;   // radians per second
-
-static const float MSS_TO_GS = 9.81;
-
 static const float DEGREES_TO_RADIANS = M_PI / 180.0f;
 static const float RADIANS_TO_DEGREES = 180.0f / M_PI;
-
-//We do get the measurements in 10x the motion pixels (experimentally measured)
-static const float FLOW_RESOLUTION = 0.1;
-
-// The bounds on the covariance, these shouldn't be hit, but sometimes are... why?
-static const float MAX_COVARIANCE = 100;
-static const float MIN_COVARIANCE = 1e-6;
-
-// The bounds on states, these shouldn't be hit...
-static const float MAX_POSITION = 100; //meters
-static const float MAX_VELOCITY = 10; //meters per second
-
-// Small number epsilon, to prevent dividing by zero
-static const float EPS = 1e-6f;
-
-// the reversion of pitch and roll to zero
-static const float ROLLPITCH_ZERO_REVERSION = 0.001;
-
-typedef enum {
-
-    EKF_INIT,
-    EKF_PREDICT,
-    EKF_FINALIZE,
-    EKF_GET_STATE,
-    EKF_UPDATE_WITH_GYRO,
-    EKF_UPDATE_WITH_ACCEL,
-    EKF_UPDATE_WITH_FLOW,
-    EKF_UPDATE_WITH_RANGE 
-
-} ekfAction_e;
 
 class Ekf { 
 
@@ -105,7 +52,7 @@ class Ekf {
             _Pmat[KC_STATE_DY][KC_STATE_DY] = powf(STDEV_INITIAL_VELOCITY, 2);
             _Pmat[KC_STATE_DZ][KC_STATE_DZ] = powf(STDEV_INITIAL_VELOCITY, 2);
 
-            _Pmat[KC_STATE_E0][KC_STATE_E0] = powf(STDEV_INITIAL_ATTITUDE_ROLL_PITCH, 2);
+            
             _Pmat[KC_STATE_E1][KC_STATE_E1] = powf(STDEV_INITIAL_ATTITUDE_ROLL_PITCH, 2);
             _Pmat[KC_STATE_E2][KC_STATE_E2] = powf(STDEV_INITIAL_ATTITUDE_YAW, 2);
 
@@ -374,7 +321,6 @@ class Ekf {
             // thankfully look to be symmetric
 
             float Npix = 35.0;                      // [pixels] (same in x and y)
-            //float thetapix = DEGREES_TO_RADIANS * 4.0f;     // [rad]    (same in x and y)
 
             // 2*sin(42/2); 42degree is the agnle of aperture, here we computed the
             // corresponding ground length
@@ -458,7 +404,48 @@ class Ekf {
             return _isUpdated ? doFinalize() : isStateWithinBounds();
         }
 
-     private:
+    private:
+
+        // Quaternion used for initial orientation
+        static constexpr float QW_INIT = 1;
+        static constexpr float QX_INIT = 0;
+        static constexpr float QY_INIT = 0;
+        static constexpr float QZ_INIT = 0;
+
+        // Initial variances, uncertain of position, but know we're
+        // stationary and roughly flat
+        static constexpr float STDEV_INITIAL_POSITION_Z = 1;
+        static constexpr float STDEV_INITIAL_VELOCITY = 0.01;
+        static constexpr float STDEV_INITIAL_ATTITUDE_ROLL_PITCH = 0.01;
+        static constexpr float STDEV_INITIAL_ATTITUDE_YAW = 0.01;
+
+        static constexpr float PROC_NOISE_ACC_XY = 0.5;
+        static constexpr float PROC_NOISE_ACC_Z = 1.0;
+        static constexpr float PROC_NOISE_VEL = 0;
+        static constexpr float PROC_NOISE_POS = 0;
+        static constexpr float PROC_NOISE_ATT = 0;
+        static constexpr float MEAS_NOISE_GYRO_ROLL_PITCH = 0.1; // radians per second
+        static constexpr float MEAS_NOISE_GYRO_ROLL_YAW = 0.1;   // radians per second
+
+        static constexpr float MSS_TO_GS = 9.81;
+
+        //We do get the measurements in 10x the motion pixels (experimentally measured)
+        static constexpr float FLOW_RESOLUTION = 0.1;
+
+        // The bounds on the covariance, these shouldn't be hit, but sometimes are... why?
+        static constexpr float MAX_COVARIANCE = 100;
+        static constexpr float MIN_COVARIANCE = 1e-6;
+
+        // The bounds on states, these shouldn't be hit...
+        static constexpr float MAX_POSITION = 100; //meters
+        static constexpr float MAX_VELOCITY = 10; //meters per second
+
+        // Small number epsilon, to prevent dividing by zero
+        static constexpr float EPS = 1e-6f;
+
+        // the reversion of pitch and roll to zero
+        static constexpr float ROLLPITCH_ZERO_REVERSION = 0.001;
+
 
         // The quad's attitude as a quaternion (w,x,y,z) We store as a quaternion
         // to allow easy normalization (in comparison to a rotation matrix),
@@ -468,7 +455,7 @@ class Ekf {
         float _qy;
         float _qz;
 
-       /**
+        /**
          * Vehicle State
          *
          * The internally-estimated state is:
