@@ -644,18 +644,6 @@ static void ekf_predict(ekf_t & ekf)
         ekf.lastProcessNoiseUpdateMs;
 }
 
-static void ekf_updateWithGyro(ekf_t & ekf, const Axis3f * gyro)
-{
-    subSamplerAccumulate(&ekf.gyroSubSampler, gyro);
-
-    memcpy(&ekf.gyroLatest, gyro, sizeof(Axis3f));
-}
-
-static void ekf_updateWithAccel(ekf_t & ekf, const Axis3f * accel)
-{
-    subSamplerAccumulate(&ekf.accelSubSampler, accel);
-}
-
 static void ekf_updateWithRange(ekf_t & ekf, const rangeMeasurement_t *range)
 {
     const auto angle = max( 0, 
@@ -819,11 +807,12 @@ static void ekf_step(void)
             break;
 
         case EKF_UPDATE_WITH_GYRO:
-            ekf_updateWithGyro(_ekf, &stream_gyro);
+            subSamplerAccumulate(&_ekf.gyroSubSampler, &stream_gyro);
+            memcpy(&_ekf.gyroLatest, &stream_gyro, sizeof(Axis3f));
             break;
 
         case EKF_UPDATE_WITH_ACCEL:
-            ekf_updateWithAccel(_ekf, &stream_accel);
+            subSamplerAccumulate(&_ekf.accelSubSampler, &stream_accel);
             break;
 
         case EKF_UPDATE_WITH_FLOW:
