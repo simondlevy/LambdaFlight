@@ -158,15 +158,12 @@ static Axis3f* subSamplerFinalize(
     return &subSampler->subSample;
 }
 
-static float rotateQuat(
-        const float val, 
-        const float initVal,
-        const bool isFlying)
+static float rotateQuat( const float val, const float initVal)
 {
     const auto keep = 1.0f - ROLLPITCH_ZERO_REVERSION;
 
-    return (val * (isFlying ? 1: keep)) +
-        (isFlying ? 0 : ROLLPITCH_ZERO_REVERSION * initVal);
+    return (val * (stream_isFlying ? 1: keep)) +
+        (stream_isFlying ? 0 : ROLLPITCH_ZERO_REVERSION * initVal);
 }
 
 static void addNoiseDiagonal(
@@ -426,7 +423,7 @@ static bool doFinalize(ekf_t & ekf)
 
 // ===========================================================================
 
-static void ekf_init(ekf_t & ekf, const uint32_t nowMsec)
+static void ekf_init(ekf_t & ekf, const uint32_t stream_nowMsec)
 {
     ekf.ekfState.z = 0;
     ekf.ekfState.dx = 0;
@@ -454,16 +451,15 @@ static void ekf_init(ekf_t & ekf, const uint32_t nowMsec)
     ekf.p[KC_STATE_E2][KC_STATE_E2] = powf(STDEV_INITIAL_ATTITUDE_YAW, 2);
 
     ekf.isUpdated = false;
-    ekf.lastPredictionMs = nowMsec;
-    ekf.lastProcessNoiseUpdateMs = nowMsec;
+    ekf.lastPredictionMs = stream_nowMsec;
+    ekf.lastProcessNoiseUpdateMs = stream_nowMsec;
 }
 
-static void ekf_predict(
-        ekf_t & ekf, const uint32_t nowMsec, const bool isFlying) 
+static void ekf_predict(ekf_t & ekf) 
 {
     subSamplerFinalize(&ekf.gyroSubSampler, DEGREES_TO_RADIANS);
 
-    const float dt = (nowMsec - ekf.lastPredictionMs) / 1000.0f;
+    const float dt = (stream_nowMsec - ekf.lastPredictionMs) / 1000.0f;
 
     const auto dt2 = dt * dt;
 
@@ -473,8 +469,8 @@ static void ekf_predict(
 
     // Position updates in the body frame (will be rotated to inertial frame);
     // thrust can only be produced in the body's Z direction
-    const auto dx = ekf.ekfState.dx * dt + isFlying ? 0 : acc->x * dt2 / 2;
-    const auto dy = ekf.ekfState.dy * dt + isFlying ? 0 : acc->y * dt2 / 2;
+    const auto dx = ekf.ekfState.dx * dt + stream_isFlying ? 0 : acc->x * dt2 / 2;
+    const auto dy = ekf.ekfState.dy * dt + stream_isFlying ? 0 : acc->y * dt2 / 2;
     const auto dz = ekf.ekfState.dz * dt + acc->z * dt2 / 2; 
 
     // keep previous time step's state for the update
@@ -482,8 +478,8 @@ static void ekf_predict(
     const auto tmpSDY = ekf.ekfState.dy;
     const auto tmpSDZ = ekf.ekfState.dz;
 
-    const auto accx = isFlying ? 0 : acc->x;
-    const auto accy = isFlying ? 0 : acc->y;
+    const auto accx = stream_isFlying ? 0 : acc->x;
+    const auto accy = stream_isFlying ? 0 : acc->y;
 
     const Axis3f * gyro = &ekf.gyroSubSampler.subSample; 
 
@@ -509,17 +505,10 @@ static void ekf_predict(
     const auto qy = ekf.quat.y;
     const auto qz = ekf.quat.z;
 
-    const auto tmpq0 = rotateQuat(
-            dqw*qw - dqx*qx - dqy*qy - dqz*qz, QW_INIT, isFlying);
-
-    const auto tmpq1 = rotateQuat(
-            dqx*qw + dqw*qx + dqz*qy - dqy*qz, QX_INIT, isFlying);
-
-    const auto tmpq2 = rotateQuat(
-            dqy*qw - dqz*qx + dqw*qy + dqx*qz, QY_INIT, isFlying);
-
-    const auto tmpq3 = rotateQuat(
-            dqz*qw + dqy*qx - dqx*qy + dqw*qz, QZ_INIT, isFlying);
+    const auto tmpq0 = rotateQuat(dqw*qw - dqx*qx - dqy*qy - dqz*qz, QW_INIT);
+    const auto tmpq1 = rotateQuat(dqx*qw + dqw*qx + dqz*qy - dqy*qz, QX_INIT);
+    const auto tmpq2 = rotateQuat(dqy*qw - dqz*qx + dqw*qy + dqx*qz, QY_INIT);
+    const auto tmpq3 = rotateQuat(dqz*qw + dqy*qx - dqx*qy + dqw*qz, QZ_INIT);
 
     // normalize and store the result
     const auto norm = 
@@ -558,7 +547,7 @@ static void ekf_predict(
 
     ekf.isUpdated =  true;
 
-    ekf.lastPredictionMs =  nowMsec;
+    ekf.lastPredictionMs =  stream_nowMsec;
 
     // ====== COVARIANCE UPDATE ======
 
@@ -632,7 +621,7 @@ static void ekf_predict(
     multiply(A, ekf.p, AP, true);  // AP
     multiply(AP, At, ekf.p); // APA'
 
-    const auto dt1 = (nowMsec - ekf.lastProcessNoiseUpdateMs) / 1000.0f;
+    const auto dt1 = (stream_nowMsec - ekf.lastProcessNoiseUpdateMs) / 1000.0f;
     const auto isDtPositive = dt1 > 0;
 
     // Add process noise
@@ -651,7 +640,7 @@ static void ekf_predict(
 
     updateCovarianceMatrix(ekf.p, isDtPositive);
 
-    ekf.lastProcessNoiseUpdateMs = isDtPositive ?  nowMsec : 
+    ekf.lastProcessNoiseUpdateMs = isDtPositive ?  stream_nowMsec : 
         ekf.lastProcessNoiseUpdateMs;
 }
 
@@ -816,7 +805,7 @@ static void ekf_step(void)
 
         case EKF_PREDICT:
             if (stream_nowMsec >= stream_nextPredictionMsec) {
-                ekf_predict(_ekf, stream_nowMsec, stream_isFlying);
+                ekf_predict(_ekf);
             }
             break;
 
