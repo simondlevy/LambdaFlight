@@ -802,15 +802,7 @@ static bool ekf_finalize(ekf_t & ekf)
 
 // ===========================================================================
 
-static bool ekf_step(
-        const uint32_t nowMsec=0,
-        const uint32_t nextPredictionMsec=0,
-        const bool isFlying=false,
-        const Axis3f * gyro=NULL,
-        const Axis3f * accel=NULL,
-        const flowMeasurement_t *flow=NULL, 
-        const rangeMeasurement_t *range=NULL,
-        vehicleState_t * vehicleState=NULL)
+static bool ekf_step(vehicleState_t * vehicleState=NULL)
 {
     static ekf_t _ekf;
 
@@ -819,12 +811,12 @@ static bool ekf_step(
     switch (stream_ekfAction) {
 
         case EKF_INIT:
-            ekf_init(_ekf, nowMsec);
+            ekf_init(_ekf, stream_nowMsec);
             break;
 
         case EKF_PREDICT:
-            if (nowMsec >= nextPredictionMsec) {
-                ekf_predict(_ekf, nowMsec, isFlying);
+            if (stream_nowMsec >= stream_nextPredictionMsec) {
+                ekf_predict(_ekf, stream_nowMsec, stream_isFlying);
             }
             break;
 
@@ -837,19 +829,19 @@ static bool ekf_step(
             break;
 
         case EKF_UPDATE_WITH_GYRO:
-            ekf_updateWithGyro(_ekf, gyro);
+            ekf_updateWithGyro(_ekf, &stream_gyro);
             break;
 
         case EKF_UPDATE_WITH_ACCEL:
-            ekf_updateWithAccel(_ekf, accel);
+            ekf_updateWithAccel(_ekf, &stream_accel);
             break;
 
         case EKF_UPDATE_WITH_FLOW:
-            ekf_updateWithFlow(_ekf, flow);
+            ekf_updateWithFlow(_ekf, &stream_flow);
             break;
 
         case EKF_UPDATE_WITH_RANGE:
-            ekf_updateWithRange(_ekf, range);
+            ekf_updateWithRange(_ekf, &stream_range);
             break;
     }
 
