@@ -83,8 +83,6 @@ typedef struct {
 
 typedef struct {
 
-    Axis3f gyroLatest;
-
     axisSubSampler_t accelSubSampler;
     axisSubSampler_t gyroSubSampler;
 
@@ -570,11 +568,11 @@ static bool ekf_updateWithRange(
             stream_range.stdDev, shouldUpdate);
 }
 
-static bool ekf_updateWithFlow(ekf_t & ekf, 
-        const float rx, const float ry, const float rz) 
+static bool ekf_updateWithFlow(
+        const float rx, const float ry, const float rz, 
+        const Axis3f & gyroLatest,
+        ekf_t & ekf) 
 {
-    const Axis3f *gyro = &ekf.gyroLatest;
-
     // Inclusion of flow measurements in the EKF done by two scalar updates
 
     // ~~~ Camera constants ~~~
@@ -589,8 +587,8 @@ static bool ekf_updateWithFlow(ekf_t & ekf,
 
     //~~~ Body rates ~~~
     // TODO check if this is feasible or if some filtering has to be done
-    const auto omegax_b = gyro->x * DEGREES_TO_RADIANS;
-    const auto omegay_b = gyro->y * DEGREES_TO_RADIANS;
+    const auto omegax_b = gyroLatest.x * DEGREES_TO_RADIANS;
+    const auto omegay_b = gyroLatest.y * DEGREES_TO_RADIANS;
 
     const auto dx_g = ekf.ekfState.dx;
     const auto dy_g = ekf.ekfState.dy;
@@ -694,6 +692,7 @@ static bool ekf_finalize(
 
 static void ekf_getState(
         const ekf_t & ekf, 
+        const Axis3f & gyroLatest,
         const float qw,
         const float qx,
         const float qy,
@@ -722,9 +721,9 @@ static void ekf_getState(
             (qw*qw + qx*qx - qy*qy - qz*qz));
 
     // Get angular velocities directly from gyro
-    state.dphi =    ekf.gyroLatest.x;
-    state.dtheta = -ekf.gyroLatest.y; // negate for ENU
-    state.dpsi =    ekf.gyroLatest.z;
+    state.dphi =    gyroLatest.x;
+    state.dtheta = -gyroLatest.y; // negate for ENU
+    state.dpsi =    gyroLatest.z;
 }
 
 
@@ -746,6 +745,8 @@ static void ekf_step(void)
     static float _qx;
     static float _qy;
     static float _qz;
+
+    static Axis3f _gyroLatest;
 
     bool didUpdateFlow = false;
     bool didUpdateRange = false;
@@ -778,13 +779,14 @@ static void ekf_step(void)
             break;
 
         case EKF_GET_STATE:
-            ekf_getState(_ekf, _qw, _qx, _qy, _qz, _rx, _ry, _rz, vehicleState);
+            ekf_getState(_ekf, _gyroLatest,
+                    _qw, _qx, _qy, _qz, _rx, _ry, _rz, vehicleState);
             setState(vehicleState);
             break;
 
         case EKF_UPDATE_WITH_GYRO:
             subSamplerAccumulate(&_ekf.gyroSubSampler, &stream_gyro);
-            memcpy(&_ekf.gyroLatest, &stream_gyro, sizeof(Axis3f));
+            memcpy(&_gyroLatest, &stream_gyro, sizeof(Axis3f));
             break;
 
         case EKF_UPDATE_WITH_ACCEL:
@@ -792,7 +794,7 @@ static void ekf_step(void)
             break;
 
         case EKF_UPDATE_WITH_FLOW:
-            didUpdateFlow = ekf_updateWithFlow(_ekf, _rx, _ry, _rz);
+            didUpdateFlow = ekf_updateWithFlow(_rx, _ry, _rz, _gyroLatest, _ekf);
             break;
 
         case EKF_UPDATE_WITH_RANGE:
