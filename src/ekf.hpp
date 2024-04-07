@@ -68,6 +68,15 @@ typedef struct {
 
 typedef struct {
 
+    float w;
+    float x;
+    float y;
+    float z;
+
+} new_quat_t;
+
+typedef struct {
+
     Axis3f sum;
     uint32_t count;
 
@@ -708,10 +717,7 @@ static bool ekf_finalize(
 static void ekf_getState(
         const ekf_t & ekf, 
         const Axis3f & gyroLatest,
-        const float qw,
-        const float qx,
-        const float qy,
-        const float qz,
+        const new_quat_t & q,
         const float rx,
         const float ry,
         const float rz,
@@ -725,14 +731,14 @@ static void ekf_getState(
 
     state.dz = rx * ekf.dx + ry * ekf.dy + rz * ekf.dz;
 
-    state.phi = RADIANS_TO_DEGREES * atan2((2 * (qy*qz + qw*qx)),
-            (qw*qw - qx*qx - qy*qy + qz*qz));
+    state.phi = RADIANS_TO_DEGREES * atan2((2 * (q.y*q.z + q.w*q.x)),
+            (q.w*q.w - q.x*q.x - q.y*q.y + q.z*q.z));
 
     // Negate for ENU
-    state.theta = -RADIANS_TO_DEGREES * asin((-2) * (qx*qz - qw*qy));
+    state.theta = -RADIANS_TO_DEGREES * asin((-2) * (q.x*q.z - q.w*q.y));
 
-    state.psi = RADIANS_TO_DEGREES * atan2((2 * (qx*qy + qw*qz)),
-            (qw*qw + qx*qx - qy*qy - qz*qz));
+    state.psi = RADIANS_TO_DEGREES * atan2((2 * (q.x*q.y + q.w*q.z)),
+            (q.w*q.w + q.x*q.x - q.y*q.y - q.z*q.z));
 
     // Get angular velocities directly from gyro
     state.dphi =    gyroLatest.x;
@@ -751,6 +757,8 @@ static void ekf_step(void)
     static axisSubSampler_t _gyroSubSampler;
     static axisSubSampler_t _accelSubSampler;
 
+    static Axis3f _gyroLatest;
+
     static bool _isUpdated;
     static uint32_t _lastPredictionMsec;
     static uint32_t _lastProcessNoiseUpdateMsec;
@@ -763,8 +771,6 @@ static void ekf_step(void)
     static float _qx;
     static float _qy;
     static float _qz;
-
-    static Axis3f _gyroLatest;
 
     bool didUpdateFlow = false;
     bool didUpdateRange = false;
@@ -793,6 +799,8 @@ static void ekf_step(void)
         ekf_finalize(_qw, _qx, _qy, _qz, _p, _ekf, qwf, qxf, qyf, qzf) :
         isStateWithinBounds(_ekf.z, _ekf.dx, _ekf.dy, _ekf.dz);
 
+    const auto quat = new_quat_t {_qw, _qx, _qy, _qz };
+
     switch (stream_ekfAction) {
 
         case EKF_INIT:
@@ -800,8 +808,7 @@ static void ekf_step(void)
             break;
 
         case EKF_GET_STATE:
-            ekf_getState(_ekf, _gyroLatest,
-                    _qw, _qx, _qy, _qz, _rx, _ry, _rz, vehicleState);
+            ekf_getState(_ekf, _gyroLatest, quat, _rx, _ry, _rz, vehicleState);
             setState(vehicleState);
             break;
 
