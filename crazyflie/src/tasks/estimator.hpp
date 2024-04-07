@@ -19,7 +19,7 @@
 #include <semphr.h>
 
 #include <crossplatform.h>
-#include <ekf.hpp>
+//#include <ekf.hpp>
 #include <new_ekf.hpp>
 #include <rateSupervisor.hpp>
 #include <safety.hpp>
@@ -131,7 +131,7 @@ class EstimatorTask : public FreeRTOSTask {
 
         Safety * _safety;
 
-        Ekf _ekf;
+        // Ekf _ekf;
 
         // Data used to enable the task and stabilizer loop to run with minimal locking
         // The estimator state produced by the task, copied to the stabilizer when needed.
@@ -144,7 +144,8 @@ class EstimatorTask : public FreeRTOSTask {
 
         void initEkf(const uint32_t nowMsec)
         {
-            _ekf.init(nowMsec);
+            //_ekf.init(nowMsec);
+            new_ekf_step(EKF_INIT, nowMsec);
         }
 
         uint32_t step(const uint32_t nowMsec, uint32_t nextPredictionMsec) 
@@ -156,7 +157,8 @@ class EstimatorTask : public FreeRTOSTask {
                 didResetEstimation = false;
             }
 
-            _ekf.predict(nowMsec, nextPredictionMsec, _safety->isFlying());
+            //_ekf.predict(nowMsec, nextPredictionMsec, _safety->isFlying());
+            new_ekf_step(EKF_PREDICT, nowMsec, nextPredictionMsec,_safety->isFlying());
 
             // Run the system dynamics to predict the state forward.
             if (nowMsec >= nextPredictionMsec) {
@@ -182,27 +184,54 @@ class EstimatorTask : public FreeRTOSTask {
                 switch (measurement.type) {
 
                     case MeasurementTypeRange:
-                        _ekf.updateWithRange(&measurement.data.range);
+                        //_ekf.updateWithRange(&measurement.data.range);
+                        new_ekf_step(EKF_UPDATE_WITH_RANGE,
+                                0,
+                                0,
+                                false,
+                                NULL,
+                                NULL,
+                                NULL, 
+                                &measurement.data.range);
                         break;
 
                     case MeasurementTypeFlow:
-                        _ekf.updateWithFlow(&measurement.data.flow);
-                        break;
+                        //_ekf.updateWithFlow(&measurement.data.flow);
+                        new_ekf_step(EKF_UPDATE_WITH_FLOW,
+                                0,
+                                0,
+                                false,
+                                NULL,
+                                NULL,
+                                &measurement.data.flow);
+                         break;
 
                     case MeasurementTypeGyroscope:
-                        _ekf.updateWithGyro(&measurement.data.gyroscope.gyro);
-                        break;
+                        //_ekf.updateWithGyro(&measurement.data.gyroscope.gyro);
+                        new_ekf_step(EKF_UPDATE_WITH_GYRO,
+                                0,
+                                0,
+                                false,
+                                &measurement.data.gyroscope.gyro);
+                         break;
 
                     case MeasurementTypeAcceleration:
-                        _ekf.updateWithAccel(&measurement.data.acceleration.acc);
-                        break;
+                        //_ekf.updateWithAccel(&measurement.data.acceleration.acc);
+                        new_ekf_step(EKF_UPDATE_WITH_ACCEL,
+                                0,
+                                0,
+                                false,
+                                NULL,
+                                &measurement.data.acceleration.acc);
+                         break;
 
                     default:
                         break;
                 }
             }
 
-            auto isStateInBounds = _ekf.finalize();
+            // auto isStateInBounds = _ekf.finalize();
+            auto isStateInBounds = new_ekf_step(EKF_FINALIZE);
 
             if (!isStateInBounds) { 
 
@@ -216,7 +245,17 @@ class EstimatorTask : public FreeRTOSTask {
 
             xSemaphoreTake(_dataMutex, portMAX_DELAY);
 
-            _ekf.getState(_state);
+            //_ekf.getState(_state); 
+
+            new_ekf_step(EKF_GET_STATE,
+                    0,
+                    0,
+                    false,
+                    NULL,
+                    NULL,
+                    NULL, 
+                    NULL,
+                    &_state);
 
             xSemaphoreGive(_dataMutex);
 
