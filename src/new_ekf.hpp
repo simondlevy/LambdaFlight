@@ -128,6 +128,11 @@ typedef struct {
 
 } ekf_t;
 
+static const float max(const float val, const float maxval)
+{
+    return val > maxval ? maxval : val;
+}
+
 static void subSamplerAccumulate(
         axisSubSampler_t * subSampler,
         const Axis3f * sample) 
@@ -219,6 +224,71 @@ static void updateCovarianceMatrix(
             updateCovarianceCell(p, i, j, 0, shouldUpdate);
         }
     }
+}
+
+static void scalarUpdate(
+        ekf_t & ekf,
+        const float h[KC_STATE_DIM],
+        const float error, 
+        const float stdMeasNoise,
+        const bool shouldUpdate)
+{
+
+    // ====== INNOVATION COVARIANCE ======
+    float ph[KC_STATE_DIM] = {};
+    multiply(ekf.p, h, ph);
+    const auto r = stdMeasNoise * stdMeasNoise;
+    const auto hphr = r + dot(h, ph); // HPH' + R
+
+    // Compute the Kalman gain as a column vector
+    const float g[KC_STATE_DIM] = {
+
+        // kalman gain = (PH' (HPH' + R )^-1)
+        ph[0] / hphr, 
+        ph[1] / hphr, 
+        ph[2] / hphr, 
+        ph[3] / hphr, 
+        ph[4] / hphr, 
+        ph[5] / hphr, 
+        ph[6] / hphr
+    };
+
+    // Perform the state update
+    // XXX update()
+    ekf.ekfState.z  += shouldUpdate ? g[0] * error: 0;
+    ekf.ekfState.dx += shouldUpdate ? g[1] * error: 0;
+    ekf.ekfState.dy += shouldUpdate ? g[2] * error: 0;
+    ekf.ekfState.dz += shouldUpdate ? g[3] * error: 0;
+    ekf.ekfState.e0 += shouldUpdate ? g[4] * error: 0;
+    ekf.ekfState.e1 += shouldUpdate ? g[5] * error: 0;
+    ekf.ekfState.e2 += shouldUpdate ? g[6] * error: 0;
+
+    // ====== COVARIANCE UPDATE ======
+
+    float GH[KC_STATE_DIM][KC_STATE_DIM] = {};
+    multiply(g, h, GH); // KH
+
+    for (int i=0; i<KC_STATE_DIM; i++) { 
+        GH[i][i] -= 1;
+    } // KH - I
+
+    float GHt[KC_STATE_DIM][KC_STATE_DIM] = {};
+    transpose(GH, GHt);      // (KH - I)'
+
+    float GHIP[KC_STATE_DIM][KC_STATE_DIM] = {};
+    multiply(GH, ekf.p, GHIP, true);  // (KH - I)*P
+
+    multiply(GHIP, GHt, ekf.p, shouldUpdate); // (KH - I)*P*(KH - I)'
+
+    // Add the measurement variance and ensure boundedness and symmetry
+    for (int i=0; i<KC_STATE_DIM; i++) {
+        for (int j=i; j<KC_STATE_DIM; j++) {
+
+            updateCovarianceCell(ekf.p, i, j, g[i] * r * g[j], shouldUpdate);
+        }
+    }
+
+    ekf.isUpdated = shouldUpdate ? true : ekf.isUpdated;
 }
 
 
@@ -465,6 +535,39 @@ static void updateWithAccel(ekf_t & ekf, const Axis3f * accel)
     subSamplerAccumulate(&ekf.accelSubSampler, accel);
 }
 
+static void updateWithRange(ekf_t & ekf, const rangeMeasurement_t *range)
+{
+    const auto angle = max( 0, 
+            fabsf(acosf(ekf.r.z)) - 
+            DEGREES_TO_RADIANS * (15.0f / 2.0f));
+
+    const auto predictedDistance = ekf.ekfState.z / cosf(angle);
+    const auto measuredDistance = range->distance; // [m]
+
+    // The sensor model (Pg.95-96,
+    // https://lup.lub.lu.se/student-papers/search/publication/8905295)
+    //
+    // h = z/((R*z_b).z_b) = z/cos(alpha)
+    //
+    // Here,
+    // h (Measured variable)[m] = Distance given by TOF sensor. This is the 
+    // closest point from any surface to the sensor in the measurement cone
+    // z (Estimated variable)[m] = THe actual elevation of the crazyflie
+    // z_b = Basis vector in z direction of body coordinate system
+    // R = Rotation matrix made from ZYX Tait-Bryan angles. Assumed to be 
+    // stationary
+    // alpha = angle between [line made by measured point <---> sensor] 
+    // and [the intertial z-axis] 
+
+    const float h[KC_STATE_DIM] = {1 / cosf(angle), 0, 0, 0, 0, 0, 0};
+
+    // Only update the filter if the measurement is reliable 
+    // (\hat{h} -> infty when R[2][2] -> 0)
+    const auto shouldUpdate = fabs(ekf.r.z) > 0.1f && ekf.r.z > 0;
+    scalarUpdate(ekf, h, measuredDistance-predictedDistance, 
+            range->stdDev, shouldUpdate);
+}
+
 static void getState(ekf_t & ekf, vehicleState_t & state)
 {
     state.dx = ekf.ekfState.dx;
@@ -521,6 +624,7 @@ static void new_ekf_step(
 
     (void)updateWithGyro;
     (void)updateWithAccel;
+    (void)updateWithRange;
     (void)getState;
     (void)shouldPredict;
     (void)action;
