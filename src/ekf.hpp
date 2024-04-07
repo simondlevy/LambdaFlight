@@ -62,6 +62,12 @@ enum {
 
 typedef struct {
 
+    float dat[KC_STATE_DIM][KC_STATE_DIM];
+
+} matrix_t;
+
+typedef struct {
+
     Axis3f sum;
     uint32_t count;
 
@@ -79,7 +85,7 @@ typedef struct {
     float e1;
     float e2;
 
-    float p[KC_STATE_DIM][KC_STATE_DIM];
+    matrix_t p;
 
 } ekf_t;
 
@@ -188,7 +194,7 @@ static bool scalarUpdate(
 
     // ====== INNOVATION COVARIANCE ======
     float ph[KC_STATE_DIM] = {};
-    multiply(ekf.p, h, ph);
+    multiply(ekf.p.dat, h, ph);
     const auto r = stdMeasNoise * stdMeasNoise;
     const auto hphr = r + dot(h, ph); // HPH' + R
 
@@ -228,15 +234,15 @@ static bool scalarUpdate(
     transpose(GH, GHt);      // (KH - I)'
 
     float GHIP[KC_STATE_DIM][KC_STATE_DIM] = {};
-    multiply(GH, ekf.p, GHIP, true);  // (KH - I)*P
+    multiply(GH, ekf.p.dat, GHIP, true);  // (KH - I)*P
 
-    multiply(GHIP, GHt, ekf.p, shouldUpdate); // (KH - I)*P*(KH - I)'
+    multiply(GHIP, GHt, ekf.p.dat, shouldUpdate); // (KH - I)*P*(KH - I)'
 
     // Add the measurement variance and ensure boundedness and symmetry
     for (int i=0; i<KC_STATE_DIM; i++) {
         for (int j=i; j<KC_STATE_DIM; j++) {
 
-            updateCovarianceCell(ekf.p, i, j, g[i] * r * g[j], shouldUpdate);
+            updateCovarianceCell(ekf.p.dat, i, j, g[i] * r * g[j], shouldUpdate);
         }
     }
 
@@ -319,12 +325,12 @@ static void afinalize(
 static void ekf_init(ekf_t & ekf)
 {
     memset(&ekf.p, 0, sizeof(ekf.p));
-    ekf.p[KC_STATE_Z][KC_STATE_Z] = powf(STDEV_INITIAL_POSITION_Z, 2);
-    ekf.p[KC_STATE_DX][KC_STATE_DX] = powf(STDEV_INITIAL_VELOCITY, 2);
-    ekf.p[KC_STATE_DY][KC_STATE_DY] = powf(STDEV_INITIAL_VELOCITY, 2);
-    ekf.p[KC_STATE_DZ][KC_STATE_DZ] = powf(STDEV_INITIAL_VELOCITY, 2);
-    ekf.p[KC_STATE_E1][KC_STATE_E1] = powf(STDEV_INITIAL_ATTITUDE_ROLL_PITCH, 2);
-    ekf.p[KC_STATE_E2][KC_STATE_E2] = powf(STDEV_INITIAL_ATTITUDE_YAW, 2);
+    ekf.p.dat[KC_STATE_Z][KC_STATE_Z] = powf(STDEV_INITIAL_POSITION_Z, 2);
+    ekf.p.dat[KC_STATE_DX][KC_STATE_DX] = powf(STDEV_INITIAL_VELOCITY, 2);
+    ekf.p.dat[KC_STATE_DY][KC_STATE_DY] = powf(STDEV_INITIAL_VELOCITY, 2);
+    ekf.p.dat[KC_STATE_DZ][KC_STATE_DZ] = powf(STDEV_INITIAL_VELOCITY, 2);
+    ekf.p.dat[KC_STATE_E1][KC_STATE_E1] = powf(STDEV_INITIAL_ATTITUDE_ROLL_PITCH, 2);
+    ekf.p.dat[KC_STATE_E2][KC_STATE_E2] = powf(STDEV_INITIAL_ATTITUDE_YAW, 2);
 }
 
 static bool ekf_predict(
@@ -495,8 +501,8 @@ static bool ekf_predict(
     float At[KC_STATE_DIM][KC_STATE_DIM] = {};
     transpose(A, At);     // A'
     float AP[KC_STATE_DIM][KC_STATE_DIM] = {};
-    multiply(A, ekf.p, AP, true);  // AP
-    multiply(AP, At, ekf.p); // APA'
+    multiply(A, ekf.p.dat, AP, true);  // AP
+    multiply(AP, At, ekf.p.dat); // APA'
 
     const auto dt1 = (stream_nowMsec - lastProcessNoiseUpdateMsec) / 1000.0f;
     const auto isDtPositive = dt1 > 0;
@@ -513,9 +519,9 @@ static bool ekf_predict(
         powf(MEAS_NOISE_GYRO_ROLL_YAW * dt1 + PROC_NOISE_ATT, 2) 
     };
 
-    addNoiseDiagonal(ekf.p, noise, isDtPositive);
+    addNoiseDiagonal(ekf.p.dat, noise, isDtPositive);
 
-    updateCovarianceMatrix(ekf.p, isDtPositive);
+    updateCovarianceMatrix(ekf.p.dat, isDtPositive);
 
     return isDtPositive;
 }
@@ -670,10 +676,10 @@ static bool ekf_finalize(
     float At[KC_STATE_DIM][KC_STATE_DIM] = {};
     transpose(A, At);     // A'
     float AP[KC_STATE_DIM][KC_STATE_DIM] = {};
-    multiply(A, ekf.p, AP, true);  // AP
-    multiply(AP, At, ekf.p, isErrorSufficient); // APA'
+    multiply(A, ekf.p.dat, AP, true);  // AP
+    multiply(AP, At, ekf.p.dat, isErrorSufficient); // APA'
 
-    updateCovarianceMatrix(ekf.p, true);
+    updateCovarianceMatrix(ekf.p.dat, true);
 
     return isStateWithinBounds(ekf.z, ekf.dx, ekf.dy, ekf.dz);
 } 
