@@ -267,13 +267,14 @@ static bool isErrorInBounds(const float v)
 }
 
 
-static bool isStateWithinBounds(ekf_t & ekf) 
+static bool isStateWithinBounds(
+        const float z, const float dx, const float dy, const float dz)
 {
     return 
-        isPositionWithinBounds(ekf.z) &&
-        isVelocityWithinBounds(ekf.dx) &&
-        isVelocityWithinBounds(ekf.dy) &&
-        isVelocityWithinBounds(ekf.dz);
+        isPositionWithinBounds(z) &&
+        isVelocityWithinBounds(dx) &&
+        isVelocityWithinBounds(dy) &&
+        isVelocityWithinBounds(dz);
 }
 
 static void afinalize(
@@ -681,7 +682,7 @@ static bool ekf_finalize(
 
     updateCovarianceMatrix(ekf.p, true);
 
-    return isStateWithinBounds(ekf);
+    return isStateWithinBounds(ekf.z, ekf.dx, ekf.dy, ekf.dz);
 } 
 
 static void ekf_getState(
@@ -718,7 +719,6 @@ static void ekf_getState(
     state.dtheta = -gyroLatest.y; // negate for ENU
     state.dpsi =    gyroLatest.z;
 }
-
 
 // ===========================================================================
 
@@ -763,7 +763,7 @@ static void ekf_step(void)
     const auto isStateInBounds = 
         _isUpdated && stream_ekfAction == EKF_FINALIZE ? 
         ekf_finalize(_qw, _qx, _qy, _qz, _ekf, qwf, qxf, qyf, qzf) :
-        isStateWithinBounds(_ekf);
+        isStateWithinBounds(_ekf.z, _ekf.dx, _ekf.dy, _ekf.dz);
 
     switch (stream_ekfAction) {
 
