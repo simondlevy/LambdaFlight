@@ -20,6 +20,7 @@
 
 #include <crossplatform.h>
 #include <ekf.hpp>
+#include <new_ekf.hpp>
 #include <rateSupervisor.hpp>
 #include <safety.hpp>
 #include <task.hpp>
@@ -229,6 +230,8 @@ class EstimatorTask : public FreeRTOSTask {
 
         void run(void)
         {
+            (void)new_ekf_step;
+
             consolePrintf("ESTIMATOR: running\n");
 
             systemWaitStart();
