@@ -2,9 +2,10 @@
 
 #include <string.h>
 
-#include "math3d.h"
-#include "datatypes.h"
-#include "linalg.h"
+#include <math3d.h>
+#include <datatypes.h>
+#include <linalg.h>
+#include <streams.h>
 
 // Quaternion used for initial orientation
 static const float QW_INIT = 1;
@@ -45,19 +46,6 @@ static const float EPS = 1e-6f;
 
 // the reversion of pitch and roll to zero
 static const float ROLLPITCH_ZERO_REVERSION = 0.001;
-
-typedef enum {
-
-    EKF_INIT,
-    EKF_PREDICT,
-    EKF_FINALIZE,
-    EKF_GET_STATE,
-    EKF_UPDATE_WITH_GYRO,
-    EKF_UPDATE_WITH_ACCEL,
-    EKF_UPDATE_WITH_FLOW,
-    EKF_UPDATE_WITH_RANGE 
-
-} ekfAction_e;
 
 // Indexes to access the state
 enum {
@@ -812,11 +800,9 @@ static bool ekf_finalize(ekf_t & ekf)
     return ekf.isUpdated ? doFinalize(ekf) : isStateWithinBounds(ekf);
 }
 
-
 // ===========================================================================
 
 static bool ekf_step(
-        const ekfAction_e action,
         const uint32_t nowMsec=0,
         const uint32_t nextPredictionMsec=0,
         const bool isFlying=false,
@@ -830,7 +816,7 @@ static bool ekf_step(
 
     bool result = false;
 
-    switch (action) {
+    switch (stream_ekfAction) {
 
         case EKF_INIT:
             ekf_init(_ekf, nowMsec);

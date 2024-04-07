@@ -143,7 +143,8 @@ class EstimatorTask : public FreeRTOSTask {
 
         void initEkf(const uint32_t nowMsec)
         {
-            ekf_step(EKF_INIT, nowMsec);
+            stream_ekfAction = EKF_INIT;
+            ekf_step(nowMsec);
         }
 
         uint32_t step(const uint32_t nowMsec, uint32_t nextPredictionMsec) 
@@ -155,7 +156,8 @@ class EstimatorTask : public FreeRTOSTask {
                 didResetEstimation = false;
             }
 
-            ekf_step(EKF_PREDICT, nowMsec, nextPredictionMsec,_safety->isFlying());
+            stream_ekfAction = EKF_PREDICT;
+            ekf_step(nowMsec, nextPredictionMsec,_safety->isFlying());
 
             // Run the system dynamics to predict the state forward.
             if (nowMsec >= nextPredictionMsec) {
@@ -181,7 +183,8 @@ class EstimatorTask : public FreeRTOSTask {
                 switch (measurement.type) {
 
                     case MeasurementTypeRange:
-                        ekf_step(EKF_UPDATE_WITH_RANGE,
+                        stream_ekfAction = EKF_UPDATE_WITH_RANGE;
+                        ekf_step(
                                 0,
                                 0,
                                 false,
@@ -192,7 +195,8 @@ class EstimatorTask : public FreeRTOSTask {
                         break;
 
                     case MeasurementTypeFlow:
-                        ekf_step(EKF_UPDATE_WITH_FLOW,
+                        stream_ekfAction = EKF_UPDATE_WITH_FLOW;
+                        ekf_step(
                                 0,
                                 0,
                                 false,
@@ -202,15 +206,17 @@ class EstimatorTask : public FreeRTOSTask {
                          break;
 
                     case MeasurementTypeGyroscope:
-                        ekf_step(EKF_UPDATE_WITH_GYRO,
-                                0,
-                                0,
-                                false,
-                                &measurement.data.gyroscope.gyro);
+                         stream_ekfAction =EKF_UPDATE_WITH_GYRO;
+                         ekf_step(
+                                 0,
+                                 0,
+                                 false,
+                                 &measurement.data.gyroscope.gyro);
                          break;
 
                     case MeasurementTypeAcceleration:
-                        ekf_step(EKF_UPDATE_WITH_ACCEL,
+                         stream_ekfAction = EKF_UPDATE_WITH_ACCEL;
+                         ekf_step(
                                 0,
                                 0,
                                 false,
@@ -223,7 +229,8 @@ class EstimatorTask : public FreeRTOSTask {
                 }
             }
 
-            auto isStateInBounds = ekf_step(EKF_FINALIZE);
+            stream_ekfAction = EKF_FINALIZE;
+            auto isStateInBounds = ekf_step();
 
             if (!isStateInBounds) { 
 
@@ -237,7 +244,8 @@ class EstimatorTask : public FreeRTOSTask {
 
             xSemaphoreTake(_dataMutex, portMAX_DELAY);
 
-            ekf_step(EKF_GET_STATE,
+            stream_ekfAction = EKF_GET_STATE;
+            ekf_step(
                     0,
                     0,
                     false,

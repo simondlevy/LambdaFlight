@@ -14,3 +14,5 @@ EXTERN vehicleState_t stream_vehicleState;
 EXTERN bool stream_inFlyingMode;
 EXTERN bool stream_resetPids;
 
+EXTERN ekfAction_e stream_ekfAction;
+
