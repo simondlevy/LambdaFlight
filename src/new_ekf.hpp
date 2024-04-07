@@ -824,18 +824,26 @@ static bool new_ekf_step(
 {
     static ekf_t _ekf;
 
+    bool result = false;
+
     switch (action) {
 
         case EKF_INIT:
+            ekf_init(_ekf, nowMsec);
             break;
 
         case EKF_PREDICT:
+            if (nowMsec >= nextPredictionMsec) {
+                ekf_predict(_ekf, nowMsec, isFlying);
+            }
             break;
 
         case EKF_FINALIZE:
+            result = ekf_finalize(_ekf);
             break;
 
         case EKF_GET_STATE:
+            ekf_getState(_ekf, vehicleState);
             break;
 
         case EKF_UPDATE_WITH_GYRO:
@@ -851,25 +859,11 @@ static bool new_ekf_step(
             break;
     }
 
-    ekf_t ekf1 = {};
-    ekf_init(ekf1, nowMsec);
-
-    const bool shouldPredict = nowMsec >= nextPredictionMsec;
-
-    ekf_t ekf2 = {};
-    ekf_predict(ekf2, nowMsec, isFlying);
 
     (void)ekf_updateWithGyro;
     (void)ekf_updateWithAccel;
     (void)ekf_updateWithRange;
     (void)ekf_updateWithFlow;
-    (void)ekf_getState;
-    (void)ekf_finalize;
 
-    (void)shouldPredict;
-    (void)vehicleState;
-
-    (void)_ekf;
-
-    return false;
+    return result;
 }
