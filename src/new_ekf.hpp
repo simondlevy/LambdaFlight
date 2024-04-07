@@ -773,15 +773,15 @@ static void ekf_updateWithFlow(ekf_t & ekf, const flowMeasurement_t *flow)
 }
 
 
-static void ekf_getState(ekf_t & ekf, vehicleState_t & state)
+static void ekf_getState(ekf_t & ekf, vehicleState_t * state)
 {
-    state.dx = ekf.ekfState.dx;
+    state->dx = ekf.ekfState.dx;
 
-    state.dy = ekf.ekfState.dy;
+    state->dy = ekf.ekfState.dy;
 
-    state.z = ekf.ekfState.z;
+    state->z = ekf.ekfState.z;
 
-    state.dz = 
+    state->dz = 
         ekf.r.x * ekf.ekfState.dx +
         ekf.r.y * ekf.ekfState.dy +
         ekf.r.z * ekf.ekfState.dz;
@@ -791,19 +791,19 @@ static void ekf_getState(ekf_t & ekf, vehicleState_t & state)
     const auto qy = ekf.quat.y;
     const auto qz = ekf.quat.z;
 
-    state.phi = RADIANS_TO_DEGREES * atan2((2 * (qy*qz + qw*qx)),
+    state->phi = RADIANS_TO_DEGREES * atan2((2 * (qy*qz + qw*qx)),
             (qw*qw - qx*qx - qy*qy + qz*qz));
 
     // Negate for ENU
-    state.theta = -RADIANS_TO_DEGREES * asin((-2) * (qx*qz - qw*qy));
+    state->theta = -RADIANS_TO_DEGREES * asin((-2) * (qx*qz - qw*qy));
 
-    state.psi = RADIANS_TO_DEGREES * atan2((2 * (qx*qy + qw*qz)),
+    state->psi = RADIANS_TO_DEGREES * atan2((2 * (qx*qy + qw*qz)),
             (qw*qw + qx*qx - qy*qy - qz*qz));
 
     // Get angular velocities directly from gyro
-    state.dphi =    ekf.gyroLatest.x;
-    state.dtheta = -ekf.gyroLatest.y; // negate for ENU
-    state.dpsi =    ekf.gyroLatest.z;
+    state->dphi =    ekf.gyroLatest.x;
+    state->dtheta = -ekf.gyroLatest.y; // negate for ENU
+    state->dpsi =    ekf.gyroLatest.z;
 }
 
 static bool ekf_finalize(ekf_t & ekf)
@@ -817,14 +817,14 @@ static bool ekf_finalize(ekf_t & ekf)
 
 static bool new_ekf_step(
         const new_ekfAction_e action,
-        const uint32_t nowMsec,
-        const uint32_t nextPredictionMsec,
-        const bool isFlying,
-        const Axis3f * gyro,
-        const Axis3f * accel,
-        const flowMeasurement_t *flow, 
-        const rangeMeasurement_t *range,
-        vehicleState_t & vehicleState)
+        const uint32_t nowMsec=0,
+        const uint32_t nextPredictionMsec=0,
+        const bool isFlying=false,
+        const Axis3f * gyro=NULL,
+        const Axis3f * accel=NULL,
+        const flowMeasurement_t *flow=NULL, 
+        const rangeMeasurement_t *range=NULL,
+        vehicleState_t * vehicleState=NULL)
 {
     static ekf_t _ekf;
 
