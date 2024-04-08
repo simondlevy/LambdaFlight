@@ -518,7 +518,7 @@ static bool ekf_predict(
     float At[KC_STATE_DIM][KC_STATE_DIM] = {};
     transpose(A, At);     // A'
     float AP[KC_STATE_DIM][KC_STATE_DIM] = {};
-    multiply(A, p_out.dat, AP, true);  // AP
+    multiply(A, p_in.dat, AP, true);  // AP
     multiply(AP, At, p_out.dat); // APA'
 
     const auto dt1 = (stream_nowMsec - lastProcessNoiseUpdateMsec) / 1000.0f;
