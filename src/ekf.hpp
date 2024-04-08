@@ -346,7 +346,7 @@ static void afinalize(
 
 static void ekf_init(matrix_t & p_out)
 {
-    memset(&p_out, 0, sizeof(p));
+    memset(&p_out, 0, sizeof(p_out));
     p_out.dat[KC_STATE_Z][KC_STATE_Z] = powf(STDEV_INITIAL_POSITION_Z, 2);
     p_out.dat[KC_STATE_DX][KC_STATE_DX] = powf(STDEV_INITIAL_VELOCITY, 2);
     p_out.dat[KC_STATE_DY][KC_STATE_DY] = powf(STDEV_INITIAL_VELOCITY, 2);
@@ -356,6 +356,7 @@ static void ekf_init(matrix_t & p_out)
 }
 
 static bool ekf_predict(
+        const matrix_t & p_in,
         const ekfLinear_t & linear_in,
         const new_quat_t & q,
         const axis3_t & r,
@@ -543,6 +544,7 @@ static bool ekf_predict(
 }
 
 static bool ekf_updateWithRange(
+        const matrix_t & p_in,
         const ekfState_t & ekfs_in,
         const float rz,
         matrix_t & p_out,
@@ -586,6 +588,7 @@ static bool ekf_updateWithRange(
 }
 
 static bool ekf_updateWithFlow(
+        const matrix_t & p_in,
         const ekfState_t & ekfs_in,
         const float rz,
         const Axis3f & gyroLatest,
@@ -789,6 +792,16 @@ static void ekf_step(void)
     const auto quat = new_quat_t {_qw, _qx, _qy, _qz };
     const auto r = axis3_t {_rx, _ry, _rz};
 
+    matrix_t p_init= {};
+    matrix_t p_predict= {};
+    matrix_t p_flow = {};
+    matrix_t p_range = {};
+
+    (void)p_init;
+    (void)p_predict;
+    (void)p_flow;
+    (void)p_range;
+
     const auto shouldPredict = stream_ekfAction == EKF_PREDICT && 
         stream_nowMsec >= stream_nextPredictionMsec;
 
@@ -797,6 +810,7 @@ static void ekf_step(void)
     const auto didPredict = 
         shouldPredict && 
         ekf_predict(
+                _p,
                 ekfs.lin,
                 quat,
                 r,
@@ -823,6 +837,14 @@ static void ekf_step(void)
             ekf_init(_p);
             break;
 
+        case EKF_UPDATE_WITH_FLOW:
+            didUpdateFlow = ekf_updateWithFlow(_p, ekfs, _rz, _gyroLatest, _p, ekfs_flow);
+            break;
+
+        case EKF_UPDATE_WITH_RANGE:
+            didUpdateRange = ekf_updateWithRange(_p, ekfs, _rz, _p, ekfs_range);
+            break;
+
         case EKF_UPDATE_WITH_GYRO:
             subSamplerAccumulate(&_gyroSubSampler, &stream_gyro);
             memcpy(&_gyroLatest, &stream_gyro, sizeof(Axis3f));
@@ -830,14 +852,6 @@ static void ekf_step(void)
 
         case EKF_UPDATE_WITH_ACCEL:
             subSamplerAccumulate(&_accelSubSampler, &stream_accel);
-            break;
-
-        case EKF_UPDATE_WITH_FLOW:
-            didUpdateFlow = ekf_updateWithFlow(ekfs, _rz, _gyroLatest, _p, ekfs_flow);
-            break;
-
-        case EKF_UPDATE_WITH_RANGE:
-            didUpdateRange = ekf_updateWithRange(ekfs, _rz, _p, ekfs_range);
             break;
 
         default:
