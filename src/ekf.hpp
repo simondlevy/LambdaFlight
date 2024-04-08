@@ -657,9 +657,9 @@ static bool ekf_updateWithFlow(
 }
 
 static bool ekf_finalize(
+        const ekfState_t & ekfs,
         const new_quat_t & q,
         matrix_t & p,
-        ekfState_t & ekfs,
         new_quat_t & q_out)
 {
     // Incorporate the attitude error (Kalman filter state) with the attitude
@@ -799,7 +799,7 @@ static void ekf_step(void)
     new_quat_t quat_finalized = {};
     const auto isStateInBounds = 
         _isUpdated && stream_ekfAction == EKF_FINALIZE ? 
-        ekf_finalize(quat, _p, _ekfs, quat_finalized) :
+        ekf_finalize(ekfs, quat, _p, quat_finalized) :
         isStateWithinBounds(_ekfs);
 
     switch (stream_ekfAction) {
