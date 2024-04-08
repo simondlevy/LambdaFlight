@@ -752,7 +752,14 @@ static void ekf_getState(
 
 static void ekf_step(void)
 {
-    static ekfState_t _ekfs;
+
+    static float _z;
+    static float _dx;
+    static float _dy;
+    static float _dz;
+    static float _e0;
+    static float _e1;
+    static float _e2;
 
     static matrix_t _p;
 
@@ -779,10 +786,7 @@ static void ekf_step(void)
 
     vehicleState_t vehicleState = {};
 
-    const auto ekfs = ekfState_t {
-        {_ekfs.lin.z, _ekfs.lin.dx, _ekfs.lin.dy, _ekfs.lin.dz}, 
-            {_ekfs.ang.x, _ekfs.ang.y, _ekfs.ang.z}
-    };
+    const auto ekfs = ekfState_t { {_z, _dx, _dy, _dz}, {_e0, _e1, _e2}};
 
     const auto quat = new_quat_t {_qw, _qx, _qy, _qz };
     const auto r = axis3_t {_rx, _ry, _rz};
@@ -790,6 +794,7 @@ static void ekf_step(void)
     const auto shouldPredict = stream_ekfAction == EKF_PREDICT && 
         stream_nowMsec >= stream_nextPredictionMsec;
 
+    ekfLinear_t lin_predicted = {};
     new_quat_t quat_predicted = {};
     const auto didPredict = 
         shouldPredict && 
@@ -803,13 +808,16 @@ static void ekf_step(void)
                 _gyroSubSampler,
                 _accelSubSampler,
                 _p,
-                _ekfs.lin);
+                lin_predicted);
 
     new_quat_t quat_finalized = {};
     const auto isStateInBounds = 
         _isUpdated && stream_ekfAction == EKF_FINALIZE ? 
         ekf_finalize(ekfs, quat, _p, quat_finalized) :
-        isStateWithinBounds(_ekfs);
+        isStateWithinBounds(ekfs);
+
+    ekfState_t ekfs_flow = {};
+    ekfState_t ekfs_range = {};
 
     switch (stream_ekfAction) {
 
@@ -832,11 +840,11 @@ static void ekf_step(void)
             break;
 
         case EKF_UPDATE_WITH_FLOW:
-            didUpdateFlow = ekf_updateWithFlow(ekfs, _rz, _gyroLatest, _p, _ekfs);
+            didUpdateFlow = ekf_updateWithFlow(ekfs, _rz, _gyroLatest, _p, ekfs_flow);
             break;
 
         case EKF_UPDATE_WITH_RANGE:
-            didUpdateRange = ekf_updateWithRange(ekfs, _rz, _p, _ekfs);
+            didUpdateRange = ekf_updateWithRange(ekfs, _rz, _p, ekfs_range);
             break;
 
         default:
@@ -845,6 +853,8 @@ static void ekf_step(void)
 
     const auto initializing = stream_ekfAction == EKF_INIT;
     const auto finalizing = stream_ekfAction == EKF_FINALIZE;
+    const auto flowing = stream_ekfAction == EKF_UPDATE_WITH_FLOW;
+    const auto ranging = stream_ekfAction == EKF_UPDATE_WITH_RANGE;
 
     _qw = initializing ? 1 : 
         finalizing ? quat_finalized.w :
@@ -878,14 +888,44 @@ static void ekf_step(void)
         finalizing ? _qw*_qw-_qx*_qx-_qy*_qy+_qz*_qz:
         _rz;
 
-    _ekfs.lin.z = initializing ? 0 : _ekfs.lin.z;
-    _ekfs.lin.dx = initializing ? 0 : _ekfs.lin.dx;
-    _ekfs.lin.dy = initializing ? 0 : _ekfs.lin.dy;
-    _ekfs.lin.dz = initializing ? 0 : _ekfs.lin.dz;
+    _z = initializing ? 0 : 
+        didPredict ? lin_predicted.z :
+        flowing ? ekfs_flow.lin.z :
+        ranging ? ekfs_range.lin.z :
+        _z;
 
-    _ekfs.ang.x = initializing || finalizing ? 0 : _ekfs.ang.x;
-    _ekfs.ang.y = initializing || finalizing ? 0 : _ekfs.ang.y;
-    _ekfs.ang.z = initializing || finalizing ? 0 : _ekfs.ang.z;
+    _dx = initializing ? 0 : 
+        didPredict ? lin_predicted.dx :
+        flowing ? ekfs_flow.lin.dx :
+        ranging ? ekfs_range.lin.dx :
+        _dx;
+
+    _dy = initializing ? 0 : 
+        didPredict ? lin_predicted.dy :
+        flowing ? ekfs_flow.lin.dy :
+        ranging ? ekfs_range.lin.dy :
+        _dy;
+
+    _dz = initializing ? 0 : 
+        didPredict ? lin_predicted.dz :
+        flowing ? ekfs_flow.lin.dz :
+        ranging ? ekfs_range.lin.dz :
+        _dz;
+
+    _e0 = initializing || finalizing ? 0 : 
+        flowing ? ekfs_flow.ang.x :
+        ranging ? ekfs_range.ang.x :
+        _e0;
+
+    _e1 = initializing || finalizing ? 0 : 
+        flowing ? ekfs_flow.ang.y :
+        ranging ? ekfs_range.ang.y :
+        _e1;
+
+    _e2 = initializing || finalizing ? 0 : 
+        flowing ? ekfs_flow.ang.z :
+        ranging ? ekfs_range.ang.z :
+        _e2;
 
     if (finalizing) {
         setStateIsInBounds(isStateInBounds);
