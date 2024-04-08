@@ -99,9 +99,8 @@ typedef struct {
     float dx;
     float dy;
     float dz;
-    float e0;
-    float e1;
-    float e2;
+
+    axis3_t e;
 
 } ekfState_t;
 
@@ -235,9 +234,9 @@ static bool scalarUpdate(
     ekfs_out.dx = ekfs_in.dx + (shouldUpdate ? g[1] * error: 0);
     ekfs_out.dy = ekfs_in.dy + (shouldUpdate ? g[2] * error: 0);
     ekfs_out.dz = ekfs_in.dz + (shouldUpdate ? g[3] * error: 0);
-    ekfs_out.e0 = ekfs_in.e0 + (shouldUpdate ? g[4] * error: 0);
-    ekfs_out.e1 = ekfs_in.e1 + (shouldUpdate ? g[5] * error: 0);
-    ekfs_out.e2 = ekfs_in.e2 + (shouldUpdate ? g[6] * error: 0);
+    ekfs_out.e.x = ekfs_in.e.x + (shouldUpdate ? g[4] * error: 0);
+    ekfs_out.e.y = ekfs_in.e.y + (shouldUpdate ? g[5] * error: 0);
+    ekfs_out.e.z = ekfs_in.e.z + (shouldUpdate ? g[6] * error: 0);
 
     // ====== COVARIANCE UPDATE ======
 
@@ -664,9 +663,9 @@ static bool ekf_finalize(
         new_quat_t & q_out)
 {
     // Incorporate the attitude error (Kalman filter state) with the attitude
-    const auto v0 = ekfs.e0;
-    const auto v1 = ekfs.e1;
-    const auto v2 = ekfs.e2;
+    const auto v0 = ekfs.e.x;
+    const auto v1 = ekfs.e.y;
+    const auto v2 = ekfs.e.z;
 
     const auto angle = sqrt(v0*v0 + v1*v1 + v2*v2) + EPS;
     const auto ca = cos(angle / 2.0f);
@@ -775,7 +774,7 @@ static void ekf_step(void)
     vehicleState_t vehicleState = {};
 
     const auto ekfs = ekfState_t {
-        _ekfs.z, _ekfs.dx, _ekfs.dy, _ekfs.dz, _ekfs.e0, _ekfs.e1, _ekfs.e2};
+        _ekfs.z, _ekfs.dx, _ekfs.dy, _ekfs.dz, {_ekfs.e.x, _ekfs.e.y, _ekfs.e.z}};
 
     const auto quat = new_quat_t {_qw, _qx, _qy, _qz };
     const auto r = axis3_t {_rx, _ry, _rz};
@@ -876,9 +875,9 @@ static void ekf_step(void)
     _ekfs.dy = initializing ? 0 : _ekfs.dy;
     _ekfs.dz = initializing ? 0 : _ekfs.dz;
 
-    _ekfs.e0 = initializing || finalizing ? 0 : _ekfs.e0;
-    _ekfs.e1 = initializing || finalizing ? 0 : _ekfs.e1;
-    _ekfs.e2 = initializing || finalizing ? 0 : _ekfs.e2;
+    _ekfs.e.x = initializing || finalizing ? 0 : _ekfs.e.x;
+    _ekfs.e.y = initializing || finalizing ? 0 : _ekfs.e.y;
+    _ekfs.e.z = initializing || finalizing ? 0 : _ekfs.e.z;
 
     if (finalizing) {
         setStateIsInBounds(isStateInBounds);
