@@ -752,7 +752,6 @@ static void ekf_getState(
 
 static void ekf_step(void)
 {
-
     static float _z;
     static float _dx;
     static float _dy;
@@ -784,7 +783,6 @@ static void ekf_step(void)
     bool didUpdateFlow = false;
     bool didUpdateRange = false;
 
-    vehicleState_t vehicleState = {};
 
     const auto ekfs = ekfState_t { {_z, _dx, _dy, _dz}, {_e0, _e1, _e2}};
 
@@ -825,11 +823,6 @@ static void ekf_step(void)
             ekf_init(_p);
             break;
 
-        case EKF_GET_STATE:
-            ekf_getState(ekfs, _gyroLatest, quat, r, vehicleState);
-            setState(vehicleState);
-            break;
-
         case EKF_UPDATE_WITH_GYRO:
             subSamplerAccumulate(&_gyroSubSampler, &stream_gyro);
             memcpy(&_gyroLatest, &stream_gyro, sizeof(Axis3f));
@@ -855,6 +848,17 @@ static void ekf_step(void)
     const auto finalizing = stream_ekfAction == EKF_FINALIZE;
     const auto flowing = stream_ekfAction == EKF_UPDATE_WITH_FLOW;
     const auto ranging = stream_ekfAction == EKF_UPDATE_WITH_RANGE;
+
+    vehicleState_t vehicleState = {};
+    ekf_getState(ekfs, _gyroLatest, quat, r, vehicleState);
+
+    if (stream_ekfAction == EKF_GET_STATE) {
+        setState(vehicleState);
+    }
+
+    if (finalizing) {
+        setStateIsInBounds(isStateInBounds);
+    }
 
     _qw = initializing ? 1 : 
         finalizing ? quat_finalized.w :
@@ -926,10 +930,6 @@ static void ekf_step(void)
         flowing ? ekfs_flow.ang.z :
         ranging ? ekfs_range.ang.z :
         _e2;
-
-    if (finalizing) {
-        setStateIsInBounds(isStateInBounds);
-    }
 
     _lastProcessNoiseUpdateMsec = 
         initializing || didPredict ?  
