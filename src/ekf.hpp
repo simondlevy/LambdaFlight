@@ -351,6 +351,7 @@ static void ekf_init(matrix_t & p)
 }
 
 static bool ekf_predict(
+        const ekfState_t & ekfs_in,
         const new_quat_t & q,
         const axis3_t & r,
         const uint32_t lastProcessNoiseUpdateMsec, 
@@ -359,7 +360,7 @@ static bool ekf_predict(
         axisSubSampler_t & gyroSubSampler,
         axisSubSampler_t & accelSubSampler,
         matrix_t & p,
-        ekfState_t & ekfs) 
+        ekfState_t & ekfs_out) 
 {
     subSamplerFinalize(&gyroSubSampler, DEGREES_TO_RADIANS);
 
@@ -373,14 +374,14 @@ static bool ekf_predict(
 
     // Position updates in the body frame (will be rotated to inertial frame);
     // thrust can only be produced in the body's Z direction
-    const auto dx = ekfs.dx * dt + stream_isFlying ? 0 : acc->x * dt2 / 2;
-    const auto dy = ekfs.dy * dt + stream_isFlying ? 0 : acc->y * dt2 / 2;
-    const auto dz = ekfs.dz * dt + acc->z * dt2 / 2; 
+    const auto dx = ekfs_in.dx * dt + stream_isFlying ? 0 : acc->x * dt2 / 2;
+    const auto dy = ekfs_in.dy * dt + stream_isFlying ? 0 : acc->y * dt2 / 2;
+    const auto dz = ekfs_in.dz * dt + acc->z * dt2 / 2; 
 
     // keep previous time step's state for the update
-    const auto tmpSDX = ekfs.dx;
-    const auto tmpSDY = ekfs.dy;
-    const auto tmpSDZ = ekfs.dz;
+    const auto tmpSDX = ekfs_in.dx;
+    const auto tmpSDY = ekfs_in.dy;
+    const auto tmpSDZ = ekfs_in.dz;
 
     const auto accx = stream_isFlying ? 0 : acc->x;
     const auto accy = stream_isFlying ? 0 : acc->y;
@@ -422,18 +423,18 @@ static bool ekf_predict(
     // to estimate body angle while flying)
 
     // altitude update
-    ekfs.z += r.x * dx + r.y * dy + r.z * dz - MSS_TO_GS * dt2 / 2;
+    ekfs_out.z = ekfs_in.z + r.x * dx + r.y * dy + r.z * dz - MSS_TO_GS * dt2 / 2;
 
     // body-velocity update: accelerometers - gyros cross velocity
     // - gravity in body frame
 
-    ekfs.dx += 
+    ekfs_out.dx = ekfs_in.dx +
         dt * (accx + gyro->z * tmpSDY - gyro->y * tmpSDZ - MSS_TO_GS * r.x);
 
-    ekfs.dy += 
+    ekfs_out.dy = ekfs_in.dy +
         dt * (accy - gyro->z * tmpSDX + gyro->x * tmpSDZ - MSS_TO_GS * r.y); 
 
-    ekfs.dz += 
+    ekfs_out.dz =  ekfs_in.dz +
         dt * (acc->z + gyro->y * tmpSDX - gyro->x * tmpSDY - MSS_TO_GS * r.z);
 
     // predict()
@@ -466,9 +467,9 @@ static bool ekf_predict(
     const auto zdz  = r.z*dt;
 
     // altitude from attitude error
-    const auto ze0  = (ekfs.dy*r.z - ekfs.dz*r.y)*dt;
-    const auto ze1  = (- ekfs.dx*r.z + ekfs.dz*r.x)*dt;
-    const auto ze2  = (ekfs.dx*r.y - ekfs.dy*r.x)*dt;
+    const auto ze0  = (ekfs_out.dy*r.z - ekfs_out.dz*r.y)*dt;
+    const auto ze1  = (- ekfs_out.dx*r.z + ekfs_out.dz*r.x)*dt;
+    const auto ze2  = (ekfs_out.dx*r.y - ekfs_out.dy*r.x)*dt;
 
     // body-frame velocity from body-frame velocity
     const auto dxdx  = 1; //drag negligible
@@ -786,6 +787,7 @@ static void ekf_step(void)
     const auto didPredict = 
         shouldPredict && 
         ekf_predict(
+                ekfs,
                 quat,
                 r,
                 _lastPredictionMsec, 
