@@ -211,13 +211,13 @@ static bool scalarUpdate(
         const float error, 
         const float stdMeasNoise,
         const bool shouldUpdate,
-        matrix_t & p,
+        matrix_t & p_out,
         ekfState_t & ekfs_out)
 {
 
     // ====== INNOVATION COVARIANCE ======
     float ph[KC_STATE_DIM] = {};
-    multiply(p.dat, h, ph);
+    multiply(p_out.dat, h, ph);
     const auto r = stdMeasNoise * stdMeasNoise;
     const auto hphr = r + dot(h, ph); // HPH' + R
 
@@ -257,15 +257,15 @@ static bool scalarUpdate(
     transpose(GH, GHt);      // (KH - I)'
 
     float GHIP[KC_STATE_DIM][KC_STATE_DIM] = {};
-    multiply(GH, p.dat, GHIP, true);  // (KH - I)*P
+    multiply(GH, p_out.dat, GHIP, true);  // (KH - I)*P
 
-    multiply(GHIP, GHt, p.dat, shouldUpdate); // (KH - I)*P*(KH - I)'
+    multiply(GHIP, GHt, p_out.dat, shouldUpdate); // (KH - I)*P*(KH - I)'
 
     // Add the measurement variance and ensure boundedness and symmetry
     for (int i=0; i<KC_STATE_DIM; i++) {
         for (int j=i; j<KC_STATE_DIM; j++) {
 
-            updateCovarianceCell(p.dat, i, j, g[i] * r * g[j], shouldUpdate);
+            updateCovarianceCell(p_out.dat, i, j, g[i] * r * g[j], shouldUpdate);
         }
     }
 
@@ -344,15 +344,15 @@ static void afinalize(
 
 // ===========================================================================
 
-static void ekf_init(matrix_t & p)
+static void ekf_init(matrix_t & p_out)
 {
-    memset(&p, 0, sizeof(p));
-    p.dat[KC_STATE_Z][KC_STATE_Z] = powf(STDEV_INITIAL_POSITION_Z, 2);
-    p.dat[KC_STATE_DX][KC_STATE_DX] = powf(STDEV_INITIAL_VELOCITY, 2);
-    p.dat[KC_STATE_DY][KC_STATE_DY] = powf(STDEV_INITIAL_VELOCITY, 2);
-    p.dat[KC_STATE_DZ][KC_STATE_DZ] = powf(STDEV_INITIAL_VELOCITY, 2);
-    p.dat[KC_STATE_E1][KC_STATE_E1] = powf(STDEV_INITIAL_ATTITUDE_ROLL_PITCH, 2);
-    p.dat[KC_STATE_E2][KC_STATE_E2] = powf(STDEV_INITIAL_ATTITUDE_YAW, 2);
+    memset(&p_out, 0, sizeof(p));
+    p_out.dat[KC_STATE_Z][KC_STATE_Z] = powf(STDEV_INITIAL_POSITION_Z, 2);
+    p_out.dat[KC_STATE_DX][KC_STATE_DX] = powf(STDEV_INITIAL_VELOCITY, 2);
+    p_out.dat[KC_STATE_DY][KC_STATE_DY] = powf(STDEV_INITIAL_VELOCITY, 2);
+    p_out.dat[KC_STATE_DZ][KC_STATE_DZ] = powf(STDEV_INITIAL_VELOCITY, 2);
+    p_out.dat[KC_STATE_E1][KC_STATE_E1] = powf(STDEV_INITIAL_ATTITUDE_ROLL_PITCH, 2);
+    p_out.dat[KC_STATE_E2][KC_STATE_E2] = powf(STDEV_INITIAL_ATTITUDE_YAW, 2);
 }
 
 static bool ekf_predict(
@@ -362,20 +362,20 @@ static bool ekf_predict(
         const uint32_t lastProcessNoiseUpdateMsec, 
         const uint32_t lastPredictionMsec, 
         new_quat_t & quat_out,
-        axisSubSampler_t & gyroSubSampler,
-        axisSubSampler_t & accelSubSampler,
-        matrix_t & p,
+        axisSubSampler_t & gyroSubSampler_out,
+        axisSubSampler_t & accelSubSampler_out,
+        matrix_t & p_out,
         ekfLinear_t & linear_out) 
 {
-    subSamplerFinalize(&gyroSubSampler, DEGREES_TO_RADIANS);
+    subSamplerFinalize(&gyroSubSampler_out, DEGREES_TO_RADIANS);
 
     const float dt = (stream_nowMsec - lastPredictionMsec) / 1000.0f;
 
     const auto dt2 = dt * dt;
 
-    subSamplerFinalize(&accelSubSampler, MSS_TO_GS);
+    subSamplerFinalize(&accelSubSampler_out, MSS_TO_GS);
 
-    const Axis3f * acc = &accelSubSampler.subSample; 
+    const Axis3f * acc = &accelSubSampler_out.subSample; 
 
     // Position updates in the body frame (will be rotated to inertial frame);
     // thrust can only be produced in the body's Z direction
@@ -391,7 +391,7 @@ static bool ekf_predict(
     const auto accx = stream_isFlying ? 0 : acc->x;
     const auto accy = stream_isFlying ? 0 : acc->y;
 
-    const Axis3f * gyro = &gyroSubSampler.subSample; 
+    const Axis3f * gyro = &gyroSubSampler_out.subSample; 
 
     // attitude update (rotate by gyroscope), we do this in quaternions
     // this is the gyroscope angular velocity integrated over the sample period
@@ -517,8 +517,8 @@ static bool ekf_predict(
     float At[KC_STATE_DIM][KC_STATE_DIM] = {};
     transpose(A, At);     // A'
     float AP[KC_STATE_DIM][KC_STATE_DIM] = {};
-    multiply(A, p.dat, AP, true);  // AP
-    multiply(AP, At, p.dat); // APA'
+    multiply(A, p_out.dat, AP, true);  // AP
+    multiply(AP, At, p_out.dat); // APA'
 
     const auto dt1 = (stream_nowMsec - lastProcessNoiseUpdateMsec) / 1000.0f;
     const auto isDtPositive = dt1 > 0;
@@ -535,9 +535,9 @@ static bool ekf_predict(
         powf(MEAS_NOISE_GYRO_ROLL_YAW * dt1 + PROC_NOISE_ATT, 2) 
     };
 
-    addNoiseDiagonal(p.dat, noise, isDtPositive);
+    addNoiseDiagonal(p_out.dat, noise, isDtPositive);
 
-    updateCovarianceMatrix(p.dat, isDtPositive);
+    updateCovarianceMatrix(p_out.dat, isDtPositive);
 
     return isDtPositive;
 }
@@ -545,7 +545,7 @@ static bool ekf_predict(
 static bool ekf_updateWithRange(
         const ekfState_t & ekfs_in,
         const float rz,
-        matrix_t & p,
+        matrix_t & p_out,
         ekfState_t & ekfs_out)
 {
     const auto angle = max(0, 
@@ -581,7 +581,7 @@ static bool ekf_updateWithRange(
             measuredDistance-predictedDistance, 
             stream_range.stdDev, 
             shouldUpdate,
-            p,
+            p_out,
             ekfs_out);
 }
 
@@ -589,7 +589,7 @@ static bool ekf_updateWithFlow(
         const ekfState_t & ekfs_in,
         const float rz,
         const Axis3f & gyroLatest,
-        matrix_t & p,
+        matrix_t & p_out,
         ekfState_t & ekfs_out) 
 {
     // Inclusion of flow measurements in the EKF done by two scalar updates
@@ -637,7 +637,7 @@ static bool ekf_updateWithFlow(
             measuredNX-predictedNX, 
             stream_flow.stdDevX*FLOW_RESOLUTION, 
             true,
-            p,
+            p_out,
             ekfs_first);
 
     // ~~~ Y velocity prediction and update ~~~
@@ -658,14 +658,14 @@ static bool ekf_updateWithFlow(
             measuredNY-predictedNY, 
             stream_flow.stdDevY*FLOW_RESOLUTION, 
             true,
-            p,
+            p_out,
             ekfs_out);
 }
 
 static bool ekf_finalize(
         const ekfState_t & ekfs,
         const new_quat_t & q,
-        matrix_t & p,
+        matrix_t & p_out,
         new_quat_t & q_out)
 {
     // Incorporate the attitude error (Kalman filter state) with the attitude
@@ -710,10 +710,10 @@ static bool ekf_finalize(
     float At[KC_STATE_DIM][KC_STATE_DIM] = {};
     transpose(A, At);     // A'
     float AP[KC_STATE_DIM][KC_STATE_DIM] = {};
-    multiply(A, p.dat, AP, true);  // AP
-    multiply(AP, At, p.dat, isErrorSufficient); // APA'
+    multiply(A, p_out.dat, AP, true);  // AP
+    multiply(AP, At, p_out.dat, isErrorSufficient); // APA'
 
-    updateCovarianceMatrix(p.dat, true);
+    updateCovarianceMatrix(p_out.dat, true);
 
     return isStateWithinBounds(ekfs);
 } 
