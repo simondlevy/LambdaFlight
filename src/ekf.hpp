@@ -537,15 +537,16 @@ static bool ekf_predict(
 }
 
 static bool ekf_updateWithRange(
+        const ekfState_t & ekfs_in,
         const float rz,
         matrix_t & p,
-        ekfState_t & ekfs)
+        ekfState_t & ekfs_out)
 {
-    const auto angle = max( 0, 
+    const auto angle = max(0, 
             fabsf(acosf(rz)) - 
             DEGREES_TO_RADIANS * (15.0f / 2.0f));
 
-    const auto predictedDistance = ekfs.z / cosf(angle);
+    const auto predictedDistance = ekfs_in.z / cosf(angle);
     const auto measuredDistance = stream_range.distance; // [m]
 
     // The sensor model (Pg.95-96,
@@ -569,13 +570,13 @@ static bool ekf_updateWithRange(
     // (\hat{h} -> infty when R[2][2] -> 0)
     const auto shouldUpdate = fabs(rz) > 0.1f && rz > 0;
     return scalarUpdate(
-            ekfs,
+            ekfs_in,
             h , 
             measuredDistance-predictedDistance, 
             stream_range.stdDev, 
             shouldUpdate,
             p,
-            ekfs);
+            ekfs_out);
 }
 
 static bool ekf_updateWithFlow(
@@ -826,7 +827,7 @@ static void ekf_step(void)
             break;
 
         case EKF_UPDATE_WITH_RANGE:
-            didUpdateRange = ekf_updateWithRange(_rz, _p, _ekfs);
+            didUpdateRange = ekf_updateWithRange(ekfs, _rz, _p, _ekfs);
             break;
 
         default:
