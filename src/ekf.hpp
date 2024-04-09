@@ -834,19 +834,15 @@ static void ekf_step(void)
     const auto didUpdateWithRange = stream_ekfAction == EKF_UPDATE_WITH_RANGE &&
         ekf_updateWithRange(_p, ekfs, _rz, _p, ekfs_updatedWithRange);
 
-    switch (stream_ekfAction) {
+    const auto updatedWithGyro = stream_ekfAction == EKF_UPDATE_WITH_GYRO;
+    if (updatedWithGyro) {
+        subSamplerAccumulate(&_gyroSubSampler, &stream_gyro);
+        memcpy(&_gyroLatest, &stream_gyro, sizeof(Axis3f));
+    }
 
-        case EKF_UPDATE_WITH_GYRO:
-            subSamplerAccumulate(&_gyroSubSampler, &stream_gyro);
-            memcpy(&_gyroLatest, &stream_gyro, sizeof(Axis3f));
-            break;
-
-        case EKF_UPDATE_WITH_ACCEL:
+    const auto updatedWithAccel = stream_ekfAction == EKF_UPDATE_WITH_ACCEL;
+    if (updatedWithAccel) {
             subSamplerAccumulate(&_accelSubSampler, &stream_accel);
-            break;
-
-        default:
-            break;
     }
 
     const auto ranging = stream_ekfAction == EKF_UPDATE_WITH_RANGE;
