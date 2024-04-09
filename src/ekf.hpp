@@ -88,8 +88,7 @@ typedef struct {
 
     Axis3f sum;
     uint32_t count;
-
-    Axis3f subSample;
+    Axis3f avg;
 
 } axisSubSampler_t;
 
@@ -133,21 +132,21 @@ static void subSamplerFinalize(
     const auto count  = subSampler->count; 
     const auto isCountNonzero = count > 0;
 
-    subSampler->subSample.x = isCountNonzero ? 
+    subSampler->avg.x = isCountNonzero ? 
         subSampler->sum.x * conversionFactor / count :
-        subSampler->subSample.x;
+        subSampler->avg.x;
 
-    subSampler->subSample.y = isCountNonzero ?
+    subSampler->avg.y = isCountNonzero ?
         subSampler->sum.y * conversionFactor / count :
-        subSampler->subSample.y;
+        subSampler->avg.y;
 
-    subSampler->subSample.z = isCountNonzero ?
+    subSampler->avg.z = isCountNonzero ?
         subSampler->sum.z * conversionFactor / count :
-        subSampler->subSample.z;
+        subSampler->avg.z;
 
     // Reset
     subSampler->count = 0;
-    subSampler->sum = (Axis3f){.axis={0}};
+    memset(&subSampler->sum, 0, sizeof(subSampler->sum));
 }
 
 static float rotateQuat( const float val, const float initVal)
@@ -366,15 +365,13 @@ static bool ekf_predict(
         matrix_t & p_out,
         ekfLinear_t & linear_out) 
 {
-    subSamplerFinalize(&gyroSubSampler_out, DEGREES_TO_RADIANS);
-
     const float dt = (stream_nowMsec - lastPredictionMsec) / 1000.0f;
-
     const auto dt2 = dt * dt;
 
+    subSamplerFinalize(&gyroSubSampler_out, DEGREES_TO_RADIANS);
     subSamplerFinalize(&accelSubSampler_out, MSS_TO_GS);
 
-    const Axis3f * acc = &accelSubSampler_out.subSample; 
+    const Axis3f * acc = &accelSubSampler_out.avg; 
 
     // Position updates in the body frame (will be rotated to inertial frame);
     // thrust can only be produced in the body's Z direction
@@ -390,7 +387,7 @@ static bool ekf_predict(
     const auto accx = stream_isFlying ? 0 : acc->x;
     const auto accy = stream_isFlying ? 0 : acc->y;
 
-    const Axis3f * gyro = &gyroSubSampler_out.subSample; 
+    const Axis3f * gyro = &gyroSubSampler_out.avg; 
 
     // attitude update (rotate by gyroscope), we do this in quaternions
     // this is the gyroscope angular velocity integrated over the sample period
