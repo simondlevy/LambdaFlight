@@ -867,9 +867,9 @@ static void ekf_step(void)
 
     //////////////////////////////////////////////////////////////////////////
 
-    if (didInitialize) {
-        memcpy(&_p, &p_initialized, sizeof(_p));
-    }
+    memcpy(&_p, 
+            didInitialize ? &p_initialized :
+            &_p, sizeof(_p));
 
     _qw = didInitialize ? 1 : 
         didFinalize ? quat_finalized.w :
