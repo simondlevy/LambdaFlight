@@ -206,6 +206,7 @@ static void updateCovarianceMatrix(
 }
 
 static bool scalarUpdate(
+        const matrix_t & p_in,
         const ekfState_t & ekfs_in,
         const float h[KC_STATE_DIM],
         const float error, 
@@ -217,7 +218,7 @@ static bool scalarUpdate(
 
     // ====== INNOVATION COVARIANCE ======
     float ph[KC_STATE_DIM] = {};
-    multiply(p_out.dat, h, ph);
+    multiply(p_in.dat, h, ph);
     const auto r = stdMeasNoise * stdMeasNoise;
     const auto hphr = r + dot(h, ph); // HPH' + R
 
@@ -235,7 +236,6 @@ static bool scalarUpdate(
     };
 
     // Perform the state update
-    // XXX update()
     ekfs_out.lin.z  = ekfs_in.lin.z  + (shouldUpdate ? g[0] * error: 0);
     ekfs_out.lin.dx = ekfs_in.lin.dx + (shouldUpdate ? g[1] * error: 0);
     ekfs_out.lin.dy = ekfs_in.lin.dy + (shouldUpdate ? g[2] * error: 0);
@@ -257,7 +257,7 @@ static bool scalarUpdate(
     transpose(GH, GHt);      // (KH - I)'
 
     float GHIP[KC_STATE_DIM][KC_STATE_DIM] = {};
-    multiply(GH, p_out.dat, GHIP, true);  // (KH - I)*P
+    multiply(GH, p_in.dat, GHIP, true);  // (KH - I)*P
 
     multiply(GHIP, GHt, p_out.dat, shouldUpdate); // (KH - I)*P*(KH - I)'
 
@@ -578,6 +578,7 @@ static bool ekf_updateWithRange(
     // (\hat{h} -> infty when R[2][2] -> 0)
     const auto shouldUpdate = fabs(rz) > 0.1f && rz > 0;
     return scalarUpdate(
+            p_in,
             ekfs_in,
             h , 
             measuredDistance-predictedDistance, 
@@ -631,16 +632,18 @@ static bool ekf_updateWithFlow(
     hx[KC_STATE_DX] = (Npix * stream_flow.dt / thetapix) * 
         (rz / z_g);
 
+    matrix_t p_first = {};
     ekfState_t ekfs_first = {};
 
     //First update
     scalarUpdate(
+            p_in,
             ekfs_in,
             hx, 
             measuredNX-predictedNX, 
             stream_flow.stdDevX*FLOW_RESOLUTION, 
             true,
-            p_out,
+            p_first,
             ekfs_first);
 
     // ~~~ Y velocity prediction and update ~~~
@@ -656,6 +659,7 @@ static bool ekf_updateWithFlow(
 
     // Second update
     return scalarUpdate(
+            p_first,
             ekfs_first,
             hy, 
             measuredNY-predictedNY, 
@@ -666,6 +670,7 @@ static bool ekf_updateWithFlow(
 }
 
 static bool ekf_finalize(
+        const matrix_t & p_in,
         const ekfState_t & ekfs,
         const new_quat_t & q,
         matrix_t & p_out,
@@ -713,7 +718,7 @@ static bool ekf_finalize(
     float At[KC_STATE_DIM][KC_STATE_DIM] = {};
     transpose(A, At);     // A'
     float AP[KC_STATE_DIM][KC_STATE_DIM] = {};
-    multiply(A, p_out.dat, AP, true);  // AP
+    multiply(A, p_in.dat, AP, true);  // AP
     multiply(AP, At, p_out.dat, isErrorSufficient); // APA'
 
     updateCovarianceMatrix(p_out.dat, true);
@@ -825,7 +830,7 @@ static void ekf_step(void)
     new_quat_t quat_finalized = {};
     const auto isStateInBounds = 
         _isUpdated && stream_ekfAction == EKF_FINALIZE ? 
-        ekf_finalize(ekfs, quat, _p, quat_finalized) :
+        ekf_finalize(_p, ekfs, quat, _p, quat_finalized) :
         isStateWithinBounds(ekfs);
 
     ekfState_t ekfs_flow = {};
