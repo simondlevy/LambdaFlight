@@ -40,13 +40,14 @@ typedef struct {
 
 } demands_t;
 
-typedef struct axes {
+typedef struct {
 
     float x;
     float y;
     float z;
 
-} axes_t;
+} axis3_t;
+
 
 // From Eqn. (11) in Bouabdallah,  Murrieri, Siegwart (2004). 
 // We use ENU coordinates based on 

@@ -78,17 +78,9 @@ typedef struct {
 
 typedef struct {
 
-    float x;
-    float y;
-    float z;
-
-} axis3_t;
-
-typedef struct {
-
-    Axis3f sum;
+    axis3_t sum;
     uint32_t count;
-    Axis3f avg;
+    axis3_t avg;
 
 } axisSubSampler_t;
 
@@ -116,7 +108,7 @@ static const float max(const float val, const float maxval)
 
 static void subSamplerAccumulate(
         axisSubSampler_t & subSampler,
-        const Axis3f & sample) 
+        const axis3_t & sample) 
 {
     subSampler.sum.x += sample.x;
     subSampler.sum.y += sample.y;
@@ -371,7 +363,7 @@ static bool ekf_predict(
     subSamplerTakeMean(gyroSubSampler_out, DEGREES_TO_RADIANS);
     subSamplerTakeMean(accelSubSampler_out, MSS_TO_GS);
 
-    const Axis3f * acc = &accelSubSampler_out.avg; 
+    const axis3_t * acc = &accelSubSampler_out.avg; 
 
     // Position updates in the body frame (will be rotated to inertial frame);
     // thrust can only be produced in the body's Z direction
@@ -387,7 +379,7 @@ static bool ekf_predict(
     const auto accx = stream_isFlying ? 0 : acc->x;
     const auto accy = stream_isFlying ? 0 : acc->y;
 
-    const Axis3f * gyro = &gyroSubSampler_out.avg; 
+    const axis3_t * gyro = &gyroSubSampler_out.avg; 
 
     // attitude update (rotate by gyroscope), we do this in quaternions
     // this is the gyroscope angular velocity integrated over the sample period
@@ -587,7 +579,7 @@ static bool ekf_updateWithFlow(
         const matrix_t & p_in,
         const ekfState_t & ekfs_in,
         const float rz,
-        const Axis3f & gyroLatest,
+        const axis3_t & gyroLatest,
         matrix_t & p_out,
         ekfState_t & ekfs_out) 
 {
@@ -723,7 +715,7 @@ static bool ekf_finalize(
 
 static void ekf_getState(
         const ekfState_t & ekfs, 
-        const Axis3f & gyroLatest,
+        const axis3_t & gyroLatest,
         const new_quat_t & q,
         const axis3_t & r,
         vehicleState_t & state)
@@ -768,7 +760,7 @@ static void ekf_step(void)
     static axisSubSampler_t _gyroSubSampler;
     static axisSubSampler_t _accelSubSampler;
 
-    static Axis3f _gyroLatest;
+    static axis3_t _gyroLatest;
 
     static bool _isUpdated;
     static uint32_t _lastPredictionMsec;
@@ -863,7 +855,7 @@ static void ekf_step(void)
 
      memcpy(&_gyroLatest, 
              didUpdateWithGyro ?  &stream_gyro : &_gyroLatest, 
-             sizeof(Axis3f));
+             sizeof(axis3_t));
 
     _qw = didInitialize ? 1 : 
         didFinalize ? quat_finalized.w :
