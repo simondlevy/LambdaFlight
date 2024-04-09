@@ -126,7 +126,7 @@ static void subSamplerAccumulate(
     subSampler->count++;
 }
 
-static Axis3f* subSamplerFinalize(
+static void subSamplerFinalize(
         axisSubSampler_t* subSampler,
         const float conversionFactor)
 {
@@ -148,8 +148,6 @@ static Axis3f* subSamplerFinalize(
     // Reset
     subSampler->count = 0;
     subSampler->sum = (Axis3f){.axis={0}};
-
-    return &subSampler->subSample;
 }
 
 static float rotateQuat( const float val, const float initVal)
@@ -793,9 +791,14 @@ static void ekf_step(void)
     const auto quat = new_quat_t {_qw, _qx, _qy, _qz };
     const auto r = axis3_t {_rx, _ry, _rz};
 
+    // Initialize
+    bool didInitialize = stream_ekfAction == EKF_INIT;
+    matrix_t p_initialized = {};
+    ekf_init(p_initialized);
+
+    // Predict
     const auto shouldPredict = stream_ekfAction == EKF_PREDICT && 
         stream_nowMsec >= stream_nextPredictionMsec;
-
     ekfLinear_t lin_predicted = {};
     new_quat_t quat_predicted = {};
     const auto didPredict = 
@@ -813,6 +816,7 @@ static void ekf_step(void)
                 _p,
                 lin_predicted);
 
+    // Finalize
     const auto finalizing = stream_ekfAction == EKF_FINALIZE;
     const auto didFinalize = finalizing && _isUpdated;
     new_quat_t quat_finalized = {};
@@ -821,33 +825,31 @@ static void ekf_step(void)
         ekf_finalize(_p, ekfs, quat, _p, quat_finalized) :
         isStateWithinBounds(ekfs);
 
-    bool didInitialize = stream_ekfAction == EKF_INIT;
-    matrix_t p_initialized = {};
-    ekf_init(p_initialized);
-
+    // Update with flow
     ekfState_t ekfs_updatedWithFlow = {};
     const auto didUpdateWithFlow = stream_ekfAction == EKF_UPDATE_WITH_FLOW &&
         ekf_updateWithFlow(_p, ekfs, _rz, _gyroLatest, _p, ekfs_updatedWithFlow);
 
+    // Update with range
     ekfState_t ekfs_updatedWithRange = {};
     const auto didUpdateWithRange = stream_ekfAction == EKF_UPDATE_WITH_RANGE &&
         ekf_updateWithRange(_p, ekfs, _rz, _p, ekfs_updatedWithRange);
 
-    const auto updatedWithGyro = stream_ekfAction == EKF_UPDATE_WITH_GYRO;
-    if (updatedWithGyro) {
+    // Update with gyro
+    const auto didUpdateWithGyro = stream_ekfAction == EKF_UPDATE_WITH_GYRO;
+    if (didUpdateWithGyro) {
         subSamplerAccumulate(&_gyroSubSampler, &stream_gyro);
-        memcpy(&_gyroLatest, &stream_gyro, sizeof(Axis3f));
     }
 
-    const auto updatedWithAccel = stream_ekfAction == EKF_UPDATE_WITH_ACCEL;
-    if (updatedWithAccel) {
+    // Update with accel
+    const auto didUpdateWithAccel = stream_ekfAction == EKF_UPDATE_WITH_ACCEL;
+    if (didUpdateWithAccel) {
             subSamplerAccumulate(&_accelSubSampler, &stream_accel);
     }
 
-
+    // Get vehicle state
     vehicleState_t vehicleState = {};
     ekf_getState(ekfs, _gyroLatest, quat, r, vehicleState);
-
     if (stream_ekfAction == EKF_GET_STATE) {
         setState(vehicleState);
     }
@@ -861,6 +863,10 @@ static void ekf_step(void)
     memcpy(&_p, 
             didInitialize ? &p_initialized :
             &_p, sizeof(_p));
+
+     memcpy(&_gyroLatest, 
+             didUpdateWithGyro ?  &stream_gyro : &_gyroLatest, 
+             sizeof(Axis3f));
 
     _qw = didInitialize ? 1 : 
         didFinalize ? quat_finalized.w :
