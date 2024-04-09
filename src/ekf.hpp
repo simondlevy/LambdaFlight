@@ -788,10 +788,6 @@ static void ekf_step(void)
     static float _qy;
     static float _qz;
 
-    bool didUpdateFlow = false;
-    bool didUpdateRange = false;
-
-
     const auto ekfs = ekfState_t { {_z, _dx, _dy, _dz}, {_e0, _e1, _e2}};
 
     const auto quat = new_quat_t {_qw, _qx, _qy, _qz };
@@ -832,14 +828,15 @@ static void ekf_step(void)
     matrix_t p_initialized = {};
     ekf_init(p_initialized);
 
+    const auto didUpdateWithFlow = stream_ekfAction == EKF_UPDATE_WITH_FLOW &&
+        ekf_updateWithFlow(_p, ekfs, _rz, _gyroLatest, _p, ekfs_flow);
+
+    auto didUpdateWithRange = false;
+
     switch (stream_ekfAction) {
 
-        case EKF_UPDATE_WITH_FLOW:
-            didUpdateFlow = ekf_updateWithFlow(_p, ekfs, _rz, _gyroLatest, _p, ekfs_flow);
-            break;
-
         case EKF_UPDATE_WITH_RANGE:
-            didUpdateRange = ekf_updateWithRange(_p, ekfs, _rz, _p, ekfs_range);
+            didUpdateWithRange = ekf_updateWithRange(_p, ekfs, _rz, _p, ekfs_range);
             break;
 
         case EKF_UPDATE_WITH_GYRO:
@@ -855,7 +852,6 @@ static void ekf_step(void)
             break;
     }
 
-    const auto flowing = stream_ekfAction == EKF_UPDATE_WITH_FLOW;
     const auto ranging = stream_ekfAction == EKF_UPDATE_WITH_RANGE;
 
     vehicleState_t vehicleState = {};
@@ -909,40 +905,40 @@ static void ekf_step(void)
 
     _z = didInitialize ? 0 : 
         didPredict ? lin_predicted.z :
-        flowing ? ekfs_flow.lin.z :
+        didUpdateWithFlow ? ekfs_flow.lin.z :
         ranging ? ekfs_range.lin.z :
         _z;
 
     _dx = didInitialize ? 0 : 
         didPredict ? lin_predicted.dx :
-        flowing ? ekfs_flow.lin.dx :
+        didUpdateWithFlow ? ekfs_flow.lin.dx :
         ranging ? ekfs_range.lin.dx :
         _dx;
 
     _dy = didInitialize ? 0 : 
         didPredict ? lin_predicted.dy :
-        flowing ? ekfs_flow.lin.dy :
+        didUpdateWithFlow ? ekfs_flow.lin.dy :
         ranging ? ekfs_range.lin.dy :
         _dy;
 
     _dz = didInitialize ? 0 : 
         didPredict ? lin_predicted.dz :
-        flowing ? ekfs_flow.lin.dz :
+        didUpdateWithFlow ? ekfs_flow.lin.dz :
         ranging ? ekfs_range.lin.dz :
         _dz;
 
     _e0 = didInitialize || didFinalize ? 0 : 
-        flowing ? ekfs_flow.ang.x :
+        didUpdateWithFlow ? ekfs_flow.ang.x :
         ranging ? ekfs_range.ang.x :
         _e0;
 
     _e1 = didInitialize || didFinalize ? 0 : 
-        flowing ? ekfs_flow.ang.y :
+        didUpdateWithFlow ? ekfs_flow.ang.y :
         ranging ? ekfs_range.ang.y :
         _e1;
 
     _e2 = didInitialize || didFinalize ? 0 : 
-        flowing ? ekfs_flow.ang.z :
+        didUpdateWithFlow ? ekfs_flow.ang.z :
         ranging ? ekfs_range.ang.z :
         _e2;
 
@@ -958,6 +954,6 @@ static void ekf_step(void)
     _isUpdated = 
         didInitialize || didFinalize ? false :
         stream_ekfAction == EKF_PREDICT ? true :
-        didUpdateFlow || didUpdateRange ? true :
+        didUpdateWithFlow || didUpdateWithRange ? true :
         _isUpdated;
 }
