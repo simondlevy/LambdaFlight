@@ -125,7 +125,7 @@ static void subSamplerAccumulate(
     subSampler->count++;
 }
 
-static void subSamplerFinalize(
+static void subSamplerTakeMean(
         axisSubSampler_t* subSampler,
         const float conversionFactor)
 {
@@ -368,8 +368,8 @@ static bool ekf_predict(
     const float dt = (stream_nowMsec - lastPredictionMsec) / 1000.0f;
     const auto dt2 = dt * dt;
 
-    subSamplerFinalize(&gyroSubSampler_out, DEGREES_TO_RADIANS);
-    subSamplerFinalize(&accelSubSampler_out, MSS_TO_GS);
+    subSamplerTakeMean(&gyroSubSampler_out, DEGREES_TO_RADIANS);
+    subSamplerTakeMean(&accelSubSampler_out, MSS_TO_GS);
 
     const Axis3f * acc = &accelSubSampler_out.avg; 
 
