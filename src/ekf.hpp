@@ -115,38 +115,38 @@ static const float max(const float val, const float maxval)
 }
 
 static void subSamplerAccumulate(
-        axisSubSampler_t * subSampler,
-        const Axis3f * sample) 
+        axisSubSampler_t & subSampler,
+        const Axis3f & sample) 
 {
-    subSampler->sum.x += sample->x;
-    subSampler->sum.y += sample->y;
-    subSampler->sum.z += sample->z;
+    subSampler.sum.x += sample.x;
+    subSampler.sum.y += sample.y;
+    subSampler.sum.z += sample.z;
 
-    subSampler->count++;
+    subSampler.count++;
 }
 
 static void subSamplerTakeMean(
-        axisSubSampler_t* subSampler,
+        axisSubSampler_t & subSampler,
         const float conversionFactor)
 {
-    const auto count  = subSampler->count; 
+    const auto count  = subSampler.count; 
     const auto isCountNonzero = count > 0;
 
-    subSampler->avg.x = isCountNonzero ? 
-        subSampler->sum.x * conversionFactor / count :
-        subSampler->avg.x;
+    subSampler.avg.x = isCountNonzero ? 
+        subSampler.sum.x * conversionFactor / count :
+        subSampler.avg.x;
 
-    subSampler->avg.y = isCountNonzero ?
-        subSampler->sum.y * conversionFactor / count :
-        subSampler->avg.y;
+    subSampler.avg.y = isCountNonzero ?
+        subSampler.sum.y * conversionFactor / count :
+        subSampler.avg.y;
 
-    subSampler->avg.z = isCountNonzero ?
-        subSampler->sum.z * conversionFactor / count :
-        subSampler->avg.z;
+    subSampler.avg.z = isCountNonzero ?
+        subSampler.sum.z * conversionFactor / count :
+        subSampler.avg.z;
 
     // Reset
-    subSampler->count = 0;
-    memset(&subSampler->sum, 0, sizeof(subSampler->sum));
+    subSampler.count = 0;
+    memset(&subSampler.sum, 0, sizeof(subSampler.sum));
 }
 
 static float rotateQuat( const float val, const float initVal)
@@ -368,8 +368,8 @@ static bool ekf_predict(
     const float dt = (stream_nowMsec - lastPredictionMsec) / 1000.0f;
     const auto dt2 = dt * dt;
 
-    subSamplerTakeMean(&gyroSubSampler_out, DEGREES_TO_RADIANS);
-    subSamplerTakeMean(&accelSubSampler_out, MSS_TO_GS);
+    subSamplerTakeMean(gyroSubSampler_out, DEGREES_TO_RADIANS);
+    subSamplerTakeMean(accelSubSampler_out, MSS_TO_GS);
 
     const Axis3f * acc = &accelSubSampler_out.avg; 
 
@@ -835,13 +835,13 @@ static void ekf_step(void)
     // Update with gyro
     const auto didUpdateWithGyro = stream_ekfAction == EKF_UPDATE_WITH_GYRO;
     if (didUpdateWithGyro) {
-        subSamplerAccumulate(&_gyroSubSampler, &stream_gyro);
+        subSamplerAccumulate(_gyroSubSampler, stream_gyro);
     }
 
     // Update with accel
     const auto didUpdateWithAccel = stream_ekfAction == EKF_UPDATE_WITH_ACCEL;
     if (didUpdateWithAccel) {
-            subSamplerAccumulate(&_accelSubSampler, &stream_accel);
+            subSamplerAccumulate(_accelSubSampler, stream_accel);
     }
 
     // Get vehicle state
