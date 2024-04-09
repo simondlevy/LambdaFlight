@@ -817,9 +817,11 @@ static void ekf_step(void)
                 _p,
                 lin_predicted);
 
+    const auto finalizing = stream_ekfAction == EKF_FINALIZE;
+    const auto didFinalize = finalizing && _isUpdated;
     new_quat_t quat_finalized = {};
     const auto isStateInBounds = 
-        _isUpdated && stream_ekfAction == EKF_FINALIZE ? 
+        didFinalize ? 
         ekf_finalize(_p, ekfs, quat, _p, quat_finalized) :
         isStateWithinBounds(ekfs);
 
@@ -853,7 +855,6 @@ static void ekf_step(void)
             break;
     }
 
-    const auto finalizing = stream_ekfAction == EKF_FINALIZE;
     const auto flowing = stream_ekfAction == EKF_UPDATE_WITH_FLOW;
     const auto ranging = stream_ekfAction == EKF_UPDATE_WITH_RANGE;
 
@@ -875,35 +876,35 @@ static void ekf_step(void)
     }
 
     _qw = didInitialize ? 1 : 
-        finalizing ? quat_finalized.w :
+        didFinalize ? quat_finalized.w :
         didPredict ? quat_predicted.w :
         _qw;
 
     _qx = didInitialize ? 0 : 
-        finalizing ? quat_finalized.x :
+        didFinalize ? quat_finalized.x :
         didPredict ? quat_predicted.x :
         _qx;
 
     _qy = didInitialize ? 0 : 
-        finalizing ? quat_finalized.y :
+        didFinalize ? quat_finalized.y :
         didPredict ? quat_predicted.y :
         _qy;
 
     _qz = didInitialize ? 0 : 
-        finalizing ? quat_finalized.z :
+        didFinalize ? quat_finalized.z :
         didPredict ? quat_predicted.z :
         _qz;
 
     _rx = didInitialize ? 0 : 
-        finalizing ? 2 * _qx * _qz - 2 * _qw * _qy :
+        didFinalize ? 2 * _qx * _qz - 2 * _qw * _qy :
         _rx;
 
     _ry = didInitialize ? 0 : 
-        finalizing ? 2 * _qy * _qz + 2 * _qw * _qx :
+        didFinalize ? 2 * _qy * _qz + 2 * _qw * _qx :
         _ry;
 
     _rz = didInitialize ? 1 : 
-        finalizing ? _qw*_qw-_qx*_qx-_qy*_qy+_qz*_qz:
+        didFinalize ? _qw*_qw-_qx*_qx-_qy*_qy+_qz*_qz:
         _rz;
 
     _z = didInitialize ? 0 : 
@@ -930,17 +931,17 @@ static void ekf_step(void)
         ranging ? ekfs_range.lin.dz :
         _dz;
 
-    _e0 = didInitialize || finalizing ? 0 : 
+    _e0 = didInitialize || didFinalize ? 0 : 
         flowing ? ekfs_flow.ang.x :
         ranging ? ekfs_range.ang.x :
         _e0;
 
-    _e1 = didInitialize || finalizing ? 0 : 
+    _e1 = didInitialize || didFinalize ? 0 : 
         flowing ? ekfs_flow.ang.y :
         ranging ? ekfs_range.ang.y :
         _e1;
 
-    _e2 = didInitialize || finalizing ? 0 : 
+    _e2 = didInitialize || didFinalize ? 0 : 
         flowing ? ekfs_flow.ang.z :
         ranging ? ekfs_range.ang.z :
         _e2;
@@ -955,7 +956,7 @@ static void ekf_step(void)
         _lastPredictionMsec;
 
     _isUpdated = 
-        didInitialize || finalizing ? false :
+        didInitialize || didFinalize ? false :
         stream_ekfAction == EKF_PREDICT ? true :
         didUpdateFlow || didUpdateRange ? true :
         _isUpdated;
