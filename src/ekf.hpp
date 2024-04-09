@@ -797,16 +797,6 @@ static void ekf_step(void)
     const auto quat = new_quat_t {_qw, _qx, _qy, _qz };
     const auto r = axis3_t {_rx, _ry, _rz};
 
-    matrix_t p_init= {};
-    matrix_t p_predict= {};
-    matrix_t p_flow = {};
-    matrix_t p_range = {};
-
-    (void)p_init;
-    (void)p_predict;
-    (void)p_flow;
-    (void)p_range;
-
     const auto shouldPredict = stream_ekfAction == EKF_PREDICT && 
         stream_nowMsec >= stream_nextPredictionMsec;
 
@@ -836,11 +826,11 @@ static void ekf_step(void)
     ekfState_t ekfs_flow = {};
     ekfState_t ekfs_range = {};
 
-    switch (stream_ekfAction) {
+    bool didInitialize = stream_ekfAction == EKF_INIT;
+    matrix_t p_initialized = {};
+    ekf_init(p_initialized);
 
-        case EKF_INIT:
-            ekf_init(_p);
-            break;
+    switch (stream_ekfAction) {
 
         case EKF_UPDATE_WITH_FLOW:
             didUpdateFlow = ekf_updateWithFlow(_p, ekfs, _rz, _gyroLatest, _p, ekfs_flow);
@@ -877,6 +867,12 @@ static void ekf_step(void)
 
     if (finalizing) {
         setStateIsInBounds(isStateInBounds);
+    }
+
+    //////////////////////////////////////////////////////////////////////////
+
+    if (didInitialize) {
+        memcpy(&_p, &p_initialized, sizeof(_p));
     }
 
     _qw = initializing ? 1 : 
