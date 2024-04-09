@@ -79,8 +79,8 @@ typedef struct {
 typedef struct {
 
     axis3_t sum;
-    uint32_t count;
     axis3_t avg;
+    uint32_t count;
 
 } axisSubSampler_t;
 
@@ -118,27 +118,28 @@ static void subSamplerAccumulate(
 }
 
 static void subSamplerTakeMean(
-        axisSubSampler_t & subSampler,
-        const float conversionFactor)
+        const axisSubSampler_t & subSampler_in,
+        const float conversionFactor,
+        axisSubSampler_t & subSampler_out)
 {
-    const auto count  = subSampler.count; 
+    const auto count  = subSampler_out.count; 
     const auto isCountNonzero = count > 0;
 
-    subSampler.avg.x = isCountNonzero ? 
-        subSampler.sum.x * conversionFactor / count :
-        subSampler.avg.x;
+    subSampler_out.avg.x = isCountNonzero ? 
+        subSampler_out.sum.x * conversionFactor / count :
+        subSampler_out.avg.x;
 
-    subSampler.avg.y = isCountNonzero ?
-        subSampler.sum.y * conversionFactor / count :
-        subSampler.avg.y;
+    subSampler_out.avg.y = isCountNonzero ?
+        subSampler_out.sum.y * conversionFactor / count :
+        subSampler_out.avg.y;
 
-    subSampler.avg.z = isCountNonzero ?
-        subSampler.sum.z * conversionFactor / count :
-        subSampler.avg.z;
+    subSampler_out.avg.z = isCountNonzero ?
+        subSampler_out.sum.z * conversionFactor / count :
+        subSampler_out.avg.z;
 
     // Reset
-    subSampler.count = 0;
-    memset(&subSampler.sum, 0, sizeof(subSampler.sum));
+    subSampler_out.count = 0;
+    memset(&subSampler_out.sum, 0, sizeof(subSampler_out.sum));
 }
 
 static float rotateQuat( const float val, const float initVal)
@@ -345,6 +346,8 @@ static void ekf_init(matrix_t & p_out)
 }
 
 static bool ekf_predict(
+        const axisSubSampler_t & gyroSubSampler_in,
+        const axisSubSampler_t & accelSubSampler_in,
         const matrix_t & p_in,
         const ekfLinear_t & linear_in,
         const new_quat_t & q,
@@ -360,8 +363,8 @@ static bool ekf_predict(
     const float dt = (stream_nowMsec - lastPredictionMsec) / 1000.0f;
     const auto dt2 = dt * dt;
 
-    subSamplerTakeMean(gyroSubSampler_out, DEGREES_TO_RADIANS);
-    subSamplerTakeMean(accelSubSampler_out, MSS_TO_GS);
+    subSamplerTakeMean(gyroSubSampler_in, DEGREES_TO_RADIANS, gyroSubSampler_out);
+    subSamplerTakeMean(accelSubSampler_in, MSS_TO_GS, accelSubSampler_out);
 
     const axis3_t * acc = &accelSubSampler_out.avg; 
 
@@ -757,7 +760,24 @@ static void ekf_step(void)
 
     static matrix_t _p;
 
+    static float _gyroSumX;
+    static float _gyroSumY;
+    static float _gyroSumZ;
+    static float _gyroAvgX;
+    static float _gyroAvgY;
+    static float _gyroAvgZ;
+    static uint32_t _gyroCount;
+
+    static float _accelSumX;
+    static float _accelSumY;
+    static float _accelSumZ;
+    static float _accelAvgX;
+    static float _accelAvgY;
+    static float _accelAvgZ;
+    static uint32_t _accelCount;
+
     static axisSubSampler_t _gyroSubSampler;
+
     static axisSubSampler_t _accelSubSampler;
 
     static axis3_t _gyroLatest;
@@ -774,6 +794,20 @@ static void ekf_step(void)
     static float _qx;
     static float _qy;
     static float _qz;
+
+    const auto gyroSubSampler = axisSubSampler_t {
+
+        {_gyroSumX, _gyroSumY, _gyroSumZ},
+        {_gyroAvgX, _gyroAvgY, _gyroAvgZ},
+        _gyroCount
+    };
+
+    const auto accelSubSampler = axisSubSampler_t {
+
+        {_accelSumX, _accelSumY, _accelSumZ},
+        {_accelAvgX, _accelAvgY, _accelAvgZ},
+        _accelCount
+    };
 
     const auto ekfs = ekfState_t { {_z, _dx, _dy, _dz}, {_e0, _e1, _e2}};
 
@@ -793,6 +827,8 @@ static void ekf_step(void)
     const auto didPredict = 
         shouldPredict && 
         ekf_predict(
+                gyroSubSampler,
+                accelSubSampler,
                 _p,
                 ekfs.lin,
                 quat,
