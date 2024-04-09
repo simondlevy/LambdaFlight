@@ -853,7 +853,6 @@ static void ekf_step(void)
             break;
     }
 
-    const auto initializing = stream_ekfAction == EKF_INIT;
     const auto finalizing = stream_ekfAction == EKF_FINALIZE;
     const auto flowing = stream_ekfAction == EKF_UPDATE_WITH_FLOW;
     const auto ranging = stream_ekfAction == EKF_UPDATE_WITH_RANGE;
@@ -875,88 +874,88 @@ static void ekf_step(void)
         memcpy(&_p, &p_initialized, sizeof(_p));
     }
 
-    _qw = initializing ? 1 : 
+    _qw = didInitialize ? 1 : 
         finalizing ? quat_finalized.w :
         didPredict ? quat_predicted.w :
         _qw;
 
-    _qx = initializing ? 0 : 
+    _qx = didInitialize ? 0 : 
         finalizing ? quat_finalized.x :
         didPredict ? quat_predicted.x :
         _qx;
 
-    _qy = initializing ? 0 : 
+    _qy = didInitialize ? 0 : 
         finalizing ? quat_finalized.y :
         didPredict ? quat_predicted.y :
         _qy;
 
-    _qz = initializing ? 0 : 
+    _qz = didInitialize ? 0 : 
         finalizing ? quat_finalized.z :
         didPredict ? quat_predicted.z :
         _qz;
 
-    _rx = initializing ? 0 : 
+    _rx = didInitialize ? 0 : 
         finalizing ? 2 * _qx * _qz - 2 * _qw * _qy :
         _rx;
 
-    _ry = initializing ? 0 : 
+    _ry = didInitialize ? 0 : 
         finalizing ? 2 * _qy * _qz + 2 * _qw * _qx :
         _ry;
 
-    _rz = initializing ? 1 : 
+    _rz = didInitialize ? 1 : 
         finalizing ? _qw*_qw-_qx*_qx-_qy*_qy+_qz*_qz:
         _rz;
 
-    _z = initializing ? 0 : 
+    _z = didInitialize ? 0 : 
         didPredict ? lin_predicted.z :
         flowing ? ekfs_flow.lin.z :
         ranging ? ekfs_range.lin.z :
         _z;
 
-    _dx = initializing ? 0 : 
+    _dx = didInitialize ? 0 : 
         didPredict ? lin_predicted.dx :
         flowing ? ekfs_flow.lin.dx :
         ranging ? ekfs_range.lin.dx :
         _dx;
 
-    _dy = initializing ? 0 : 
+    _dy = didInitialize ? 0 : 
         didPredict ? lin_predicted.dy :
         flowing ? ekfs_flow.lin.dy :
         ranging ? ekfs_range.lin.dy :
         _dy;
 
-    _dz = initializing ? 0 : 
+    _dz = didInitialize ? 0 : 
         didPredict ? lin_predicted.dz :
         flowing ? ekfs_flow.lin.dz :
         ranging ? ekfs_range.lin.dz :
         _dz;
 
-    _e0 = initializing || finalizing ? 0 : 
+    _e0 = didInitialize || finalizing ? 0 : 
         flowing ? ekfs_flow.ang.x :
         ranging ? ekfs_range.ang.x :
         _e0;
 
-    _e1 = initializing || finalizing ? 0 : 
+    _e1 = didInitialize || finalizing ? 0 : 
         flowing ? ekfs_flow.ang.y :
         ranging ? ekfs_range.ang.y :
         _e1;
 
-    _e2 = initializing || finalizing ? 0 : 
+    _e2 = didInitialize || finalizing ? 0 : 
         flowing ? ekfs_flow.ang.z :
         ranging ? ekfs_range.ang.z :
         _e2;
 
     _lastProcessNoiseUpdateMsec = 
-        initializing || didPredict ?  
+        didInitialize || didPredict ?  
         stream_nowMsec : 
         _lastProcessNoiseUpdateMsec;
 
     _lastPredictionMsec = 
-        initializing || shouldPredict ? stream_nowMsec :
+        didInitialize || shouldPredict ? stream_nowMsec :
         _lastPredictionMsec;
 
     _isUpdated = 
-        initializing || finalizing ? false :
+        didInitialize || finalizing ? false :
         stream_ekfAction == EKF_PREDICT ? true :
         didUpdateFlow || didUpdateRange ? true :
         _isUpdated;
