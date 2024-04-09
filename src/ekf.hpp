@@ -821,23 +821,20 @@ static void ekf_step(void)
         ekf_finalize(_p, ekfs, quat, _p, quat_finalized) :
         isStateWithinBounds(ekfs);
 
-    ekfState_t ekfs_flow = {};
-    ekfState_t ekfs_range = {};
 
     bool didInitialize = stream_ekfAction == EKF_INIT;
     matrix_t p_initialized = {};
     ekf_init(p_initialized);
 
+    ekfState_t ekfs_updatedWithFlow = {};
     const auto didUpdateWithFlow = stream_ekfAction == EKF_UPDATE_WITH_FLOW &&
-        ekf_updateWithFlow(_p, ekfs, _rz, _gyroLatest, _p, ekfs_flow);
+        ekf_updateWithFlow(_p, ekfs, _rz, _gyroLatest, _p, ekfs_updatedWithFlow);
 
-    auto didUpdateWithRange = false;
+    ekfState_t ekfs_updatedWithRange = {};
+    const auto didUpdateWithRange = stream_ekfAction == EKF_UPDATE_WITH_RANGE &&
+        ekf_updateWithRange(_p, ekfs, _rz, _p, ekfs_updatedWithRange);
 
     switch (stream_ekfAction) {
-
-        case EKF_UPDATE_WITH_RANGE:
-            didUpdateWithRange = ekf_updateWithRange(_p, ekfs, _rz, _p, ekfs_range);
-            break;
 
         case EKF_UPDATE_WITH_GYRO:
             subSamplerAccumulate(&_gyroSubSampler, &stream_gyro);
@@ -905,41 +902,41 @@ static void ekf_step(void)
 
     _z = didInitialize ? 0 : 
         didPredict ? lin_predicted.z :
-        didUpdateWithFlow ? ekfs_flow.lin.z :
-        ranging ? ekfs_range.lin.z :
+        didUpdateWithFlow ? ekfs_updatedWithFlow.lin.z :
+        ranging ? ekfs_updatedWithRange.lin.z :
         _z;
 
     _dx = didInitialize ? 0 : 
         didPredict ? lin_predicted.dx :
-        didUpdateWithFlow ? ekfs_flow.lin.dx :
-        ranging ? ekfs_range.lin.dx :
+        didUpdateWithFlow ? ekfs_updatedWithFlow.lin.dx :
+        ranging ? ekfs_updatedWithRange.lin.dx :
         _dx;
 
     _dy = didInitialize ? 0 : 
         didPredict ? lin_predicted.dy :
-        didUpdateWithFlow ? ekfs_flow.lin.dy :
-        ranging ? ekfs_range.lin.dy :
+        didUpdateWithFlow ? ekfs_updatedWithFlow.lin.dy :
+        ranging ? ekfs_updatedWithRange.lin.dy :
         _dy;
 
     _dz = didInitialize ? 0 : 
         didPredict ? lin_predicted.dz :
-        didUpdateWithFlow ? ekfs_flow.lin.dz :
-        ranging ? ekfs_range.lin.dz :
+        didUpdateWithFlow ? ekfs_updatedWithFlow.lin.dz :
+        ranging ? ekfs_updatedWithRange.lin.dz :
         _dz;
 
     _e0 = didInitialize || didFinalize ? 0 : 
-        didUpdateWithFlow ? ekfs_flow.ang.x :
-        ranging ? ekfs_range.ang.x :
+        didUpdateWithFlow ? ekfs_updatedWithFlow.ang.x :
+        ranging ? ekfs_updatedWithRange.ang.x :
         _e0;
 
     _e1 = didInitialize || didFinalize ? 0 : 
-        didUpdateWithFlow ? ekfs_flow.ang.y :
-        ranging ? ekfs_range.ang.y :
+        didUpdateWithFlow ? ekfs_updatedWithFlow.ang.y :
+        ranging ? ekfs_updatedWithRange.ang.y :
         _e1;
 
     _e2 = didInitialize || didFinalize ? 0 : 
-        didUpdateWithFlow ? ekfs_flow.ang.z :
-        ranging ? ekfs_range.ang.z :
+        didUpdateWithFlow ? ekfs_updatedWithFlow.ang.z :
+        ranging ? ekfs_updatedWithRange.ang.z :
         _e2;
 
     _lastProcessNoiseUpdateMsec = 
