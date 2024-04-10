@@ -115,6 +115,7 @@ static void subSamplerAccumulate(
 }
 
 static void subSamplerTakeMean(
+        const axis3_t & sum,
         const uint32_t count,
         const float conversionFactor,
         axisSubSampler_t & subSampler)
@@ -357,8 +358,8 @@ static bool ekf_predict(
     const float dt = (stream_nowMsec - lastPredictionMsec) / 1000.0f;
     const auto dt2 = dt * dt;
 
-    subSamplerTakeMean(gyroCount, DEGREES_TO_RADIANS, gyroSubSampler);
-    subSamplerTakeMean(accelCount, MSS_TO_GS, accelSubSampler);
+    subSamplerTakeMean(gyroSum, gyroCount, DEGREES_TO_RADIANS, gyroSubSampler);
+    subSamplerTakeMean(accelSum, accelCount, MSS_TO_GS, accelSubSampler);
 
     const axis3_t * acc = &accelSubSampler.avg; 
 
@@ -880,9 +881,17 @@ static void ekf_step(void)
         memset(&_accelSubSampler.sum, 0, sizeof(_accelSubSampler.sum));
     }
 
+    _gyroSum_x = didPredict ? 0 : _gyroSum_x;
+    _gyroSum_y = didPredict ? 0 : _gyroSum_y;
+    _gyroSum_z = didPredict ? 0 : _gyroSum_z;
+
     _gyroCount = didPredict ? 0 : 
         didUpdateWithGyro ? _gyroCount + 1 :
         _gyroCount;
+
+    _accelSum_x = didPredict ? 0 : _accelSum_x;
+    _accelSum_y = didPredict ? 0 : _accelSum_y;
+    _accelSum_z = didPredict ? 0 : _accelSum_z;
 
     _accelCount = didPredict ? 0 : 
         didUpdateWithAccel ? _accelCount + 1 :
