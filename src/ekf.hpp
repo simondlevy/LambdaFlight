@@ -105,13 +105,11 @@ static const float max(const float val, const float maxval)
     return val > maxval ? maxval : val;
 }
 
-static void subSamplerAccumulate(
-        const axis3_t & sample, 
-        axisSubSampler_t & subSampler)
+static void subSamplerAccumulate(const axis3_t & sample, axis3_t & sum)
 {
-    subSampler.sum.x += sample.x;
-    subSampler.sum.y += sample.y;
-    subSampler.sum.z += sample.z;
+    sum.x += sample.x;
+    sum.y += sample.y;
+    sum.z += sample.z;
 }
 
 static void subSamplerTakeMean(
@@ -843,13 +841,13 @@ static void ekf_step(void)
     // Update with gyro
     const auto didUpdateWithGyro = stream_ekfAction == EKF_UPDATE_WITH_GYRO;
     if (didUpdateWithGyro) {
-        subSamplerAccumulate(stream_gyro, _gyroSubSampler);
+        subSamplerAccumulate(stream_gyro, _gyroSubSampler.sum);
     }
 
     // Update with accel
     const auto didUpdateWithAccel = stream_ekfAction == EKF_UPDATE_WITH_ACCEL;
     if (didUpdateWithAccel) {
-            subSamplerAccumulate(stream_accel, _accelSubSampler);
+            subSamplerAccumulate(stream_accel, _accelSubSampler.sum);
     }
 
     // Get vehicle state
