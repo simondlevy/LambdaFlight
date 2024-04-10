@@ -132,9 +132,6 @@ static void subSamplerTakeMean(
     subSampler.avg.z = isCountNonzero ?
         subSampler.sum.z * conversionFactor / count :
         subSampler.avg.z;
-
-    // Reset
-    memset(&subSampler.sum, 0, sizeof(subSampler.sum));
 }
 
 static float rotateQuat( const float val, const float initVal)
@@ -857,17 +854,25 @@ static void ekf_step(void)
             didInitialize ? &p_initialized :
             &_p, sizeof(_p));
 
-     memcpy(&_gyroLatest, 
-             didUpdateWithGyro ?  &stream_gyro : &_gyroLatest, 
-             sizeof(axis3_t));
+    memcpy(&_gyroLatest, 
+            didUpdateWithGyro ?  &stream_gyro : &_gyroLatest, 
+            sizeof(axis3_t));
 
-     _gyroCount = didPredict ? 0 : 
-         didUpdateWithGyro ? _gyroCount + 1 :
-         _gyroCount;
+    if (didPredict) {
+        memset(&_gyroSubSampler.sum, 0, sizeof(_gyroSubSampler.sum));
+    }
 
-     _accelCount = didPredict ? 0 : 
-         didUpdateWithAccel ? _accelCount + 1 :
-         _accelCount;
+    if (didPredict) {
+        memset(&_accelSubSampler.sum, 0, sizeof(_accelSubSampler.sum));
+    }
+
+    _gyroCount = didPredict ? 0 : 
+        didUpdateWithGyro ? _gyroCount + 1 :
+        _gyroCount;
+
+    _accelCount = didPredict ? 0 : 
+        didUpdateWithAccel ? _accelCount + 1 :
+        _accelCount;
 
     _qw = didInitialize ? 1 : 
         didFinalize ? quat_finalized.w :
