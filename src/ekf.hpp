@@ -322,7 +322,9 @@ static void ekf_init(matrix_t & p_out)
 }
 
 static bool ekf_predict(
+        const axis3_t & gyro_sum,
         const uint32_t gyroCount,
+        const axis3_t & accel_sum,
         const uint32_t accelCount,
         const matrix_t & p_in,
         const ekfLinear_t & linear_in,
@@ -331,9 +333,7 @@ static bool ekf_predict(
         const uint32_t lastProcessNoiseUpdateMsec, 
         const uint32_t lastPredictionMsec, 
         new_quat_t & quat_out,
-        const axis3_t & gyro_sum,
         axis3_t & gyro_mean,
-        axis3_t & accel_sum,
         axis3_t & accel_mean,
         matrix_t & p_out,
         ekfLinear_t & linear_out) 
@@ -782,7 +782,9 @@ static void ekf_step(void)
     const auto didPredict = 
         shouldPredict && 
         ekf_predict(
+                _gyroSum,
                 _gyroCount,
+                _accelSum,
                 _accelCount,
                 _p,
                 ekfs.lin,
@@ -791,9 +793,7 @@ static void ekf_step(void)
                 _lastPredictionMsec, 
                 _lastProcessNoiseUpdateMsec,
                 quat_predicted,
-                _gyroSum,
                 _gyroMean,
-                _accelSum,
                 _accelMean,
                 _p,
                 lin_predicted);
