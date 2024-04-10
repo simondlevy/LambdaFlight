@@ -116,21 +116,13 @@ static void subSamplerTakeMean(
         const axis3_t & sum,
         const uint32_t count,
         const float conversionFactor,
-        axisSubSampler_t & subSampler)
+        axis3_t & avg)
 {
     const auto isCountNonzero = count > 0;
 
-    subSampler.avg.x = isCountNonzero ? 
-        subSampler.sum.x * conversionFactor / count :
-        subSampler.avg.x;
-
-    subSampler.avg.y = isCountNonzero ?
-        subSampler.sum.y * conversionFactor / count :
-        subSampler.avg.y;
-
-    subSampler.avg.z = isCountNonzero ?
-        subSampler.sum.z * conversionFactor / count :
-        subSampler.avg.z;
+    avg.x = isCountNonzero ? sum.x * conversionFactor / count : avg.x;
+    avg.y = isCountNonzero ? sum.y * conversionFactor / count : avg.y;
+    avg.z = isCountNonzero ? sum.z * conversionFactor / count : avg.z;
 }
 
 static float rotateQuat( const float val, const float initVal)
@@ -337,9 +329,7 @@ static void ekf_init(matrix_t & p_out)
 }
 
 static bool ekf_predict(
-        const axis3_t & gyroSum,
         const uint32_t gyroCount,
-        const axis3_t & accelSum,
         const uint32_t accelCount,
         const matrix_t & p_in,
         const ekfLinear_t & linear_in,
@@ -356,8 +346,11 @@ static bool ekf_predict(
     const float dt = (stream_nowMsec - lastPredictionMsec) / 1000.0f;
     const auto dt2 = dt * dt;
 
-    subSamplerTakeMean(gyroSum, gyroCount, DEGREES_TO_RADIANS, gyroSubSampler);
-    subSamplerTakeMean(accelSum, accelCount, MSS_TO_GS, accelSubSampler);
+    subSamplerTakeMean(gyroSubSampler.sum, gyroCount, DEGREES_TO_RADIANS, 
+            gyroSubSampler.avg);
+
+    subSamplerTakeMean(accelSubSampler.sum, accelCount, MSS_TO_GS, 
+            accelSubSampler.avg);
 
     const axis3_t * acc = &accelSubSampler.avg; 
 
@@ -751,16 +744,10 @@ static void ekf_step(void)
     static float _e1;
     static float _e2;
 
-    static float _gyroSum_x;
-    static float _gyroSum_y;
-    static float _gyroSum_z;
     static uint32_t _gyroCount;
 
     static matrix_t _p;
 
-    static float _accelSum_x;
-    static float _accelSum_y;
-    static float _accelSum_z;
     static uint32_t _accelCount;
 
     static axisSubSampler_t _gyroSubSampler;
@@ -787,9 +774,6 @@ static void ekf_step(void)
     const auto quat = new_quat_t {_qw, _qx, _qy, _qz };
     const auto r = axis3_t {_rx, _ry, _rz};
 
-    const auto gyroSum = axis3_t {_gyroSum_x, _gyroSum_y, _gyroSum_z};
-    const auto accelSum = axis3_t {_accelSum_x, _accelSum_y, _accelSum_z};
-
     // Initialize
     bool didInitialize = stream_ekfAction == EKF_INIT;
     matrix_t p_initialized = {};
@@ -803,9 +787,7 @@ static void ekf_step(void)
     const auto didPredict = 
         shouldPredict && 
         ekf_predict(
-                gyroSum,
                 _gyroCount,
-                accelSum,
                 _accelCount,
                 _p,
                 ekfs.lin,
@@ -879,17 +861,9 @@ static void ekf_step(void)
         memset(&_accelSubSampler.sum, 0, sizeof(_accelSubSampler.sum));
     }
 
-    _gyroSum_x = didPredict ? 0 : _gyroSum_x;
-    _gyroSum_y = didPredict ? 0 : _gyroSum_y;
-    _gyroSum_z = didPredict ? 0 : _gyroSum_z;
-
     _gyroCount = didPredict ? 0 : 
         didUpdateWithGyro ? _gyroCount + 1 :
         _gyroCount;
-
-    _accelSum_x = didPredict ? 0 : _accelSum_x;
-    _accelSum_y = didPredict ? 0 : _accelSum_y;
-    _accelSum_z = didPredict ? 0 : _accelSum_z;
 
     _accelCount = didPredict ? 0 : 
         didUpdateWithAccel ? _accelCount + 1 :
