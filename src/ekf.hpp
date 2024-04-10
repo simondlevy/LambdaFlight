@@ -839,17 +839,17 @@ static void ekf_step(void)
         didPredict ? 0 :
         _gyroSum.z;
 
-    if (didUpdateWithAccel) {
-        _accelSum.x += stream_accel.x;
-        _accelSum.y += stream_accel.y;
-        _accelSum.z += stream_accel.z;
-    }
+    _accelSum.x = didUpdateWithAccel ? _accelSum.x + stream_accel.x :
+        didPredict ? 0 :
+        _accelSum.x;
 
-    if (didPredict) {
-        _accelSum.x = 0;
-        _accelSum.y = 0;
-        _accelSum.z = 0;
-    }
+    _accelSum.y = didUpdateWithAccel ? _accelSum.y + stream_accel.y :
+        didPredict ? 0 :
+        _accelSum.y;
+
+    _accelSum.z = didUpdateWithAccel ? _accelSum.z + stream_accel.z :
+        didPredict ? 0 :
+        _accelSum.z;
 
     memcpy(&_p, 
             didInitialize ? &p_initialized :
