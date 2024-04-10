@@ -699,7 +699,7 @@ static bool ekf_finalize(
     return isStateWithinBounds(ekfs);
 } 
 
-static void ekf_getState(
+static void ekf_getVehicleState(
         const ekfState_t & ekfs, 
         const axis3_t & gyroLatest,
         const new_quat_t & q,
@@ -800,6 +800,7 @@ static void ekf_step(void)
                 r,
                 _lastPredictionMsec, 
                 _lastProcessNoiseUpdateMsec,
+
                 quat_predicted,
                 _p,
                 lin_predicted);
@@ -810,18 +811,21 @@ static void ekf_step(void)
     new_quat_t quat_finalized = {};
     const auto isStateInBounds = 
         didFinalize ? 
-        ekf_finalize(_p, ekfs, quat, _p, quat_finalized) :
+        ekf_finalize(_p, ekfs, quat, 
+                _p, quat_finalized) :
         isStateWithinBounds(ekfs);
 
     // Update with flow
     ekfState_t ekfs_updatedWithFlow = {};
     const auto didUpdateWithFlow = stream_ekfAction == EKF_UPDATE_WITH_FLOW &&
-        ekf_updateWithFlow(_p, ekfs, _rz, _gyroLatest, _p, ekfs_updatedWithFlow);
+        ekf_updateWithFlow(_p, ekfs, _rz, _gyroLatest, 
+                _p, ekfs_updatedWithFlow);
 
     // Update with range
     ekfState_t ekfs_updatedWithRange = {};
     const auto didUpdateWithRange = stream_ekfAction == EKF_UPDATE_WITH_RANGE &&
-        ekf_updateWithRange(_p, ekfs, _rz, _p, ekfs_updatedWithRange);
+        ekf_updateWithRange(_p, ekfs, _rz, 
+                _p, ekfs_updatedWithRange);
 
     // Update with gyro
     const auto didUpdateWithGyro = stream_ekfAction == EKF_UPDATE_WITH_GYRO;
@@ -831,7 +835,8 @@ static void ekf_step(void)
 
     // Get vehicle state
     vehicleState_t vehicleState = {};
-    ekf_getState(ekfs, _gyroLatest, quat, r, vehicleState);
+    ekf_getVehicleState(ekfs, _gyroLatest, quat, r, 
+            vehicleState);
     if (stream_ekfAction == EKF_GET_STATE) {
         setState(vehicleState);
     }
