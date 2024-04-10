@@ -737,17 +737,15 @@ static void ekf_step(void)
     static float _e1;
     static float _e2;
 
-    static uint32_t _gyroCount;
-
     static matrix_t _p;
-
-    static uint32_t _accelCount;
 
     static axis3_t _gyroSum;
     static axis3_t _gyroMean;
+    static uint32_t _gyroCount;
 
     static axis3_t _accelSum;
     static axis3_t _accelMean;
+    static uint32_t _accelCount;
 
     static axis3_t _gyroLatest;
 
@@ -826,7 +824,9 @@ static void ekf_step(void)
     // Update with accel
     const auto didUpdateWithAccel = stream_ekfAction == EKF_UPDATE_WITH_ACCEL;
     if (didUpdateWithAccel) {
-            subSamplerAccumulate(stream_accel, _accelSum);
+        _accelSum.x += stream_accel.x;
+        _accelSum.y += stream_accel.y;
+        _accelSum.z += stream_accel.z;
     }
 
     // Get vehicle state
