@@ -331,21 +331,22 @@ static bool ekf_predict(
         const uint32_t lastProcessNoiseUpdateMsec, 
         const uint32_t lastPredictionMsec, 
         new_quat_t & quat_out,
-        axis3_t & gyro_mean,
-        axis3_t & accel_mean,
         matrix_t & p_out,
         ekfLinear_t & linear_out) 
 {
+    static axis3_t _gyroMean;
+    static axis3_t _accelMean;
+
     const float dt = (stream_nowMsec - lastPredictionMsec) / 1000.0f;
     const auto dt2 = dt * dt;
 
     subSamplerTakeMean(gyroSum_x, gyroSum_y, gyroSum_z, gyroCount,
-            DEGREES_TO_RADIANS, gyro_mean);
+            DEGREES_TO_RADIANS, _gyroMean);
 
     subSamplerTakeMean(accelSum_x, accelSum_y, accelSum_z, accelCount, 
-            MSS_TO_GS, accel_mean);
+            MSS_TO_GS, _accelMean);
 
-    const axis3_t * acc = &accel_mean;
+    const axis3_t * acc = &_accelMean;
 
     // Position updates in the body frame (will be rotated to inertial frame);
     // thrust can only be produced in the body's Z direction
@@ -361,7 +362,7 @@ static bool ekf_predict(
     const auto accx = stream_isFlying ? 0 : acc->x;
     const auto accy = stream_isFlying ? 0 : acc->y;
 
-    const axis3_t * gyro = &gyro_mean;
+    const axis3_t * gyro = &_gyroMean;
 
     // attitude update (rotate by gyroscope), we do this in quaternions
     // this is the gyroscope angular velocity integrated over the sample period
@@ -742,13 +743,11 @@ static void ekf_step(void)
     static float _gyroSum_x;
     static float _gyroSum_y;
     static float _gyroSum_z;
-    static axis3_t _gyroMean;
     static uint32_t _gyroCount;
 
     static float _accelSum_x;
     static float _accelSum_y;
     static float _accelSum_z;
-    static axis3_t _accelMean;
     static uint32_t _accelCount;
 
     static axis3_t _gyroLatest;
@@ -799,8 +798,6 @@ static void ekf_step(void)
                 _lastPredictionMsec, 
                 _lastProcessNoiseUpdateMsec,
                 quat_predicted,
-                _gyroMean,
-                _accelMean,
                 _p,
                 lin_predicted);
 
