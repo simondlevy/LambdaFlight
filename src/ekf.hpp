@@ -827,16 +827,28 @@ static void ekf_step(void)
 
     //////////////////////////////////////////////////////////////////////////
 
+    if (didUpdateWithGyro) {
+        _gyroSum.x += stream_gyro.x;
+        _gyroSum.y += stream_gyro.y;
+        _gyroSum.z += stream_gyro.z;
+    }
+
+    if (didPredict) {
+        _gyroSum.x = 0;
+        _gyroSum.y = 0;
+        _gyroSum.z = 0;
+    }
+
     if (didUpdateWithAccel) {
         _accelSum.x += stream_accel.x;
         _accelSum.y += stream_accel.y;
         _accelSum.z += stream_accel.z;
     }
 
-    if (didUpdateWithGyro) {
-        _gyroSum.x += stream_gyro.x;
-        _gyroSum.y += stream_gyro.y;
-        _gyroSum.z += stream_gyro.z;
+    if (didPredict) {
+        _accelSum.x = 0;
+        _accelSum.y = 0;
+        _accelSum.z = 0;
     }
 
     memcpy(&_p, 
@@ -846,14 +858,6 @@ static void ekf_step(void)
     memcpy(&_gyroLatest, 
             didUpdateWithGyro ?  &stream_gyro : &_gyroLatest, 
             sizeof(axis3_t));
-
-    if (didPredict) {
-        memset(&_gyroSum, 0, sizeof(_gyroSum));
-    }
-
-    if (didPredict) {
-        memset(&_accelSum, 0, sizeof(_accelSum));
-    }
 
     _gyroCount = didPredict ? 0 : 
         didUpdateWithGyro ? _gyroCount + 1 :
