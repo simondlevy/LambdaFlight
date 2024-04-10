@@ -338,7 +338,9 @@ static void ekf_init(matrix_t & p_out)
 }
 
 static bool ekf_predict(
+        const axis3_t & gyroSum,
         const uint32_t gyroCount,
+        const axis3_t & accelSum,
         const uint32_t accelCount,
         const matrix_t & p_in,
         const ekfLinear_t & linear_in,
@@ -750,9 +752,16 @@ static void ekf_step(void)
     static float _e1;
     static float _e2;
 
+    static float _gyroSum_x;
+    static float _gyroSum_y;
+    static float _gyroSum_z;
+    static uint32_t _gyroCount;
+
     static matrix_t _p;
 
-    static uint32_t _gyroCount;
+    static float _accelSum_x;
+    static float _accelSum_y;
+    static float _accelSum_z;
     static uint32_t _accelCount;
 
     static axisSubSampler_t _gyroSubSampler;
@@ -779,6 +788,9 @@ static void ekf_step(void)
     const auto quat = new_quat_t {_qw, _qx, _qy, _qz };
     const auto r = axis3_t {_rx, _ry, _rz};
 
+    const auto gyroSum = axis3_t {_gyroSum_x, _gyroSum_y, _gyroSum_z};
+    const auto accelSum = axis3_t {_accelSum_x, _accelSum_y, _accelSum_z};
+
     // Initialize
     bool didInitialize = stream_ekfAction == EKF_INIT;
     matrix_t p_initialized = {};
@@ -792,7 +804,9 @@ static void ekf_step(void)
     const auto didPredict = 
         shouldPredict && 
         ekf_predict(
+                gyroSum,
                 _gyroCount,
+                accelSum,
                 _accelCount,
                 _p,
                 ekfs.lin,
