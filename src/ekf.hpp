@@ -130,13 +130,12 @@ static void updateCovarianceCell(
     const auto pval = (p[i][j] + p[j][i]) / 2 + variance;
 
     p[i][j] = !shouldUpdate ? p[i][j] :
-        (isnan(pval) || pval > MAX_COVARIANCE) ?  MAX_COVARIANCE :
+        pval > MAX_COVARIANCE ?  MAX_COVARIANCE :
         (i==j && pval < MIN_COVARIANCE) ?  MIN_COVARIANCE :
         pval;
 
     p[j][i] = shouldUpdate ? p[i][j] : p[j][i];
 }
-
 
 static void updateCovarianceMatrix(
         float p[KC_STATE_DIM][KC_STATE_DIM],
@@ -801,7 +800,6 @@ static void ekf_step(void)
         ekf_finalize(_p, ekfs, quat, 
                 _p, quat_finalized);
     }
-
 
     // Update with flow
     ekfState_t ekfs_updatedWithFlow = {};
