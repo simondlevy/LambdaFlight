@@ -749,7 +749,9 @@ static void ekf_step(void)
 
     static matrix_t _p;
 
-    static axis3_t _gyroSum;
+    static float _gyroSum_x;
+    static float _gyroSum_y;
+    static float _gyroSum_z;
     static axis3_t _gyroMean;
     static uint32_t _gyroCount;
 
@@ -777,8 +779,6 @@ static void ekf_step(void)
     const auto quat = new_quat_t {_qw, _qx, _qy, _qz };
     const auto r = axis3_t {_rx, _ry, _rz};
 
-    // const auto gyroSum = axis3_t {_gyroSum.x, _gyroSum.y, _gyroSum.z};
-
     // Initialize
     bool didInitialize = stream_ekfAction == EKF_INIT;
     matrix_t p_initialized = {};
@@ -792,9 +792,9 @@ static void ekf_step(void)
     const auto didPredict = 
         shouldPredict && 
         ekf_predict(
-                _gyroSum.x,
-                _gyroSum.y,
-                _gyroSum.z,
+                _gyroSum_x,
+                _gyroSum_y,
+                _gyroSum_z,
                 _gyroCount,
                 _accelSum,
                 _accelCount,
@@ -848,17 +848,17 @@ static void ekf_step(void)
 
     //////////////////////////////////////////////////////////////////////////
 
-    _gyroSum.x = didUpdateWithGyro ? _gyroSum.x + stream_gyro.x :
+    _gyroSum_x = didUpdateWithGyro ? _gyroSum_x + stream_gyro.x :
         didPredict ? 0 :
-        _gyroSum.x;
+        _gyroSum_x;
 
-    _gyroSum.y = didUpdateWithGyro ? _gyroSum.y + stream_gyro.y :
+    _gyroSum_y = didUpdateWithGyro ? _gyroSum_y + stream_gyro.y :
         didPredict ? 0 :
-        _gyroSum.y;
+        _gyroSum_y;
 
-    _gyroSum.z = didUpdateWithGyro ? _gyroSum.z + stream_gyro.z :
+    _gyroSum_z = didUpdateWithGyro ? _gyroSum_z + stream_gyro.z :
         didPredict ? 0 :
-        _gyroSum.z;
+        _gyroSum_z;
 
     _accelSum.x = didUpdateWithAccel ? _accelSum.x + stream_accel.x :
         didPredict ? 0 :
