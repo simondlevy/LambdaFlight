@@ -78,13 +78,6 @@ typedef struct {
 
 typedef struct {
 
-    axis3_t sum;
-    axis3_t avg;
-
-} axisSubSampler_t;
-
-typedef struct {
-
     float z;
     float dx;
     float dy;
@@ -338,21 +331,21 @@ static bool ekf_predict(
         const uint32_t lastProcessNoiseUpdateMsec, 
         const uint32_t lastPredictionMsec, 
         new_quat_t & quat_out,
-        axisSubSampler_t & gyroSubSampler,
-        axisSubSampler_t & accelSubSampler,
+        axis3_t & gyro_sum,
+        axis3_t & gyro_mean,
+        axis3_t & accel_sum,
+        axis3_t & accel_mean,
         matrix_t & p_out,
         ekfLinear_t & linear_out) 
 {
     const float dt = (stream_nowMsec - lastPredictionMsec) / 1000.0f;
     const auto dt2 = dt * dt;
 
-    subSamplerTakeMean(gyroSubSampler.sum, gyroCount, DEGREES_TO_RADIANS, 
-            gyroSubSampler.avg);
+    subSamplerTakeMean(gyro_sum, gyroCount, DEGREES_TO_RADIANS, gyro_mean);
 
-    subSamplerTakeMean(accelSubSampler.sum, accelCount, MSS_TO_GS, 
-            accelSubSampler.avg);
+    subSamplerTakeMean(accel_sum, accelCount, MSS_TO_GS, accel_mean);
 
-    const axis3_t * acc = &accelSubSampler.avg; 
+    const axis3_t * acc = &accel_mean;
 
     // Position updates in the body frame (will be rotated to inertial frame);
     // thrust can only be produced in the body's Z direction
@@ -368,7 +361,7 @@ static bool ekf_predict(
     const auto accx = stream_isFlying ? 0 : acc->x;
     const auto accy = stream_isFlying ? 0 : acc->y;
 
-    const axis3_t * gyro = &gyroSubSampler.avg; 
+    const axis3_t * gyro = &gyro_mean;
 
     // attitude update (rotate by gyroscope), we do this in quaternions
     // this is the gyroscope angular velocity integrated over the sample period
@@ -750,9 +743,11 @@ static void ekf_step(void)
 
     static uint32_t _accelCount;
 
-    static axisSubSampler_t _gyroSubSampler;
+    static axis3_t _gyroSum;
+    static axis3_t _gyroMean;
 
-    static axisSubSampler_t _accelSubSampler;
+    static axis3_t _accelSum;
+    static axis3_t _accelMean;
 
     static axis3_t _gyroLatest;
 
@@ -796,8 +791,10 @@ static void ekf_step(void)
                 _lastPredictionMsec, 
                 _lastProcessNoiseUpdateMsec,
                 quat_predicted,
-                _gyroSubSampler,
-                _accelSubSampler,
+                _gyroSum,
+                _gyroMean,
+                _accelSum,
+                _accelMean,
                 _p,
                 lin_predicted);
 
@@ -823,13 +820,13 @@ static void ekf_step(void)
     // Update with gyro
     const auto didUpdateWithGyro = stream_ekfAction == EKF_UPDATE_WITH_GYRO;
     if (didUpdateWithGyro) {
-        subSamplerAccumulate(stream_gyro, _gyroSubSampler.sum);
+        subSamplerAccumulate(stream_gyro, _gyroSum);
     }
 
     // Update with accel
     const auto didUpdateWithAccel = stream_ekfAction == EKF_UPDATE_WITH_ACCEL;
     if (didUpdateWithAccel) {
-            subSamplerAccumulate(stream_accel, _accelSubSampler.sum);
+            subSamplerAccumulate(stream_accel, _accelSum);
     }
 
     // Get vehicle state
@@ -854,11 +851,11 @@ static void ekf_step(void)
             sizeof(axis3_t));
 
     if (didPredict) {
-        memset(&_gyroSubSampler.sum, 0, sizeof(_gyroSubSampler.sum));
+        memset(&_gyroSum, 0, sizeof(_gyroSum));
     }
 
     if (didPredict) {
-        memset(&_accelSubSampler.sum, 0, sizeof(_accelSubSampler.sum));
+        memset(&_accelSum, 0, sizeof(_accelSum));
     }
 
     _gyroCount = didPredict ? 0 : 
