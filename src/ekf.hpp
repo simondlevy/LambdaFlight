@@ -238,16 +238,6 @@ static bool isErrorInBounds(const float v)
     return fabs(v) < 10;
 }
 
-
-static bool isStateWithinBounds(const ekfState_t & ekfs)
-{
-    return 
-        isPositionWithinBounds(ekfs.lin.z) &&
-        isVelocityWithinBounds(ekfs.lin.dx) &&
-        isVelocityWithinBounds(ekfs.lin.dy) &&
-        isVelocityWithinBounds(ekfs.lin.dz);
-}
-
 static void afinalize(
         const float v0, 
         const float v1, 
@@ -642,7 +632,7 @@ static bool ekf_updateWithFlow(
             ekfs_out);
 }
 
-static bool ekf_finalize(
+static void ekf_finalize(
         const matrix_t & p_in,
         const ekfState_t & ekfs,
         const new_quat_t & q,
@@ -695,8 +685,6 @@ static bool ekf_finalize(
     multiply(AP, At, p_out.dat, isErrorSufficient); // APA'
 
     updateCovarianceMatrix(p_out.dat, true);
-
-    return isStateWithinBounds(ekfs);
 } 
 
 static void ekf_getVehicleState(
@@ -809,11 +797,11 @@ static void ekf_step(void)
     const auto finalizing = stream_ekfAction == EKF_FINALIZE;
     const auto didFinalize = finalizing && _isUpdated;
     new_quat_t quat_finalized = {};
-    const auto isStateInBounds = 
-        didFinalize ? 
+    if (didFinalize) {
         ekf_finalize(_p, ekfs, quat, 
-                _p, quat_finalized) :
-        isStateWithinBounds(ekfs);
+                _p, quat_finalized);
+    }
+
 
     // Update with flow
     ekfState_t ekfs_updatedWithFlow = {};
@@ -835,14 +823,19 @@ static void ekf_step(void)
 
     // Get vehicle state
     vehicleState_t vehicleState = {};
-    ekf_getVehicleState(ekfs, _gyroLatest, quat, r, 
-            vehicleState);
+    ekf_getVehicleState(ekfs, _gyroLatest, quat, r, vehicleState);
+
+
     if (stream_ekfAction == EKF_GET_STATE) {
         setState(vehicleState);
     }
 
     if (finalizing) {
-        setStateIsInBounds(isStateInBounds);
+        setStateIsInBounds(
+                isPositionWithinBounds(ekfs.lin.z) &&
+                isVelocityWithinBounds(ekfs.lin.dx) &&
+                isVelocityWithinBounds(ekfs.lin.dy) &&
+                isVelocityWithinBounds(ekfs.lin.dz));
     }
 
     //////////////////////////////////////////////////////////////////////////
