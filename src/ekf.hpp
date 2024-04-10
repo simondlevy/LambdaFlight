@@ -293,13 +293,15 @@ static void subSamplerTakeMean(
         const float sumz,
         const uint32_t count,
         const float conversionFactor,
-        axis3_t & avg)
+        float & avgx,
+        float & avgy,
+        float & avgz)
 {
     const auto isCountNonzero = count > 0;
 
-    avg.x = isCountNonzero ? sumx * conversionFactor / count : avg.x;
-    avg.y = isCountNonzero ? sumy * conversionFactor / count : avg.y;
-    avg.z = isCountNonzero ? sumz * conversionFactor / count : avg.z;
+    avgx = isCountNonzero ? sumx * conversionFactor / count : avgx;
+    avgy = isCountNonzero ? sumy * conversionFactor / count : avgy;
+    avgz = isCountNonzero ? sumz * conversionFactor / count : avgz;
 }
 
 // ===========================================================================
@@ -334,41 +336,42 @@ static bool ekf_predict(
         matrix_t & p_out,
         ekfLinear_t & linear_out) 
 {
-    static axis3_t _gyroMean;
-    static axis3_t _accelMean;
+    static float _gyro_x;
+    static float _gyro_y;
+    static float _gyro_z;
+
+    static float _accel_x;
+    static float _accel_y;
+    static float _accel_z;
 
     const float dt = (stream_nowMsec - lastPredictionMsec) / 1000.0f;
     const auto dt2 = dt * dt;
 
     subSamplerTakeMean(gyroSum_x, gyroSum_y, gyroSum_z, gyroCount,
-            DEGREES_TO_RADIANS, _gyroMean);
+            DEGREES_TO_RADIANS,_gyro_x, _gyro_y, _gyro_z);
 
     subSamplerTakeMean(accelSum_x, accelSum_y, accelSum_z, accelCount, 
-            MSS_TO_GS, _accelMean);
-
-    const axis3_t * acc = &_accelMean;
+            MSS_TO_GS, _accel_x, _accel_y, _accel_z);
 
     // Position updates in the body frame (will be rotated to inertial frame);
     // thrust can only be produced in the body's Z direction
-    const auto dx = linear_in.dx * dt + stream_isFlying ? 0 : acc->x * dt2 / 2;
-    const auto dy = linear_in.dy * dt + stream_isFlying ? 0 : acc->y * dt2 / 2;
-    const auto dz = linear_in.dz * dt + acc->z * dt2 / 2; 
+    const auto dx = linear_in.dx * dt + stream_isFlying ? 0 : _accel_x * dt2 / 2;
+    const auto dy = linear_in.dy * dt + stream_isFlying ? 0 : _accel_y * dt2 / 2;
+    const auto dz = linear_in.dz * dt + _accel_z * dt2 / 2; 
 
     // keep previous time step's state for the update
     const auto tmpSDX = linear_in.dx;
     const auto tmpSDY = linear_in.dy;
     const auto tmpSDZ = linear_in.dz;
 
-    const auto accx = stream_isFlying ? 0 : acc->x;
-    const auto accy = stream_isFlying ? 0 : acc->y;
-
-    const axis3_t * gyro = &_gyroMean;
+    const auto accx = stream_isFlying ? 0 : _accel_x;
+    const auto accy = stream_isFlying ? 0 : _accel_y;
 
     // attitude update (rotate by gyroscope), we do this in quaternions
     // this is the gyroscope angular velocity integrated over the sample period
-    const auto dtwx = dt*gyro->x;
-    const auto dtwy = dt*gyro->y;
-    const auto dtwz = dt*gyro->z;
+    const auto dtwx = dt*_gyro_x;
+    const auto dtwy = dt*_gyro_y;
+    const auto dtwz = dt*_gyro_z;
 
     // compute the quaternion values in [w,x,y,z] order
     const auto angle = sqrt(dtwx*dtwx + dtwy*dtwy + dtwz*dtwz) + EPS;
@@ -405,13 +408,13 @@ static bool ekf_predict(
     // - gravity in body frame
 
     linear_out.dx = linear_in.dx +
-        dt * (accx + gyro->z * tmpSDY - gyro->y * tmpSDZ - MSS_TO_GS * r.x);
+        dt * (accx + _gyro_z * tmpSDY - _gyro_y * tmpSDZ - MSS_TO_GS * r.x);
 
     linear_out.dy = linear_in.dy +
-        dt * (accy - gyro->z * tmpSDX + gyro->x * tmpSDZ - MSS_TO_GS * r.y); 
+        dt * (accy - _gyro_z * tmpSDX + _gyro_x * tmpSDZ - MSS_TO_GS * r.y); 
 
     linear_out.dz =  linear_in.dz +
-        dt * (acc->z + gyro->y * tmpSDX - gyro->x * tmpSDY - MSS_TO_GS * r.z);
+        dt * (_accel_z + _gyro_y * tmpSDX - _gyro_x * tmpSDY - MSS_TO_GS * r.z);
 
     // predict()
     quat_out.w = tmpq0/norm;
@@ -421,9 +424,9 @@ static bool ekf_predict(
 
     // ====== COVARIANCE UPDATE ======
 
-    const auto e0 = gyro->x*dt/2;
-    const auto e1 = gyro->y*dt/2;
-    const auto e2 = gyro->z*dt/2;
+    const auto e0 = _gyro_x*dt/2;
+    const auto e1 = _gyro_y*dt/2;
+    const auto e2 = _gyro_z*dt/2;
 
     const auto e0e0 =  1 - e1*e1/2 - e2*e2/2;
     const auto e0e1 =  e2 + e0*e1/2;
@@ -449,15 +452,15 @@ static bool ekf_predict(
 
     // body-frame velocity from body-frame velocity
     const auto dxdx  = 1; //drag negligible
-    const auto dydx =  -gyro->z*dt;
-    const auto dzdx  = gyro->y*dt;
+    const auto dydx =  -_gyro_z*dt;
+    const auto dzdx  = _gyro_y*dt;
 
-    const auto dxdy  = gyro->z*dt;
+    const auto dxdy  = _gyro_z*dt;
     const auto dydy  = 1; //drag negligible
-    const auto dzdy  = gyro->x*dt;
+    const auto dzdy  = _gyro_x*dt;
 
-    const auto dxdz =  gyro->y*dt;
-    const auto dydz  = gyro->x*dt;
+    const auto dxdz =  _gyro_y*dt;
+    const auto dydz  = _gyro_x*dt;
     const auto dzdz  = 1; //drag negligible
 
     // body-frame velocity from attitude error
