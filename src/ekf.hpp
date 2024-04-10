@@ -331,7 +331,7 @@ static bool ekf_predict(
         const uint32_t lastProcessNoiseUpdateMsec, 
         const uint32_t lastPredictionMsec, 
         new_quat_t & quat_out,
-        axis3_t & gyro_sum,
+        const axis3_t & gyro_sum,
         axis3_t & gyro_mean,
         axis3_t & accel_sum,
         axis3_t & accel_mean,
