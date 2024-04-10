@@ -98,19 +98,6 @@ static const float max(const float val, const float maxval)
     return val > maxval ? maxval : val;
 }
 
-static void subSamplerTakeMean(
-        const axis3_t & sum,
-        const uint32_t count,
-        const float conversionFactor,
-        axis3_t & avg)
-{
-    const auto isCountNonzero = count > 0;
-
-    avg.x = isCountNonzero ? sum.x * conversionFactor / count : avg.x;
-    avg.y = isCountNonzero ? sum.y * conversionFactor / count : avg.y;
-    avg.z = isCountNonzero ? sum.z * conversionFactor / count : avg.z;
-}
-
 static float rotateQuat( const float val, const float initVal)
 {
     const auto keep = 1.0f - ROLLPITCH_ZERO_REVERSION;
@@ -333,7 +320,9 @@ static bool ekf_predict(
         const float gyroSum_y,
         const float gyroSum_z,
         const uint32_t gyroCount,
-        const axis3_t & accel_sum,
+        const float accelSum_x,
+        const float accelSum_y,
+        const float accelSum_z,
         const uint32_t accelCount,
         const matrix_t & p_in,
         const ekfLinear_t & linear_in,
@@ -353,7 +342,8 @@ static bool ekf_predict(
     subSamplerTakeMean(gyroSum_x, gyroSum_y, gyroSum_z, gyroCount,
             DEGREES_TO_RADIANS, gyro_mean);
 
-    subSamplerTakeMean(accel_sum, accelCount, MSS_TO_GS, accel_mean);
+    subSamplerTakeMean(accelSum_x, accelSum_y, accelSum_z, accelCount, 
+            MSS_TO_GS, accel_mean);
 
     const axis3_t * acc = &accel_mean;
 
@@ -755,7 +745,9 @@ static void ekf_step(void)
     static axis3_t _gyroMean;
     static uint32_t _gyroCount;
 
-    static axis3_t _accelSum;
+    static float _accelSum_x;
+    static float _accelSum_y;
+    static float _accelSum_z;
     static axis3_t _accelMean;
     static uint32_t _accelCount;
 
@@ -796,7 +788,9 @@ static void ekf_step(void)
                 _gyroSum_y,
                 _gyroSum_z,
                 _gyroCount,
-                _accelSum,
+                _accelSum_x,
+                _accelSum_y,
+                _accelSum_z,
                 _accelCount,
                 _p,
                 ekfs.lin,
@@ -860,17 +854,17 @@ static void ekf_step(void)
         didPredict ? 0 :
         _gyroSum_z;
 
-    _accelSum.x = didUpdateWithAccel ? _accelSum.x + stream_accel.x :
+    _accelSum_x = didUpdateWithAccel ? _accelSum_x + stream_accel.x :
         didPredict ? 0 :
-        _accelSum.x;
+        _accelSum_x;
 
-    _accelSum.y = didUpdateWithAccel ? _accelSum.y + stream_accel.y :
+    _accelSum_y = didUpdateWithAccel ? _accelSum_y + stream_accel.y :
         didPredict ? 0 :
-        _accelSum.y;
+        _accelSum_y;
 
-    _accelSum.z = didUpdateWithAccel ? _accelSum.z + stream_accel.z :
+    _accelSum_z = didUpdateWithAccel ? _accelSum_z + stream_accel.z :
         didPredict ? 0 :
-        _accelSum.z;
+        _accelSum_z;
 
     memcpy(&_p, 
             didInitialize ? &p_initialized :
