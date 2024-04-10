@@ -300,6 +300,20 @@ static void afinalize(
     memcpy(A, a, 7*7*sizeof(float));
 } 
 
+static void subSamplerTakeMean(
+        const float sumx,
+        const float sumy,
+        const float sumz,
+        const uint32_t count,
+        const float conversionFactor,
+        axis3_t & avg)
+{
+    const auto isCountNonzero = count > 0;
+
+    avg.x = isCountNonzero ? sumx * conversionFactor / count : avg.x;
+    avg.y = isCountNonzero ? sumy * conversionFactor / count : avg.y;
+    avg.z = isCountNonzero ? sumz * conversionFactor / count : avg.z;
+}
 
 // ===========================================================================
 
@@ -315,7 +329,9 @@ static void ekf_init(matrix_t & p_out)
 }
 
 static bool ekf_predict(
-        const axis3_t & gyro_sum,
+        const float gyroSum_x,
+        const float gyroSum_y,
+        const float gyroSum_z,
         const uint32_t gyroCount,
         const axis3_t & accel_sum,
         const uint32_t accelCount,
@@ -334,7 +350,8 @@ static bool ekf_predict(
     const float dt = (stream_nowMsec - lastPredictionMsec) / 1000.0f;
     const auto dt2 = dt * dt;
 
-    subSamplerTakeMean(gyro_sum, gyroCount, DEGREES_TO_RADIANS, gyro_mean);
+    subSamplerTakeMean(gyroSum_x, gyroSum_y, gyroSum_z, gyroCount,
+            DEGREES_TO_RADIANS, gyro_mean);
 
     subSamplerTakeMean(accel_sum, accelCount, MSS_TO_GS, accel_mean);
 
@@ -760,6 +777,8 @@ static void ekf_step(void)
     const auto quat = new_quat_t {_qw, _qx, _qy, _qz };
     const auto r = axis3_t {_rx, _ry, _rz};
 
+    // const auto gyroSum = axis3_t {_gyroSum.x, _gyroSum.y, _gyroSum.z};
+
     // Initialize
     bool didInitialize = stream_ekfAction == EKF_INIT;
     matrix_t p_initialized = {};
@@ -773,7 +792,9 @@ static void ekf_step(void)
     const auto didPredict = 
         shouldPredict && 
         ekf_predict(
-                _gyroSum,
+                _gyroSum.x,
+                _gyroSum.y,
+                _gyroSum.z,
                 _gyroCount,
                 _accelSum,
                 _accelCount,
