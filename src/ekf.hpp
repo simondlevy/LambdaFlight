@@ -827,17 +827,17 @@ static void ekf_step(void)
 
     //////////////////////////////////////////////////////////////////////////
 
-    if (didUpdateWithGyro) {
-        _gyroSum.x += stream_gyro.x;
-        _gyroSum.y += stream_gyro.y;
-        _gyroSum.z += stream_gyro.z;
-    }
+    _gyroSum.x = didUpdateWithGyro ? _gyroSum.x + stream_gyro.x :
+        didPredict ? 0 :
+        _gyroSum.x;
 
-    if (didPredict) {
-        _gyroSum.x = 0;
-        _gyroSum.y = 0;
-        _gyroSum.z = 0;
-    }
+    _gyroSum.y = didUpdateWithGyro ? _gyroSum.y + stream_gyro.y :
+        didPredict ? 0 :
+        _gyroSum.y;
+
+    _gyroSum.z = didUpdateWithGyro ? _gyroSum.z + stream_gyro.z :
+        didPredict ? 0 :
+        _gyroSum.z;
 
     if (didUpdateWithAccel) {
         _accelSum.x += stream_accel.x;
