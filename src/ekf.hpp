@@ -98,13 +98,6 @@ static const float max(const float val, const float maxval)
     return val > maxval ? maxval : val;
 }
 
-static void subSamplerAccumulate(const axis3_t & sample, axis3_t & sum)
-{
-    sum.x += sample.x;
-    sum.y += sample.y;
-    sum.z += sample.z;
-}
-
 static void subSamplerTakeMean(
         const axis3_t & sum,
         const uint32_t count,
@@ -817,17 +810,9 @@ static void ekf_step(void)
 
     // Update with gyro
     const auto didUpdateWithGyro = stream_ekfAction == EKF_UPDATE_WITH_GYRO;
-    if (didUpdateWithGyro) {
-        subSamplerAccumulate(stream_gyro, _gyroSum);
-    }
 
     // Update with accel
     const auto didUpdateWithAccel = stream_ekfAction == EKF_UPDATE_WITH_ACCEL;
-    if (didUpdateWithAccel) {
-        _accelSum.x += stream_accel.x;
-        _accelSum.y += stream_accel.y;
-        _accelSum.z += stream_accel.z;
-    }
 
     // Get vehicle state
     vehicleState_t vehicleState = {};
@@ -841,6 +826,18 @@ static void ekf_step(void)
     }
 
     //////////////////////////////////////////////////////////////////////////
+
+    if (didUpdateWithAccel) {
+        _accelSum.x += stream_accel.x;
+        _accelSum.y += stream_accel.y;
+        _accelSum.z += stream_accel.z;
+    }
+
+    if (didUpdateWithGyro) {
+        _gyroSum.x += stream_gyro.x;
+        _gyroSum.y += stream_gyro.y;
+        _gyroSum.z += stream_gyro.z;
+    }
 
     memcpy(&_p, 
             didInitialize ? &p_initialized :
