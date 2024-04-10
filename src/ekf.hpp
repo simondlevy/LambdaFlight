@@ -106,20 +106,6 @@ static float rotateQuat( const float val, const float initVal)
         (stream_isFlying ? 0 : ROLLPITCH_ZERO_REVERSION * initVal);
 }
 
-static void addNoiseDiagonal(
-        float a[KC_STATE_DIM][KC_STATE_DIM],
-        const float d[KC_STATE_DIM],
-        const bool doit)
-{
-    a[0][0] += doit ? d[0] : 0;
-    a[1][1] += doit ? d[1] : 0;
-    a[2][2] += doit ? d[2] : 0;
-    a[3][3] += doit ? d[3] : 0;
-    a[4][4] += doit ? d[4] : 0;
-    a[5][5] += doit ? d[5] : 0;
-    a[6][6] += doit ? d[6] : 0;
-}
-
 static void updateCovarianceCell(
         float p[KC_STATE_DIM][KC_STATE_DIM],
         const int i, 
@@ -498,7 +484,13 @@ static bool ekf_predict(
         powf(MEAS_NOISE_GYRO_ROLL_YAW * dt1 + PROC_NOISE_ATT, 2) 
     };
 
-    addNoiseDiagonal(p_out.dat, noise, isDtPositive);
+    p_out.dat[0][0] += isDtPositive ? noise[0] : 0;
+    p_out.dat[1][1] += isDtPositive ? noise[1] : 0;
+    p_out.dat[2][2] += isDtPositive ? noise[2] : 0;
+    p_out.dat[3][3] += isDtPositive ? noise[3] : 0;
+    p_out.dat[4][4] += isDtPositive ? noise[4] : 0;
+    p_out.dat[5][5] += isDtPositive ? noise[5] : 0;
+    p_out.dat[6][6] += isDtPositive ? noise[6] : 0;
 
     updateCovarianceMatrix(p_out.dat, isDtPositive);
 
