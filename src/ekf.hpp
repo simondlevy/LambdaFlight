@@ -177,20 +177,20 @@ static bool scalarUpdate(
 
     // ====== COVARIANCE UPDATE ======
 
-    float GH[KC_STATE_DIM][KC_STATE_DIM] = {};
-    multiply(g, h, GH); // KH
+    matrix_t GH = {};
+    multiply(g, h, GH.dat); // KH
 
     for (int i=0; i<KC_STATE_DIM; i++) { 
-        GH[i][i] -= 1;
+        GH.dat[i][i] -= 1;
     } // KH - I
 
-    float GHt[KC_STATE_DIM][KC_STATE_DIM] = {};
-    transpose(GH, GHt);      // (KH - I)'
+    matrix_t GHt = {};
+    transpose(GH.dat, GHt.dat);      // (KH - I)'
 
-    float GHIP[KC_STATE_DIM][KC_STATE_DIM] = {};
-    multiply(GH, p_in.dat, GHIP);  // (KH - I)*P
-
-    multiply(GHIP, GHt, p_out.dat, shouldUpdate); // (KH - I)*P*(KH - I)'
+    matrix_t GHIP = {};
+    multiply(GH.dat, p_in.dat, GHIP.dat);  // (KH - I)*P
+    
+    multiply(GHIP.dat, GHt.dat, p_out.dat, shouldUpdate); // (KH - I)*P*(KH - I)'
 
     // Add the measurement variance and ensure boundedness and symmetry
     for (int i=0; i<KC_STATE_DIM; i++) {
@@ -227,7 +227,7 @@ static void afinalize(
         const float v0, 
         const float v1, 
         const float v2,
-        float A[KC_STATE_DIM][KC_STATE_DIM])
+        matrix_t & A)
 {
     // the attitude error vector (v0,v1,v2) is small,
     // so we use a first order approximation to e0 = tan(|v0|/2)*v0/|v0|
@@ -259,7 +259,7 @@ static void afinalize(
         /*E2*/  {0, 0, 0, 0, e2e0, e2e1, e2e2}
     };
 
-    memcpy(A, a, 7*7*sizeof(float));
+    memcpy(&A.dat, a, sizeof(A));
 } 
 
 static void subSamplerTakeMean(
@@ -667,13 +667,13 @@ static void ekf_finalize(
 
     // Move attitude error into attitude if any of the angle errors are
     // large enough
-    float A[KC_STATE_DIM][KC_STATE_DIM] = {};
+    matrix_t  A = {};
     afinalize(v0, v2, v2, A);
-    float At[KC_STATE_DIM][KC_STATE_DIM] = {};
-    transpose(A, At);     // A'
-    float AP[KC_STATE_DIM][KC_STATE_DIM] = {};
-    multiply(A, p_in.dat, AP);  // AP
-    multiply(AP, At, p_out.dat, isErrorSufficient); // APA'
+    matrix_t At = {};
+    transpose(A.dat, At.dat);     // A'
+    matrix_t AP = {};
+    multiply(A.dat, p_in.dat, AP.dat);  // AP
+    multiply(AP.dat, At.dat, p_out.dat, isErrorSufficient); // APA'
 
     updateCovarianceMatrix(p_out, p_out);
 } 
