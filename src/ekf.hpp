@@ -107,31 +107,32 @@ static float rotateQuat( const float val, const float initVal)
 }
 
 static void updateCovarianceCell(
-        const matrix_t & p_in,
         const int i, 
         const int j, 
         const float variance,
         const bool shouldUpdate,
-        matrix_t & p_out)
+        matrix_t & p)
 
 {
-    const auto pval = (p_in.dat[i][j] + p_in.dat[j][i]) / 2 + variance;
+    const auto pval = (p.dat[i][j] + p.dat[j][i]) / 2 + variance;
 
-    p_out.dat[i][j] = !shouldUpdate ? p_in.dat[i][j] :
+    p.dat[i][j] = !shouldUpdate ? p.dat[i][j] :
         pval > MAX_COVARIANCE ?  MAX_COVARIANCE :
         (i==j && pval < MIN_COVARIANCE) ?  MIN_COVARIANCE :
         pval;
 
-    p_out.dat[j][i] = shouldUpdate ? p_out.dat[i][j] : p_in.dat[j][i];
+    p.dat[j][i] = shouldUpdate ? p.dat[i][j] : p.dat[j][i];
 }
 
-static void updateCovarianceMatrix(const matrix_t & p_in, matrix_t & p_out, const bool shouldUpdate=true)
+static void updateCovarianceMatrix(
+        matrix_t & p, 
+        const bool shouldUpdate=true)
 {
     // Enforce symmetry of the covariance matrix, and ensure the
     // values stay bounded
     for (int i=0; i<KC_STATE_DIM; i++) {
         for (int j=i; j<KC_STATE_DIM; j++) {
-            updateCovarianceCell(p_in, i, j, 0, shouldUpdate, p_out);
+            updateCovarianceCell(i, j, 0, shouldUpdate, p);
         }
     }
 }
@@ -196,7 +197,7 @@ static bool scalarUpdate(
     for (int i=0; i<KC_STATE_DIM; i++) {
         for (int j=i; j<KC_STATE_DIM; j++) {
 
-            updateCovarianceCell(p_out, i, j, g[i] * r * g[j], shouldUpdate, p_out);
+            updateCovarianceCell(i, j, g[i] * r * g[j], shouldUpdate, p_out);
         }
     }
 
@@ -492,7 +493,7 @@ static bool ekf_predict(
     p_out.dat[5][5] += isDtPositive ? noise[5] : 0;
     p_out.dat[6][6] += isDtPositive ? noise[6] : 0;
 
-    updateCovarianceMatrix(p_out, p_out, isDtPositive);
+    updateCovarianceMatrix(p_out, isDtPositive);
 
     return isDtPositive;
 }
@@ -675,7 +676,7 @@ static void ekf_finalize(
     multiply(A.dat, p_in.dat, AP.dat);  // AP
     multiply(AP.dat, At.dat, p_out.dat, isErrorSufficient); // APA'
 
-    updateCovarianceMatrix(p_out, p_out);
+    updateCovarianceMatrix(p_out);
 } 
 
 static void ekf_getVehicleState(
