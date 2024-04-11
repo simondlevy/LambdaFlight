@@ -98,6 +98,11 @@ static const float max(const float val, const float maxval)
     return val > maxval ? maxval : val;
 }
 
+static const float square(const float x)
+{
+    return x * x;
+}
+
 static float rotateQuat( const float val, const float initVal)
 {
     const auto keep = 1.0f - ROLLPITCH_ZERO_REVERSION;
@@ -311,12 +316,12 @@ static void subSamplerTakeMean(
 static void ekf_init(matrix_t & p_out)
 {
     memset(&p_out, 0, sizeof(p_out));
-    p_out.dat[KC_STATE_Z][KC_STATE_Z] = powf(STDEV_INITIAL_POSITION_Z, 2);
-    p_out.dat[KC_STATE_DX][KC_STATE_DX] = powf(STDEV_INITIAL_VELOCITY, 2);
-    p_out.dat[KC_STATE_DY][KC_STATE_DY] = powf(STDEV_INITIAL_VELOCITY, 2);
-    p_out.dat[KC_STATE_DZ][KC_STATE_DZ] = powf(STDEV_INITIAL_VELOCITY, 2);
-    p_out.dat[KC_STATE_E1][KC_STATE_E1] = powf(STDEV_INITIAL_ATTITUDE_ROLL_PITCH, 2);
-    p_out.dat[KC_STATE_E2][KC_STATE_E2] = powf(STDEV_INITIAL_ATTITUDE_YAW, 2);
+    p_out.dat[KC_STATE_Z][KC_STATE_Z] = square(STDEV_INITIAL_POSITION_Z);
+    p_out.dat[KC_STATE_DX][KC_STATE_DX] = square(STDEV_INITIAL_VELOCITY);
+    p_out.dat[KC_STATE_DY][KC_STATE_DY] = square(STDEV_INITIAL_VELOCITY);
+    p_out.dat[KC_STATE_DZ][KC_STATE_DZ] = square(STDEV_INITIAL_VELOCITY);
+    p_out.dat[KC_STATE_E1][KC_STATE_E1] = square(STDEV_INITIAL_ATTITUDE_ROLL_PITCH);
+    p_out.dat[KC_STATE_E2][KC_STATE_E2] = square(STDEV_INITIAL_ATTITUDE_YAW);
 }
 
 static bool ekf_predict(
@@ -501,23 +506,45 @@ static bool ekf_predict(
 
     // Add process noise
 
-    const float noise[KC_STATE_DIM] = {
-        powf(PROC_NOISE_ACC_Z*dt1*dt1 + PROC_NOISE_VEL*dt1 + PROC_NOISE_POS, 2), 
-        powf(PROC_NOISE_ACC_XY*dt1 + PROC_NOISE_VEL, 2), 
-        powf(PROC_NOISE_ACC_XY*dt1 + PROC_NOISE_VEL, 2), 
-        powf(PROC_NOISE_ACC_Z*dt1 + PROC_NOISE_VEL, 2), 
-        powf(MEAS_NOISE_GYRO_ROLL_PITCH * dt1 + PROC_NOISE_ATT, 2), 
-        powf(MEAS_NOISE_GYRO_ROLL_PITCH * dt1 + PROC_NOISE_ATT, 2), 
-        powf(MEAS_NOISE_GYRO_ROLL_YAW * dt1 + PROC_NOISE_ATT, 2) 
-    };
+    const float zn = 
+        square(PROC_NOISE_ACC_Z*dt1*dt1 + PROC_NOISE_VEL*dt1 + PROC_NOISE_POS); 
 
-    p_out.dat[0][0] += isDtPositive ? noise[0] : 0;
-    p_out.dat[1][1] += isDtPositive ? noise[1] : 0;
-    p_out.dat[2][2] += isDtPositive ? noise[2] : 0;
-    p_out.dat[3][3] += isDtPositive ? noise[3] : 0;
-    p_out.dat[4][4] += isDtPositive ? noise[4] : 0;
-    p_out.dat[5][5] += isDtPositive ? noise[5] : 0;
-    p_out.dat[6][6] += isDtPositive ? noise[6] : 0;
+    const float dxn = 
+        square(PROC_NOISE_ACC_XY*dt1 + PROC_NOISE_VEL); 
+
+    const float dyn = 
+        square(PROC_NOISE_ACC_XY*dt1 + PROC_NOISE_VEL); 
+
+    const float dzn = 
+        square(PROC_NOISE_ACC_Z*dt1 + PROC_NOISE_VEL); 
+
+    const float e0n = 
+        square(MEAS_NOISE_GYRO_ROLL_PITCH * dt1 + PROC_NOISE_ATT); 
+
+    const float e1n = 
+        square(MEAS_NOISE_GYRO_ROLL_PITCH * dt1 + PROC_NOISE_ATT); 
+
+    const float e2n = 
+        square(MEAS_NOISE_GYRO_ROLL_YAW * dt1 + PROC_NOISE_ATT);
+ 
+    const float noise[KC_STATE_DIM][KC_STATE_DIM] = {
+        //        Z    DX      DY    DZ    E0    E1    E2
+        /*Z*/    {zn,  0,      0,    0,    0,    0,    0}, 
+        /*DX*/   {0,   dxn,    0,    0,    0,    0,    0}, 
+        /*DY*/   {0,   0,      dyn,  0,    0,    0,    0},
+        /*DZ*/   {0,   0,      0,    dzn,  0,    0,    0},
+        /*E0*/   {0,   0,      0,    0,    e0n,  0,    0}, 
+        /*E1*/   {0,   0,      0,    0,    0,    e1n,  0}, 
+        /*E2*/   {0,   0,      0,    0,    0,    0,    e2n}  
+     };
+
+    p_out.dat[0][0] += isDtPositive ? noise[0][0] : 0;
+    p_out.dat[1][1] += isDtPositive ? noise[1][1] : 0;
+    p_out.dat[2][2] += isDtPositive ? noise[2][2] : 0;
+    p_out.dat[3][3] += isDtPositive ? noise[3][3] : 0;
+    p_out.dat[4][4] += isDtPositive ? noise[4][4] : 0;
+    p_out.dat[5][5] += isDtPositive ? noise[5][5] : 0;
+    p_out.dat[6][6] += isDtPositive ? noise[6][6] : 0;
 
     updateCovarianceMatrix(p_out, isDtPositive);
 
