@@ -46,6 +46,18 @@ static float dot(const float a[N][N], const float b[N][N],
     return d;
 }
 
+// Matrix + Matrix
+static void add(const float a[N][N], const float b[N][N], float c[N][N])
+{
+    for (uint8_t i=0; i<N; i++) {
+
+        for (uint8_t j=0; j<N; j++) {
+
+            c[i][j] = a[i][j] + b[i][j];
+        }
+    }
+}
+
 // Matrix * Matrix
 static void multiply(const float a[N][N], const float b[N][N], float c[N][N],
         const bool shouldMultiply=true)

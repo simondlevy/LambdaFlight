@@ -526,7 +526,7 @@ static bool ekf_predict(
 
     const float e2n = isDtPositive ? 
         square(MEAS_NOISE_GYRO_ROLL_YAW * dt1 + PROC_NOISE_ATT): 0;
- 
+
     const float noise[KC_STATE_DIM][KC_STATE_DIM] = {
         //        Z    DX      DY    DZ    E0    E1    E2
         /*Z*/    {zn,  0,      0,    0,    0,    0,    0}, 
@@ -536,15 +536,9 @@ static bool ekf_predict(
         /*E0*/   {0,   0,      0,    0,    e0n,  0,    0}, 
         /*E1*/   {0,   0,      0,    0,    0,    e1n,  0}, 
         /*E2*/   {0,   0,      0,    0,    0,    0,    e2n}  
-     };
+    };
 
-    p_out.dat[0][0] += noise[0][0];
-    p_out.dat[1][1] += noise[1][1];
-    p_out.dat[2][2] += noise[2][2];
-    p_out.dat[3][3] += noise[3][3];
-    p_out.dat[4][4] += noise[4][4];
-    p_out.dat[5][5] += noise[5][5];
-    p_out.dat[6][6] += noise[6][6];
+    add(p_out.dat, noise, p_out.dat);
 
     updateCovarianceMatrix(p_out, isDtPositive);
 
