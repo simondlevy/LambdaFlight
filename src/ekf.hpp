@@ -463,11 +463,11 @@ static bool ekf_predict(
         /*E2*/   {0, 0,    0,    0,    e2e0, e2e1, e2e2}  
     };
 
-    float At[KC_STATE_DIM][KC_STATE_DIM] = {};
-    transpose(A, At);     // A'
-    float AP[KC_STATE_DIM][KC_STATE_DIM] = {};
-    multiply(A, p_in.dat, AP);  // AP
-    multiply(AP, At, p_out.dat); // APA'
+    matrix_t  At = {};
+    transpose(A, At.dat);     // A'
+    matrix_t AP = {};
+    multiply(A, p_in.dat, AP.dat);  // AP
+    multiply(AP.dat, At.dat, p_out.dat); // APA'
 
     const auto dt1 = (stream_nowMsec - lastProcessNoiseUpdateMsec) / 1000.0f;
     const auto isDtPositive = dt1 > 0;
