@@ -506,26 +506,26 @@ static bool ekf_predict(
 
     // Add process noise
 
-    const float zn = 
-        square(PROC_NOISE_ACC_Z*dt1*dt1 + PROC_NOISE_VEL*dt1 + PROC_NOISE_POS); 
+    const float zn = isDtPositive ? 
+        square(PROC_NOISE_ACC_Z*dt1*dt1 + PROC_NOISE_VEL*dt1 + PROC_NOISE_POS) : 0;
 
-    const float dxn = 
-        square(PROC_NOISE_ACC_XY*dt1 + PROC_NOISE_VEL); 
+    const float dxn = isDtPositive ? 
+        square(PROC_NOISE_ACC_XY*dt1 + PROC_NOISE_VEL) : 0; 
 
-    const float dyn = 
-        square(PROC_NOISE_ACC_XY*dt1 + PROC_NOISE_VEL); 
+    const float dyn = isDtPositive ? 
+        square(PROC_NOISE_ACC_XY*dt1 + PROC_NOISE_VEL): 0; 
 
-    const float dzn = 
-        square(PROC_NOISE_ACC_Z*dt1 + PROC_NOISE_VEL); 
+    const float dzn = isDtPositive ? 
+        square(PROC_NOISE_ACC_Z*dt1 + PROC_NOISE_VEL): 0; 
 
-    const float e0n = 
-        square(MEAS_NOISE_GYRO_ROLL_PITCH * dt1 + PROC_NOISE_ATT); 
+    const float e0n = isDtPositive ? 
+        square(MEAS_NOISE_GYRO_ROLL_PITCH * dt1 + PROC_NOISE_ATT): 0; 
 
-    const float e1n = 
-        square(MEAS_NOISE_GYRO_ROLL_PITCH * dt1 + PROC_NOISE_ATT); 
+    const float e1n = isDtPositive ? 
+        square(MEAS_NOISE_GYRO_ROLL_PITCH * dt1 + PROC_NOISE_ATT): 0; 
 
-    const float e2n = 
-        square(MEAS_NOISE_GYRO_ROLL_YAW * dt1 + PROC_NOISE_ATT);
+    const float e2n = isDtPositive ? 
+        square(MEAS_NOISE_GYRO_ROLL_YAW * dt1 + PROC_NOISE_ATT): 0;
  
     const float noise[KC_STATE_DIM][KC_STATE_DIM] = {
         //        Z    DX      DY    DZ    E0    E1    E2
@@ -538,13 +538,13 @@ static bool ekf_predict(
         /*E2*/   {0,   0,      0,    0,    0,    0,    e2n}  
      };
 
-    p_out.dat[0][0] += isDtPositive ? noise[0][0] : 0;
-    p_out.dat[1][1] += isDtPositive ? noise[1][1] : 0;
-    p_out.dat[2][2] += isDtPositive ? noise[2][2] : 0;
-    p_out.dat[3][3] += isDtPositive ? noise[3][3] : 0;
-    p_out.dat[4][4] += isDtPositive ? noise[4][4] : 0;
-    p_out.dat[5][5] += isDtPositive ? noise[5][5] : 0;
-    p_out.dat[6][6] += isDtPositive ? noise[6][6] : 0;
+    p_out.dat[0][0] += noise[0][0];
+    p_out.dat[1][1] += noise[1][1];
+    p_out.dat[2][2] += noise[2][2];
+    p_out.dat[3][3] += noise[3][3];
+    p_out.dat[4][4] += noise[4][4];
+    p_out.dat[5][5] += noise[5][5];
+    p_out.dat[6][6] += noise[6][6];
 
     updateCovarianceMatrix(p_out, isDtPositive);
 
