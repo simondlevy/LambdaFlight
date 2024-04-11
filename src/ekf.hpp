@@ -124,7 +124,7 @@ static void updateCovarianceCell(
     p.dat[j][i] = shouldUpdate ? p.dat[i][j] : p.dat[j][i];
 }
 
-static void updateCovarianceMatrix(const bool shouldUpdate, matrix_t & p)
+static void updateCovarianceMatrix(matrix_t & p, const bool shouldUpdate=true)
 {
     // Enforce symmetry of the covariance matrix, and ensure the
     // values stay bounded
@@ -491,7 +491,7 @@ static bool ekf_predict(
     p_out.dat[5][5] += isDtPositive ? noise[5] : 0;
     p_out.dat[6][6] += isDtPositive ? noise[6] : 0;
 
-    updateCovarianceMatrix(isDtPositive, p_out);
+    updateCovarianceMatrix(p_out, isDtPositive);
 
     return isDtPositive;
 }
@@ -674,7 +674,7 @@ static void ekf_finalize(
     multiply(A, p_in.dat, AP);  // AP
     multiply(AP, At, p_out.dat, isErrorSufficient); // APA'
 
-    updateCovarianceMatrix(true, p_out);
+    updateCovarianceMatrix(p_out);
 } 
 
 static void ekf_getVehicleState(
