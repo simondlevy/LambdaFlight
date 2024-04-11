@@ -126,13 +126,36 @@ static void updateCovarianceCell(
 
 static void updateCovarianceMatrix(
         matrix_t & p, 
-        const bool shouldUpdate=true)
+        const bool shouldUpdate)
 {
     // Enforce symmetry of the covariance matrix, and ensure the
     // values stay bounded
     for (int i=0; i<KC_STATE_DIM; i++) {
         for (int j=i; j<KC_STATE_DIM; j++) {
             updateCovarianceCell(i, j, 0, shouldUpdate, p);
+        }
+    }
+}
+
+static void updateCovarianceCell(
+        const int i, const int j, const float variance, matrix_t & p)
+
+{
+    const auto pval = (p.dat[i][j] + p.dat[j][i]) / 2 + variance;
+
+    p.dat[i][j] = p.dat[j][i] = 
+        pval > MAX_COVARIANCE ?  MAX_COVARIANCE :
+        (i==j && pval < MIN_COVARIANCE) ?  MIN_COVARIANCE :
+        pval;
+}
+
+static void updateCovarianceMatrix(matrix_t & p) 
+{
+    // Enforce symmetry of the covariance matrix, and ensure the
+    // values stay bounded
+    for (int i=0; i<KC_STATE_DIM; i++) {
+        for (int j=i; j<KC_STATE_DIM; j++) {
+            updateCovarianceCell(i, j, 0, p);
         }
     }
 }
