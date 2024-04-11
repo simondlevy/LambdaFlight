@@ -187,7 +187,7 @@ static bool scalarUpdate(
     transpose(GH, GHt);      // (KH - I)'
 
     float GHIP[KC_STATE_DIM][KC_STATE_DIM] = {};
-    multiply(GH, p_in.dat, GHIP, true);  // (KH - I)*P
+    multiply(GH, p_in.dat, GHIP);  // (KH - I)*P
 
     multiply(GHIP, GHt, p_out.dat, shouldUpdate); // (KH - I)*P*(KH - I)'
 
@@ -465,7 +465,7 @@ static bool ekf_predict(
     float At[KC_STATE_DIM][KC_STATE_DIM] = {};
     transpose(A, At);     // A'
     float AP[KC_STATE_DIM][KC_STATE_DIM] = {};
-    multiply(A, p_in.dat, AP, true);  // AP
+    multiply(A, p_in.dat, AP);  // AP
     multiply(AP, At, p_out.dat); // APA'
 
     const auto dt1 = (stream_nowMsec - lastProcessNoiseUpdateMsec) / 1000.0f;
@@ -671,7 +671,7 @@ static void ekf_finalize(
     float At[KC_STATE_DIM][KC_STATE_DIM] = {};
     transpose(A, At);     // A'
     float AP[KC_STATE_DIM][KC_STATE_DIM] = {};
-    multiply(A, p_in.dat, AP, true);  // AP
+    multiply(A, p_in.dat, AP);  // AP
     multiply(AP, At, p_out.dat, isErrorSufficient); // APA'
 
     updateCovarianceMatrix(true, p_out);
