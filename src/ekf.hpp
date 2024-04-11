@@ -107,21 +107,22 @@ static float rotateQuat( const float val, const float initVal)
 }
 
 static void updateCovarianceCell(
+        const matrix_t & p_in,
         const int i, 
         const int j, 
         const float variance,
         const bool shouldUpdate,
-        matrix_t & p)
+        matrix_t & p_out)
 
 {
-    const auto pval = (p.dat[i][j] + p.dat[j][i]) / 2 + variance;
+    const auto pval = (p_in.dat[i][j] + p_in.dat[j][i]) / 2 + variance;
 
-    p.dat[i][j] = !shouldUpdate ? p.dat[i][j] :
+    p_out.dat[i][j] = !shouldUpdate ? p_in.dat[i][j] :
         pval > MAX_COVARIANCE ?  MAX_COVARIANCE :
         (i==j && pval < MIN_COVARIANCE) ?  MIN_COVARIANCE :
         pval;
 
-    p.dat[j][i] = shouldUpdate ? p.dat[i][j] : p.dat[j][i];
+    p_out.dat[j][i] = shouldUpdate ? p_out.dat[i][j] : p_in.dat[j][i];
 }
 
 static void updateCovarianceMatrix(matrix_t & p, const bool shouldUpdate=true)
@@ -130,7 +131,7 @@ static void updateCovarianceMatrix(matrix_t & p, const bool shouldUpdate=true)
     // values stay bounded
     for (int i=0; i<KC_STATE_DIM; i++) {
         for (int j=i; j<KC_STATE_DIM; j++) {
-            updateCovarianceCell(i, j, 0, shouldUpdate, p);
+            updateCovarianceCell(p, i, j, 0, shouldUpdate, p);
         }
     }
 }
@@ -195,7 +196,7 @@ static bool scalarUpdate(
     for (int i=0; i<KC_STATE_DIM; i++) {
         for (int j=i; j<KC_STATE_DIM; j++) {
 
-            updateCovarianceCell(i, j, g[i] * r * g[j], shouldUpdate, p_out);
+            updateCovarianceCell(p_out, i, j, g[i] * r * g[j], shouldUpdate, p_out);
         }
     }
 
