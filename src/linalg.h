@@ -59,6 +59,23 @@ static void multiply(const float a[N][N], const float b[N][N], float c[N][N],
     }
 }
 
+// Matrix * Matrix with default
+static void multiply(
+        const float a[N][N], 
+        const float b[N][N], 
+        const float orig[N][N],
+        float c[N][N],
+        const bool shouldMultiply=true)
+{
+    for (uint8_t i=0; i<N; i++) {
+
+        for (uint8_t j=0; j<N; j++) {
+
+            c[i][j] = shouldMultiply ? dot(a, b, i, j) : orig[i][j];
+        }
+    }
+}
+
 // Matrix * Vector
 static void multiply(const float a[N][N], const float x[N], float y[N])
 {

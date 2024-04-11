@@ -138,24 +138,27 @@ static void updateCovarianceMatrix(
 }
 
 static void updateCovarianceCell(
-        const int i, const int j, const float variance, matrix_t & p)
-
+        const matrix_t & p_in, 
+        const int i, 
+        const int j, 
+        const float variance, 
+        matrix_t & p_out)
 {
-    const auto pval = (p.dat[i][j] + p.dat[j][i]) / 2 + variance;
+    const auto pval = (p_in.dat[i][j] + p_in.dat[j][i]) / 2 + variance;
 
-    p.dat[i][j] = p.dat[j][i] = 
+    p_out.dat[i][j] = p_out.dat[j][i] = 
         pval > MAX_COVARIANCE ?  MAX_COVARIANCE :
         (i==j && pval < MIN_COVARIANCE) ?  MIN_COVARIANCE :
         pval;
 }
 
-static void updateCovarianceMatrix(matrix_t & p) 
+static void updateCovarianceMatrix(const matrix_t & p_in, matrix_t & p_out) 
 {
     // Enforce symmetry of the covariance matrix, and ensure the
     // values stay bounded
     for (int i=0; i<KC_STATE_DIM; i++) {
         for (int j=i; j<KC_STATE_DIM; j++) {
-            updateCovarianceCell(i, j, 0, p);
+            updateCovarianceCell(p_in, i, j, 0, p_out);
         }
     }
 }
@@ -697,9 +700,10 @@ static void ekf_finalize(
     transpose(A.dat, At.dat);     // A'
     matrix_t AP = {};
     multiply(A.dat, p_in.dat, AP.dat);  // AP
-    multiply(AP.dat, At.dat, p_out.dat, isErrorSufficient); // APA'
+    matrix_t APA = {};
+    multiply(AP.dat, At.dat, p_in.dat, APA.dat, isErrorSufficient); // APA'
 
-    updateCovarianceMatrix(p_out);
+    updateCovarianceMatrix(APA, p_out);
 } 
 
 static void ekf_getVehicleState(
