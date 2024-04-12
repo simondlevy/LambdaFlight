@@ -129,19 +129,6 @@ static void updateCovarianceCell(
     p.dat[j][i] = shouldUpdate ? p.dat[i][j] : p.dat[j][i];
 }
 
-static void updateCovarianceMatrix(
-        matrix_t & p, 
-        const bool shouldUpdate)
-{
-    // Enforce symmetry of the covariance matrix, and ensure the
-    // values stay bounded
-    for (int i=0; i<KC_STATE_DIM; i++) {
-        for (int j=i; j<KC_STATE_DIM; j++) {
-            updateCovarianceCell(i, j, 0, shouldUpdate, p);
-        }
-    }
-}
-
 static void updateCovarianceCell(
         const matrix_t & p_in, 
         const int i, 
@@ -540,7 +527,8 @@ static bool ekf_predict(
 
     add(p_out.dat, noise, p_out.dat);
 
-    updateCovarianceMatrix(p_out, isDtPositive);
+    // updateCovarianceMatrix(p_out, isDtPositive);
+    updateCovarianceMatrix(p_out, p_out);
 
     return isDtPositive;
 }
@@ -863,7 +851,6 @@ static void ekf_step(void)
     // Get vehicle state
     vehicleState_t vehicleState = {};
     ekf_getVehicleState(ekfs, _gyroLatest, quat, r, vehicleState);
-
 
     if (stream_ekfAction == EKF_GET_STATE) {
         setState(vehicleState);
