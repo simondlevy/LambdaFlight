@@ -515,10 +515,9 @@ static bool ekf_predict(
     multiply(A, p_in.dat, AP.dat);  // AP
     multiply(AP.dat, At.dat, p_out.dat); // APA'
 
+    // Add process noise
     const auto dt1 = (stream_nowMsec - lastProcessNoiseUpdateMsec) / 1000.0f;
     const auto isDtPositive = dt1 > 0;
-
-    // Add process noise
     matrix_t noise = {};
     makeProcessNoise(dt1, noise);
     add(p_out.dat, noise.dat, p_out.dat);
@@ -789,12 +788,12 @@ static void ekf_step(void)
     ekf_init(p_initialized);
 
     // Predict
-    const auto shouldPredict = stream_ekfAction == EKF_PREDICT && 
+    const auto didPredict = stream_ekfAction == EKF_PREDICT && 
         stream_nowMsec >= stream_nextPredictionMsec;
     ekfLinear_t lin_predicted = {};
     new_quat_t quat_predicted = {};
-    const auto didPredict = 
-        shouldPredict && 
+    const auto didAddProcessNoise = 
+        didPredict && 
         ekf_predict(
                 _gyroSum_x,
                 _gyroSum_y,
@@ -861,27 +860,27 @@ static void ekf_step(void)
     //////////////////////////////////////////////////////////////////////////
 
     _gyroSum_x = didUpdateWithGyro ? _gyroSum_x + stream_gyro.x :
-        didPredict ? 0 :
+        didAddProcessNoise ? 0 :
         _gyroSum_x;
 
     _gyroSum_y = didUpdateWithGyro ? _gyroSum_y + stream_gyro.y :
-        didPredict ? 0 :
+        didAddProcessNoise ? 0 :
         _gyroSum_y;
 
     _gyroSum_z = didUpdateWithGyro ? _gyroSum_z + stream_gyro.z :
-        didPredict ? 0 :
+        didAddProcessNoise ? 0 :
         _gyroSum_z;
 
     _accelSum_x = didUpdateWithAccel ? _accelSum_x + stream_accel.x :
-        didPredict ? 0 :
+        didAddProcessNoise ? 0 :
         _accelSum_x;
 
     _accelSum_y = didUpdateWithAccel ? _accelSum_y + stream_accel.y :
-        didPredict ? 0 :
+        didAddProcessNoise ? 0 :
         _accelSum_y;
 
     _accelSum_z = didUpdateWithAccel ? _accelSum_z + stream_accel.z :
-        didPredict ? 0 :
+        didAddProcessNoise ? 0 :
         _accelSum_z;
 
     memcpy(&_p, 
@@ -892,32 +891,32 @@ static void ekf_step(void)
             didUpdateWithGyro ?  &stream_gyro : &_gyroLatest, 
             sizeof(axis3_t));
 
-    _gyroCount = didPredict ? 0 : 
+    _gyroCount = didAddProcessNoise ? 0 : 
         didUpdateWithGyro ? _gyroCount + 1 :
         _gyroCount;
 
-    _accelCount = didPredict ? 0 : 
+    _accelCount = didAddProcessNoise ? 0 : 
         didUpdateWithAccel ? _accelCount + 1 :
         _accelCount;
 
     _qw = didInitialize ? 1 : 
         didFinalize ? quat_finalized.w :
-        didPredict ? quat_predicted.w :
+        didAddProcessNoise ? quat_predicted.w :
         _qw;
 
     _qx = didInitialize ? 0 : 
         didFinalize ? quat_finalized.x :
-        didPredict ? quat_predicted.x :
+        didAddProcessNoise ? quat_predicted.x :
         _qx;
 
     _qy = didInitialize ? 0 : 
         didFinalize ? quat_finalized.y :
-        didPredict ? quat_predicted.y :
+        didAddProcessNoise ? quat_predicted.y :
         _qy;
 
     _qz = didInitialize ? 0 : 
         didFinalize ? quat_finalized.z :
-        didPredict ? quat_predicted.z :
+        didAddProcessNoise ? quat_predicted.z :
         _qz;
 
     _rx = didInitialize ? 0 : 
@@ -933,25 +932,25 @@ static void ekf_step(void)
         _rz;
 
     _z = didInitialize ? 0 : 
-        didPredict ? lin_predicted.z :
+        didAddProcessNoise ? lin_predicted.z :
         didUpdateWithFlow ? ekfs_updatedWithFlow.lin.z :
         didUpdateWithRange ? ekfs_updatedWithRange.lin.z :
         _z;
 
     _dx = didInitialize ? 0 : 
-        didPredict ? lin_predicted.dx :
+        didAddProcessNoise ? lin_predicted.dx :
         didUpdateWithFlow ? ekfs_updatedWithFlow.lin.dx :
         didUpdateWithRange ? ekfs_updatedWithRange.lin.dx :
         _dx;
 
     _dy = didInitialize ? 0 : 
-        didPredict ? lin_predicted.dy :
+        didAddProcessNoise ? lin_predicted.dy :
         didUpdateWithFlow ? ekfs_updatedWithFlow.lin.dy :
         didUpdateWithRange ? ekfs_updatedWithRange.lin.dy :
         _dy;
 
     _dz = didInitialize ? 0 : 
-        didPredict ? lin_predicted.dz :
+        didAddProcessNoise ? lin_predicted.dz :
         didUpdateWithFlow ? ekfs_updatedWithFlow.lin.dz :
         didUpdateWithRange ? ekfs_updatedWithRange.lin.dz :
         _dz;
@@ -972,12 +971,12 @@ static void ekf_step(void)
         _e2;
 
     _lastProcessNoiseUpdateMsec = 
-        didInitialize || didPredict ?  
+        didInitialize || didAddProcessNoise ?  
         stream_nowMsec : 
         _lastProcessNoiseUpdateMsec;
 
     _lastPredictionMsec = 
-        didInitialize || shouldPredict ? stream_nowMsec :
+        didInitialize || didPredict ? stream_nowMsec :
         _lastPredictionMsec;
 
     _isUpdated = 
