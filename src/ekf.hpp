@@ -656,15 +656,17 @@ static void ekf_finalize(
 
     // Move attitude error into attitude if any of the angle errors are
     // large enough
-    matrix_t  A = {};
-    afinalize(v0, v2, v2, A);
-    matrix_t At = {};
-    transpose(A.dat, At.dat);     // A'
-    matrix_t AP = {};
-    multiply(A.dat, p_in.dat, AP.dat);  // AP
-    matrix_t APA = {};
-    multiply(AP.dat, At.dat, p_in.dat, APA.dat, isErrorSufficient); // APA'
-    updateCovarianceMatrix(APA, p_out);
+    if (isErrorSufficient) {
+        matrix_t  A = {};
+        afinalize(v0, v2, v2, A);
+        matrix_t At = {};
+        transpose(A.dat, At.dat);     // A'
+        matrix_t AP = {};
+        multiply(A.dat, p_in.dat, AP.dat);  // AP
+        matrix_t APA = {};
+        multiply(AP.dat, At.dat, APA.dat); // APA'
+        updateCovarianceMatrix(APA, p_out);
+    }
 } 
 
 static void ekf_getVehicleState(
