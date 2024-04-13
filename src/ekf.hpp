@@ -103,6 +103,7 @@ static float rotateQuat( const float val, const float initVal)
         (stream_isFlying ? 0 : ROLLPITCH_ZERO_REVERSION * initVal);
 }
 
+/*
 static void updateCovarianceCell(
         const int i, 
         const int j, 
@@ -116,7 +117,7 @@ static void updateCovarianceCell(
         pval;
 
     p.dat[j][i] = p.dat[i][j];
-}
+}*/
 
 static void updateCovarianceCell(
         const matrix_t & p_in, 
@@ -205,9 +206,11 @@ static void scalarUpdate(
         for (int i=0; i<KC_STATE_DIM; i++) {
             for (int j=i; j<KC_STATE_DIM; j++) {
                 p_out.dat[i][j] += g[i] * r * g[j];
-                updateCovarianceCell(i, j, p_out);
+                //updateCovarianceCell(i, j, p_out);
             }
         }
+
+        updateCovarianceMatrix(p_out, p_out);
     }
 }
 
