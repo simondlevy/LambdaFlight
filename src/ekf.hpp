@@ -298,6 +298,32 @@ static void subSamplerTakeMean(
     avgz = isCountNonzero ? sumz * conversionFactor / count : avgz;
 }
 
+static void makeProcessNoise(const float dt, matrix_t & noise)
+{
+    const auto isDtPositive = dt > 0;
+
+    noise.dat[0][0] = isDtPositive ? 
+        square(PROC_NOISE_ACC_Z*dt*dt + PROC_NOISE_VEL*dt + PROC_NOISE_POS) : 0;
+
+    noise.dat[1][1] = isDtPositive ? 
+        square(PROC_NOISE_ACC_XY*dt + PROC_NOISE_VEL) : 0; 
+
+    noise.dat[2][2] = isDtPositive ? 
+        square(PROC_NOISE_ACC_XY*dt + PROC_NOISE_VEL): 0; 
+
+    noise.dat[3][3] = isDtPositive ? 
+        square(PROC_NOISE_ACC_Z*dt + PROC_NOISE_VEL): 0; 
+
+    noise.dat[4][4] = isDtPositive ? 
+        square(MEAS_NOISE_GYRO_ROLL_PITCH * dt + PROC_NOISE_ATT): 0; 
+
+    noise.dat[5][5] = isDtPositive ? 
+        square(MEAS_NOISE_GYRO_ROLL_PITCH * dt + PROC_NOISE_ATT): 0; 
+
+    noise.dat[6][6] = isDtPositive ? 
+        square(MEAS_NOISE_GYRO_ROLL_YAW * dt + PROC_NOISE_ATT): 0;
+}
+
 // ===========================================================================
 
 static void ekf_init(matrix_t & p_out)
@@ -482,40 +508,19 @@ static bool ekf_predict(
         /*E2*/   {0, 0,    0,    0,    e2e0, e2e1, e2e2}  
     };
 
-    const auto dt1 = (stream_nowMsec - lastProcessNoiseUpdateMsec) / 1000.0f;
-    const auto isDtPositive = dt1 > 0;
-
-    matrix_t noise = {};
-
-    // Add process noise
-
-    noise.dat[0][0] = isDtPositive ? 
-        square(PROC_NOISE_ACC_Z*dt1*dt1 + PROC_NOISE_VEL*dt1 + PROC_NOISE_POS) : 0;
-
-    noise.dat[1][1] = isDtPositive ? 
-        square(PROC_NOISE_ACC_XY*dt1 + PROC_NOISE_VEL) : 0; 
-
-    noise.dat[2][2] = isDtPositive ? 
-        square(PROC_NOISE_ACC_XY*dt1 + PROC_NOISE_VEL): 0; 
-
-    noise.dat[3][3] = isDtPositive ? 
-        square(PROC_NOISE_ACC_Z*dt1 + PROC_NOISE_VEL): 0; 
-
-    noise.dat[4][4] = isDtPositive ? 
-        square(MEAS_NOISE_GYRO_ROLL_PITCH * dt1 + PROC_NOISE_ATT): 0; 
-
-    noise.dat[5][5] = isDtPositive ? 
-        square(MEAS_NOISE_GYRO_ROLL_PITCH * dt1 + PROC_NOISE_ATT): 0; 
-
-    noise.dat[6][6] = isDtPositive ? 
-        square(MEAS_NOISE_GYRO_ROLL_YAW * dt1 + PROC_NOISE_ATT): 0;
-
+    // Predict
     matrix_t  At = {};
     transpose(A, At.dat);     // A'
     matrix_t AP = {};
     multiply(A, p_in.dat, AP.dat);  // AP
     multiply(AP.dat, At.dat, p_out.dat); // APA'
 
+    const auto dt1 = (stream_nowMsec - lastProcessNoiseUpdateMsec) / 1000.0f;
+    const auto isDtPositive = dt1 > 0;
+
+    // Add process noise
+    matrix_t noise = {};
+    makeProcessNoise(dt1, noise);
     add(p_out.dat, noise.dat, p_out.dat);
     updateCovarianceMatrix(p_out, p_out);
 
