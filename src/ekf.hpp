@@ -182,7 +182,7 @@ static void scalarUpdate(
         // Add the measurement variance 
         for (int i=0; i<KC_STATE_DIM; i++) {
             for (int j=i; j<KC_STATE_DIM; j++) {
-                p_out.dat[i][j] += g[i] * r * g[j];
+                p_out.dat[i][j] += r * g[i] * g[j];
             }
         }
 
