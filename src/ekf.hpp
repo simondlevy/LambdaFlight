@@ -106,11 +106,10 @@ static float rotateQuat( const float val, const float initVal)
 static void updateCovarianceCell(
         const int i, 
         const int j, 
-        const float variance,
         matrix_t & p)
 
 {
-    const auto pval = (p.dat[i][j] + p.dat[j][i]) / 2 + variance;
+    const auto pval = (p.dat[i][j] + p.dat[j][i]) / 2;
 
     p.dat[i][j] = pval > MAX_COVARIANCE ?  MAX_COVARIANCE :
         (i==j && pval < MIN_COVARIANCE) ?  MIN_COVARIANCE :
@@ -203,11 +202,11 @@ static void scalarUpdate(
 
         multiply(GHIP.dat, GHt.dat, p_out.dat); // (KH - I)*P*(KH - I)'
 
-        // Add the measurement variance and ensure boundedness and symmetry
+        // Add the measurement variance 
         for (int i=0; i<KC_STATE_DIM; i++) {
             for (int j=i; j<KC_STATE_DIM; j++) {
-
-                updateCovarianceCell(i, j, g[i] * r * g[j], p_out);
+                p_out.dat[i][j] += g[i] * r * g[j];
+                updateCovarianceCell(i, j, p_out);
             }
         }
     }
