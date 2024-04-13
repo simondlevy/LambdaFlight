@@ -147,7 +147,7 @@ static void updateCovarianceMatrix(const matrix_t & p_in, matrix_t & p_out)
     }
 }
 
-static bool scalarUpdate(
+static void scalarUpdate(
         const matrix_t & p_in,
         const ekfState_t & ekfs_in,
         const float h[KC_STATE_DIM],
@@ -210,8 +210,6 @@ static bool scalarUpdate(
             updateCovarianceCell(i, j, g[i] * r * g[j], shouldUpdate, p_out);
         }
     }
-
-    return shouldUpdate;
 }
 
 static bool isPositionWithinBounds(const float pos)
@@ -516,7 +514,7 @@ static bool ekf_updateWithRange(
     // Only update the filter if the measurement is reliable 
     // (\hat{h} -> infty when R[2][2] -> 0)
     const auto shouldUpdate = fabs(rz) > 0.1f && rz > 0;
-    return scalarUpdate(
+    scalarUpdate(
             p_in,
             ekfs_in,
             h , 
@@ -525,6 +523,7 @@ static bool ekf_updateWithRange(
             shouldUpdate,
             p_out,
             ekfs_out);
+    return shouldUpdate;
 }
 
 static bool ekf_updateWithFlow(
@@ -597,7 +596,7 @@ static bool ekf_updateWithFlow(
     hy[KC_STATE_DY] = (Npix * stream_flow.dt / thetapix) * (rz / z_g);
 
     // Second update
-    return scalarUpdate(
+    scalarUpdate(
             p_first,
             ekfs_first,
             hy, 
@@ -606,6 +605,8 @@ static bool ekf_updateWithFlow(
             true,
             p_out,
             ekfs_out);
+
+    return true;
 }
 
 static void ekf_finalize(
@@ -660,7 +661,6 @@ static void ekf_finalize(
     multiply(A.dat, p_in.dat, AP.dat);  // AP
     matrix_t APA = {};
     multiply(AP.dat, At.dat, p_in.dat, APA.dat, isErrorSufficient); // APA'
-
     updateCovarianceMatrix(APA, p_out);
 } 
 
