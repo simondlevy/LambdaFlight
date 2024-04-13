@@ -127,7 +127,6 @@ static void scalarUpdate(
         const float h[KC_STATE_DIM],
         const float error, 
         const float stdMeasNoise,
-        const bool shouldUpdate,
         matrix_t & p_out,
         ekfState_t & ekfs_out)
 {
@@ -152,42 +151,37 @@ static void scalarUpdate(
     };
 
     // Perform the state update
-    ekfs_out.lin.z  = ekfs_in.lin.z  + (shouldUpdate ? g[0] * error: 0);
-    ekfs_out.lin.dx = ekfs_in.lin.dx + (shouldUpdate ? g[1] * error: 0);
-    ekfs_out.lin.dy = ekfs_in.lin.dy + (shouldUpdate ? g[2] * error: 0);
-    ekfs_out.lin.dz = ekfs_in.lin.dz + (shouldUpdate ? g[3] * error: 0);
-    ekfs_out.ang.x = ekfs_in.ang.x + (shouldUpdate ? g[4] * error: 0);
-    ekfs_out.ang.y = ekfs_in.ang.y + (shouldUpdate ? g[5] * error: 0);
-    ekfs_out.ang.z = ekfs_in.ang.z + (shouldUpdate ? g[6] * error: 0);
+    ekfs_out.lin.z  = ekfs_in.lin.z  + g[0] * error;
+    ekfs_out.lin.dx = ekfs_in.lin.dx + g[1] * error;
+    ekfs_out.lin.dy = ekfs_in.lin.dy + g[2] * error;
+    ekfs_out.lin.dz = ekfs_in.lin.dz + g[3] * error;
+    ekfs_out.ang.x = ekfs_in.ang.x + g[4] * error;
+    ekfs_out.ang.y = ekfs_in.ang.y + g[5] * error;
+    ekfs_out.ang.z = ekfs_in.ang.z + g[6] * error;
 
     // ====== COVARIANCE UPDATE ======
 
-    if (shouldUpdate) {
+    matrix_t GH = {};
+    multiply(g, h, GH.dat); // KH
 
-        matrix_t GH = {};
-        multiply(g, h, GH.dat); // KH
+    for (int i=0; i<KC_STATE_DIM; i++) { 
+        GH.dat[i][i] -= 1;
+    } // KH - I
 
-        for (int i=0; i<KC_STATE_DIM; i++) { 
-            GH.dat[i][i] -= 1;
-        } // KH - I
+    matrix_t GHt = {};
+    transpose(GH.dat, GHt.dat);      // (KH - I)'
+    matrix_t GHIP = {};
+    multiply(GH.dat, p_in.dat, GHIP.dat);  // (KH - I)*P
+    multiply(GHIP.dat, GHt.dat, p_out.dat); // (KH - I)*P*(KH - I)'
 
-        matrix_t GHt = {};
-        transpose(GH.dat, GHt.dat);      // (KH - I)'
-
-        matrix_t GHIP = {};
-        multiply(GH.dat, p_in.dat, GHIP.dat);  // (KH - I)*P
-
-        multiply(GHIP.dat, GHt.dat, p_out.dat); // (KH - I)*P*(KH - I)'
-
-        // Add the measurement variance 
-        for (int i=0; i<KC_STATE_DIM; i++) {
-            for (int j=0; j<KC_STATE_DIM; j++) {
-                p_out.dat[i][j] += j < i ? 0 : r * g[i] * g[j];
-            }
+    // Add the measurement variance 
+    for (int i=0; i<KC_STATE_DIM; i++) {
+        for (int j=0; j<KC_STATE_DIM; j++) {
+            p_out.dat[i][j] += j < i ? 0 : r * g[i] * g[j];
         }
-
-        updateCovarianceMatrix(p_out, p_out);
     }
+
+    updateCovarianceMatrix(p_out, p_out);
 }
 
 static bool isPositionWithinBounds(const float pos)
@@ -492,15 +486,16 @@ static bool ekf_updateWithRange(
     // Only update the filter if the measurement is reliable 
     // (\hat{h} -> infty when R[2][2] -> 0)
     const auto shouldUpdate = fabs(rz) > 0.1f && rz > 0;
-    scalarUpdate(
-            p_in,
-            ekfs_in,
-            h , 
-            measuredDistance-predictedDistance, 
-            stream_range.stdDev, 
-            shouldUpdate,
-            p_out,
-            ekfs_out);
+    if (shouldUpdate) {
+        scalarUpdate(
+                p_in,
+                ekfs_in,
+                h , 
+                measuredDistance-predictedDistance, 
+                stream_range.stdDev, 
+                p_out,
+                ekfs_out);
+    }
     return shouldUpdate;
 }
 
@@ -558,7 +553,6 @@ static bool ekf_updateWithFlow(
             hx, 
             measuredNX-predictedNX, 
             stream_flow.stdDevX*FLOW_RESOLUTION, 
-            true,
             p_first,
             ekfs_first);
 
@@ -580,7 +574,6 @@ static bool ekf_updateWithFlow(
             hy, 
             measuredNY-predictedNY, 
             stream_flow.stdDevY*FLOW_RESOLUTION, 
-            true,
             p_out,
             ekfs_out);
 
