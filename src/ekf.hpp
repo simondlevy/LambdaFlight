@@ -188,26 +188,29 @@ static void scalarUpdate(
 
     // ====== COVARIANCE UPDATE ======
 
-    matrix_t GH = {};
-    multiply(g, h, GH.dat); // KH
+    if (shouldUpdate) {
 
-    for (int i=0; i<KC_STATE_DIM; i++) { 
-        GH.dat[i][i] -= 1;
-    } // KH - I
+        matrix_t GH = {};
+        multiply(g, h, GH.dat); // KH
 
-    matrix_t GHt = {};
-    transpose(GH.dat, GHt.dat);      // (KH - I)'
+        for (int i=0; i<KC_STATE_DIM; i++) { 
+            GH.dat[i][i] -= 1;
+        } // KH - I
 
-    matrix_t GHIP = {};
-    multiply(GH.dat, p_in.dat, GHIP.dat);  // (KH - I)*P
-    
-    multiply(GHIP.dat, GHt.dat, p_out.dat, shouldUpdate); // (KH - I)*P*(KH - I)'
+        matrix_t GHt = {};
+        transpose(GH.dat, GHt.dat);      // (KH - I)'
 
-    // Add the measurement variance and ensure boundedness and symmetry
-    for (int i=0; i<KC_STATE_DIM; i++) {
-        for (int j=i; j<KC_STATE_DIM; j++) {
+        matrix_t GHIP = {};
+        multiply(GH.dat, p_in.dat, GHIP.dat);  // (KH - I)*P
 
-            updateCovarianceCell(i, j, g[i] * r * g[j], shouldUpdate, p_out);
+        multiply(GHIP.dat, GHt.dat, p_out.dat, true); // (KH - I)*P*(KH - I)'
+
+        // Add the measurement variance and ensure boundedness and symmetry
+        for (int i=0; i<KC_STATE_DIM; i++) {
+            for (int j=i; j<KC_STATE_DIM; j++) {
+
+                updateCovarianceCell(i, j, g[i] * r * g[j], true, p_out);
+            }
         }
     }
 }
