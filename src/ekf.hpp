@@ -316,7 +316,6 @@ static void ekf_predict(
         const ekfLinear_t & linear_in,
         const new_quat_t & q,
         const axis3_t & r,
-        const uint32_t lastProcessNoiseUpdateMsec, 
         const uint32_t lastPredictionMsec, 
         new_quat_t & quat_out,
         matrix_t & p_out,
@@ -764,7 +763,6 @@ static void ekf_step(void)
                 quat,
                 r,
                 _lastPredictionMsec, 
-                _lastProcessNoiseUpdateMsec,
 
                 quat_predicted,
                 _p,
