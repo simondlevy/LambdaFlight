@@ -20,14 +20,6 @@ static const float STDEV_INITIAL_VELOCITY = 0.01;
 static const float STDEV_INITIAL_ATTITUDE_ROLL_PITCH = 0.01;
 static const float STDEV_INITIAL_ATTITUDE_YAW = 0.01;
 
-static const float PROC_NOISE_ACC_XY = 0.5;
-static const float PROC_NOISE_ACC_Z = 1.0;
-static const float PROC_NOISE_VEL = 0;
-static const float PROC_NOISE_POS = 0;
-static const float PROC_NOISE_ATT = 0;
-static const float MEAS_NOISE_GYRO_ROLL_PITCH = 0.1; // radians per second
-static const float MEAS_NOISE_GYRO_ROLL_YAW = 0.1;   // radians per second
-
 static const float MSS_TO_GS = 9.81;
 
 //We do get the measurements in 10x the motion pixels (experimentally measured)
@@ -298,32 +290,6 @@ static void subSamplerTakeMean(
     avgz = isCountNonzero ? sumz * conversionFactor / count : avgz;
 }
 
-static void makeProcessNoise(const float dt, matrix_t & noise)
-{
-    const auto isDtPositive = dt > 0;
-
-    noise.dat[0][0] = isDtPositive ? 
-        square(PROC_NOISE_ACC_Z*dt*dt + PROC_NOISE_VEL*dt + PROC_NOISE_POS) : 0;
-
-    noise.dat[1][1] = isDtPositive ? 
-        square(PROC_NOISE_ACC_XY*dt + PROC_NOISE_VEL) : 0; 
-
-    noise.dat[2][2] = isDtPositive ? 
-        square(PROC_NOISE_ACC_XY*dt + PROC_NOISE_VEL): 0; 
-
-    noise.dat[3][3] = isDtPositive ? 
-        square(PROC_NOISE_ACC_Z*dt + PROC_NOISE_VEL): 0; 
-
-    noise.dat[4][4] = isDtPositive ? 
-        square(MEAS_NOISE_GYRO_ROLL_PITCH * dt + PROC_NOISE_ATT): 0; 
-
-    noise.dat[5][5] = isDtPositive ? 
-        square(MEAS_NOISE_GYRO_ROLL_PITCH * dt + PROC_NOISE_ATT): 0; 
-
-    noise.dat[6][6] = isDtPositive ? 
-        square(MEAS_NOISE_GYRO_ROLL_YAW * dt + PROC_NOISE_ATT): 0;
-}
-
 // ===========================================================================
 
 static void ekf_init(matrix_t & p_out)
@@ -508,20 +474,17 @@ static bool ekf_predict(
         /*E2*/   {0, 0,    0,    0,    e2e0, e2e1, e2e2}  
     };
 
-    // Predict
     matrix_t  At = {};
     transpose(A, At.dat);     // A'
     matrix_t AP = {};
     multiply(A, p_in.dat, AP.dat);  // AP
-    multiply(AP.dat, At.dat, p_out.dat); // APA'
+    matrix_t APA = {};
+    multiply(AP.dat, At.dat, APA.dat); // APA'
+    updateCovarianceMatrix(APA, p_out);
 
     // Add process noise
     const auto dt1 = (stream_nowMsec - lastProcessNoiseUpdateMsec) / 1000.0f;
     const auto isDtPositive = dt1 > 0;
-    matrix_t noise = {};
-    makeProcessNoise(dt1, noise);
-    add(p_out.dat, noise.dat, p_out.dat);
-    updateCovarianceMatrix(p_out, p_out);
 
     return isDtPositive;
 }
