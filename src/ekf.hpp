@@ -485,46 +485,38 @@ static bool ekf_predict(
     const auto dt1 = (stream_nowMsec - lastProcessNoiseUpdateMsec) / 1000.0f;
     const auto isDtPositive = dt1 > 0;
 
+    matrix_t noise = {};
+
     // Add process noise
 
-    const float zn = isDtPositive ? 
+    noise.dat[0][0] = isDtPositive ? 
         square(PROC_NOISE_ACC_Z*dt1*dt1 + PROC_NOISE_VEL*dt1 + PROC_NOISE_POS) : 0;
 
-    const float dxn = isDtPositive ? 
+    noise.dat[1][1] = isDtPositive ? 
         square(PROC_NOISE_ACC_XY*dt1 + PROC_NOISE_VEL) : 0; 
 
-    const float dyn = isDtPositive ? 
+    noise.dat[2][2] = isDtPositive ? 
         square(PROC_NOISE_ACC_XY*dt1 + PROC_NOISE_VEL): 0; 
 
-    const float dzn = isDtPositive ? 
+    noise.dat[3][3] = isDtPositive ? 
         square(PROC_NOISE_ACC_Z*dt1 + PROC_NOISE_VEL): 0; 
 
-    const float e0n = isDtPositive ? 
+    noise.dat[4][4] = isDtPositive ? 
         square(MEAS_NOISE_GYRO_ROLL_PITCH * dt1 + PROC_NOISE_ATT): 0; 
 
-    const float e1n = isDtPositive ? 
+    noise.dat[5][5] = isDtPositive ? 
         square(MEAS_NOISE_GYRO_ROLL_PITCH * dt1 + PROC_NOISE_ATT): 0; 
 
-    const float e2n = isDtPositive ? 
+    noise.dat[6][6] = isDtPositive ? 
         square(MEAS_NOISE_GYRO_ROLL_YAW * dt1 + PROC_NOISE_ATT): 0;
-
-    const float noise[KC_STATE_DIM][KC_STATE_DIM] = {
-        //        Z    DX      DY    DZ    E0    E1    E2
-        /*Z*/    {zn,  0,      0,    0,    0,    0,    0}, 
-        /*DX*/   {0,   dxn,    0,    0,    0,    0,    0}, 
-        /*DY*/   {0,   0,      dyn,  0,    0,    0,    0},
-        /*DZ*/   {0,   0,      0,    dzn,  0,    0,    0},
-        /*E0*/   {0,   0,      0,    0,    e0n,  0,    0}, 
-        /*E1*/   {0,   0,      0,    0,    0,    e1n,  0}, 
-        /*E2*/   {0,   0,      0,    0,    0,    0,    e2n}  
-    };
 
     matrix_t  At = {};
     transpose(A, At.dat);     // A'
     matrix_t AP = {};
     multiply(A, p_in.dat, AP.dat);  // AP
     multiply(AP.dat, At.dat, p_out.dat); // APA'
-    add(p_out.dat, noise, p_out.dat);
+
+    add(p_out.dat, noise.dat, p_out.dat);
     updateCovarianceMatrix(p_out, p_out);
 
     return isDtPositive;
