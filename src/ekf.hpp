@@ -107,18 +107,16 @@ static void updateCovarianceCell(
         const int i, 
         const int j, 
         const float variance,
-        const bool shouldUpdate,
         matrix_t & p)
 
 {
     const auto pval = (p.dat[i][j] + p.dat[j][i]) / 2 + variance;
 
-    p.dat[i][j] = !shouldUpdate ? p.dat[i][j] :
-        pval > MAX_COVARIANCE ?  MAX_COVARIANCE :
+    p.dat[i][j] = pval > MAX_COVARIANCE ?  MAX_COVARIANCE :
         (i==j && pval < MIN_COVARIANCE) ?  MIN_COVARIANCE :
         pval;
 
-    p.dat[j][i] = shouldUpdate ? p.dat[i][j] : p.dat[j][i];
+    p.dat[j][i] = p.dat[i][j];
 }
 
 static void updateCovarianceCell(
@@ -209,7 +207,7 @@ static void scalarUpdate(
         for (int i=0; i<KC_STATE_DIM; i++) {
             for (int j=i; j<KC_STATE_DIM; j++) {
 
-                updateCovarianceCell(i, j, g[i] * r * g[j], true, p_out);
+                updateCovarianceCell(i, j, g[i] * r * g[j], p_out);
             }
         }
     }
