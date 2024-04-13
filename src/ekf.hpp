@@ -303,7 +303,7 @@ static void ekf_init(matrix_t & p_out)
     p_out.dat[KC_STATE_E2][KC_STATE_E2] = square(STDEV_INITIAL_ATTITUDE_YAW);
 }
 
-static bool ekf_predict(
+static void ekf_predict(
         const float gyroSum_x,
         const float gyroSum_y,
         const float gyroSum_z,
@@ -481,12 +481,6 @@ static bool ekf_predict(
     matrix_t APA = {};
     multiply(AP.dat, At.dat, APA.dat); // APA'
     updateCovarianceMatrix(APA, p_out);
-
-    // Add process noise
-    const auto dt1 = (stream_nowMsec - lastProcessNoiseUpdateMsec) / 1000.0f;
-    const auto isDtPositive = dt1 > 0;
-
-    return isDtPositive;
 }
 
 static bool ekf_updateWithRange(
@@ -755,8 +749,7 @@ static void ekf_step(void)
         stream_nowMsec >= stream_nextPredictionMsec;
     ekfLinear_t lin_predicted = {};
     new_quat_t quat_predicted = {};
-    const auto didAddProcessNoise = 
-        didPredict && 
+    if (didPredict) {
         ekf_predict(
                 _gyroSum_x,
                 _gyroSum_y,
@@ -776,6 +769,10 @@ static void ekf_step(void)
                 quat_predicted,
                 _p,
                 lin_predicted);
+    }
+
+    const auto isDtPositive = didPredict && 
+        (stream_nowMsec - _lastProcessNoiseUpdateMsec) / 1000.0f;
 
     // Finalize
     const auto finalizing = stream_ekfAction == EKF_FINALIZE;
@@ -823,27 +820,27 @@ static void ekf_step(void)
     //////////////////////////////////////////////////////////////////////////
 
     _gyroSum_x = didUpdateWithGyro ? _gyroSum_x + stream_gyro.x :
-        didAddProcessNoise ? 0 :
+        isDtPositive ? 0 :
         _gyroSum_x;
 
     _gyroSum_y = didUpdateWithGyro ? _gyroSum_y + stream_gyro.y :
-        didAddProcessNoise ? 0 :
+        isDtPositive ? 0 :
         _gyroSum_y;
 
     _gyroSum_z = didUpdateWithGyro ? _gyroSum_z + stream_gyro.z :
-        didAddProcessNoise ? 0 :
+        isDtPositive ? 0 :
         _gyroSum_z;
 
     _accelSum_x = didUpdateWithAccel ? _accelSum_x + stream_accel.x :
-        didAddProcessNoise ? 0 :
+        isDtPositive ? 0 :
         _accelSum_x;
 
     _accelSum_y = didUpdateWithAccel ? _accelSum_y + stream_accel.y :
-        didAddProcessNoise ? 0 :
+        isDtPositive ? 0 :
         _accelSum_y;
 
     _accelSum_z = didUpdateWithAccel ? _accelSum_z + stream_accel.z :
-        didAddProcessNoise ? 0 :
+        isDtPositive ? 0 :
         _accelSum_z;
 
     memcpy(&_p, 
@@ -854,32 +851,32 @@ static void ekf_step(void)
             didUpdateWithGyro ?  &stream_gyro : &_gyroLatest, 
             sizeof(axis3_t));
 
-    _gyroCount = didAddProcessNoise ? 0 : 
+    _gyroCount = isDtPositive ? 0 : 
         didUpdateWithGyro ? _gyroCount + 1 :
         _gyroCount;
 
-    _accelCount = didAddProcessNoise ? 0 : 
+    _accelCount = isDtPositive ? 0 : 
         didUpdateWithAccel ? _accelCount + 1 :
         _accelCount;
 
     _qw = didInitialize ? 1 : 
         didFinalize ? quat_finalized.w :
-        didAddProcessNoise ? quat_predicted.w :
+        isDtPositive ? quat_predicted.w :
         _qw;
 
     _qx = didInitialize ? 0 : 
         didFinalize ? quat_finalized.x :
-        didAddProcessNoise ? quat_predicted.x :
+        isDtPositive ? quat_predicted.x :
         _qx;
 
     _qy = didInitialize ? 0 : 
         didFinalize ? quat_finalized.y :
-        didAddProcessNoise ? quat_predicted.y :
+        isDtPositive ? quat_predicted.y :
         _qy;
 
     _qz = didInitialize ? 0 : 
         didFinalize ? quat_finalized.z :
-        didAddProcessNoise ? quat_predicted.z :
+        isDtPositive ? quat_predicted.z :
         _qz;
 
     _rx = didInitialize ? 0 : 
@@ -895,25 +892,25 @@ static void ekf_step(void)
         _rz;
 
     _z = didInitialize ? 0 : 
-        didAddProcessNoise ? lin_predicted.z :
+        isDtPositive ? lin_predicted.z :
         didUpdateWithFlow ? ekfs_updatedWithFlow.lin.z :
         didUpdateWithRange ? ekfs_updatedWithRange.lin.z :
         _z;
 
     _dx = didInitialize ? 0 : 
-        didAddProcessNoise ? lin_predicted.dx :
+        isDtPositive ? lin_predicted.dx :
         didUpdateWithFlow ? ekfs_updatedWithFlow.lin.dx :
         didUpdateWithRange ? ekfs_updatedWithRange.lin.dx :
         _dx;
 
     _dy = didInitialize ? 0 : 
-        didAddProcessNoise ? lin_predicted.dy :
+        isDtPositive ? lin_predicted.dy :
         didUpdateWithFlow ? ekfs_updatedWithFlow.lin.dy :
         didUpdateWithRange ? ekfs_updatedWithRange.lin.dy :
         _dy;
 
     _dz = didInitialize ? 0 : 
-        didAddProcessNoise ? lin_predicted.dz :
+        isDtPositive ? lin_predicted.dz :
         didUpdateWithFlow ? ekfs_updatedWithFlow.lin.dz :
         didUpdateWithRange ? ekfs_updatedWithRange.lin.dz :
         _dz;
@@ -934,7 +931,7 @@ static void ekf_step(void)
         _e2;
 
     _lastProcessNoiseUpdateMsec = 
-        didInitialize || didAddProcessNoise ?  
+        didInitialize || isDtPositive ?  
         stream_nowMsec : 
         _lastProcessNoiseUpdateMsec;
 
