@@ -482,12 +482,6 @@ static bool ekf_predict(
         /*E2*/   {0, 0,    0,    0,    e2e0, e2e1, e2e2}  
     };
 
-    matrix_t  At = {};
-    transpose(A, At.dat);     // A'
-    matrix_t AP = {};
-    multiply(A, p_in.dat, AP.dat);  // AP
-    multiply(AP.dat, At.dat, p_out.dat); // APA'
-
     const auto dt1 = (stream_nowMsec - lastProcessNoiseUpdateMsec) / 1000.0f;
     const auto isDtPositive = dt1 > 0;
 
@@ -525,9 +519,12 @@ static bool ekf_predict(
         /*E2*/   {0,   0,      0,    0,    0,    0,    e2n}  
     };
 
+    matrix_t  At = {};
+    transpose(A, At.dat);     // A'
+    matrix_t AP = {};
+    multiply(A, p_in.dat, AP.dat);  // AP
+    multiply(AP.dat, At.dat, p_out.dat); // APA'
     add(p_out.dat, noise, p_out.dat);
-
-    // updateCovarianceMatrix(p_out, isDtPositive);
     updateCovarianceMatrix(p_out, p_out);
 
     return isDtPositive;
