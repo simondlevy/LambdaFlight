@@ -47,14 +47,13 @@ static float dot(const float a[N][N], const float b[N][N],
 }
 
 // Matrix * Matrix
-static void multiply(const float a[N][N], const float b[N][N], float c[N][N],
-        const bool shouldMultiply=true)
+static void multiply(const float a[N][N], const float b[N][N], float c[N][N])
 {
     for (uint8_t i=0; i<N; i++) {
 
         for (uint8_t j=0; j<N; j++) {
 
-            c[i][j] = shouldMultiply ? dot(a, b, i, j) : c[i][j];
+            c[i][j] = dot(a, b, i, j);
         }
     }
 }

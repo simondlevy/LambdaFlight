@@ -203,7 +203,7 @@ static void scalarUpdate(
         matrix_t GHIP = {};
         multiply(GH.dat, p_in.dat, GHIP.dat);  // (KH - I)*P
 
-        multiply(GHIP.dat, GHt.dat, p_out.dat, true); // (KH - I)*P*(KH - I)'
+        multiply(GHIP.dat, GHt.dat, p_out.dat); // (KH - I)*P*(KH - I)'
 
         // Add the measurement variance and ensure boundedness and symmetry
         for (int i=0; i<KC_STATE_DIM; i++) {
