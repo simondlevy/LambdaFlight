@@ -122,10 +122,9 @@ static void updateCovarianceCell(
         const matrix_t & p_in, 
         const int i, 
         const int j, 
-        const float variance, 
         matrix_t & p_out)
 {
-    const auto pval = (p_in.dat[i][j] + p_in.dat[j][i]) / 2 + variance;
+    const auto pval = (p_in.dat[i][j] + p_in.dat[j][i]) / 2;
 
     p_out.dat[i][j] = p_out.dat[j][i] = 
         pval > MAX_COVARIANCE ?  MAX_COVARIANCE :
@@ -139,7 +138,7 @@ static void updateCovarianceMatrix(const matrix_t & p_in, matrix_t & p_out)
     // values stay bounded
     for (int i=0; i<KC_STATE_DIM; i++) {
         for (int j=i; j<KC_STATE_DIM; j++) {
-            updateCovarianceCell(p_in, i, j, 0, p_out);
+            updateCovarianceCell(p_in, i, j, p_out);
         }
     }
 }
