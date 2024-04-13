@@ -103,43 +103,20 @@ static float rotateQuat( const float val, const float initVal)
         (stream_isFlying ? 0 : ROLLPITCH_ZERO_REVERSION * initVal);
 }
 
-/*
-static void updateCovarianceCell(
-        const int i, 
-        const int j, 
-        matrix_t & p)
-
-{
-    const auto pval = (p.dat[i][j] + p.dat[j][i]) / 2;
-
-    p.dat[i][j] = pval > MAX_COVARIANCE ?  MAX_COVARIANCE :
-        (i==j && pval < MIN_COVARIANCE) ?  MIN_COVARIANCE :
-        pval;
-
-    p.dat[j][i] = p.dat[i][j];
-}*/
-
-static void updateCovarianceCell(
-        const matrix_t & p_in, 
-        const int i, 
-        const int j, 
-        matrix_t & p_out)
-{
-    const auto pval = (p_in.dat[i][j] + p_in.dat[j][i]) / 2;
-
-    p_out.dat[i][j] = p_out.dat[j][i] = 
-        pval > MAX_COVARIANCE ?  MAX_COVARIANCE :
-        (i==j && pval < MIN_COVARIANCE) ?  MIN_COVARIANCE :
-        pval;
-}
-
 static void updateCovarianceMatrix(const matrix_t & p_in, matrix_t & p_out) 
 {
     // Enforce symmetry of the covariance matrix, and ensure the
     // values stay bounded
     for (int i=0; i<KC_STATE_DIM; i++) {
+
         for (int j=i; j<KC_STATE_DIM; j++) {
-            updateCovarianceCell(p_in, i, j, p_out);
+
+            const auto pval = (p_in.dat[i][j] + p_in.dat[j][i]) / 2;
+
+            p_out.dat[i][j] = p_out.dat[j][i] = 
+                pval > MAX_COVARIANCE ?  MAX_COVARIANCE :
+                (i==j && pval < MIN_COVARIANCE) ?  MIN_COVARIANCE :
+                pval;
         }
     }
 }
@@ -206,7 +183,6 @@ static void scalarUpdate(
         for (int i=0; i<KC_STATE_DIM; i++) {
             for (int j=i; j<KC_STATE_DIM; j++) {
                 p_out.dat[i][j] += g[i] * r * g[j];
-                //updateCovarianceCell(i, j, p_out);
             }
         }
 
