@@ -40,21 +40,21 @@ static MPU6050 mpu6050;
 bfs::SbusRx sbus(&Serial5);
 
 // Streams read by Haskell
-float dt;
+float stream_dt;
 float channel1_raw;
 float channel2_raw;
 float channel3_raw;
 float channel4_raw;
 float channel5_raw;
 bool radio_failsafe;
-float AcX;
-float AcY;
-float AcZ;
-float GyX;
-float GyY;
-float GyZ;
-float statePhi;
-float stateTheta;
+float stream_accel_x;
+float stream_accel_y;
+float stream_accel_z;
+float stream_gyro_x;
+float stream_gyro_y;
+float stream_gyro_z;
+float stream_state_phi;
+float stream_state_theta;
 
 // Motors set by Haskell
 static int m1_command_PWM;
@@ -97,21 +97,21 @@ static void readImu()
 
     mpu6050.getMotion6(&ax, &ay, &az, &gx, &gy, &gz);
 
-    AcX = ax / ACCEL_SCALE_FACTOR;
-    AcY = ay / ACCEL_SCALE_FACTOR;
-    AcZ = az / ACCEL_SCALE_FACTOR;
+    stream_accel_x = ax / ACCEL_SCALE_FACTOR;
+    stream_accel_y = ay / ACCEL_SCALE_FACTOR;
+    stream_accel_z = az / ACCEL_SCALE_FACTOR;
 
-    _accelLatest.x = AcX;
-    _accelLatest.y = AcY;
-    _accelLatest.z = AcZ;
+    _accelLatest.x = stream_accel_x;
+    _accelLatest.y = stream_accel_y;
+    _accelLatest.z = stream_accel_z;
 
-    GyX = gx / GYRO_SCALE_FACTOR;
-    GyY = gy / GYRO_SCALE_FACTOR;
-    GyZ = gz / GYRO_SCALE_FACTOR;
+    stream_gyro_x = gx / GYRO_SCALE_FACTOR;
+    stream_gyro_y = gy / GYRO_SCALE_FACTOR;
+    stream_gyro_z = gz / GYRO_SCALE_FACTOR;
 
-    _gyroLatest.x = GyX;
-    _gyroLatest.y = GyY;
-    _gyroLatest.z = GyZ;
+    _gyroLatest.x = stream_gyro_x;
+    _gyroLatest.y = stream_gyro_y;
+    _gyroLatest.z = stream_gyro_z;
 }
 
 static void readReceiver() 
@@ -217,7 +217,7 @@ void debugAccel(const uint32_t current_time)
     if (current_time - print_counter > 10000) {
         print_counter = micros();
         Serial.printf("accelX:%+03.3f accelY:%+03.3f accelZ:%+03.3f\n", 
-                AcX, AcY, AcZ);
+                stream_accel_x, stream_accel_y, stream_accel_z);
     }
 }
 
@@ -227,7 +227,7 @@ void debugGyro(const uint32_t current_time)
     if (current_time - print_counter > 10000) {
         print_counter = micros();
         Serial.printf("gyroX:%+03.3f gyroY:%+03.3f gyroZ:%+03.3f\n", 
-                GyX, GyY, GyZ);
+                stream_gyro_x, stream_gyro_y, stream_gyro_z);
     }
 }
 
@@ -237,7 +237,7 @@ void debugState(const uint32_t current_time)
     if (current_time - print_counter > 10000) {
         print_counter = micros();
         Serial.printf("roll:%2.2f pitch:%2.2f yaw:%2.2f\n", 
-                statePhi, stateTheta, _statePsi);
+                stream_state_phi, stream_state_theta, _statePsi);
     }
 }
 
@@ -258,7 +258,7 @@ void debugLoopRate(const uint32_t current_time)
     static uint32_t print_counter;
     if (current_time - print_counter > 10000) {
         print_counter = micros();
-        Serial.printf("dt:%f\n", dt*1e6);
+        Serial.printf("dt:%f\n", stream_dt*1e6);
     }
 }
 
@@ -278,7 +278,10 @@ static void ekfStep(void)
 
     const auto isFlying = true; // XXX
 
-    _ekf.predict(nowMsec, _nextPredictionMsec, isFlying);
+    _ekf.predict(
+            nowMsec, 
+            _nextPredictionMsec, 
+            isFlying);
 
     _nextPredictionMsec = nowMsec >= _nextPredictionMsec ?
         nowMsec + PREDICTION_UPDATE_INTERVAL_MS :
@@ -293,8 +296,8 @@ static void ekfStep(void)
     vehicleState_t state = {};
     _ekf.getState(state);
 
-    statePhi = state.phi;
-    stateTheta = -state.theta;
+    stream_state_phi = state.phi;
+    stream_state_theta = -state.theta;
     _statePsi = state.psi;
 
     if (!isStateInBounds) { 
@@ -342,7 +345,7 @@ void loop()
     // Keep track of what time it is and how much time has elapsed since the last loop
     _prev_time = _current_time;      
     _current_time = micros();      
-    dt = (_current_time - _prev_time)/1e6;
+    stream_dt = (_current_time - _prev_time)/1e6;
 
     blinkLed(_current_time);
 

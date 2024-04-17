@@ -51,22 +51,23 @@ radio_failsafe :: SBool
 radio_failsafe = extern "radio_failsafe" Nothing
 
 statePhi :: SFloat
-statePhi = extern "statePhi" Nothing
+statePhi = extern "stream_state_phi" Nothing
 
 stateTheta :: SFloat
-stateTheta = extern "stateTheta" Nothing
+stateTheta = extern "stream_state_theta" Nothing
 
 dt :: SFloat
-dt = extern "dt" Nothing
+dt = extern "stream_dt" Nothing
 
-gyX :: SFloat
-gyX = extern "GyX" Nothing
+gyro_x :: SFloat
+gyro_x = extern "stream_gyro_x" Nothing
 
-gyY :: SFloat
-gyY = extern "GyY" Nothing
+gyro_y :: SFloat
+gyro_y = extern "stream_gyro_y" Nothing
 
-gyZ :: SFloat
-gyZ = extern "GyZ" Nothing
+gyro_z :: SFloat
+gyro_z = extern "stream_gyro_z" Nothing
+
 
 -- PID tuning constants -----------------------------------------------------
 
@@ -105,9 +106,9 @@ getGyro = (gyroX, gyroY, gyroZ) where
 
   glpf = \g g' -> lpf g g' b_gyro
 
-  gyroX = glpf gyX gyroX'
-  gyroY = glpf gyY gyroY'
-  gyroZ = glpf gyZ gyroZ'
+  gyroX = glpf gyro_x gyroX'
+  gyroY = glpf gyro_y gyroY'
+  gyroZ = glpf gyro_z gyroZ'
 
   gyroX' = [0] ++ gyroX
   gyroY' = [0] ++ gyroY
