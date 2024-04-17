@@ -25,10 +25,6 @@ const float ACCEL_SCALE_FACTOR = 4096;
 // Do not exceed 2000Hz, all filter paras tuned to 2000Hz by default
 static const uint32_t LOOP_RATE = 2000;
 
-// This is slower than the IMU update rate of 1000Hz
-static const uint32_t PREDICT_RATE = 100;
-static const uint32_t PREDICTION_UPDATE_INTERVAL_MS = 1000 / PREDICT_RATE;
-
 // ---------------------------------------------------------------------------
 
 static const std::vector<uint8_t> MOTOR_PINS = {0, 1, 2, 3};
@@ -266,18 +262,9 @@ static void ekfInit(void)
 
 static void ekfStep(void)
 {
-    static uint32_t _nextPredictionMsec;
-
     stream_now_msec = millis();
 
-    _nextPredictionMsec = 
-        _nextPredictionMsec == 0 ? stream_now_msec : _nextPredictionMsec;
-
-    _ekf.predict(_nextPredictionMsec);
-
-    _nextPredictionMsec = stream_now_msec >= _nextPredictionMsec ?
-        stream_now_msec + PREDICTION_UPDATE_INTERVAL_MS :
-        _nextPredictionMsec;
+    _ekf.predict();
 
     _ekf.updateWithGyro();
 

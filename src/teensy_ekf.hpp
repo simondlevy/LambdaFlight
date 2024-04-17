@@ -46,6 +46,10 @@ static const float EPS = 1e-6f;
 // the reversion of pitch and roll to zero
 static const float ROLLPITCH_ZERO_REVERSION = 0.001;
 
+// This is slower than the IMU update rate of 1000Hz
+static const uint32_t PREDICTION_RATE = 100;
+static const uint32_t PREDICTION_UPDATE_INTERVAL_MS = 1000 / PREDICTION_RATE;
+
 class Ekf { 
 
     public:
@@ -94,13 +98,18 @@ class Ekf {
             _lastProcessNoiseUpdateMs = stream_now_msec;
         }
 
-        void predict(const uint32_t nextPredictionMs) 
+        void predict(void) 
         {
             extern uint32_t stream_now_msec;
 
-            const bool isFlying = true; // XXX
+            const auto isFlying = true; // XXX
 
-            const bool shouldPredict = stream_now_msec >= nextPredictionMs;
+            static float _nextPredictionMsec;
+
+            const auto shouldPredict = stream_now_msec >= _nextPredictionMsec;
+
+            _nextPredictionMsec = 
+                _nextPredictionMsec == 0 ? stream_now_msec : _nextPredictionMsec;
 
             axis3fSubSamplerFinalize(&_accSubSampler, shouldPredict);
 
@@ -307,9 +316,14 @@ class Ekf {
 
             updateCovarianceMatrix(isDtPositive);
 
-            _lastProcessNoiseUpdateMs = isDtPositive ?  stream_now_msec : 
-
+            _lastProcessNoiseUpdateMs = isDtPositive ?  
+                stream_now_msec : 
                 _lastProcessNoiseUpdateMs;
+
+            _nextPredictionMsec = stream_now_msec >= _nextPredictionMsec ?
+                stream_now_msec + PREDICTION_UPDATE_INTERVAL_MS :
+                _nextPredictionMsec;
+
         }
 
         void updateWithRange(const rangeMeasurement_t *range)
