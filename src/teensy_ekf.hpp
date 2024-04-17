@@ -40,16 +40,15 @@ static const uint32_t PREDICTION_UPDATE_INTERVAL_MS = 1000 / PREDICTION_RATE;
 typedef enum {
 
     EKF_MODE_INIT,
-    EKF_MODE_STEP,
     EKF_MODE_GET_STATE
 
-}ekfMode_e;
+} ekfMode_e;
 
 class Ekf { 
 
     public:
 
-        void step(void)
+        void step(vehicleState_t & vehicleState)
         {
             extern ekfMode_e stream_ekf_mode;
 
@@ -57,26 +56,25 @@ class Ekf {
                 step_init();
             }
             else {
+
                 step_normal();
 
+                vehicleState.phi = RADIANS_TO_DEGREES * atan2((2 * (_qy*_qz + _qw*_qx)),
+                        (_qw*_qw - _qx*_qx - _qy*_qy + _qz*_qz));
+
+                // Negate for ENU
+                vehicleState.theta = -RADIANS_TO_DEGREES * asin((-2) * 
+                        (_qx*_qz - _qw*_qy));
+
+                vehicleState.psi = RADIANS_TO_DEGREES * 
+                    atan2((2 * (_qx*_qy + _qw*_qz)),
+                        (_qw*_qw + _qx*_qx - _qy*_qy - _qz*_qz));
+
+                // Get angular velocities directly from gyro
+                vehicleState.dphi =    _gyroLatest.x;
+                vehicleState.dtheta = -_gyroLatest.y; // negate for ENU
+                vehicleState.dpsi =    _gyroLatest.z;
             }
-        }
-
-        void getVehicleState(vehicleState_t & state)
-        {
-            state.phi = RADIANS_TO_DEGREES * atan2((2 * (_qy*_qz + _qw*_qx)),
-                    (_qw*_qw - _qx*_qx - _qy*_qy + _qz*_qz));
-
-            // Negate for ENU
-            state.theta = -RADIANS_TO_DEGREES * asin((-2) * (_qx*_qz - _qw*_qy));
-
-            state.psi = RADIANS_TO_DEGREES * atan2((2 * (_qx*_qy + _qw*_qz)),
-                    (_qw*_qw + _qx*_qx - _qy*_qy - _qz*_qz));
-
-            // Get angular velocities directly from gyro
-            state.dphi =    _gyroLatest.x;
-            state.dtheta = -_gyroLatest.y; // negate for ENU
-            state.dpsi =    _gyroLatest.z;
         }
 
     private:

@@ -262,13 +262,18 @@ static void ekfStep(void)
 {
     stream_now_msec = millis();
 
-    _ekf.step();
-
-    _ekf.getVehicleState(_vehicleState);
+    _ekf.step(_vehicleState);
 
     stream_state_phi = _vehicleState.phi;
     stream_state_theta = -_vehicleState.theta; // note negation
     _statePsi = _vehicleState.psi;
+}
+
+static void ekfInit(void)
+{
+    stream_ekf_mode = EKF_MODE_INIT;
+    _ekf.step(_vehicleState);
+    stream_ekf_mode = EKF_MODE_GET_STATE;
 }
 
 void setup() 
@@ -291,9 +296,7 @@ void setup()
     imuInit();
 
     // Initialize EKF
-    stream_ekf_mode = EKF_MODE_INIT;
-    _ekf.step();
-    stream_ekf_mode = EKF_MODE_STEP;
+    ekfInit();
 
     delay(5);
 
