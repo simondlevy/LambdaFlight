@@ -264,7 +264,7 @@ static void ekfStep(void)
 {
     stream_now_msec = millis();
 
-    _ekf.predict();
+    _ekf.step();
 
     _ekf.updateWithGyro();
 
