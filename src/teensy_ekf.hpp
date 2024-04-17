@@ -324,28 +324,21 @@ class Ekf {
                 stream_now_msec + PREDICTION_UPDATE_INTERVAL_MS :
                 _nextPredictionMsec;
 
-        }
-
-        void updateWithAccel(void)
-        {
             extern float stream_accel_x, stream_accel_y, stream_accel_z;
 
             const auto accel = 
                 Axis3f {stream_accel_x, stream_accel_y, stream_accel_z};
 
             axis3fSubSamplerAccumulate(&_accSubSampler, &accel);
-        }
-
-        void updateWithGyro(void)
-        {
+        
             extern float stream_gyro_x, stream_gyro_y, stream_gyro_z;
 
-            const auto gyro = 
+            const auto raw_gyro = 
                 Axis3f {stream_gyro_x, stream_gyro_y, stream_gyro_z};
 
-            axis3fSubSamplerAccumulate(&_gyroSubSampler, &gyro);
+            axis3fSubSamplerAccumulate(&_gyroSubSampler, &raw_gyro);
 
-            memcpy(&_gyroLatest, &gyro, sizeof(Axis3f));
+            memcpy(&_gyroLatest, &raw_gyro, sizeof(Axis3f));
         }
 
         void getState(vehicleState_t & state)

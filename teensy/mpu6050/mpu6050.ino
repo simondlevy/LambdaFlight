@@ -266,10 +266,6 @@ static void ekfStep(void)
 
     _ekf.step();
 
-    _ekf.updateWithGyro();
-
-    _ekf.updateWithAccel();
-
     auto isStateInBounds = _ekf.finalize();
 
     vehicleState_t state = {};
