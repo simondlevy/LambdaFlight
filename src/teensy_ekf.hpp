@@ -50,7 +50,7 @@ class Ekf {
 
     public:
 
-        void init(const uint32_t nowMs)
+        void init(const uint32_t stream_now_msec)
         {
             axis3fSubSamplerInit(&_accSubSampler, GRAVITY_MAGNITUDE);
             axis3fSubSamplerInit(&_gyroSubSampler, DEGREES_TO_RADIANS);
@@ -90,16 +90,15 @@ class Ekf {
             _Pmat[KC_STATE_E2][KC_STATE_E2] = powf(STDEV_INITIAL_ATTITUDE_YAW, 2);
 
             _isUpdated = false;
-            _lastPredictionMs = nowMs;
-            _lastProcessNoiseUpdateMs = nowMs;
+            _lastPredictionMs = stream_now_msec;
+            _lastProcessNoiseUpdateMs = stream_now_msec;
         }
 
-        void predict(
-                const uint32_t nowMs, 
-                const uint32_t nextPredictionMs,
-                const bool isFlying) 
+        void predict(const uint32_t nextPredictionMs, const bool isFlying) 
         {
-            const bool shouldPredict = nowMs >= nextPredictionMs;
+            extern uint32_t stream_now_msec;
+
+            const bool shouldPredict = stream_now_msec >= nextPredictionMs;
 
             axis3fSubSamplerFinalize(&_accSubSampler, shouldPredict);
 
@@ -107,7 +106,7 @@ class Ekf {
 
             const Axis3f * acc = &_accSubSampler.subSample; 
             const Axis3f * gyro = &_gyroSubSampler.subSample; 
-            const float dt = (nowMs - _lastPredictionMs) / 1000.0f;
+            const float dt = (stream_now_msec - _lastPredictionMs) / 1000.0f;
 
             const auto e0 = gyro->x*dt/2;
             const auto e1 = gyro->y*dt/2;
@@ -269,9 +268,9 @@ class Ekf {
 
             _isUpdated = shouldPredict ? true : _isUpdated;
 
-            _lastPredictionMs = shouldPredict ? nowMs : _lastPredictionMs;
+            _lastPredictionMs = shouldPredict ? stream_now_msec : _lastPredictionMs;
 
-            const auto dt1 = (nowMs - _lastProcessNoiseUpdateMs) / 1000.0f;
+            const auto dt1 = (stream_now_msec - _lastProcessNoiseUpdateMs) / 1000.0f;
 
             const auto isDtPositive = dt1 > 0;
 
@@ -306,7 +305,7 @@ class Ekf {
 
             updateCovarianceMatrix(isDtPositive);
 
-            _lastProcessNoiseUpdateMs = isDtPositive ?  nowMs : 
+            _lastProcessNoiseUpdateMs = isDtPositive ?  stream_now_msec : 
 
                 _lastProcessNoiseUpdateMs;
         }

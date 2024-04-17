@@ -40,6 +40,7 @@ static MPU6050 mpu6050;
 bfs::SbusRx sbus(&Serial5);
 
 // Streams read by Haskell
+uint32_t stream_now_msec;
 float stream_dt;
 float stream_channel1_raw;
 float stream_channel2_raw;
@@ -270,17 +271,14 @@ static void ekfStep(void)
     _nextPredictionMsec = 
         _nextPredictionMsec == 0 ? millis() : _nextPredictionMsec;
 
-    const auto nowMsec = millis();
+    stream_now_msec = millis();
 
     const auto isFlying = true; // XXX
 
-    _ekf.predict(
-            nowMsec, 
-            _nextPredictionMsec, 
-            isFlying);
+    _ekf.predict(_nextPredictionMsec, isFlying);
 
-    _nextPredictionMsec = nowMsec >= _nextPredictionMsec ?
-        nowMsec + PREDICTION_UPDATE_INTERVAL_MS :
+    _nextPredictionMsec = stream_now_msec >= _nextPredictionMsec ?
+        stream_now_msec + PREDICTION_UPDATE_INTERVAL_MS :
         _nextPredictionMsec;
 
     _ekf.updateWithGyro();
