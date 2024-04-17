@@ -344,9 +344,14 @@ class Ekf {
                     range->stdDev, shouldUpdate);
         }
 
-        void updateWithAccel(const Axis3f * accel)
+        void updateWithAccel(void)
         {
-            axis3fSubSamplerAccumulate(&_accSubSampler, accel);
+            extern float stream_accel_x, stream_accel_y, stream_accel_z;
+
+            const auto accel = 
+                Axis3f {stream_accel_x, stream_accel_y, stream_accel_z};
+
+            axis3fSubSamplerAccumulate(&_accSubSampler, &accel);
         }
 
         void updateWithGyro(void)

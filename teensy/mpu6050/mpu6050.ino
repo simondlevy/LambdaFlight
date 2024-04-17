@@ -285,7 +285,7 @@ static void ekfStep(void)
 
     _ekf.updateWithGyro();
 
-    _ekf.updateWithAccel(&_accelLatest);
+    _ekf.updateWithAccel();
 
     auto isStateInBounds = _ekf.finalize();
 
