@@ -62,7 +62,7 @@ class Ekf {
             }
         }
 
-        void getState(vehicleState_t & state)
+        void getVehicleState(vehicleState_t & state)
         {
             state.phi = RADIANS_TO_DEGREES * atan2((2 * (_qy*_qz + _qw*_qx)),
                     (_qw*_qw - _qx*_qx - _qy*_qy + _qz*_qz));

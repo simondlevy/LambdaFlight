@@ -66,6 +66,8 @@ static float _statePsi;
 
 static Axis3f _accelLatest;
 
+static vehicleState_t _vehicleState;
+
 // ---------------------------------------------------------------------------
 
 static void imuInit() 
@@ -262,12 +264,11 @@ static void ekfStep(void)
 
     _ekf.step();
 
-    vehicleState_t state = {};
-    _ekf.getState(state);
+    _ekf.getVehicleState(_vehicleState);
 
-    stream_state_phi = state.phi;
-    stream_state_theta = -state.theta;
-    _statePsi = state.psi;
+    stream_state_phi = _vehicleState.phi;
+    stream_state_theta = -_vehicleState.theta; // note negation
+    _statePsi = _vehicleState.psi;
 }
 
 void setup() 
