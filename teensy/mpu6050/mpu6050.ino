@@ -275,7 +275,7 @@ static void ekfStep(void)
 
     const auto isFlying = true; // XXX
 
-    _ekf.predict(_nextPredictionMsec, isFlying);
+    _ekf.predict(_nextPredictionMsec);
 
     _nextPredictionMsec = stream_now_msec >= _nextPredictionMsec ?
         stream_now_msec + PREDICTION_UPDATE_INTERVAL_MS :

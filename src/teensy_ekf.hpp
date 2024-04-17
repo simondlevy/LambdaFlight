@@ -94,9 +94,11 @@ class Ekf {
             _lastProcessNoiseUpdateMs = stream_now_msec;
         }
 
-        void predict(const uint32_t nextPredictionMs, const bool isFlying) 
+        void predict(const uint32_t nextPredictionMs) 
         {
             extern uint32_t stream_now_msec;
+
+            const bool isFlying = true; // XXX
 
             const bool shouldPredict = stream_now_msec >= nextPredictionMs;
 
