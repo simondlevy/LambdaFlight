@@ -41,7 +41,39 @@ class Ekf {
 
     public:
 
-        void init(void)
+        void step(void)
+        {
+            extern bool stream_ekf_mode_init;
+
+            if (stream_ekf_mode_init) {
+                step_init();
+            }
+            else {
+                step_normal();
+
+            }
+        }
+
+        void getState(vehicleState_t & state)
+        {
+            state.phi = RADIANS_TO_DEGREES * atan2((2 * (_qy*_qz + _qw*_qx)),
+                    (_qw*_qw - _qx*_qx - _qy*_qy + _qz*_qz));
+
+            // Negate for ENU
+            state.theta = -RADIANS_TO_DEGREES * asin((-2) * (_qx*_qz - _qw*_qy));
+
+            state.psi = RADIANS_TO_DEGREES * atan2((2 * (_qx*_qy + _qw*_qz)),
+                    (_qw*_qw + _qx*_qx - _qy*_qy - _qz*_qz));
+
+            // Get angular velocities directly from gyro
+            state.dphi =    _gyroLatest.x;
+            state.dtheta = -_gyroLatest.y; // negate for ENU
+            state.dpsi =    _gyroLatest.z;
+        }
+
+    private:
+
+        void step_init(void)
         {
             extern uint32_t stream_now_msec;
 
@@ -79,7 +111,7 @@ class Ekf {
             _lastProcessNoiseUpdateMs = stream_now_msec;
         }
 
-        void step(void) 
+        void step_normal(void) 
         {
             extern uint32_t stream_now_msec;
 
@@ -226,26 +258,6 @@ class Ekf {
                 doFinalize();
             }
         }
-
-        void getState(vehicleState_t & state)
-        {
-            state.phi = RADIANS_TO_DEGREES * atan2((2 * (_qy*_qz + _qw*_qx)),
-                    (_qw*_qw - _qx*_qx - _qy*_qy + _qz*_qz));
-
-            // Negate for ENU
-            state.theta = -RADIANS_TO_DEGREES * asin((-2) * (_qx*_qz - _qw*_qy));
-
-            state.psi = RADIANS_TO_DEGREES * atan2((2 * (_qx*_qy + _qw*_qz)),
-                    (_qw*_qw + _qx*_qx - _qy*_qy - _qz*_qz));
-
-            // Get angular velocities directly from gyro
-            state.dphi =    _gyroLatest.x;
-            state.dtheta = -_gyroLatest.y; // negate for ENU
-            state.dpsi =    _gyroLatest.z;
-        }
-
-     private:
-
 
         // The quad's attitude as a quaternion (w,x,y,z) We store as a quaternion
         // to allow easy normalization (in comparison to a rotation matrix),

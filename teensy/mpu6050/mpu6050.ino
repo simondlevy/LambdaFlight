@@ -52,6 +52,7 @@ float stream_gyro_y;
 float stream_gyro_z;
 float stream_state_phi;
 float stream_state_theta;
+bool stream_ekf_mode_init;
 
 // Motors set by Haskell
 static int m1_command_PWM;
@@ -288,7 +289,10 @@ void setup()
     // Initialize IMU communication
     imuInit();
 
-    _ekf.init();
+    // Initialize EKF
+    stream_ekf_mode_init = true;
+    _ekf.step();
+    stream_ekf_mode_init = false;
 
     delay(5);
 
