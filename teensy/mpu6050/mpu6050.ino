@@ -41,12 +41,12 @@ bfs::SbusRx sbus(&Serial5);
 
 // Streams read by Haskell
 float stream_dt;
-float channel1_raw;
-float channel2_raw;
-float channel3_raw;
-float channel4_raw;
-float channel5_raw;
-bool radio_failsafe;
+float stream_channel1_raw;
+float stream_channel2_raw;
+float stream_channel3_raw;
+float stream_channel4_raw;
+float stream_channel5_raw;
+bool stream_radio_failsafe;
 float stream_accel_x;
 float stream_accel_y;
 float stream_accel_z;
@@ -118,15 +118,15 @@ static void readReceiver()
 {
     if (sbus.Read()) {
 
-        channel1_raw = sbus.data().ch[0];
-        channel2_raw = sbus.data().ch[1];
-        channel3_raw = sbus.data().ch[2];
-        channel4_raw = sbus.data().ch[3];
-        channel5_raw = sbus.data().ch[4];
+        stream_channel1_raw = sbus.data().ch[0];
+        stream_channel2_raw = sbus.data().ch[1];
+        stream_channel3_raw = sbus.data().ch[2];
+        stream_channel4_raw = sbus.data().ch[3];
+        stream_channel5_raw = sbus.data().ch[4];
     }
 
     if (sbus.data().failsafe) {
-        radio_failsafe = true;
+        stream_radio_failsafe = true;
     }
 }
 
@@ -312,7 +312,7 @@ void setup()
     Serial.begin(500000); //USB serial
     delay(500);
 
-    radio_failsafe = false;
+    stream_radio_failsafe = false;
 
     // Pin 13 LED blinker on board, do not modify     
     pinMode(13, OUTPUT); 

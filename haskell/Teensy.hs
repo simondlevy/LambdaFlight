@@ -33,22 +33,22 @@ import Utils
 -- Streams from C++ ----------------------------------------------------------
 
 channel1_raw :: SFloat
-channel1_raw = extern "channel1_raw" Nothing
+channel1_raw = extern "stream_channel1_raw" Nothing
 
 channel2_raw :: SFloat
-channel2_raw = extern "channel2_raw" Nothing
+channel2_raw = extern "stream_channel2_raw" Nothing
 
 channel3_raw :: SFloat
-channel3_raw = extern "channel3_raw" Nothing
+channel3_raw = extern "stream_channel3_raw" Nothing
 
 channel4_raw :: SFloat
-channel4_raw = extern "channel4_raw" Nothing
+channel4_raw = extern "stream_channel4_raw" Nothing
 
 channel5_raw :: SFloat
-channel5_raw = extern "channel5_raw" Nothing
+channel5_raw = extern "stream_channel5_raw" Nothing
 
 radio_failsafe :: SBool
-radio_failsafe = extern "radio_failsafe" Nothing
+radio_failsafe = extern "stream_radio_failsafe" Nothing
 
 statePhi :: SFloat
 statePhi = extern "stream_state_phi" Nothing
