@@ -349,11 +349,16 @@ class Ekf {
             axis3fSubSamplerAccumulate(&_accSubSampler, accel);
         }
 
-        void updateWithGyro(const Axis3f * gyro)
+        void updateWithGyro(void)
         {
-            axis3fSubSamplerAccumulate(&_gyroSubSampler, gyro);
+            extern float stream_gyro_x, stream_gyro_y, stream_gyro_z;
 
-            memcpy(&_gyroLatest, gyro, sizeof(Axis3f));
+            const auto gyro = 
+                Axis3f {stream_gyro_x, stream_gyro_y, stream_gyro_z};
+
+            axis3fSubSamplerAccumulate(&_gyroSubSampler, &gyro);
+
+            memcpy(&_gyroLatest, &gyro, sizeof(Axis3f));
         }
 
         void updateWithFlow(const flowMeasurement_t *flow) 

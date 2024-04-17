@@ -66,7 +66,6 @@ static Ekf _ekf;
 
 static float _statePsi;
 
-static Axis3f _gyroLatest;
 static Axis3f _accelLatest;
 
 // ---------------------------------------------------------------------------
@@ -109,9 +108,6 @@ static void readImu()
     stream_gyro_y = gy / GYRO_SCALE_FACTOR;
     stream_gyro_z = gz / GYRO_SCALE_FACTOR;
 
-    _gyroLatest.x = stream_gyro_x;
-    _gyroLatest.y = stream_gyro_y;
-    _gyroLatest.z = stream_gyro_z;
 }
 
 static void readReceiver() 
@@ -287,7 +283,7 @@ static void ekfStep(void)
         nowMsec + PREDICTION_UPDATE_INTERVAL_MS :
         _nextPredictionMsec;
 
-    _ekf.updateWithGyro(&_gyroLatest);
+    _ekf.updateWithGyro();
 
     _ekf.updateWithAccel(&_accelLatest);
 
