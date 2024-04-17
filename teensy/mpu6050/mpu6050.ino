@@ -52,7 +52,7 @@ float stream_gyro_y;
 float stream_gyro_z;
 float stream_state_phi;
 float stream_state_theta;
-ekfMode_e stream_ekf_mode;
+bool stream_ekf_should_init;
 
 // Motors set by Haskell
 static int m1_command_PWM;
@@ -271,9 +271,9 @@ static void ekfStep(void)
 
 static void ekfInit(void)
 {
-    stream_ekf_mode = EKF_MODE_INIT;
+    stream_ekf_should_init = true;
     _ekf.step(_vehicleState);
-    stream_ekf_mode = EKF_MODE_GET_STATE;
+    stream_ekf_should_init = false;
 }
 
 void setup() 
