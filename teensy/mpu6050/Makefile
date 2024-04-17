@@ -27,5 +27,8 @@ edit:
 listen:
 	miniterm $(PORT) 115200
 
+viz:
+	../imuviz.py
+
 clean:
 	rm -f copilot.cpp copilot.h
