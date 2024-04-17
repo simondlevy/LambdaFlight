@@ -268,12 +268,10 @@ static void ekfStep(void)
 {
     static uint32_t _nextPredictionMsec;
 
-    _nextPredictionMsec = 
-        _nextPredictionMsec == 0 ? millis() : _nextPredictionMsec;
-
     stream_now_msec = millis();
 
-    const auto isFlying = true; // XXX
+    _nextPredictionMsec = 
+        _nextPredictionMsec == 0 ? stream_now_msec : _nextPredictionMsec;
 
     _ekf.predict(_nextPredictionMsec);
 
