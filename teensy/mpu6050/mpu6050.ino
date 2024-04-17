@@ -12,7 +12,7 @@
 #include <oneshot125.hpp>
 #include <vector>
 
-#include <ekf.hpp>
+#include <teensy_ekf.hpp>
 
 // Gyro and accel full scale value selection
 const uint8_t GYRO_SCALE = MPU6050_GYRO_FS_2000;
@@ -206,7 +206,7 @@ static void debug(const uint32_t current_time)
     //Print data at 100hz (uncomment one at a time for troubleshooting) - SELECT ONE:
     //debugAccel(current_time);
     //debugGyro(current_time);
-    //debugState(current_time);  
+    debugState(current_time);  
     //debugMotorCommands(current_time); 
     //debugLoopRate(current_time);      
 }

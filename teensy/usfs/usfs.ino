@@ -11,7 +11,7 @@
 #include <oneshot125.hpp>
 #include <vector>
 
-#include <ekf.hpp>
+#include <teensy_ekf.hpp>
 
 // USFS settings ------------------------------------------------------------
 
