@@ -264,9 +264,7 @@ static void ekfStep(void)
 {
     stream_now_msec = millis();
 
-    _ekf.step();
-
-    auto isStateInBounds = _ekf.finalize();
+    auto isStateInBounds = _ekf.step();
 
     vehicleState_t state = {};
     _ekf.getState(state);

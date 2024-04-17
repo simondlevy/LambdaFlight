@@ -98,7 +98,7 @@ class Ekf {
             _lastProcessNoiseUpdateMs = stream_now_msec;
         }
 
-        void step(void) 
+        bool step(void) 
         {
             extern uint32_t stream_now_msec;
 
@@ -339,7 +339,11 @@ class Ekf {
             axis3fSubSamplerAccumulate(&_gyroSubSampler, &raw_gyro);
 
             memcpy(&_gyroLatest, &raw_gyro, sizeof(Axis3f));
+        
+            // Only finalize if data is updated
+            return _isUpdated ? doFinalize() : isStateWithinBounds();
         }
+
 
         void getState(vehicleState_t & state)
         {
@@ -367,12 +371,6 @@ class Ekf {
             state.dphi =    _gyroLatest.x;
             state.dtheta = -_gyroLatest.y; // negate for ENU
             state.dpsi =    _gyroLatest.z;
-        }
-
-        bool finalize(void)
-        {
-            // Only finalize if data is updated
-            return _isUpdated ? doFinalize() : isStateWithinBounds();
         }
 
      private:
