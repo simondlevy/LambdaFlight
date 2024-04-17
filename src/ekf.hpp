@@ -269,6 +269,7 @@ static void ekf_init(matrix_t & p_out)
     p_out.dat[KC_STATE_DX][KC_STATE_DX] = square(STDEV_INITIAL_VELOCITY);
     p_out.dat[KC_STATE_DY][KC_STATE_DY] = square(STDEV_INITIAL_VELOCITY);
     p_out.dat[KC_STATE_DZ][KC_STATE_DZ] = square(STDEV_INITIAL_VELOCITY);
+    p_out.dat[KC_STATE_E0][KC_STATE_E0] = square(STDEV_INITIAL_ATTITUDE_ROLL_PITCH);
     p_out.dat[KC_STATE_E1][KC_STATE_E1] = square(STDEV_INITIAL_ATTITUDE_ROLL_PITCH);
     p_out.dat[KC_STATE_E2][KC_STATE_E2] = square(STDEV_INITIAL_ATTITUDE_YAW);
 }
