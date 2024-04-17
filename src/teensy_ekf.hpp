@@ -14,31 +14,18 @@ static const float QZ_INIT = 0;
 
 // Initial variances, uncertain of position, but know we're
 // stationary and roughly flat
-static const float STDEV_INITIAL_POSITION_Z = 1;
-static const float STDEV_INITIAL_VELOCITY = 0.01;
 static const float STDEV_INITIAL_ATTITUDE_ROLL_PITCH = 0.01;
 static const float STDEV_INITIAL_ATTITUDE_YAW = 0.01;
 
-static const float PROC_NOISE_ACC_XY = 0.5;
-static const float PROC_NOISE_ACC_Z = 1.0;
-static const float PROC_NOISE_VEL = 0;
-static const float PROC_NOISE_POS = 0;
 static const float PROC_NOISE_ATT = 0;
 static const float MEAS_NOISE_GYRO_ROLL_PITCH = 0.1; // radians per second
 static const float MEAS_NOISE_GYRO_ROLL_YAW = 0.1;   // radians per second
 
 static const float GRAVITY_MAGNITUDE = 9.81;
 
-//We do get the measurements in 10x the motion pixels (experimentally measured)
-static const float FLOW_RESOLUTION = 0.1;
-
 // The bounds on the covariance, these shouldn't be hit, but sometimes are... why?
 static const float MAX_COVARIANCE = 100;
 static const float MIN_COVARIANCE = 1e-6;
-
-// The bounds on states, these shouldn't be hit...
-static const float MAX_POSITION = 100; //meters
-static const float MAX_VELOCITY = 10; //meters per second
 
 // Small number epsilon, to prevent dividing by zero
 static const float EPS = 1e-6f;
@@ -64,8 +51,6 @@ class Ekf {
             memset(&_ekfState, 0, sizeof(_ekfState));
             memset(_Pmat, 0, sizeof(_Pmat));
 
-            _ekfState.z = 0;
-
             _qw = QW_INIT;
             _qx = QX_INIT;
             _qy = QY_INIT;
@@ -83,22 +68,16 @@ class Ekf {
             memset(_Pmat, 0, sizeof(_Pmat));
 
             // initialize state variances
-            _Pmat[KC_STATE_Z][KC_STATE_Z] = powf(STDEV_INITIAL_POSITION_Z, 2);
-
-            _Pmat[KC_STATE_DX][KC_STATE_DX] = powf(STDEV_INITIAL_VELOCITY, 2);
-            _Pmat[KC_STATE_DY][KC_STATE_DY] = powf(STDEV_INITIAL_VELOCITY, 2);
-            _Pmat[KC_STATE_DZ][KC_STATE_DZ] = powf(STDEV_INITIAL_VELOCITY, 2);
-
-            _Pmat[KC_STATE_E0][KC_STATE_E0] = powf(STDEV_INITIAL_ATTITUDE_ROLL_PITCH, 2);
-            _Pmat[KC_STATE_E1][KC_STATE_E1] = powf(STDEV_INITIAL_ATTITUDE_ROLL_PITCH, 2);
-            _Pmat[KC_STATE_E2][KC_STATE_E2] = powf(STDEV_INITIAL_ATTITUDE_YAW, 2);
+            _Pmat[KC_STATE_E0][KC_STATE_E0] = square(STDEV_INITIAL_ATTITUDE_ROLL_PITCH);
+            _Pmat[KC_STATE_E1][KC_STATE_E1] = square(STDEV_INITIAL_ATTITUDE_ROLL_PITCH);
+            _Pmat[KC_STATE_E2][KC_STATE_E2] = square(STDEV_INITIAL_ATTITUDE_YAW);
 
             _isUpdated = false;
             _lastPredictionMs = stream_now_msec;
             _lastProcessNoiseUpdateMs = stream_now_msec;
         }
 
-        bool step(void) 
+        void step(void) 
         {
             extern uint32_t stream_now_msec;
 
@@ -115,49 +94,12 @@ class Ekf {
 
             axis3fSubSamplerFinalize(&_gyroSubSampler, shouldPredict);
 
-            const Axis3f * acc = &_accSubSampler.subSample; 
             const Axis3f * gyro = &_gyroSubSampler.subSample; 
             const float dt = (stream_now_msec - _lastPredictionMs) / 1000.0f;
 
             const auto e0 = gyro->x*dt/2;
             const auto e1 = gyro->y*dt/2;
             const auto e2 = gyro->z*dt/2;
-
-            // altitude from body-frame velocity
-            const auto zdx = _r20*dt;
-            const auto zdy = _r21*dt;
-            const auto zdz = _r22*dt;
-
-            // altitude from attitude error
-            const auto ze0 = (_ekfState.dy*_r22 - _ekfState.dz*_r21)*dt;
-            const auto ze1 = (- _ekfState.dx*_r22 + _ekfState.dz*_r20)*dt;
-            const auto ze2 = (_ekfState.dx*_r21 - _ekfState.dy*_r20)*dt;
-
-            // body-frame velocity from body-frame velocity
-            const auto dxdx = 1; //drag negligible
-            const auto dydx =-gyro->z*dt;
-            const auto dzdx = gyro->y*dt;
-
-            const auto dxdy = gyro->z*dt;
-            const auto dydy = 1; //drag negligible
-            const auto dzdy =-gyro->x*dt;
-
-            const auto dxdz =-gyro->y*dt;
-            const auto dydz = gyro->x*dt;
-            const auto dzdz = 1; //drag negligible
-
-            // body-frame velocity from attitude error
-            const auto dxe0 =  0;
-            const auto dye0 = -GRAVITY_MAGNITUDE*_r22*dt;
-            const auto dze0 =  GRAVITY_MAGNITUDE*_r21*dt;
-
-            const auto dxe1 =  GRAVITY_MAGNITUDE*_r22*dt;
-            const auto dye1 =  0;
-            const auto dze1 = -GRAVITY_MAGNITUDE*_r20*dt;
-
-            const auto dxe2 = -GRAVITY_MAGNITUDE*_r21*dt;
-            const auto dye2 =  GRAVITY_MAGNITUDE*_r20*dt;
-            const auto dze2 =  0;
 
             const auto e0e0 =  1 - e1*e1/2 - e2*e2/2;
             const auto e0e1 =  e2 + e0*e1/2;
@@ -173,32 +115,12 @@ class Ekf {
 
             const float A[KC_STATE_DIM][KC_STATE_DIM] = 
             { 
-                //        Z  DX    DY    DZ    E0    E1    E2
-                /*Z*/    {0, zdx,  zdy,  zdz,  ze0,  ze1,  ze2}, 
-                /*DX*/   {0, dxdx, dxdy, dxdz, dxe0, dxe1, dxe2}, 
-                /*DY*/   {0, dydx, dydy, dydz, dye0, dye1, dye2},
-                /*DZ*/   {0, dzdx, dzdy, dzdz, dze0, dze1, dze2},
-                /*E0*/   {0, 0,    0,    0,    e0e0, e0e1, e0e2}, 
-                /*E1*/   {0, 0,    0,    0,    e1e0, e1e1, e1e2}, 
-                /*E2*/   {0, 0,    0,    0,    e2e0, e2e1, e2e2}  
+                //        E0    E1    E2
+                /*E0*/   {e0e0, e0e1, e0e2}, 
+                /*E1*/   {e1e0, e1e1, e1e2}, 
+                /*E2*/   {e2e0, e2e1, e2e2}  
             };
 
-
-            const auto dt2 = dt * dt;
-
-            // Position updates in the body frame (will be rotated to inertial frame);
-            // thrust can only be produced in the body's Z direction
-            const auto dx = _ekfState.dx * dt + isFlying ? 0 : acc->x * dt2 / 2;
-            const auto dy = _ekfState.dy * dt + isFlying ? 0 : acc->y * dt2 / 2;
-            const auto dz = _ekfState.dz * dt + acc->z * dt2 / 2; 
-
-            // keep previous time step's state for the update
-            const auto tmpSDX = _ekfState.dx;
-            const auto tmpSDY = _ekfState.dy;
-            const auto tmpSDZ = _ekfState.dz;
-
-            const auto accx = isFlying ? 0 : acc->x;
-            const auto accy = isFlying ? 0 : acc->y;
 
             // attitude update (rotate by gyroscope), we do this in quaternions
             // this is the gyroscope angular velocity integrated over the sample period
@@ -249,29 +171,6 @@ class Ekf {
             // When flying, the accelerometer directly measures thrust (hence is useless
             // to estimate body angle while flying)
 
-            // altitude update
-            _ekfState.z += shouldPredict ? _r20 * dx + _r21 * dy + _r22 * dz - 
-                GRAVITY_MAGNITUDE * dt2 / 2 :
-                0;
-
-            // body-velocity update: accelerometers - gyros cross velocity
-            // - gravity in body frame
-
-            _ekfState.dx += shouldPredict ? 
-                dt * (accx + gyro->z * tmpSDY - 
-                        gyro->y * tmpSDZ - GRAVITY_MAGNITUDE * _r20) : 
-                0;
-
-            _ekfState.dy += shouldPredict ?
-                dt * (accy - gyro->z * tmpSDX + gyro->x * tmpSDZ - 
-                        GRAVITY_MAGNITUDE * _r21) : 
-                0;
-
-            _ekfState.dz += shouldPredict ?
-                dt * (acc->z + gyro->y * tmpSDX - gyro->x * 
-                        tmpSDY - GRAVITY_MAGNITUDE * _r22) :
-                0;
-
             _qw = shouldPredict ? tmpq0/norm : _qw;
             _qx = shouldPredict ? tmpq1/norm : _qx; 
             _qy = shouldPredict ? tmpq2/norm : _qy; 
@@ -285,34 +184,14 @@ class Ekf {
 
             const auto isDtPositive = dt1 > 0;
 
-            // add process noise on position
-            _Pmat[KC_STATE_Z][KC_STATE_Z] += isDtPositive ?
-                powf(PROC_NOISE_ACC_Z*dt1*dt1 + PROC_NOISE_VEL*dt1 + 
-                        PROC_NOISE_POS, 2) : 0;  
-
-            // add process noise on velocity
-            _Pmat[KC_STATE_DX][KC_STATE_DX] += isDtPositive ? 
-                powf(PROC_NOISE_ACC_XY*dt1 + 
-                        PROC_NOISE_VEL, 2) : 0; 
-
-            // add process noise on velocity
-            _Pmat[KC_STATE_DY][KC_STATE_DY] += isDtPositive ?
-                powf(PROC_NOISE_ACC_XY*dt1 + 
-                        PROC_NOISE_VEL, 2) : 0; 
-
-            // add process noise on velocity
-            _Pmat[KC_STATE_DZ][KC_STATE_DZ] += isDtPositive ?
-                powf(PROC_NOISE_ACC_Z*dt1 + 
-                        PROC_NOISE_VEL, 2) : 0; 
-
             _Pmat[KC_STATE_E0][KC_STATE_E0] += isDtPositive ?
-                powf(MEAS_NOISE_GYRO_ROLL_PITCH * dt1 + PROC_NOISE_ATT, 2) : 0;
+                square(MEAS_NOISE_GYRO_ROLL_PITCH * dt1 + PROC_NOISE_ATT) : 0;
 
             _Pmat[KC_STATE_E1][KC_STATE_E1] += isDtPositive ?
-                powf(MEAS_NOISE_GYRO_ROLL_PITCH * dt1 + PROC_NOISE_ATT, 2) : 0;
+                square(MEAS_NOISE_GYRO_ROLL_PITCH * dt1 + PROC_NOISE_ATT) : 0;
 
             _Pmat[KC_STATE_E2][KC_STATE_E2] += isDtPositive ?
-                powf(MEAS_NOISE_GYRO_ROLL_YAW * dt1 + PROC_NOISE_ATT, 2) : 0;
+                square(MEAS_NOISE_GYRO_ROLL_YAW * dt1 + PROC_NOISE_ATT) : 0;
 
             updateCovarianceMatrix(isDtPositive);
 
@@ -341,23 +220,13 @@ class Ekf {
             memcpy(&_gyroLatest, &raw_gyro, sizeof(Axis3f));
         
             // Only finalize if data is updated
-            return _isUpdated ? doFinalize() : isStateWithinBounds();
+            if (_isUpdated) {
+                doFinalize();
+            }
         }
-
 
         void getState(vehicleState_t & state)
         {
-            state.dx = _ekfState.dx;
-
-            state.dy = _ekfState.dy;
-
-            state.z = _ekfState.z;
-
-            state.dz = 
-                _r20 * _ekfState.dx +
-                _r21 * _ekfState.dy +
-                _r22 * _ekfState.dz;
-
             state.phi = RADIANS_TO_DEGREES * atan2((2 * (_qy*_qz + _qw*_qx)),
                     (_qw*_qw - _qx*_qx - _qy*_qy + _qz*_qz));
 
@@ -396,10 +265,6 @@ class Ekf {
          */         
         typedef struct {
 
-            float z;
-            float dx;
-            float dy;
-            float dz;
             float e0;
             float e1;
             float e2;
@@ -409,10 +274,6 @@ class Ekf {
         // Indexes to access the state
         enum {
 
-            KC_STATE_Z,
-            KC_STATE_DX,
-            KC_STATE_DY,
-            KC_STATE_DZ,
             KC_STATE_E0,
             KC_STATE_E1,
             KC_STATE_E2,
@@ -455,7 +316,7 @@ class Ekf {
 
         //////////////////////////////////////////////////////////////////////////
 
-        bool doFinalize(void)
+        void doFinalize(void)
         {
             // Incorporate the attitude error (Kalman filter state) with the attitude
             const auto v0 = _ekfState.e0;
@@ -517,14 +378,10 @@ class Ekf {
             // Matrix to rotate the attitude covariances once updated
             const float A[KC_STATE_DIM][KC_STATE_DIM] = 
             { 
-                //    Z  DX DY DZ    E0     E1    E2
-                /*Z*/   {0, 0, 0, 0, 0,     0,    0},   
-                /*DX*/  {0, 1, 0, 0, 0,     0,    0},  
-                /*DY*/  {0, 0, 1, 0, 0,     0,    0}, 
-                /*DX*/  {0, 0, 0, 1, 0,     0,    0},  
-                /*E0*/  {0, 0, 0, 0, e0e0, e0e1, e0e2},
-                /*E1*/  {0, 0, 0, 0, e1e0, e1e1, e1e2},
-                /*E2*/  {0, 0, 0, 0, e2e0, e2e1, e2e2}
+                //       E0     E1    E2
+                /*E0*/  {e0e0, e0e1, e0e2},
+                /*E1*/  {e1e0, e1e1, e1e2},
+                /*E2*/  {e2e0, e2e1, e2e2}
             };
 
             float At[KC_STATE_DIM][KC_STATE_DIM] = {};
@@ -560,8 +417,6 @@ class Ekf {
             updateCovarianceMatrix(true);
 
             _isUpdated = false;
-
-            return isStateWithinBounds();
         }
 
         static float rotateQuat(
@@ -656,27 +511,13 @@ class Ekf {
             _Pmat[j][i] = shouldUpdate ? _Pmat[i][j] : _Pmat[j][i];
         }
 
-        static const float max(const float val, const float maxval)
+        static float max(const float val, const float maxval)
         {
             return val > maxval ? maxval : val;
         }
 
-        bool isStateWithinBounds(void) 
+        static float square(const float val)
         {
-            return 
-                isPositionWithinBounds(_ekfState.z) &&
-                isVelocityWithinBounds(_ekfState.dx) &&
-                isVelocityWithinBounds(_ekfState.dy) &&
-                isVelocityWithinBounds(_ekfState.dz);
-        }
-
-        static bool isPositionWithinBounds(const float pos)
-        {
-            return fabs(pos) < MAX_POSITION;
-        }
-
-        static bool isVelocityWithinBounds(const float vel)
-        {
-            return fabs(vel) < MAX_VELOCITY;
+            return val * val;
         }
 };

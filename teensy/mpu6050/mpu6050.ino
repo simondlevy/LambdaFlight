@@ -264,7 +264,7 @@ static void ekfStep(void)
 {
     stream_now_msec = millis();
 
-    auto isStateInBounds = _ekf.step();
+    _ekf.step();
 
     vehicleState_t state = {};
     _ekf.getState(state);
@@ -272,12 +272,6 @@ static void ekfStep(void)
     stream_state_phi = state.phi;
     stream_state_theta = -state.theta;
     _statePsi = state.psi;
-
-    if (!isStateInBounds) { 
-
-        //_ekf.init(millis());
-    }
-
 }
 
 void setup() 
