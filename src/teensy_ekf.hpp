@@ -37,15 +37,23 @@ static const float ROLLPITCH_ZERO_REVERSION = 0.001;
 static const uint32_t PREDICTION_RATE = 100;
 static const uint32_t PREDICTION_UPDATE_INTERVAL_MS = 1000 / PREDICTION_RATE;
 
+typedef enum {
+
+    EKF_MODE_INIT,
+    EKF_MODE_STEP,
+    EKF_MODE_GET_STATE
+
+}ekfMode_e;
+
 class Ekf { 
 
     public:
 
         void step(void)
         {
-            extern bool stream_ekf_mode_init;
+            extern ekfMode_e stream_ekf_mode;
 
-            if (stream_ekf_mode_init) {
+            if (stream_ekf_mode == EKF_MODE_INIT) {
                 step_init();
             }
             else {
