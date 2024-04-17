@@ -255,11 +255,6 @@ void debugLoopRate(const uint32_t current_time)
     }
 }
 
-static void ekfInit(void)
-{
-    _ekf.init(millis());
-}
-
 static void ekfStep(void)
 {
     stream_now_msec = millis();
@@ -293,7 +288,7 @@ void setup()
     // Initialize IMU communication
     imuInit();
 
-    ekfInit();
+    _ekf.init();
 
     delay(5);
 

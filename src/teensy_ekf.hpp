@@ -41,8 +41,10 @@ class Ekf {
 
     public:
 
-        void init(const uint32_t stream_now_msec)
+        void init(void)
         {
+            extern uint32_t stream_now_msec;
+
             axis3fSubSamplerInit(&_accSubSampler, GRAVITY_MAGNITUDE);
             axis3fSubSamplerInit(&_gyroSubSampler, DEGREES_TO_RADIANS);
 
