@@ -50,17 +50,6 @@ class Ekf {
             // therefore requires finalization
             static bool _isUpdated;
 
-            // Covariance matrix
-            static float _p00;
-            static float _p01;
-            static float _p02;
-            static float _p10;
-            static float _p11;
-            static float _p12;
-            static float _p20;
-            static float _p21;
-            static float _p22;
-
             static float _p[3][3];
 
             // Quaternion
@@ -138,40 +127,20 @@ class Ekf {
             _e1 = !_didInit ? 0 : _e1;
             _e2 = !_didInit ? 0 : _e2;
 
-            _p00 = !_didInit ? square(STDEV_INITIAL_ATTITUDE_ROLL_PITCH) : _p00;
-            _p01 = !_didInit ? 0 : _p01;
-            _p02 = !_didInit ? 0 : _p02;
 
-            _p10 = !_didInit ? 0 : _p10;
-            _p11 = !_didInit ? square(STDEV_INITIAL_ATTITUDE_ROLL_PITCH) : _p11;
-            _p12 = !_didInit ? 0 : _p12;
+            _p[0][0] = !_didInit ? square(STDEV_INITIAL_ATTITUDE_ROLL_PITCH) : _p[0][0];
+            _p[0][1] = !_didInit ? 0 : _p[0][1];
+            _p[0][2] = !_didInit ? 0 : _p[0][2];
 
-            _p20 = !_didInit ? 0 : _p20;
-            _p21 = !_didInit ? 0 : _p21;
-            _p22 = !_didInit ? square(STDEV_INITIAL_ATTITUDE_YAW) : _p22;
+            _p[1][0] = !_didInit ? 0 : _p[1][0];
+            _p[1][1] = !_didInit ? square(STDEV_INITIAL_ATTITUDE_ROLL_PITCH) : _p[1][1];
+            _p[1][2] = !_didInit ? 0 : _p[1][2];
 
-            const float p[3][3] = { 
-                {_p00, _p02, _p02},
-                {_p10, _p11, _p12},
-                {_p20, _p21, _p22}
-            };
-            (void)p;
+            _p[2][0] = !_didInit ? 0 : _p[2][0];
+            _p[2][1] = !_didInit ? 0 : _p[2][1];
+            _p[2][2] = !_didInit ? square(STDEV_INITIAL_ATTITUDE_YAW) : _p[2][2];
 
-            if (!_didInit) {
-
-                _p[0][0] = square(STDEV_INITIAL_ATTITUDE_ROLL_PITCH);
-                _p[0][1] = 0;
-                _p[0][2] = 0;
-
-                _p[1][0] = 0;
-                _p[1][1] = square(STDEV_INITIAL_ATTITUDE_ROLL_PITCH);
-                _p[1][2] = 0;
-
-                _p[2][0] = 0;
-                _p[2][1] = 0;
-                _p[2][2] = square(STDEV_INITIAL_ATTITUDE_YAW);
-            }
-            else {
+            if (_didInit) {
 
                 step_normal(
                         _p,
