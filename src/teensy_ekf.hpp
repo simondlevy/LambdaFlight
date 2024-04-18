@@ -60,6 +60,11 @@ class Ekf {
             static float _r21;
             static float _r22;
 
+            // Attitude error
+            static float _e0;
+            static float _e1;
+            static float _e2;
+
             _isUpdated = !_didInit ? false : _isUpdated;
 
             _qw = !_didInit ? QW_INIT : _qw;
@@ -74,12 +79,20 @@ class Ekf {
             _r21 = !_didInit ? 0 : _r21;
             _r22 = !_didInit ? 1 : _r22;
 
+            _e0 = !_didInit ? 0 : _e0;
+            _e1 = !_didInit ? 0 : _e1;
+            _e2 = !_didInit ? 0 : _e2;
+
             if (!_didInit) {
                 step_init();
             }
             else {
 
-                step_normal(_isUpdated, _qw, _qx, _qy, _qz, _r20, _r21, _r22);
+                step_normal(
+                        _isUpdated, 
+                        _e0, _e1, _e2,
+                        _qw, _qx, _qy, _qz, 
+                        _r20, _r21, _r22);
 
                 vehicleState.phi = RADIANS_TO_DEGREES * atan2((2 * (_qy*_qz + _qw*_qx)),
                         (_qw*_qw - _qx*_qx - _qy*_qy + _qz*_qz));
@@ -102,24 +115,6 @@ class Ekf {
         }
 
     private:
-
-       /**
-         * Vehicle State
-         *
-         * The internally-estimated state is:
-         * - Z: the quad's altitude
-         * - DX, DY, DZ: the quad's velocity in its body frame
-         * - E0, E1, E2: attitude error
-         *
-         * For more information, refer to the paper
-         */         
-        typedef struct {
-
-            float e0;
-            float e1;
-            float e2;
-
-        } ekfState_t;
 
         // Indexes to access the state
         enum {
@@ -151,7 +146,6 @@ class Ekf {
 
             // Reset all data to 0 (like upon system reset)
 
-            memset(&_ekfState, 0, sizeof(_ekfState));
             memset(_Pmat, 0, sizeof(_Pmat));
 
             // set covariances to zero (diagonals will be changed from
@@ -169,6 +163,7 @@ class Ekf {
 
         void step_normal(
                 bool & _isUpdated,
+                float & _e0, float & _e1, float & _e2,
                 float & _qw, float & _qx, float & _qy, float & _qz,
                 float & _r20, float & _r21, float & _r22)
 
@@ -315,7 +310,11 @@ class Ekf {
         
             // Only finalize if data is updated
             if (_isUpdated) {
-                doFinalize(_isUpdated, _qw, _qx, _qy, _qz, _r20, _r21, _r22);
+                doFinalize(
+                        _isUpdated, 
+                        _e0, _e1, _e2,
+                        _qw, _qx, _qy, _qz, 
+                        _r20, _r21, _r22);
             }
         }
 
@@ -325,8 +324,6 @@ class Ekf {
 
         Axis3fSubSampler_t _accSubSampler;
         Axis3fSubSampler_t _gyroSubSampler;
-
-        ekfState_t _ekfState;
 
         // The covariance matrix
         float _Pmat[KC_STATE_DIM][KC_STATE_DIM];
@@ -338,13 +335,14 @@ class Ekf {
 
         void doFinalize(
                 bool & _isUpdated,
+                float & _e0, float & _e1, float & _e2,
                 float & _qw, float & _qx, float & _qy, float & _qz,
                 float & _r20, float & _r21, float & _r22)
         {
             // Incorporate the attitude error (Kalman filter state) with the attitude
-            const auto v0 = _ekfState.e0;
-            const auto v1 = _ekfState.e1;
-            const auto v2 = _ekfState.e2;
+            const auto v0 = _e0;
+            const auto v1 = _e1;
+            const auto v2 = _e2;
 
             const auto angle = sqrt(v0*v0 + v1*v1 + v2*v2) + EPS;
             const auto ca = cos(angle / 2.0f);
@@ -433,14 +431,15 @@ class Ekf {
             _r22 = _qw * _qw - _qx * _qx - _qy * _qy + _qz * _qz;
 
             // Reset the attitude error
-            _ekfState.e0 = 0;
-            _ekfState.e1 = 0;
-            _ekfState.e2 = 0;
+            _e0 = 0;
+            _e1 = 0;
+            _e2 = 0;
 
             updateCovarianceMatrix(true);
 
             _isUpdated = false;
-        }
+
+        } // doFinalize
 
         static float rotateQuat(
                 const float val, 
