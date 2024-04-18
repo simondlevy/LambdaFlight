@@ -61,7 +61,7 @@ class Ekf {
             static float _p21;
             static float _p22;
 
-            static float _p[KC_STATE_DIM][KC_STATE_DIM];
+            static float _p[3][3];
 
             // Quaternion
             static float _qw;
@@ -218,16 +218,14 @@ class Ekf {
 
             KC_STATE_E0,
             KC_STATE_E1,
-            KC_STATE_E2,
-            KC_STATE_DIM
-
+            KC_STATE_E2
         };
 
         //////////////////////////////////////////////////////////////////////////
 
         static void step_normal(
                 bool & _isUpdated,
-                float _p[KC_STATE_DIM][KC_STATE_DIM],
+                float _p[3][3],
                 float & _gyro_latest_x,
                 float & _gyro_latest_y,
                 float & _gyro_latest_z,
@@ -303,7 +301,7 @@ class Ekf {
                     const auto e2e1 = -e0 + e1*e2/2;
                     const auto e2e2 = 1 - e0*e0/2 - e1*e1/2;
 
-                    const float A[KC_STATE_DIM][KC_STATE_DIM] = 
+                    const float A[3][3] = 
                     { 
                         //        E0    E1    E2
                         /*E0*/   {e0e0, e0e1, e0e2}, 
@@ -350,9 +348,9 @@ class Ekf {
 
                     // ====== COVARIANCE UPDATE ======
 
-                    float At[KC_STATE_DIM][KC_STATE_DIM] = {};
+                    float At[3][3] = {};
                     transpose(A, At);     // A'
-                    float AP[KC_STATE_DIM][KC_STATE_DIM] = {};
+                    float AP[3][3] = {};
                     multiply(A, _p, AP);  // AP
                     multiply(AP, At, _p, shouldPredict); // APA'
 
@@ -444,7 +442,7 @@ class Ekf {
 
         static void doFinalize(
                 bool & _isUpdated,
-                float _p[KC_STATE_DIM][KC_STATE_DIM],
+                float _p[3][3],
                 float & _e0, float & _e1, float & _e2,
                 float & _qw, float & _qx, float & _qy, float & _qz,
                 float & _r20, float & _r21, float & _r22)
@@ -507,7 +505,7 @@ class Ekf {
             const auto e2e2 = 1 - e0*e0/2 - e1*e1/2;
 
             // Matrix to rotate the attitude covariances once updated
-            const float A[KC_STATE_DIM][KC_STATE_DIM] = 
+            const float A[3][3] = 
             { 
                 //       E0     E1    E2
                 /*E0*/  {e0e0, e0e1, e0e2},
@@ -515,10 +513,10 @@ class Ekf {
                 /*E2*/  {e2e0, e2e1, e2e2}
             };
 
-            float At[KC_STATE_DIM][KC_STATE_DIM] = {};
+            float At[3][3] = {};
             transpose(A, At);     // A'
 
-            float AP[KC_STATE_DIM][KC_STATE_DIM] = {};
+            float AP[3][3] = {};
             multiply(A, _p, AP);  // AP
 
             const auto isErrorSufficient  = 
@@ -614,12 +612,12 @@ class Ekf {
         }
 
         static void updateCovarianceMatrix(const bool shouldUpdate, 
-                float _p[KC_STATE_DIM][KC_STATE_DIM])
+                float _p[3][3])
         {
             // Enforce symmetry of the covariance matrix, and ensure the
             // values stay bounded
-            for (int i=0; i<KC_STATE_DIM; i++) {
-                for (int j=i; j<KC_STATE_DIM; j++) {
+            for (int i=0; i<3; i++) {
+                for (int j=i; j<3; j++) {
                     updateCovarianceCell(i, j, 0, shouldUpdate, _p);
                 }
             }
@@ -640,7 +638,7 @@ class Ekf {
                 const int j, 
                 const float variance,
                 const bool shouldUpdate,
-                float _p[KC_STATE_DIM][KC_STATE_DIM])
+                float _p[3][3])
         {
             const auto p = (_p[i][j] + _p[j][i]) / 2 + variance;
 
