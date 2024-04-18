@@ -72,6 +72,10 @@ static void multiply(const float a[N][N], const float b[N][N], float c[N][N])
     }
 }
 
+extern float stream_gyro_x, stream_gyro_y, stream_gyro_z;
+extern float stream_accel_x, stream_accel_y, stream_accel_z;
+extern uint32_t stream_now_msec;
+
 class Ekf { 
 
     public:
@@ -119,14 +123,6 @@ class Ekf {
             static float _accel_sample_y;
             static float _accel_sample_z;
             static uint32_t _accel_count;
-
-            static float _gyro_latest_x;
-            static float _gyro_latest_y;
-            static float _gyro_latest_z;
-
-            _gyro_latest_x = !_didInit ? 0 : _gyro_latest_x;
-            _gyro_latest_y = !_didInit ? 0 : _gyro_latest_y;
-            _gyro_latest_z = !_didInit ? 0 : _gyro_latest_z;
 
             _gyro_sum_x = !_didInit ? 0 : _gyro_sum_x;
             _gyro_sum_y = !_didInit ? 0 : _gyro_sum_y;
@@ -180,7 +176,6 @@ class Ekf {
                         _p,
                         _p,
                         _isUpdated, 
-                        _gyro_latest_x, _gyro_latest_y, _gyro_latest_z,
                         _gyro_sum_x, _gyro_sum_y, _gyro_sum_z,
                         _gyro_sample_x, _gyro_sample_y, _gyro_sample_z,
                         _gyro_count,
@@ -203,9 +198,9 @@ class Ekf {
                             (_qw*_qw + _qx*_qx - _qy*_qy - _qz*_qz));
 
                 // Get angular velocities directly from gyro
-                vehicleState.dphi =    _gyro_latest_x;
-                vehicleState.dtheta = -_gyro_latest_y; // negate for ENU
-                vehicleState.dpsi =    _gyro_latest_z;
+                vehicleState.dphi =    stream_gyro_x;
+                vehicleState.dtheta = -stream_gyro_y; // negate for ENU
+                vehicleState.dpsi =    stream_gyro_z;
             }
 
             _didInit = true;
@@ -217,7 +212,6 @@ class Ekf {
                 const float p_in[3][3],
                 float p_out[3][3],
                 bool & _isUpdated,
-                float & _gyro_latest_x, float & _gyro_latest_y, float & _gyro_latest_z,
                 float & _gyro_sum_x, float & _gyro_sum_y, float & _gyro_sum_z,
                 float & _gyro_sample_x, float & _gyro_sample_y, float & _gyro_sample_z,
                 uint32_t & _gyro_count,
@@ -229,8 +223,6 @@ class Ekf {
                 float & _r20, float & _r21, float & _r22)
 
                 {
-                    extern uint32_t stream_now_msec;
-
                     const auto isFlying = true; // XXX
 
                     static uint32_t _nextPredictionMsec;
@@ -238,31 +230,6 @@ class Ekf {
                     static uint32_t _lastPredictionMsec;
 
                     const auto shouldPredict = stream_now_msec >= _nextPredictionMsec;
-
-                    _lastPredictionMsec = _lastPredictionMsec == 0 ? 
-                        stream_now_msec :
-                        _lastPredictionMsec;
-
-                    _nextPredictionMsec = 
-                        _nextPredictionMsec == 0 ? stream_now_msec : _nextPredictionMsec;
-
-                    subsamplerFinalize(shouldPredict, DEGREES_TO_RADIANS, 
-                            _gyro_sum_x,
-                            _gyro_sum_y,
-                            _gyro_sum_z,
-                            _gyro_sample_x,
-                            _gyro_sample_y,
-                            _gyro_sample_z,
-                            _gyro_count);
-
-                    subsamplerFinalize(shouldPredict, GRAVITY_MAGNITUDE, 
-                            _accel_sum_x,
-                            _accel_sum_y,
-                            _accel_sum_z,
-                            _accel_sample_x,
-                            _accel_sample_y,
-                            _accel_sample_z,
-                            _accel_count);
 
                     const float dt = (stream_now_msec - _lastPredictionMsec) / 1000.0f;
 
@@ -336,6 +303,31 @@ class Ekf {
                     float APA[3][3] = {};
                     multiply(AP, At, APA); // APA'
 
+                    _lastPredictionMsec = _lastPredictionMsec == 0 ? 
+                        stream_now_msec :
+                        _lastPredictionMsec;
+
+                    _nextPredictionMsec = 
+                        _nextPredictionMsec == 0 ? stream_now_msec : _nextPredictionMsec;
+
+                    subsamplerFinalize(shouldPredict, DEGREES_TO_RADIANS, 
+                            _gyro_sum_x,
+                            _gyro_sum_y,
+                            _gyro_sum_z,
+                            _gyro_sample_x,
+                            _gyro_sample_y,
+                            _gyro_sample_z,
+                            _gyro_count);
+
+                    subsamplerFinalize(shouldPredict, GRAVITY_MAGNITUDE, 
+                            _accel_sum_x,
+                            _accel_sum_y,
+                            _accel_sum_z,
+                            _accel_sample_x,
+                            _accel_sample_y,
+                            _accel_sample_z,
+                            _accel_count);
+
                     // Process noise is added after the return from the prediction step
 
                     // ====== PREDICTION STEP ======
@@ -397,8 +389,6 @@ class Ekf {
                         stream_now_msec + PREDICTION_UPDATE_INTERVAL_MS :
                         _nextPredictionMsec;
 
-                    extern float stream_gyro_x, stream_gyro_y, stream_gyro_z;
-
                     subsamplerAccumulate(
                             stream_gyro_x,
                             stream_gyro_y,
@@ -408,8 +398,6 @@ class Ekf {
                             _gyro_sum_z,
                             _gyro_count);
 
-                    extern float stream_accel_x, stream_accel_y, stream_accel_z;
-
                     subsamplerAccumulate(
                             stream_accel_x,
                             stream_accel_y,
@@ -418,10 +406,6 @@ class Ekf {
                             _accel_sum_y,
                             _accel_sum_z,
                             _accel_count);
-
-                    _gyro_latest_x = stream_gyro_x;
-                    _gyro_latest_y = stream_gyro_y;
-                    _gyro_latest_z = stream_gyro_z;
 
                     // Only finalize if data is updated
                     if (_isUpdated) {
