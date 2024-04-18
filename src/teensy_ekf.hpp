@@ -464,36 +464,36 @@ class Ekf {
             const auto newe2e1 = -newe0 + newe1*newe2/2;
             const auto newe2e2 = 1 - newe0*newe0/2 - newe1*newe1/2;
 
+            const auto isErrorSufficient  = 
+                (isErrorLarge(v0) || isErrorLarge(v1) || isErrorLarge(v2)) &&
+                isErrorInBounds(v0) && isErrorInBounds(v1) && isErrorInBounds(v2);
+
+            // Matrix to rotate the attitude covariances once updated
+            const float newA[3][3] = 
+            { 
+                //       E0     E1    E2
+                /*E0*/  {newe0e0, newe0e1, newe0e2},
+                /*E1*/  {newe1e0, newe1e1, newe1e2},
+                /*E2*/  {newe2e0, newe2e1, newe2e2}
+            };
+
+            float newAt[3][3] = {};
+            transpose(newA, newAt);     // A'
+            float newAP[3][3] = {};
+            multiply(newA, p_out, newAP);  // AP
+            float newAPA[3][3] = {};
+            multiply(newAP, newAt, newAPA); // APA'
+
             // Only finalize if data is updated
             if (_isUpdated) {
-
-                // Matrix to rotate the attitude covariances once updated
-                const float A[3][3] = 
-                { 
-                    //       E0     E1    E2
-                    /*E0*/  {newe0e0, newe0e1, newe0e2},
-                    /*E1*/  {newe1e0, newe1e1, newe1e2},
-                    /*E2*/  {newe2e0, newe2e1, newe2e2}
-                };
-
-                const auto isErrorSufficient  = 
-                    (isErrorLarge(v0) || isErrorLarge(v1) || isErrorLarge(v2)) &&
-                    isErrorInBounds(v0) && isErrorInBounds(v1) && isErrorInBounds(v2);
 
                 _qw = isErrorSufficient ? newtmpq0 / newnorm : _qw;
                 _qx = isErrorSufficient ? newtmpq1 / newnorm : _qx;
                 _qy = isErrorSufficient ? newtmpq2 / newnorm : _qy;
                 _qz = isErrorSufficient ? newtmpq3 / newnorm : _qz;
 
-                float At[3][3] = {};
-                transpose(A, At);     // A'
-                float AP[3][3] = {};
-                multiply(A, p_out, AP);  // AP
-                float APA[3][3] = {};
-                multiply(AP, At, APA); // APA'
-
                 if (isErrorSufficient) {
-                    memcpy(p_out, APA, 3*3*sizeof(float));
+                    memcpy(p_out, newAPA, 3*3*sizeof(float));
                 }
 
                 // Convert the new attitude to a rotation matrix, such that we can
@@ -508,8 +508,6 @@ class Ekf {
                 _e2 = 0;
 
                 updateCovarianceMatrix(p_out, true, p_out);
-
-
             }
 
             _isUpdated = false;
