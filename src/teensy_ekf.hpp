@@ -44,6 +44,8 @@ class Ekf {
         void step(vehicleState_t & vehicleState)
         {
 
+            static bool _didInit;
+
             // Tracks whether an update to the state has been made, and the state
             // therefore requires finalization
             static bool _isUpdated;
@@ -133,9 +135,6 @@ class Ekf {
 
             Axis3f subSample;
         } Axis3fSubSampler_t;
-
-
-        bool _didInit;
 
         void step_init(void)
         {
