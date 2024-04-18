@@ -73,8 +73,8 @@ class Ekf {
             static axis3_t _gyroLatest;
 
             if (!_didInit) {
-                axis3fSubsamplerInit(&_accelSubsampler);
-                axis3fSubsamplerInit(&_gyroSubsampler);
+                subsamplerInit(&_accelSubsampler);
+                subsamplerInit(&_gyroSubsampler);
             }
 
             _isUpdated = !_didInit ? false : _isUpdated;
@@ -312,17 +312,17 @@ class Ekf {
 
             extern float stream_accel_x, stream_accel_y, stream_accel_z;
 
-            const auto accel = 
+            const auto raw_accel = 
                 axis3_t {stream_accel_x, stream_accel_y, stream_accel_z};
 
-            axis3fSubsamplerAccumulate(&_accelSubsampler, &accel);
+            subsamplerAccumulate(raw_accel, _accelSubsampler);
         
             extern float stream_gyro_x, stream_gyro_y, stream_gyro_z;
 
             const auto raw_gyro = 
                 axis3_t {stream_gyro_x, stream_gyro_y, stream_gyro_z};
 
-            axis3fSubsamplerAccumulate(&_gyroSubsampler, &raw_gyro);
+            subsamplerAccumulate(raw_gyro, _gyroSubsampler);
 
             _gyroLatest.x = raw_gyro.x;
             _gyroLatest.y = raw_gyro.y;
@@ -459,19 +459,20 @@ class Ekf {
                 (isFlying ? 0 : ROLLPITCH_ZERO_REVERSION * initVal);
         }
 
-        static void axis3fSubsamplerInit(axisSubsampler_t* subSampler)
+        static void subsamplerInit(axisSubsampler_t* subSampler)
         { 
             memset(subSampler, 0, sizeof(axisSubsampler_t));
         }
 
-        static void axis3fSubsamplerAccumulate(axisSubsampler_t* subSampler,
-                const axis3_t * sample) 
+        static void subsamplerAccumulate(
+                const axis3_t & sample, 
+                axisSubsampler_t & subSampler)
         {
-            subSampler->sum.x += sample->x;
-            subSampler->sum.y += sample->y;
-            subSampler->sum.z += sample->z;
+            subSampler.sum.x += sample.x;
+            subSampler.sum.y += sample.y;
+            subSampler.sum.z += sample.z;
 
-            subSampler->count++;
+            subSampler.count++;
         }
 
         static void subsamplerFinalize(
