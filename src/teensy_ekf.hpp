@@ -138,7 +138,6 @@ class Ekf {
             _e1 = !_didInit ? 0 : _e1;
             _e2 = !_didInit ? 0 : _e2;
 
-
             _p00 = !_didInit ? square(STDEV_INITIAL_ATTITUDE_ROLL_PITCH) : _p00;
             _p01 = !_didInit ? 0 : _p01;
             _p02 = !_didInit ? 0 : _p02;
@@ -151,19 +150,26 @@ class Ekf {
             _p21 = !_didInit ? 0 : _p21;
             _p22 = !_didInit ? square(STDEV_INITIAL_ATTITUDE_YAW) : _p22;
 
+            const float p[3][3] = { 
+                {_p00, _p02, _p02},
+                {_p10, _p11, _p12},
+                {_p20, _p21, _p22}
+            };
+            (void)p;
+
             if (!_didInit) {
 
-                // set covariances to zero (diagonals will be changed from
-                // zero in the next section)
-                memset(_p, 0, sizeof(_p));
+                _p[0][0] = square(STDEV_INITIAL_ATTITUDE_ROLL_PITCH);
+                _p[0][1] = 0;
+                _p[0][2] = 0;
 
-                // initialize state variances
-                _p[KC_STATE_E0][KC_STATE_E0] = 
-                    square(STDEV_INITIAL_ATTITUDE_ROLL_PITCH);
-                _p[KC_STATE_E1][KC_STATE_E1] = 
-                    square(STDEV_INITIAL_ATTITUDE_ROLL_PITCH);
-                _p[KC_STATE_E2][KC_STATE_E2] = 
-                    square(STDEV_INITIAL_ATTITUDE_YAW);
+                _p[1][0] = 0;
+                _p[1][1] = square(STDEV_INITIAL_ATTITUDE_ROLL_PITCH);
+                _p[1][2] = 0;
+
+                _p[2][0] = 0;
+                _p[2][1] = 0;
+                _p[2][2] = square(STDEV_INITIAL_ATTITUDE_YAW);
             }
             else {
 
@@ -212,16 +218,6 @@ class Ekf {
         }
 
     private:
-
-        // Indexes to access the state
-        enum {
-
-            KC_STATE_E0,
-            KC_STATE_E1,
-            KC_STATE_E2
-        };
-
-        //////////////////////////////////////////////////////////////////////////
 
         static void step_normal(
                 bool & _isUpdated,
@@ -382,13 +378,13 @@ class Ekf {
 
                     const auto isDtPositive = dt1 > 0;
 
-                    _p[KC_STATE_E0][KC_STATE_E0] += isDtPositive ?
+                    _p[0][0] += isDtPositive ?
                         square(MEAS_NOISE_GYRO_ROLL_PITCH * dt1 + PROC_NOISE_ATT) : 0;
 
-                    _p[KC_STATE_E1][KC_STATE_E1] += isDtPositive ?
+                    _p[1][1] += isDtPositive ?
                         square(MEAS_NOISE_GYRO_ROLL_PITCH * dt1 + PROC_NOISE_ATT) : 0;
 
-                    _p[KC_STATE_E2][KC_STATE_E2] += isDtPositive ?
+                    _p[2][2] += isDtPositive ?
                         square(MEAS_NOISE_GYRO_ROLL_YAW * dt1 + PROC_NOISE_ATT) : 0;
 
                     updateCovarianceMatrix(isDtPositive, _p);
