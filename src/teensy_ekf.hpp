@@ -43,9 +43,7 @@ class Ekf {
 
         void step(vehicleState_t & vehicleState)
         {
-            extern bool stream_ekf_should_init;
-
-            if (stream_ekf_should_init) {
+            if (!_didInit) {
                 step_init();
             }
             else {
@@ -68,9 +66,13 @@ class Ekf {
                 vehicleState.dtheta = -_gyroLatest.y; // negate for ENU
                 vehicleState.dpsi =    _gyroLatest.z;
             }
+
+            _didInit = true;
         }
 
     private:
+
+        bool _didInit;
 
         void step_init(void)
         {

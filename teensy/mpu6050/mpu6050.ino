@@ -52,7 +52,6 @@ float stream_gyro_y;
 float stream_gyro_z;
 float stream_state_phi;
 float stream_state_theta;
-bool stream_ekf_should_init;
 
 // Motors set by Haskell
 static int m1_command_PWM;
@@ -269,13 +268,6 @@ static void ekfStep(void)
     _statePsi = _vehicleState.psi;
 }
 
-static void ekfInit(void)
-{
-    stream_ekf_should_init = true;
-    _ekf.step(_vehicleState);
-    stream_ekf_should_init = false;
-}
-
 void setup() 
 {
     Serial.begin(500000); //USB serial
@@ -294,9 +286,6 @@ void setup()
 
     // Initialize IMU communication
     imuInit();
-
-    // Initialize EKF
-    ekfInit();
 
     delay(5);
 
