@@ -174,8 +174,9 @@ class Ekf {
             else {
 
                 step_normal(
-                        _isUpdated, 
                         _p,
+                        _p,
+                        _isUpdated, 
                         _gyro_latest_x,
                         _gyro_latest_y,
                         _gyro_latest_z,
@@ -220,8 +221,9 @@ class Ekf {
     private:
 
         static void step_normal(
+                const float p_in[3][3],
+                float p_out[3][3],
                 bool & _isUpdated,
-                float _p[3][3],
                 float & _gyro_latest_x,
                 float & _gyro_latest_y,
                 float & _gyro_latest_z,
@@ -347,8 +349,8 @@ class Ekf {
                     float At[3][3] = {};
                     transpose(A, At);     // A'
                     float AP[3][3] = {};
-                    multiply(A, _p, AP);  // AP
-                    multiply(AP, At, _p, shouldPredict); // APA'
+                    multiply(A, p_in, AP);  // AP
+                    multiply(AP, At, p_out, shouldPredict); // APA'
 
                     // Process noise is added after the return from the prediction step
 
@@ -378,16 +380,16 @@ class Ekf {
 
                     const auto isDtPositive = dt1 > 0;
 
-                    _p[0][0] += isDtPositive ?
+                    p_out[0][0] += isDtPositive ?
                         square(MEAS_NOISE_GYRO_ROLL_PITCH * dt1 + PROC_NOISE_ATT) : 0;
 
-                    _p[1][1] += isDtPositive ?
+                    p_out[1][1] += isDtPositive ?
                         square(MEAS_NOISE_GYRO_ROLL_PITCH * dt1 + PROC_NOISE_ATT) : 0;
 
-                    _p[2][2] += isDtPositive ?
+                    p_out[2][2] += isDtPositive ?
                         square(MEAS_NOISE_GYRO_ROLL_YAW * dt1 + PROC_NOISE_ATT) : 0;
 
-                    updateCovarianceMatrix(_p, isDtPositive, _p);
+                    updateCovarianceMatrix(p_out, isDtPositive, p_out);
 
                     _lastUpdateMsec = isDtPositive ?  
                         stream_now_msec : 
@@ -427,7 +429,7 @@ class Ekf {
                     if (_isUpdated) {
                         doFinalize(
                                 _isUpdated, 
-                                _p,
+                                p_out,
                                 _e0, _e1, _e2,
                                 _qw, _qx, _qy, _qz, 
                                 _r20, _r21, _r22);
