@@ -67,6 +67,8 @@ class Ekf {
             static float _e1;
             static float _e2;
 
+            static axis3_t _gyroLatest;
+
             _isUpdated = !_didInit ? false : _isUpdated;
 
             _qw = !_didInit ? QW_INIT : _qw;
@@ -92,6 +94,7 @@ class Ekf {
 
                 step_normal(
                         _isUpdated, 
+                        _gyroLatest,
                         _e0, _e1, _e2,
                         _qw, _qx, _qy, _qz, 
                         _r20, _r21, _r22);
@@ -137,8 +140,6 @@ class Ekf {
 
         //////////////////////////////////////////////////////////////////////////
 
-        axis3_t _gyroLatest;
-
         axis3_tSubSampler_t _accSubSampler;
         axis3_tSubSampler_t _gyroSubSampler;
 
@@ -164,6 +165,7 @@ class Ekf {
 
         void step_normal(
                 bool & _isUpdated,
+                axis3_t & _gyroLatest,
                 float & _e0, float & _e1, float & _e2,
                 float & _qw, float & _qx, float & _qy, float & _qz,
                 float & _r20, float & _r21, float & _r22)
@@ -319,7 +321,9 @@ class Ekf {
 
             axis3fSubSamplerAccumulate(&_gyroSubSampler, &raw_gyro);
 
-            memcpy(&_gyroLatest, &raw_gyro, sizeof(axis3_t));
+            _gyroLatest.x = raw_gyro.x;
+            _gyroLatest.y = raw_gyro.y;
+            _gyroLatest.z = raw_gyro.z;
         
             // Only finalize if data is updated
             if (_isUpdated) {
