@@ -17,8 +17,7 @@ static const float STDEV_INITIAL_ATTITUDE_ROLL_PITCH = 0.01;
 static const float STDEV_INITIAL_ATTITUDE_YAW = 0.01;
 
 static const float PROC_NOISE_ATT = 0;
-static const float MEAS_NOISE_GYRO_ROLL_PITCH = 0.1; // radians per second
-static const float MEAS_NOISE_GYRO_ROLL_YAW = 0.1;   // radians per second
+static const float MEAS_NOISE_GYRO = 0.1; // radians per second
 
 static const float GRAVITY_MAGNITUDE = 9.81;
 
@@ -365,24 +364,28 @@ class Ekf {
 
                     const auto isDtPositive = dt1 > 0;
 
-                    p_out[0][0] = shouldPredict ? APA[0][0] : p_in[0][0];
+                    const auto noise =
+                        isDtPositive ?  
+                        square(MEAS_NOISE_GYRO * dt1 + PROC_NOISE_ATT) :
+                        0;
+
+                    p_out[0][0] = shouldPredict ? APA[0][0] + noise : p_in[0][0];
+
                     p_out[0][1] = shouldPredict ? APA[0][1] : p_in[0][1];
+
                     p_out[0][2] = shouldPredict ? APA[0][2] : p_in[0][2];
+
                     p_out[1][0] = shouldPredict ? APA[1][0] : p_in[1][0];
-                    p_out[1][1] = shouldPredict ? APA[1][1] : p_in[1][1];
+
+                    p_out[1][1] = shouldPredict ? APA[1][1] + noise: p_in[1][1];
+
                     p_out[1][2] = shouldPredict ? APA[1][2] : p_in[1][2];
+
                     p_out[2][0] = shouldPredict ? APA[2][0] : p_in[2][0];
+
                     p_out[2][1] = shouldPredict ? APA[2][1] : p_in[2][1];
-                    p_out[2][2] = shouldPredict ? APA[2][2] : p_in[2][2];
 
-                    p_out[0][0] += isDtPositive ?
-                        square(MEAS_NOISE_GYRO_ROLL_PITCH * dt1 + PROC_NOISE_ATT) : 0;
-
-                    p_out[1][1] += isDtPositive ?
-                        square(MEAS_NOISE_GYRO_ROLL_PITCH * dt1 + PROC_NOISE_ATT) : 0;
-
-                    p_out[2][2] += isDtPositive ?
-                        square(MEAS_NOISE_GYRO_ROLL_YAW * dt1 + PROC_NOISE_ATT) : 0;
+                    p_out[2][2] = shouldPredict ? APA[2][2] + noise : p_in[2][2];
 
                     updateCovarianceMatrix(p_out, isDtPositive, p_out);
 
