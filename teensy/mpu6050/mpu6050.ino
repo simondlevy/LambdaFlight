@@ -59,8 +59,6 @@ static int m2_command_PWM;
 static int m3_command_PWM;
 static int m4_command_PWM;
 
-static Ekf _ekf;
-
 static float _statePsi;
 
 static Axis3f _accelLatest;
@@ -261,7 +259,7 @@ static void ekfStep(void)
 {
     stream_now_msec = millis();
 
-    _ekf.step(_vehicleState);
+    Ekf::step(_vehicleState);
 
     stream_state_phi = _vehicleState.phi;
     stream_state_theta = -_vehicleState.theta; // note negation

@@ -41,7 +41,7 @@ class Ekf {
 
     public:
 
-        void step(vehicleState_t & vehicleState)
+        static void step(vehicleState_t & vehicleState)
         {
 
             static bool _didInit;
@@ -202,7 +202,7 @@ class Ekf {
 
         //////////////////////////////////////////////////////////////////////////
 
-        void step_normal(
+        static void step_normal(
                 bool & _isUpdated,
                 float _p[KC_STATE_DIM][KC_STATE_DIM],
                 float & _gyro_latest_x,
@@ -419,7 +419,7 @@ class Ekf {
 
         //////////////////////////////////////////////////////////////////////////
 
-        void doFinalize(
+        static void doFinalize(
                 bool & _isUpdated,
                 float _p[KC_STATE_DIM][KC_STATE_DIM],
                 float & _e0, float & _e1, float & _e2,
@@ -590,7 +590,7 @@ class Ekf {
             count = 0;
         }
 
-        void updateCovarianceMatrix(const bool shouldUpdate, 
+        static void updateCovarianceMatrix(const bool shouldUpdate, 
                 float _p[KC_STATE_DIM][KC_STATE_DIM])
         {
             // Enforce symmetry of the covariance matrix, and ensure the
@@ -612,7 +612,7 @@ class Ekf {
             return fabs(v) < 10;
         }
 
-        void updateCovarianceCell(
+        static void updateCovarianceCell(
                 const int i, 
                 const int j, 
                 const float variance,
