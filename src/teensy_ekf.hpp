@@ -67,6 +67,22 @@ class Ekf {
             static float _e1;
             static float _e2;
 
+            static float _gyroSubsampler_sum_x;
+            static float _gyroSubsampler_sum_y;
+            static float _gyroSubsampler_sum_z;
+            static float _gyroSubsampler_sample_x;
+            static float _gyroSubsampler_sample_y;
+            static float _gyroSubsampler_sample_z;
+            static float _gyroSubsampler_count;
+
+            static float _accelSubsampler_sum_x;
+            static float _accelSubsampler_sum_y;
+            static float _accelSubsampler_sum_z;
+            static float _accelSubsampler_sample_x;
+            static float _accelSubsampler_sample_y;
+            static float _accelSubsampler_sample_z;
+            static float _accelSubsampler_count;
+
             static axisSubsampler_t _accelSubsampler;
             static axisSubsampler_t _gyroSubsampler;
 
@@ -75,7 +91,24 @@ class Ekf {
             if (!_didInit) {
                 subsamplerInit(&_accelSubsampler);
                 subsamplerInit(&_gyroSubsampler);
+
             }
+
+            _gyroSubsampler_sum_x = !_didInit ? 0 : _gyroSubsampler_sum_x;
+            _gyroSubsampler_sum_y = !_didInit ? 0 : _gyroSubsampler_sum_y;
+            _gyroSubsampler_sum_z = !_didInit ? 0 : _gyroSubsampler_sum_z;
+            _gyroSubsampler_sample_x = !_didInit ? 0 : _gyroSubsampler_sample_x;
+            _gyroSubsampler_sample_y = !_didInit ? 0 : _gyroSubsampler_sample_y;
+            _gyroSubsampler_sample_z = !_didInit ? 0 : _gyroSubsampler_sample_z;
+            _gyroSubsampler_count = !_didInit ? 0 : _gyroSubsampler_count;
+
+            _accelSubsampler_sum_x = !_didInit ? 0 : _accelSubsampler_sum_x;
+            _accelSubsampler_sum_y = !_didInit ? 0 : _accelSubsampler_sum_y;
+            _accelSubsampler_sum_z = !_didInit ? 0 : _accelSubsampler_sum_z;
+            _accelSubsampler_sample_x = !_didInit ? 0 : _accelSubsampler_sample_x;
+            _accelSubsampler_sample_y = !_didInit ? 0 : _accelSubsampler_sample_y;
+            _accelSubsampler_sample_z = !_didInit ? 0 : _accelSubsampler_sample_z;
+            _accelSubsampler_count = !_didInit ? 0 : _accelSubsampler_count;
 
             _isUpdated = !_didInit ? false : _isUpdated;
 
