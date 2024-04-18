@@ -439,12 +439,12 @@ class Ekf {
 			_qy = shouldFinalize ? newtmpq2 / newnorm : _qy;
 			_qz = shouldFinalize ? newtmpq3 / newnorm : _qz;
 
+			if (shouldFinalize) {
+				memcpy(_p, newAPA, 3*3*sizeof(float));
+			}
+
 			// Only finalize if data is updated
 			if (_isUpdated) {
-
-				if (isErrorSufficient) {
-					memcpy(_p, newAPA, 3*3*sizeof(float));
-				}
 
 				// Convert the new attitude to a rotation matrix, such that we can
 				// rotate body-frame velocity and acc
