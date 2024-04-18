@@ -83,7 +83,13 @@ class Ekf {
             static float _accel_sample_z;
             static uint32_t _accel_count;
 
-            static axis3_t _gyroLatest;
+            static float _gyro_latest_x;
+            static float _gyro_latest_y;
+            static float _gyro_latest_z;
+
+            _gyro_latest_x = !_didInit ? 0 : _gyro_latest_x;
+            _gyro_latest_y = !_didInit ? 0 : _gyro_latest_y;
+            _gyro_latest_z = !_didInit ? 0 : _gyro_latest_z;
 
             _gyro_sum_x = !_didInit ? 0 : _gyro_sum_x;
             _gyro_sum_y = !_didInit ? 0 : _gyro_sum_y;
@@ -137,7 +143,9 @@ class Ekf {
 
                 step_normal(
                         _isUpdated, 
-                        _gyroLatest,
+                        _gyro_latest_x,
+                        _gyro_latest_y,
+                        _gyro_latest_z,
                         _gyro_sum_x,
                         _gyro_sum_y,
                         _gyro_sum_z,
@@ -168,9 +176,9 @@ class Ekf {
                             (_qw*_qw + _qx*_qx - _qy*_qy - _qz*_qz));
 
                 // Get angular velocities directly from gyro
-                vehicleState.dphi =    _gyroLatest.x;
-                vehicleState.dtheta = -_gyroLatest.y; // negate for ENU
-                vehicleState.dpsi =    _gyroLatest.z;
+                vehicleState.dphi =    _gyro_latest_x;
+                vehicleState.dtheta = -_gyro_latest_y; // negate for ENU
+                vehicleState.dpsi =    _gyro_latest_z;
             }
 
             _didInit = true;
@@ -195,7 +203,9 @@ class Ekf {
 
         void step_normal(
                 bool & _isUpdated,
-                axis3_t & _gyroLatest,
+                float & _gyro_latest_x,
+                float & _gyro_latest_y,
+                float & _gyro_latest_z,
                 float & _gyro_sum_x,
                 float & _gyro_sum_y,
                 float & _gyro_sum_z,
@@ -390,9 +400,9 @@ class Ekf {
                             _accel_sum_z,
                             _accel_count);
 
-                    _gyroLatest.x = stream_gyro_x;
-                    _gyroLatest.y = stream_gyro_y;
-                    _gyroLatest.z = stream_gyro_z;
+                    _gyro_latest_x = stream_gyro_x;
+                    _gyro_latest_y = stream_gyro_y;
+                    _gyro_latest_z = stream_gyro_z;
 
                     // Only finalize if data is updated
                     if (_isUpdated) {
