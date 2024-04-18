@@ -328,10 +328,6 @@ class Ekf {
 
         ekfState_t _ekfState;
 
-        float _r20;
-        float _r21;
-        float _r22;
-
         // The covariance matrix
         float _Pmat[KC_STATE_DIM][KC_STATE_DIM];
 
