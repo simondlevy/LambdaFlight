@@ -421,69 +421,69 @@ class Ekf {
             const auto newdqy = newsa * v1 / newangle;
             const auto newdqz = newsa * v2 / newangle;
 
+            // Rotate the quad's attitude by the delta quaternion vector
+            // computed above
+            const auto newtmpq0 = newdqw * _qw - newdqx * _qx - newdqy * _qy - newdqz * _qz;
+            const auto newtmpq1 = newdqx * _qw + newdqw * _qx + newdqz * _qy - newdqy * _qz;
+            const auto newtmpq2 = newdqy * _qw - newdqz * _qx + newdqw * _qy + newdqx * _qz;
+            const auto newtmpq3 = newdqz * _qw + newdqy * _qx - newdqx * _qy + newdqw * _qz;
+
+            // normalize and store the result
+            const auto newnorm = sqrt(newtmpq0 * newtmpq0 + newtmpq1 * newtmpq1 + newtmpq2 * newtmpq2 + 
+                    newtmpq3 * newtmpq3) + EPS;
+
+            // the attitude error vector (v0,v1,v2) is small,
+            // so we use a first order approximation to e0 = tan(|v0|/2)*v0/|v0|
+            const auto newe0 = v0/2; 
+            const auto newe1 = v1/2; 
+            const auto newe2 = v2/2;
+
+            /** Rotate the covariance, since we've rotated the body
+             *
+             * This comes from a second order approximation to:
+             * Sigma_post = exps(-d) Sigma_pre exps(-d)'
+             *            ~ (I + [[-d]] + [[-d]]^2 / 2) 
+             Sigma_pre (I + [[-d]] + [[-d]]^2 / 2)'
+             * where d is the attitude error expressed as Rodriges parameters, ie. 
+             d = tan(|v|/2)*v/|v|
+             *
+             * As derived in "Covariance Correction Step for Kalman Filtering with an 
+             Attitude"
+             * http://arc.aiaa.org/doi/abs/10.2514/1.G000848
+             */
+
+            const auto newe0e0 =  1 - newe1*newe1/2 - newe2*newe2/2;
+            const auto newe0e1 =  newe2 + newe0*newe1/2;
+            const auto newe0e2 = -newe1 + newe0*newe2/2;
+
+            const auto newe1e0 =  -newe2 + newe0*newe1/2;
+            const auto newe1e1 = 1 - newe0*newe0/2 - newe2*newe2/2;
+            const auto newe1e2 = newe0 + newe1*newe2/2;
+
+            const auto newe2e0 = newe1 + newe0*newe2/2;
+            const auto newe2e1 = -newe0 + newe1*newe2/2;
+            const auto newe2e2 = 1 - newe0*newe0/2 - newe1*newe1/2;
+
             // Only finalize if data is updated
             if (_isUpdated) {
-
-                // Rotate the quad's attitude by the delta quaternion vector
-                // computed above
-                const auto tmpq0 = newdqw * _qw - newdqx * _qx - newdqy * _qy - newdqz * _qz;
-                const auto tmpq1 = newdqx * _qw + newdqw * _qx + newdqz * _qy - newdqy * _qz;
-                const auto tmpq2 = newdqy * _qw - newdqz * _qx + newdqw * _qy + newdqx * _qz;
-                const auto tmpq3 = newdqz * _qw + newdqy * _qx - newdqx * _qy + newdqw * _qz;
-
-                // normalize and store the result
-                const auto norm = sqrt(tmpq0 * tmpq0 + tmpq1 * tmpq1 + tmpq2 * tmpq2 + 
-                        tmpq3 * tmpq3) + EPS;
-
-                /** Rotate the covariance, since we've rotated the body
-                 *
-                 * This comes from a second order approximation to:
-                 * Sigma_post = exps(-d) Sigma_pre exps(-d)'
-                 *            ~ (I + [[-d]] + [[-d]]^2 / 2) 
-                 Sigma_pre (I + [[-d]] + [[-d]]^2 / 2)'
-                 * where d is the attitude error expressed as Rodriges parameters, ie. 
-                 d = tan(|v|/2)*v/|v|
-                 *
-                 * As derived in "Covariance Correction Step for Kalman Filtering with an 
-                 Attitude"
-                 * http://arc.aiaa.org/doi/abs/10.2514/1.G000848
-                 */
-
-                // the attitude error vector (v0,v1,v2) is small,
-                // so we use a first order approximation to e0 = tan(|v0|/2)*v0/|v0|
-                const auto e0 = v0/2; 
-                const auto e1 = v1/2; 
-                const auto e2 = v2/2;
-
-                const auto e0e0 =  1 - e1*e1/2 - e2*e2/2;
-                const auto e0e1 =  e2 + e0*e1/2;
-                const auto e0e2 = -e1 + e0*e2/2;
-
-                const auto e1e0 =  -e2 + e0*e1/2;
-                const auto e1e1 = 1 - e0*e0/2 - e2*e2/2;
-                const auto e1e2 = e0 + e1*e2/2;
-
-                const auto e2e0 = e1 + e0*e2/2;
-                const auto e2e1 = -e0 + e1*e2/2;
-                const auto e2e2 = 1 - e0*e0/2 - e1*e1/2;
 
                 // Matrix to rotate the attitude covariances once updated
                 const float A[3][3] = 
                 { 
                     //       E0     E1    E2
-                    /*E0*/  {e0e0, e0e1, e0e2},
-                    /*E1*/  {e1e0, e1e1, e1e2},
-                    /*E2*/  {e2e0, e2e1, e2e2}
+                    /*E0*/  {newe0e0, newe0e1, newe0e2},
+                    /*E1*/  {newe1e0, newe1e1, newe1e2},
+                    /*E2*/  {newe2e0, newe2e1, newe2e2}
                 };
 
                 const auto isErrorSufficient  = 
                     (isErrorLarge(v0) || isErrorLarge(v1) || isErrorLarge(v2)) &&
                     isErrorInBounds(v0) && isErrorInBounds(v1) && isErrorInBounds(v2);
 
-                _qw = isErrorSufficient ? tmpq0 / norm : _qw;
-                _qx = isErrorSufficient ? tmpq1 / norm : _qx;
-                _qy = isErrorSufficient ? tmpq2 / norm : _qy;
-                _qz = isErrorSufficient ? tmpq3 / norm : _qz;
+                _qw = isErrorSufficient ? newtmpq0 / newnorm : _qw;
+                _qx = isErrorSufficient ? newtmpq1 / newnorm : _qx;
+                _qy = isErrorSufficient ? newtmpq2 / newnorm : _qy;
+                _qz = isErrorSufficient ? newtmpq3 / newnorm : _qz;
 
                 float At[3][3] = {};
                 transpose(A, At);     // A'
