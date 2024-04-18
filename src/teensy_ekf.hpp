@@ -4,7 +4,6 @@
 
 #include "math3d.h"
 #include "datatypes.h"
-#include "teensy_linalg.h"
 
 // Quaternion used for initial orientation
 static const float QW_INIT = 1;
@@ -36,6 +35,43 @@ static const float ROLLPITCH_ZERO_REVERSION = 0.001;
 // This is slower than the IMU update rate of 1000Hz
 static const uint32_t PREDICTION_RATE = 100;
 static const uint32_t PREDICTION_UPDATE_INTERVAL_MS = 1000 / PREDICTION_RATE;
+
+static const uint8_t N = 3;
+
+static void transpose(const float a[N][N], float at[N][N])
+{
+    for (uint8_t i=0; i<N; ++i) {
+        for (uint8_t j=0; j<N; ++j) {
+            auto tmp = a[i][j];
+            at[i][j] = a[j][i];
+            at[j][i] = tmp;
+        }
+    }
+}
+
+static float dot(const float a[N][N], const float b[N][N], 
+        const uint8_t i, const uint8_t j)
+{
+    float d = 0;
+
+    for (uint8_t k=0; k<N; k++) {
+        d += a[i][k] * b[k][j];
+    }
+
+    return d;
+}
+
+// Matrix * Matrix
+static void multiply(const float a[N][N], const float b[N][N], float c[N][N])
+{
+    for (uint8_t i=0; i<N; i++) {
+
+        for (uint8_t j=0; j<N; j++) {
+
+            c[i][j] = dot(a, b, i, j);
+        }
+    }
+}
 
 class Ekf { 
 
