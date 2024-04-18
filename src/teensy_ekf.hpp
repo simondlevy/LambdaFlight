@@ -44,22 +44,36 @@ class Ekf {
         void step(vehicleState_t & vehicleState)
         {
 
+            // Quaternion
             static float _qw;
             static float _qx;
             static float _qy;
             static float _qz;
+
+            // Third row (Z) of attitude as a rotation matrix (used by prediction,
+            // updated by finalization)
+            static float _r20;
+            static float _r21;
+            static float _r22;
 
             _qw = !_didInit ? QW_INIT : _qw;
             _qx = !_didInit ? QX_INIT : _qx;
             _qy = !_didInit ? QY_INIT : _qy;
             _qz = !_didInit ? QZ_INIT : _qz;
 
+            // Set the initial rotation matrix to the identity. This only affects
+            // the first prediction step, since in the finalization, after shifting
+            // attitude errors into the attitude state, the rotation matrix is updated.
+            _r20 = !_didInit ? 0 : _r20;
+            _r21 = !_didInit ? 0 : _r21;
+            _r22 = !_didInit ? 1 : _r22;
+
             if (!_didInit) {
                 step_init();
             }
             else {
 
-                step_normal(_qw, _qx, _qy, _qz);
+                step_normal(_qw, _qx, _qy, _qz, _r20, _r21, _r22);
 
                 vehicleState.phi = RADIANS_TO_DEGREES * atan2((2 * (_qy*_qz + _qw*_qx)),
                         (_qw*_qw - _qx*_qx - _qy*_qy + _qz*_qz));
@@ -134,13 +148,6 @@ class Ekf {
             memset(&_ekfState, 0, sizeof(_ekfState));
             memset(_Pmat, 0, sizeof(_Pmat));
 
-            // set the initial rotation matrix to the identity. This only affects
-            // the first prediction step, since in the finalization, after shifting
-            // attitude errors into the attitude state, the rotation matrix is updated.
-            _r20 = 0;
-            _r21 = 0;
-            _r22 = 1;
-
             // set covariances to zero (diagonals will be changed from
             // zero in the next section)
             memset(_Pmat, 0, sizeof(_Pmat));
@@ -155,7 +162,10 @@ class Ekf {
             _lastProcessNoiseUpdateMs = stream_now_msec;
         }
 
-        void step_normal(float & _qw, float & _qx, float & _qy, float & _qz)
+        void step_normal(
+                float & _qw, float & _qx, float & _qy, float & _qz,
+                float & _r20, float & _r21, float & _r22)
+
         {
             extern uint32_t stream_now_msec;
 
@@ -299,7 +309,7 @@ class Ekf {
         
             // Only finalize if data is updated
             if (_isUpdated) {
-                doFinalize(_qw, _qx, _qy, _qz);
+                doFinalize(_qw, _qx, _qy, _qz, _r20, _r21, _r22);
             }
         }
 
@@ -312,8 +322,6 @@ class Ekf {
 
         ekfState_t _ekfState;
 
-        // Third row (Z) of attitude as a rotation matrix (used by the prediction,
-        // updated by the finalization)
         float _r20;
         float _r21;
         float _r22;
@@ -330,7 +338,9 @@ class Ekf {
 
         //////////////////////////////////////////////////////////////////////////
 
-        void doFinalize(float & _qw, float & _qx, float & _qy, float & _qz)
+        void doFinalize(
+                float & _qw, float & _qx, float & _qy, float & _qz,
+                float & _r20, float & _r21, float & _r22)
         {
             // Incorporate the attitude error (Kalman filter state) with the attitude
             const auto v0 = _ekfState.e0;
