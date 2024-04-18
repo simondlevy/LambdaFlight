@@ -73,8 +73,8 @@ class Ekf {
             static axis3_t _gyroLatest;
 
             if (!_didInit) {
-                axis3fSubsamplerInit(&_accelSubsampler, GRAVITY_MAGNITUDE);
-                axis3fSubsamplerInit(&_gyroSubsampler, DEGREES_TO_RADIANS);
+                axis3fSubsamplerInit(&_accelSubsampler);
+                axis3fSubsamplerInit(&_gyroSubsampler);
             }
 
             _isUpdated = !_didInit ? false : _isUpdated;
@@ -144,7 +144,6 @@ class Ekf {
         typedef struct {
             axis3_t sum;
             uint32_t count;
-            float conversionFactor;
             axis3_t subSample;
         } axisSubsampler_t;
 
@@ -192,9 +191,9 @@ class Ekf {
             _nextPredictionMsec = 
                 _nextPredictionMsec == 0 ? stream_now_msec : _nextPredictionMsec;
 
-            axis3fSubsamplerFinalize(&_accelSubsampler, shouldPredict);
+            subsamplerFinalize(shouldPredict, GRAVITY_MAGNITUDE, _accelSubsampler);
 
-            axis3fSubsamplerFinalize(&_gyroSubsampler, shouldPredict);
+            subsamplerFinalize(shouldPredict, DEGREES_TO_RADIANS, _gyroSubsampler);
 
             const axis3_t * gyro = &_gyroSubsampler.subSample; 
             const float dt = (stream_now_msec - _lastPredictionMsec) / 1000.0f;
@@ -460,11 +459,9 @@ class Ekf {
                 (isFlying ? 0 : ROLLPITCH_ZERO_REVERSION * initVal);
         }
 
-        static void axis3fSubsamplerInit(axisSubsampler_t* subSampler, const
-                float conversionFactor) 
+        static void axis3fSubsamplerInit(axisSubsampler_t* subSampler)
         { 
             memset(subSampler, 0, sizeof(axisSubsampler_t));
-            subSampler->conversionFactor = conversionFactor;
         }
 
         static void axis3fSubsamplerAccumulate(axisSubsampler_t* subSampler,
@@ -477,31 +474,30 @@ class Ekf {
             subSampler->count++;
         }
 
-        static axis3_t * axis3fSubsamplerFinalize(
-                axisSubsampler_t * subSampler,
-                const bool shouldPredict) 
+        static void subsamplerFinalize(
+                const bool shouldPredict, 
+                const float conversionFactor,
+                axisSubsampler_t & subSampler)
         {
-            const auto count  = subSampler->count; 
+            const auto count  = subSampler.count; 
             const auto isCountNonzero = count > 0;
             const auto shouldFinalize = shouldPredict && isCountNonzero;
 
-            subSampler->subSample.x = shouldFinalize ? 
-                subSampler->sum.x * subSampler->conversionFactor / count :
-                subSampler->subSample.x;
+            subSampler.subSample.x = shouldFinalize ? 
+                subSampler.sum.x * conversionFactor / count :
+                subSampler.subSample.x;
 
-            subSampler->subSample.y = shouldFinalize ?
-                subSampler->sum.y * subSampler->conversionFactor / count :
-                subSampler->subSample.y;
+            subSampler.subSample.y = shouldFinalize ?
+                subSampler.sum.y * conversionFactor / count :
+                subSampler.subSample.y;
 
-            subSampler->subSample.z = shouldFinalize ?
-                subSampler->sum.z * subSampler->conversionFactor / count :
-                subSampler->subSample.z;
+            subSampler.subSample.z = shouldFinalize ?
+                subSampler.sum.z * conversionFactor / count :
+                subSampler.subSample.z;
 
             // Reset
-            subSampler->sum = {0, 0, 0};
-            subSampler->count = 0;
-
-            return &subSampler->subSample;
+            subSampler.sum = {0, 0, 0};
+            subSampler.count = 0;
         }
 
         void updateCovarianceMatrix(const bool shouldUpdate)
