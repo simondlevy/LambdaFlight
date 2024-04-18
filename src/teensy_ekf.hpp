@@ -50,6 +50,9 @@ class Ekf {
             // therefore requires finalization
             static bool _isUpdated;
 
+            // Covariance matrix
+            static float _p[KC_STATE_DIM][KC_STATE_DIM];
+
             // Quaternion
             static float _qw;
             static float _qx;
@@ -143,6 +146,7 @@ class Ekf {
 
                 step_normal(
                         _isUpdated, 
+                        _p,
                         _gyro_latest_x,
                         _gyro_latest_y,
                         _gyro_latest_z,
@@ -196,13 +200,11 @@ class Ekf {
 
         };
 
-        // The covariance matrix
-        float _p[KC_STATE_DIM][KC_STATE_DIM];
-
         //////////////////////////////////////////////////////////////////////////
 
         void step_normal(
                 bool & _isUpdated,
+                float _p[KC_STATE_DIM][KC_STATE_DIM],
                 float & _gyro_latest_x,
                 float & _gyro_latest_y,
                 float & _gyro_latest_z,
@@ -368,7 +370,7 @@ class Ekf {
                     _p[KC_STATE_E2][KC_STATE_E2] += isDtPositive ?
                         square(MEAS_NOISE_GYRO_ROLL_YAW * dt1 + PROC_NOISE_ATT) : 0;
 
-                    updateCovarianceMatrix(isDtPositive);
+                    updateCovarianceMatrix(isDtPositive, _p);
 
                     _lastUpdateMsec = isDtPositive ?  
                         stream_now_msec : 
@@ -408,6 +410,7 @@ class Ekf {
                     if (_isUpdated) {
                         doFinalize(
                                 _isUpdated, 
+                                _p,
                                 _e0, _e1, _e2,
                                 _qw, _qx, _qy, _qz, 
                                 _r20, _r21, _r22);
@@ -418,6 +421,7 @@ class Ekf {
 
         void doFinalize(
                 bool & _isUpdated,
+                float _p[KC_STATE_DIM][KC_STATE_DIM],
                 float & _e0, float & _e1, float & _e2,
                 float & _qw, float & _qx, float & _qy, float & _qz,
                 float & _r20, float & _r21, float & _r22)
@@ -518,7 +522,7 @@ class Ekf {
             _e1 = 0;
             _e2 = 0;
 
-            updateCovarianceMatrix(true);
+            updateCovarianceMatrix(true, _p);
 
             _isUpdated = false;
 
@@ -586,13 +590,14 @@ class Ekf {
             count = 0;
         }
 
-        void updateCovarianceMatrix(const bool shouldUpdate)
+        void updateCovarianceMatrix(const bool shouldUpdate, 
+                float _p[KC_STATE_DIM][KC_STATE_DIM])
         {
             // Enforce symmetry of the covariance matrix, and ensure the
             // values stay bounded
             for (int i=0; i<KC_STATE_DIM; i++) {
                 for (int j=i; j<KC_STATE_DIM; j++) {
-                    updateCovarianceCell(i, j, 0, shouldUpdate);
+                    updateCovarianceCell(i, j, 0, shouldUpdate, _p);
                 }
             }
         }
@@ -611,7 +616,8 @@ class Ekf {
                 const int i, 
                 const int j, 
                 const float variance,
-                const bool shouldUpdate)
+                const bool shouldUpdate,
+                float _p[KC_STATE_DIM][KC_STATE_DIM])
         {
             const auto p = (_p[i][j] + _p[j][i]) / 2 + variance;
 
