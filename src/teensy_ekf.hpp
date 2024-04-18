@@ -67,7 +67,15 @@ class Ekf {
             static float _e1;
             static float _e2;
 
+            static axisSubsampler_t _accelSubsampler;
+            static axisSubsampler_t _gyroSubsampler;
+
             static axis3_t _gyroLatest;
+
+            if (!_didInit) {
+                axis3fSubsamplerInit(&_accelSubsampler, GRAVITY_MAGNITUDE);
+                axis3fSubsamplerInit(&_gyroSubsampler, DEGREES_TO_RADIANS);
+            }
 
             _isUpdated = !_didInit ? false : _isUpdated;
 
@@ -95,6 +103,8 @@ class Ekf {
                 step_normal(
                         _isUpdated, 
                         _gyroLatest,
+                        _gyroSubsampler,
+                        _accelSubsampler,
                         _e0, _e1, _e2,
                         _qw, _qx, _qy, _qz, 
                         _r20, _r21, _r22);
@@ -108,7 +118,7 @@ class Ekf {
 
                 vehicleState.psi = RADIANS_TO_DEGREES * 
                     atan2((2 * (_qx*_qy + _qw*_qz)),
-                        (_qw*_qw + _qx*_qx - _qy*_qy - _qz*_qz));
+                            (_qw*_qw + _qx*_qx - _qy*_qy - _qz*_qz));
 
                 // Get angular velocities directly from gyro
                 vehicleState.dphi =    _gyroLatest.x;
@@ -136,12 +146,7 @@ class Ekf {
             uint32_t count;
             float conversionFactor;
             axis3_t subSample;
-        } axis3_tSubSampler_t;
-
-        //////////////////////////////////////////////////////////////////////////
-
-        axis3_tSubSampler_t _accSubSampler;
-        axis3_tSubSampler_t _gyroSubSampler;
+        } axisSubsampler_t;
 
         // The covariance matrix
         float _Pmat[KC_STATE_DIM][KC_STATE_DIM];
@@ -150,9 +155,6 @@ class Ekf {
 
         void step_init(void)
         {
-            axis3fSubSamplerInit(&_accSubSampler, GRAVITY_MAGNITUDE);
-            axis3fSubSamplerInit(&_gyroSubSampler, DEGREES_TO_RADIANS);
-
             // set covariances to zero (diagonals will be changed from
             // zero in the next section)
             memset(_Pmat, 0, sizeof(_Pmat));
@@ -166,6 +168,8 @@ class Ekf {
         void step_normal(
                 bool & _isUpdated,
                 axis3_t & _gyroLatest,
+                axisSubsampler_t & _gyroSubsampler,
+                axisSubsampler_t & _accelSubsampler,
                 float & _e0, float & _e1, float & _e2,
                 float & _qw, float & _qx, float & _qy, float & _qz,
                 float & _r20, float & _r21, float & _r22)
@@ -188,11 +192,11 @@ class Ekf {
             _nextPredictionMsec = 
                 _nextPredictionMsec == 0 ? stream_now_msec : _nextPredictionMsec;
 
-            axis3fSubSamplerFinalize(&_accSubSampler, shouldPredict);
+            axis3fSubsamplerFinalize(&_accelSubsampler, shouldPredict);
 
-            axis3fSubSamplerFinalize(&_gyroSubSampler, shouldPredict);
+            axis3fSubsamplerFinalize(&_gyroSubsampler, shouldPredict);
 
-            const axis3_t * gyro = &_gyroSubSampler.subSample; 
+            const axis3_t * gyro = &_gyroSubsampler.subSample; 
             const float dt = (stream_now_msec - _lastPredictionMsec) / 1000.0f;
 
             const auto e0 = gyro->x*dt/2;
@@ -312,14 +316,14 @@ class Ekf {
             const auto accel = 
                 axis3_t {stream_accel_x, stream_accel_y, stream_accel_z};
 
-            axis3fSubSamplerAccumulate(&_accSubSampler, &accel);
+            axis3fSubsamplerAccumulate(&_accelSubsampler, &accel);
         
             extern float stream_gyro_x, stream_gyro_y, stream_gyro_z;
 
             const auto raw_gyro = 
                 axis3_t {stream_gyro_x, stream_gyro_y, stream_gyro_z};
 
-            axis3fSubSamplerAccumulate(&_gyroSubSampler, &raw_gyro);
+            axis3fSubsamplerAccumulate(&_gyroSubsampler, &raw_gyro);
 
             _gyroLatest.x = raw_gyro.x;
             _gyroLatest.y = raw_gyro.y;
@@ -456,15 +460,15 @@ class Ekf {
                 (isFlying ? 0 : ROLLPITCH_ZERO_REVERSION * initVal);
         }
 
-        static void axis3fSubSamplerInit(axis3_tSubSampler_t* subSampler, const
+        static void axis3fSubsamplerInit(axisSubsampler_t* subSampler, const
                 float conversionFactor) 
         { 
-            memset(subSampler, 0, sizeof(axis3_tSubSampler_t));
+            memset(subSampler, 0, sizeof(axisSubsampler_t));
             subSampler->conversionFactor = conversionFactor;
         }
 
-        static void axis3fSubSamplerAccumulate(axis3_tSubSampler_t* subSampler,
-                const axis3_t* sample) 
+        static void axis3fSubsamplerAccumulate(axisSubsampler_t* subSampler,
+                const axis3_t * sample) 
         {
             subSampler->sum.x += sample->x;
             subSampler->sum.y += sample->y;
@@ -473,8 +477,8 @@ class Ekf {
             subSampler->count++;
         }
 
-        static axis3_t* axis3fSubSamplerFinalize(
-                axis3_tSubSampler_t* subSampler,
+        static axis3_t * axis3fSubsamplerFinalize(
+                axisSubsampler_t * subSampler,
                 const bool shouldPredict) 
         {
             const auto count  = subSampler->count; 
