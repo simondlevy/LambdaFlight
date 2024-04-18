@@ -129,12 +129,11 @@ class Ekf {
         };
 
         typedef struct {
-            Axis3f sum;
+            axis3_t sum;
             uint32_t count;
             float conversionFactor;
-
-            Axis3f subSample;
-        } Axis3fSubSampler_t;
+            axis3_t subSample;
+        } axis3_tSubSampler_t;
 
         void step_init(void)
         {
@@ -182,7 +181,7 @@ class Ekf {
 
             axis3fSubSamplerFinalize(&_gyroSubSampler, shouldPredict);
 
-            const Axis3f * gyro = &_gyroSubSampler.subSample; 
+            const axis3_t * gyro = &_gyroSubSampler.subSample; 
             const float dt = (stream_now_msec - _lastPredictionMs) / 1000.0f;
 
             const auto e0 = gyro->x*dt/2;
@@ -294,18 +293,18 @@ class Ekf {
             extern float stream_accel_x, stream_accel_y, stream_accel_z;
 
             const auto accel = 
-                Axis3f {stream_accel_x, stream_accel_y, stream_accel_z};
+                axis3_t {stream_accel_x, stream_accel_y, stream_accel_z};
 
             axis3fSubSamplerAccumulate(&_accSubSampler, &accel);
         
             extern float stream_gyro_x, stream_gyro_y, stream_gyro_z;
 
             const auto raw_gyro = 
-                Axis3f {stream_gyro_x, stream_gyro_y, stream_gyro_z};
+                axis3_t {stream_gyro_x, stream_gyro_y, stream_gyro_z};
 
             axis3fSubSamplerAccumulate(&_gyroSubSampler, &raw_gyro);
 
-            memcpy(&_gyroLatest, &raw_gyro, sizeof(Axis3f));
+            memcpy(&_gyroLatest, &raw_gyro, sizeof(axis3_t));
         
             // Only finalize if data is updated
             if (_isUpdated) {
@@ -319,10 +318,10 @@ class Ekf {
 
         //////////////////////////////////////////////////////////////////////////
 
-        Axis3f _gyroLatest;
+        axis3_t _gyroLatest;
 
-        Axis3fSubSampler_t _accSubSampler;
-        Axis3fSubSampler_t _gyroSubSampler;
+        axis3_tSubSampler_t _accSubSampler;
+        axis3_tSubSampler_t _gyroSubSampler;
 
         // The covariance matrix
         float _Pmat[KC_STATE_DIM][KC_STATE_DIM];
@@ -451,15 +450,15 @@ class Ekf {
                 (isFlying ? 0 : ROLLPITCH_ZERO_REVERSION * initVal);
         }
 
-        static void axis3fSubSamplerInit(Axis3fSubSampler_t* subSampler, const
+        static void axis3fSubSamplerInit(axis3_tSubSampler_t* subSampler, const
                 float conversionFactor) 
         { 
-            memset(subSampler, 0, sizeof(Axis3fSubSampler_t));
+            memset(subSampler, 0, sizeof(axis3_tSubSampler_t));
             subSampler->conversionFactor = conversionFactor;
         }
 
-        static void axis3fSubSamplerAccumulate(Axis3fSubSampler_t* subSampler,
-                const Axis3f* sample) 
+        static void axis3fSubSamplerAccumulate(axis3_tSubSampler_t* subSampler,
+                const axis3_t* sample) 
         {
             subSampler->sum.x += sample->x;
             subSampler->sum.y += sample->y;
@@ -468,8 +467,8 @@ class Ekf {
             subSampler->count++;
         }
 
-        static Axis3f* axis3fSubSamplerFinalize(
-                Axis3fSubSampler_t* subSampler,
+        static axis3_t* axis3fSubSamplerFinalize(
+                axis3_tSubSampler_t* subSampler,
                 const bool shouldPredict) 
         {
             const auto count  = subSampler->count; 
@@ -490,7 +489,7 @@ class Ekf {
 
             // Reset
             subSampler->count = 0;
-            subSampler->sum = (Axis3f){.axis={0}};
+            subSampler->sum = (axis3_t){.axis={0}};
 
             return &subSampler->subSample;
         }
