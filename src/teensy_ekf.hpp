@@ -67,48 +67,39 @@ class Ekf {
             static float _e1;
             static float _e2;
 
-            static float _gyroSubsampler_sum_x;
-            static float _gyroSubsampler_sum_y;
-            static float _gyroSubsampler_sum_z;
-            static float _gyroSubsampler_sample_x;
-            static float _gyroSubsampler_sample_y;
-            static float _gyroSubsampler_sample_z;
-            static float _gyroSubsampler_count;
+            static float _gyro_sum_x;
+            static float _gyro_sum_y;
+            static float _gyro_sum_z;
+            static float _gyro_sample_x;
+            static float _gyro_sample_y;
+            static float _gyro_sample_z;
+            static uint32_t _gyro_count;
 
-            static float _accelSubsampler_sum_x;
-            static float _accelSubsampler_sum_y;
-            static float _accelSubsampler_sum_z;
-            static float _accelSubsampler_sample_x;
-            static float _accelSubsampler_sample_y;
-            static float _accelSubsampler_sample_z;
-            static float _accelSubsampler_count;
-
-            static axisSubsampler_t _accelSubsampler;
-            static axisSubsampler_t _gyroSubsampler;
+            static float _accel_sum_x;
+            static float _accel_sum_y;
+            static float _accel_sum_z;
+            static float _accel_sample_x;
+            static float _accel_sample_y;
+            static float _accel_sample_z;
+            static uint32_t _accel_count;
 
             static axis3_t _gyroLatest;
 
-            if (!_didInit) {
-                subsamplerInit(&_accelSubsampler);
-                subsamplerInit(&_gyroSubsampler);
+            _gyro_sum_x = !_didInit ? 0 : _gyro_sum_x;
+            _gyro_sum_y = !_didInit ? 0 : _gyro_sum_y;
+            _gyro_sum_z = !_didInit ? 0 : _gyro_sum_z;
+            _gyro_sample_x = !_didInit ? 0 : _gyro_sample_x;
+            _gyro_sample_y = !_didInit ? 0 : _gyro_sample_y;
+            _gyro_sample_z = !_didInit ? 0 : _gyro_sample_z;
+            _gyro_count = !_didInit ? 0 : _gyro_count;
 
-            }
-
-            _gyroSubsampler_sum_x = !_didInit ? 0 : _gyroSubsampler_sum_x;
-            _gyroSubsampler_sum_y = !_didInit ? 0 : _gyroSubsampler_sum_y;
-            _gyroSubsampler_sum_z = !_didInit ? 0 : _gyroSubsampler_sum_z;
-            _gyroSubsampler_sample_x = !_didInit ? 0 : _gyroSubsampler_sample_x;
-            _gyroSubsampler_sample_y = !_didInit ? 0 : _gyroSubsampler_sample_y;
-            _gyroSubsampler_sample_z = !_didInit ? 0 : _gyroSubsampler_sample_z;
-            _gyroSubsampler_count = !_didInit ? 0 : _gyroSubsampler_count;
-
-            _accelSubsampler_sum_x = !_didInit ? 0 : _accelSubsampler_sum_x;
-            _accelSubsampler_sum_y = !_didInit ? 0 : _accelSubsampler_sum_y;
-            _accelSubsampler_sum_z = !_didInit ? 0 : _accelSubsampler_sum_z;
-            _accelSubsampler_sample_x = !_didInit ? 0 : _accelSubsampler_sample_x;
-            _accelSubsampler_sample_y = !_didInit ? 0 : _accelSubsampler_sample_y;
-            _accelSubsampler_sample_z = !_didInit ? 0 : _accelSubsampler_sample_z;
-            _accelSubsampler_count = !_didInit ? 0 : _accelSubsampler_count;
+            _accel_sum_x = !_didInit ? 0 : _accel_sum_x;
+            _accel_sum_y = !_didInit ? 0 : _accel_sum_y;
+            _accel_sum_z = !_didInit ? 0 : _accel_sum_z;
+            _accel_sample_x = !_didInit ? 0 : _accel_sample_x;
+            _accel_sample_y = !_didInit ? 0 : _accel_sample_y;
+            _accel_sample_z = !_didInit ? 0 : _accel_sample_z;
+            _accel_count = !_didInit ? 0 : _accel_count;
 
             _isUpdated = !_didInit ? false : _isUpdated;
 
@@ -147,8 +138,20 @@ class Ekf {
                 step_normal(
                         _isUpdated, 
                         _gyroLatest,
-                        _gyroSubsampler,
-                        _accelSubsampler,
+                        _gyro_sum_x,
+                        _gyro_sum_y,
+                        _gyro_sum_z,
+                        _gyro_sample_x,
+                        _gyro_sample_y,
+                        _gyro_sample_z,
+                        _gyro_count,
+                        _accel_sum_x,
+                        _accel_sum_y,
+                        _accel_sum_z,
+                        _accel_sample_x,
+                        _accel_sample_y,
+                        _accel_sample_z,
+                        _accel_count,
                         _e0, _e1, _e2,
                         _qw, _qx, _qy, _qz, 
                         _r20, _r21, _r22);
@@ -185,12 +188,6 @@ class Ekf {
 
         };
 
-        typedef struct {
-            axis3_t sum;
-            uint32_t count;
-            axis3_t subSample;
-        } axisSubsampler_t;
-
         // The covariance matrix
         float _p[KC_STATE_DIM][KC_STATE_DIM];
 
@@ -199,176 +196,213 @@ class Ekf {
         void step_normal(
                 bool & _isUpdated,
                 axis3_t & _gyroLatest,
-                axisSubsampler_t & _gyroSubsampler,
-                axisSubsampler_t & _accelSubsampler,
+                float & _gyro_sum_x,
+                float & _gyro_sum_y,
+                float & _gyro_sum_z,
+                float & _gyro_sample_x,
+                float & _gyro_sample_y,
+                float & _gyro_sample_z,
+                uint32_t & _gyro_count,
+                float & _accel_sum_x,
+                float & _accel_sum_y,
+                float & _accel_sum_z,
+                float & _accel_sample_x,
+                float & _accel_sample_y,
+                float & _accel_sample_z,
+                uint32_t & _accel_count,
                 float & _e0, float & _e1, float & _e2,
                 float & _qw, float & _qx, float & _qy, float & _qz,
                 float & _r20, float & _r21, float & _r22)
 
-        {
-            extern uint32_t stream_now_msec;
+                {
+                    extern uint32_t stream_now_msec;
 
-            const auto isFlying = true; // XXX
+                    const auto isFlying = true; // XXX
 
-            static uint32_t _nextPredictionMsec;
+                    static uint32_t _nextPredictionMsec;
 
-            static uint32_t _lastPredictionMsec;
+                    static uint32_t _lastPredictionMsec;
 
-            const auto shouldPredict = stream_now_msec >= _nextPredictionMsec;
+                    const auto shouldPredict = stream_now_msec >= _nextPredictionMsec;
 
-            _lastPredictionMsec = _lastPredictionMsec == 0 ? 
-                stream_now_msec :
-                _lastPredictionMsec;
+                    _lastPredictionMsec = _lastPredictionMsec == 0 ? 
+                        stream_now_msec :
+                        _lastPredictionMsec;
 
-            _nextPredictionMsec = 
-                _nextPredictionMsec == 0 ? stream_now_msec : _nextPredictionMsec;
+                    _nextPredictionMsec = 
+                        _nextPredictionMsec == 0 ? stream_now_msec : _nextPredictionMsec;
 
-            subsamplerFinalize(shouldPredict, GRAVITY_MAGNITUDE, _accelSubsampler);
+                    subsamplerFinalize(shouldPredict, DEGREES_TO_RADIANS, 
+                            _gyro_sum_x,
+                            _gyro_sum_y,
+                            _gyro_sum_z,
+                            _gyro_sample_x,
+                            _gyro_sample_y,
+                            _gyro_sample_z,
+                            _gyro_count);
 
-            subsamplerFinalize(shouldPredict, DEGREES_TO_RADIANS, _gyroSubsampler);
+                    subsamplerFinalize(shouldPredict, GRAVITY_MAGNITUDE, 
+                            _accel_sum_x,
+                            _accel_sum_y,
+                            _accel_sum_z,
+                            _accel_sample_x,
+                            _accel_sample_y,
+                            _accel_sample_z,
+                            _accel_count);
 
-            const axis3_t * gyro = &_gyroSubsampler.subSample; 
-            const float dt = (stream_now_msec - _lastPredictionMsec) / 1000.0f;
+                    const float dt = (stream_now_msec - _lastPredictionMsec) / 1000.0f;
 
-            const auto e0 = gyro->x*dt/2;
-            const auto e1 = gyro->y*dt/2;
-            const auto e2 = gyro->z*dt/2;
+                    const auto e0 = _gyro_sample_x*dt/2;
+                    const auto e1 = _gyro_sample_y*dt/2;
+                    const auto e2 = _gyro_sample_z*dt/2;
 
-            const auto e0e0 =  1 - e1*e1/2 - e2*e2/2;
-            const auto e0e1 =  e2 + e0*e1/2;
-            const auto e0e2 = -e1 + e0*e2/2;
+                    const auto e0e0 =  1 - e1*e1/2 - e2*e2/2;
+                    const auto e0e1 =  e2 + e0*e1/2;
+                    const auto e0e2 = -e1 + e0*e2/2;
 
-            const auto e1e0 = -e2 + e0*e1/2;
-            const auto e1e1 =  1 - e0*e0/2 - e2*e2/2;
-            const auto e1e2 =  e0 + e1*e2/2;
+                    const auto e1e0 = -e2 + e0*e1/2;
+                    const auto e1e1 =  1 - e0*e0/2 - e2*e2/2;
+                    const auto e1e2 =  e0 + e1*e2/2;
 
-            const auto e2e0 =  e1 + e0*e2/2;
-            const auto e2e1 = -e0 + e1*e2/2;
-            const auto e2e2 = 1 - e0*e0/2 - e1*e1/2;
+                    const auto e2e0 =  e1 + e0*e2/2;
+                    const auto e2e1 = -e0 + e1*e2/2;
+                    const auto e2e2 = 1 - e0*e0/2 - e1*e1/2;
 
-            const float A[KC_STATE_DIM][KC_STATE_DIM] = 
-            { 
-                //        E0    E1    E2
-                /*E0*/   {e0e0, e0e1, e0e2}, 
-                /*E1*/   {e1e0, e1e1, e1e2}, 
-                /*E2*/   {e2e0, e2e1, e2e2}  
-            };
+                    const float A[KC_STATE_DIM][KC_STATE_DIM] = 
+                    { 
+                        //        E0    E1    E2
+                        /*E0*/   {e0e0, e0e1, e0e2}, 
+                        /*E1*/   {e1e0, e1e1, e1e2}, 
+                        /*E2*/   {e2e0, e2e1, e2e2}  
+                    };
 
 
-            // attitude update (rotate by gyroscope), we do this in quaternions
-            // this is the gyroscope angular velocity integrated over the sample period
-            const auto dtwx = dt*gyro->x;
-            const auto dtwy = dt*gyro->y;
-            const auto dtwz = dt*gyro->z;
+                    // attitude update (rotate by gyroscope), we do this in quaternions
+                    // this is the gyroscope angular velocity integrated over
+                    // the sample period
+                    const auto dtwx = dt*_gyro_sample_x;
+                    const auto dtwy = dt*_gyro_sample_y;
+                    const auto dtwz = dt*_gyro_sample_z;
 
-            // compute the quaternion values in [w,x,y,z] order
-            const auto angle = sqrt(dtwx*dtwx + dtwy*dtwy + dtwz*dtwz) + EPS;
-            const auto ca = cos(angle/2);
-            const auto sa = sin(angle/2);
-            const auto dqw = ca;
-            const auto dqx = sa*dtwx/angle;
-            const auto dqy = sa*dtwy/angle;
-            const auto dqz = sa*dtwz/angle;
+                    // compute the quaternion values in [w,x,y,z] order
+                    const auto angle = sqrt(dtwx*dtwx + dtwy*dtwy + dtwz*dtwz) + EPS;
+                    const auto ca = cos(angle/2);
+                    const auto sa = sin(angle/2);
+                    const auto dqw = ca;
+                    const auto dqx = sa*dtwx/angle;
+                    const auto dqy = sa*dtwy/angle;
+                    const auto dqz = sa*dtwz/angle;
 
-            // rotate the quad's attitude by the delta quaternion vector computed above
+                    // rotate the quad's attitude by the delta quaternion
+                    // vector computed above
 
-            const auto tmpq0 = rotateQuat(
-                    dqw*_qw - dqx*_qx - dqy*_qy - dqz*_qz, QW_INIT, isFlying);
+                    const auto tmpq0 = rotateQuat(
+                            dqw*_qw - dqx*_qx - dqy*_qy - dqz*_qz, QW_INIT, isFlying);
 
-            const auto tmpq1 = rotateQuat(
-                    dqx*_qw + dqw*_qx + dqz*_qy - dqy*_qz, QX_INIT, isFlying);
+                    const auto tmpq1 = rotateQuat(
+                            dqx*_qw + dqw*_qx + dqz*_qy - dqy*_qz, QX_INIT, isFlying);
 
-            const auto tmpq2 = rotateQuat(
-                    dqy*_qw - dqz*_qx + dqw*_qy + dqx*_qz, QY_INIT, isFlying);
+                    const auto tmpq2 = rotateQuat(
+                            dqy*_qw - dqz*_qx + dqw*_qy + dqx*_qz, QY_INIT, isFlying);
 
-            const auto tmpq3 = rotateQuat(
-                    dqz*_qw + dqy*_qx - dqx*_qy + dqw*_qz, QZ_INIT, isFlying);
+                    const auto tmpq3 = rotateQuat(
+                            dqz*_qw + dqy*_qx - dqx*_qy + dqw*_qz, QZ_INIT, isFlying);
 
-            // normalize and store the result
-            const auto norm = 
-                sqrt(tmpq0*tmpq0 + tmpq1*tmpq1 + tmpq2*tmpq2 + tmpq3*tmpq3) + 
-                EPS;
+                    // normalize and store the result
+                    const auto norm = 
+                        sqrt(tmpq0*tmpq0 + tmpq1*tmpq1 + tmpq2*tmpq2 + tmpq3*tmpq3) + 
+                        EPS;
 
-            // ====== COVARIANCE UPDATE ======
+                    // ====== COVARIANCE UPDATE ======
 
-            float At[KC_STATE_DIM][KC_STATE_DIM] = {};
-            transpose(A, At);     // A'
-            float AP[KC_STATE_DIM][KC_STATE_DIM] = {};
-            multiply(A, _p, AP);  // AP
-            multiply(AP, At, _p, shouldPredict); // APA'
+                    float At[KC_STATE_DIM][KC_STATE_DIM] = {};
+                    transpose(A, At);     // A'
+                    float AP[KC_STATE_DIM][KC_STATE_DIM] = {};
+                    multiply(A, _p, AP);  // AP
+                    multiply(AP, At, _p, shouldPredict); // APA'
 
-            // Process noise is added after the return from the prediction step
+                    // Process noise is added after the return from the prediction step
 
-            // ====== PREDICTION STEP ======
-            // The prediction depends on whether we're on the ground, or in flight.
-            // When flying, the accelerometer directly measures thrust (hence is useless
-            // to estimate body angle while flying)
+                    // ====== PREDICTION STEP ======
+                    // The prediction depends on whether we're on the ground, or in flight.
+                    // When flying, the accelerometer directly measures thrust
+                    // (hence is useless to estimate body angle while flying)
 
-            _qw = shouldPredict ? tmpq0/norm : _qw;
-            _qx = shouldPredict ? tmpq1/norm : _qx; 
-            _qy = shouldPredict ? tmpq2/norm : _qy; 
-            _qz = shouldPredict ? tmpq3/norm : _qz;
+                    _qw = shouldPredict ? tmpq0/norm : _qw;
+                    _qx = shouldPredict ? tmpq1/norm : _qx; 
+                    _qy = shouldPredict ? tmpq2/norm : _qy; 
+                    _qz = shouldPredict ? tmpq3/norm : _qz;
 
-            _isUpdated = shouldPredict ? true : _isUpdated;
+                    _isUpdated = shouldPredict ? true : _isUpdated;
 
-            _lastPredictionMsec = shouldPredict ? stream_now_msec : _lastPredictionMsec;
+                    _lastPredictionMsec = shouldPredict ? 
+                        stream_now_msec : 
+                        _lastPredictionMsec;
 
-            static uint32_t _lastUpdateMsec;
+                    static uint32_t _lastUpdateMsec;
 
-            _lastUpdateMsec = _lastUpdateMsec == 0 ?
-                stream_now_msec :
-                _lastUpdateMsec;
+                    _lastUpdateMsec = _lastUpdateMsec == 0 ?
+                        stream_now_msec :
+                        _lastUpdateMsec;
 
-            const auto dt1 = (stream_now_msec - _lastUpdateMsec) / 1000.0f;
+                    const auto dt1 = (stream_now_msec - _lastUpdateMsec) / 1000.0f;
 
-            const auto isDtPositive = dt1 > 0;
+                    const auto isDtPositive = dt1 > 0;
 
-            _p[KC_STATE_E0][KC_STATE_E0] += isDtPositive ?
-                square(MEAS_NOISE_GYRO_ROLL_PITCH * dt1 + PROC_NOISE_ATT) : 0;
+                    _p[KC_STATE_E0][KC_STATE_E0] += isDtPositive ?
+                        square(MEAS_NOISE_GYRO_ROLL_PITCH * dt1 + PROC_NOISE_ATT) : 0;
 
-            _p[KC_STATE_E1][KC_STATE_E1] += isDtPositive ?
-                square(MEAS_NOISE_GYRO_ROLL_PITCH * dt1 + PROC_NOISE_ATT) : 0;
+                    _p[KC_STATE_E1][KC_STATE_E1] += isDtPositive ?
+                        square(MEAS_NOISE_GYRO_ROLL_PITCH * dt1 + PROC_NOISE_ATT) : 0;
 
-            _p[KC_STATE_E2][KC_STATE_E2] += isDtPositive ?
-                square(MEAS_NOISE_GYRO_ROLL_YAW * dt1 + PROC_NOISE_ATT) : 0;
+                    _p[KC_STATE_E2][KC_STATE_E2] += isDtPositive ?
+                        square(MEAS_NOISE_GYRO_ROLL_YAW * dt1 + PROC_NOISE_ATT) : 0;
 
-            updateCovarianceMatrix(isDtPositive);
+                    updateCovarianceMatrix(isDtPositive);
 
-            _lastUpdateMsec = isDtPositive ?  
-                stream_now_msec : 
-                _lastUpdateMsec;
+                    _lastUpdateMsec = isDtPositive ?  
+                        stream_now_msec : 
+                        _lastUpdateMsec;
 
-            _nextPredictionMsec = stream_now_msec >= _nextPredictionMsec ?
-                stream_now_msec + PREDICTION_UPDATE_INTERVAL_MS :
-                _nextPredictionMsec;
+                    _nextPredictionMsec = stream_now_msec >= _nextPredictionMsec ?
+                        stream_now_msec + PREDICTION_UPDATE_INTERVAL_MS :
+                        _nextPredictionMsec;
 
-            extern float stream_accel_x, stream_accel_y, stream_accel_z;
+                    extern float stream_gyro_x, stream_gyro_y, stream_gyro_z;
 
-            const auto raw_accel = 
-                axis3_t {stream_accel_x, stream_accel_y, stream_accel_z};
+                    subsamplerAccumulate(
+                            stream_gyro_x,
+                            stream_gyro_y,
+                            stream_gyro_z,
+                            _gyro_sum_x,
+                            _gyro_sum_y,
+                            _gyro_sum_z,
+                            _gyro_count);
 
-            subsamplerAccumulate(raw_accel, _accelSubsampler);
-        
-            extern float stream_gyro_x, stream_gyro_y, stream_gyro_z;
+                    extern float stream_accel_x, stream_accel_y, stream_accel_z;
 
-            const auto raw_gyro = 
-                axis3_t {stream_gyro_x, stream_gyro_y, stream_gyro_z};
+                    subsamplerAccumulate(
+                            stream_accel_x,
+                            stream_accel_y,
+                            stream_accel_z,
+                            _accel_sum_x,
+                            _accel_sum_y,
+                            _accel_sum_z,
+                            _accel_count);
 
-            subsamplerAccumulate(raw_gyro, _gyroSubsampler);
+                    _gyroLatest.x = stream_gyro_x;
+                    _gyroLatest.y = stream_gyro_y;
+                    _gyroLatest.z = stream_gyro_z;
 
-            _gyroLatest.x = raw_gyro.x;
-            _gyroLatest.y = raw_gyro.y;
-            _gyroLatest.z = raw_gyro.z;
-        
-            // Only finalize if data is updated
-            if (_isUpdated) {
-                doFinalize(
-                        _isUpdated, 
-                        _e0, _e1, _e2,
-                        _qw, _qx, _qy, _qz, 
-                        _r20, _r21, _r22);
-            }
-        }
+                    // Only finalize if data is updated
+                    if (_isUpdated) {
+                        doFinalize(
+                                _isUpdated, 
+                                _e0, _e1, _e2,
+                                _qw, _qx, _qy, _qz, 
+                                _r20, _r21, _r22);
+                    }
+                }
 
         //////////////////////////////////////////////////////////////////////////
 
@@ -491,46 +525,55 @@ class Ekf {
                 (isFlying ? 0 : ROLLPITCH_ZERO_REVERSION * initVal);
         }
 
-        static void subsamplerInit(axisSubsampler_t* subSampler)
-        { 
-            memset(subSampler, 0, sizeof(axisSubsampler_t));
-        }
-
         static void subsamplerAccumulate(
-                const axis3_t & sample, 
-                axisSubsampler_t & subSampler)
-        {
-            subSampler.sum.x += sample.x;
-            subSampler.sum.y += sample.y;
-            subSampler.sum.z += sample.z;
+                const float x,
+                const float y,
+                const float z,
+                float & _sum_x,
+                float & _sum_y,
+                float & _sum_z,
+                uint32_t & _count)
+         {
+            _sum_x += x;
+            _sum_y += y;
+            _sum_z += z;
 
-            subSampler.count++;
+            _count++;
         }
 
         static void subsamplerFinalize(
                 const bool shouldPredict, 
                 const float conversionFactor,
-                axisSubsampler_t & subSampler)
+                float & sum_x,
+                float & sum_y,
+                float & sum_z,
+                float & sample_x,
+                float & sample_y,
+                float & sample_z,
+                uint32_t & count)
+ 
         {
-            const auto count  = subSampler.count; 
             const auto isCountNonzero = count > 0;
+
             const auto shouldFinalize = shouldPredict && isCountNonzero;
 
-            subSampler.subSample.x = shouldFinalize ? 
-                subSampler.sum.x * conversionFactor / count :
-                subSampler.subSample.x;
+            sample_x = shouldFinalize ? 
+                sum_x * conversionFactor / count :
+                sample_x;
 
-            subSampler.subSample.y = shouldFinalize ?
-                subSampler.sum.y * conversionFactor / count :
-                subSampler.subSample.y;
+            sample_y = shouldFinalize ?
+                sum_y * conversionFactor / count :
+                sample_y;
 
-            subSampler.subSample.z = shouldFinalize ?
-                subSampler.sum.z * conversionFactor / count :
-                subSampler.subSample.z;
+            sample_z = shouldFinalize ?
+                sum_z * conversionFactor / count :
+                sample_z;
 
-            // Reset
-            subSampler.sum = {0, 0, 0};
-            subSampler.count = 0;
+            sum_x = 0;
+            sum_y = 0;
+            sum_z = 0;
+
+            count = 0;
         }
 
         void updateCovarianceMatrix(const bool shouldUpdate)
