@@ -26,6 +26,7 @@ import Language.Copilot
 import Copilot.Compile.C99
 
 import Demands
+import Ekf
 import Mixers
 import Motors
 import Utils

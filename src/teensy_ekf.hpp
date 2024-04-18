@@ -146,10 +146,12 @@ class Ekf {
 			_qy = !_didInit ? QY_INIT : _qy;
 			_qz = !_didInit ? QZ_INIT : _qz;
 
-			// Set the initial rotation matrix to the identity. This only affects
-			// the first prediction step, since in the finalization, after shifting
-			// attitude errors into the attitude state, the rotation matrix is updated.
-			_r20 = !_didInit ? 0 : _r20;
+            // Set the initial rotation matrix to the identity. This only
+            // affects the first prediction step, since in the finalization,
+            // after shifting attitude errors into the attitude state, the
+            // rotation matrix is updated.
+
+            _r20 = !_didInit ? 0 : _r20;
 			_r21 = !_didInit ? 0 : _r21;
 			_r22 = !_didInit ? 1 : _r22;
 
@@ -157,17 +159,29 @@ class Ekf {
 			_e1 = !_didInit ? 0 : _e1;
 			_e2 = !_didInit ? 0 : _e2;
 
-			_p[0][0] = !_didInit ? square(STDEV_INITIAL_ATTITUDE_ROLL_PITCH) : _p[0][0];
+			_p[0][0] = !_didInit ? 
+                square(STDEV_INITIAL_ATTITUDE_ROLL_PITCH) : 
+                _p[0][0];
+
 			_p[0][1] = !_didInit ? 0 : _p[0][1];
+
 			_p[0][2] = !_didInit ? 0 : _p[0][2];
 
 			_p[1][0] = !_didInit ? 0 : _p[1][0];
-			_p[1][1] = !_didInit ? square(STDEV_INITIAL_ATTITUDE_ROLL_PITCH) : _p[1][1];
+
+			_p[1][1] = !_didInit ? 
+                square(STDEV_INITIAL_ATTITUDE_ROLL_PITCH) : 
+                _p[1][1];
+
 			_p[1][2] = !_didInit ? 0 : _p[1][2];
 
 			_p[2][0] = !_didInit ? 0 : _p[2][0];
+
 			_p[2][1] = !_didInit ? 0 : _p[2][1];
-			_p[2][2] = !_didInit ? square(STDEV_INITIAL_ATTITUDE_YAW) : _p[2][2];
+
+			_p[2][2] = !_didInit ? 
+                square(STDEV_INITIAL_ATTITUDE_YAW) : 
+                _p[2][2];
 
 			_didInit = true;
 
