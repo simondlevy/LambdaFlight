@@ -43,12 +43,18 @@ class Ekf {
 
         void step(vehicleState_t & vehicleState)
         {
+
+            static float _qw;
+            static float _qx;
+            static float _qy;
+            static float _qz;
+
             if (!_didInit) {
-                step_init();
+                step_init(_qw, _qx, _qy, _qz);
             }
             else {
 
-                step_normal();
+                step_normal(_qw, _qx, _qy, _qz);
 
                 vehicleState.phi = RADIANS_TO_DEGREES * atan2((2 * (_qy*_qz + _qw*_qx)),
                         (_qw*_qw - _qx*_qx - _qy*_qy + _qz*_qz));
@@ -72,9 +78,46 @@ class Ekf {
 
     private:
 
+       /**
+         * Vehicle State
+         *
+         * The internally-estimated state is:
+         * - Z: the quad's altitude
+         * - DX, DY, DZ: the quad's velocity in its body frame
+         * - E0, E1, E2: attitude error
+         *
+         * For more information, refer to the paper
+         */         
+        typedef struct {
+
+            float e0;
+            float e1;
+            float e2;
+
+        } ekfState_t;
+
+        // Indexes to access the state
+        enum {
+
+            KC_STATE_E0,
+            KC_STATE_E1,
+            KC_STATE_E2,
+            KC_STATE_DIM
+
+        };
+
+        typedef struct {
+            Axis3f sum;
+            uint32_t count;
+            float conversionFactor;
+
+            Axis3f subSample;
+        } Axis3fSubSampler_t;
+
+
         bool _didInit;
 
-        void step_init(void)
+        void step_init(float & _qw, float & _qx, float & _qy, float & _qz)
         {
             extern uint32_t stream_now_msec;
 
@@ -112,7 +155,7 @@ class Ekf {
             _lastProcessNoiseUpdateMs = stream_now_msec;
         }
 
-        void step_normal(void) 
+        void step_normal(float & _qw, float & _qx, float & _qy, float & _qz)
         {
             extern uint32_t stream_now_msec;
 
@@ -256,53 +299,9 @@ class Ekf {
         
             // Only finalize if data is updated
             if (_isUpdated) {
-                doFinalize();
+                doFinalize(_qw, _qx, _qy, _qz);
             }
         }
-
-        // The quad's attitude as a quaternion (w,x,y,z) We store as a quaternion
-        // to allow easy normalization (in comparison to a rotation matrix),
-        // while also being robust against singularities (in comparison to euler angles)
-        float _qw;
-        float _qx;
-        float _qy;
-        float _qz;
-
-       /**
-         * Vehicle State
-         *
-         * The internally-estimated state is:
-         * - Z: the quad's altitude
-         * - DX, DY, DZ: the quad's velocity in its body frame
-         * - E0, E1, E2: attitude error
-         *
-         * For more information, refer to the paper
-         */         
-        typedef struct {
-
-            float e0;
-            float e1;
-            float e2;
-
-        } ekfState_t;
-
-        // Indexes to access the state
-        enum {
-
-            KC_STATE_E0,
-            KC_STATE_E1,
-            KC_STATE_E2,
-            KC_STATE_DIM
-
-        };
-
-        typedef struct {
-            Axis3f sum;
-            uint32_t count;
-            float conversionFactor;
-
-            Axis3f subSample;
-        } Axis3fSubSampler_t;
 
         //////////////////////////////////////////////////////////////////////////
 
@@ -331,7 +330,7 @@ class Ekf {
 
         //////////////////////////////////////////////////////////////////////////
 
-        void doFinalize(void)
+        void doFinalize(float & _qw, float & _qx, float & _qy, float & _qz)
         {
             // Incorporate the attitude error (Kalman filter state) with the attitude
             const auto v0 = _ekfState.e0;
