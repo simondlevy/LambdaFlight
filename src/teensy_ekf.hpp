@@ -410,18 +410,18 @@ class Ekf {
                     // Only finalize if data is updated
                     if (_isUpdated) {
                         doFinalize(
-                                _isUpdated, 
                                 p_out,
                                 _e0, _e1, _e2,
                                 _qw, _qx, _qy, _qz, 
                                 _r20, _r21, _r22);
+
+                        _isUpdated = false;
                     }
                 }
 
         //////////////////////////////////////////////////////////////////////////
 
         static void doFinalize(
-                bool & _isUpdated,
                 float _p[3][3],
                 float & _e0, float & _e1, float & _e2,
                 float & _qw, float & _qx, float & _qy, float & _qz,
@@ -526,7 +526,6 @@ class Ekf {
 
             updateCovarianceMatrix(_p, true, _p);
 
-            _isUpdated = false;
 
         } // doFinalize
 
