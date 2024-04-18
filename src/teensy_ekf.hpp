@@ -434,31 +434,30 @@ class Ekf {
 
                         const auto shouldFinalize = _isUpdated && isErrorSufficient;
 
+			if (shouldFinalize) {
+				memcpy(_p, newAPA, 3*3*sizeof(float));
+			}
+
+			if (_isUpdated) {
+
+				updateCovarianceMatrix(_p, true, _p);
+			}
+
 			_qw = shouldFinalize ? newtmpq0 / newnorm : _qw;
 			_qx = shouldFinalize ? newtmpq1 / newnorm : _qx;
 			_qy = shouldFinalize ? newtmpq2 / newnorm : _qy;
 			_qz = shouldFinalize ? newtmpq3 / newnorm : _qz;
 
-			if (shouldFinalize) {
-				memcpy(_p, newAPA, 3*3*sizeof(float));
-			}
+			// Convert the new attitude to a rotation matrix, such that we can
+			// rotate body-frame velocity and acc
+			_r20 = _isUpdated ?  2 * _qx * _qz - 2 * _qw * _qy : _r20;
+			_r21 = _isUpdated ?  2 * _qy * _qz + 2 * _qw * _qx : _r21;
+			_r22 = _isUpdated ?  _qw * _qw - _qx * _qx - _qy * _qy + _qz * _qz : _r22;
 
-			// Only finalize if data is updated
-			if (_isUpdated) {
-
-				// Convert the new attitude to a rotation matrix, such that we can
-				// rotate body-frame velocity and acc
-				_r20 = 2 * _qx * _qz - 2 * _qw * _qy;
-				_r21 = 2 * _qy * _qz + 2 * _qw * _qx;
-				_r22 = _qw * _qw - _qx * _qx - _qy * _qy + _qz * _qz;
-
-				// Reset the attitude error
-				_e0 = 0;
-				_e1 = 0;
-				_e2 = 0;
-
-				updateCovarianceMatrix(_p, true, _p);
-			}
+			// Reset the attitude error
+			_e0 = _isUpdated ?  0 : _e0;
+			_e1 = _isUpdated ?  0 : _e1;
+			_e2 = _isUpdated ?  0 : _e2;
 
 			_isUpdated = false;
 
