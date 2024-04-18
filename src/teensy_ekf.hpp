@@ -44,6 +44,10 @@ class Ekf {
         void step(vehicleState_t & vehicleState)
         {
 
+            // Tracks whether an update to the state has been made, and the state
+            // therefore requires finalization
+            static bool _isUpdated;
+
             // Quaternion
             static float _qw;
             static float _qx;
@@ -55,6 +59,8 @@ class Ekf {
             static float _r20;
             static float _r21;
             static float _r22;
+
+            _isUpdated = !_didInit ? false : _isUpdated;
 
             _qw = !_didInit ? QW_INIT : _qw;
             _qx = !_didInit ? QX_INIT : _qx;
@@ -73,7 +79,7 @@ class Ekf {
             }
             else {
 
-                step_normal(_qw, _qx, _qy, _qz, _r20, _r21, _r22);
+                step_normal(_isUpdated, _qw, _qx, _qy, _qz, _r20, _r21, _r22);
 
                 vehicleState.phi = RADIANS_TO_DEGREES * atan2((2 * (_qy*_qz + _qw*_qx)),
                         (_qw*_qw - _qx*_qx - _qy*_qy + _qz*_qz));
@@ -157,12 +163,12 @@ class Ekf {
             _Pmat[KC_STATE_E1][KC_STATE_E1] = square(STDEV_INITIAL_ATTITUDE_ROLL_PITCH);
             _Pmat[KC_STATE_E2][KC_STATE_E2] = square(STDEV_INITIAL_ATTITUDE_YAW);
 
-            _isUpdated = false;
             _lastPredictionMs = stream_now_msec;
             _lastProcessNoiseUpdateMs = stream_now_msec;
         }
 
         void step_normal(
+                bool & _isUpdated,
                 float & _qw, float & _qx, float & _qy, float & _qz,
                 float & _r20, float & _r21, float & _r22)
 
@@ -309,7 +315,7 @@ class Ekf {
         
             // Only finalize if data is updated
             if (_isUpdated) {
-                doFinalize(_qw, _qx, _qy, _qz, _r20, _r21, _r22);
+                doFinalize(_isUpdated, _qw, _qx, _qy, _qz, _r20, _r21, _r22);
             }
         }
 
@@ -329,16 +335,13 @@ class Ekf {
         // The covariance matrix
         float _Pmat[KC_STATE_DIM][KC_STATE_DIM];
 
-        // Tracks whether an update to the state has been made, and the state
-        // therefore requires finalization
-        bool _isUpdated;
-
         uint32_t _lastPredictionMs;
         uint32_t _lastProcessNoiseUpdateMs;
 
         //////////////////////////////////////////////////////////////////////////
 
         void doFinalize(
+                bool & _isUpdated,
                 float & _qw, float & _qx, float & _qy, float & _qz,
                 float & _r20, float & _r21, float & _r22)
         {
