@@ -337,10 +337,6 @@ class Ekf {
                     float APA[3][3] = {};
                     multiply(AP, At, APA); // APA'
 
-                    if (shouldPredict) {
-                        memcpy(p_out, APA, 3*3*sizeof(float));
-                    }
-
                     // Process noise is added after the return from the prediction step
 
                     // ====== PREDICTION STEP ======
@@ -368,6 +364,16 @@ class Ekf {
                     const auto dt1 = (stream_now_msec - _lastUpdateMsec) / 1000.0f;
 
                     const auto isDtPositive = dt1 > 0;
+
+                    p_out[0][0] = shouldPredict ? APA[0][0] : p_in[0][0];
+                    p_out[0][1] = shouldPredict ? APA[0][1] : p_in[0][1];
+                    p_out[0][2] = shouldPredict ? APA[0][2] : p_in[0][2];
+                    p_out[1][0] = shouldPredict ? APA[1][0] : p_in[1][0];
+                    p_out[1][1] = shouldPredict ? APA[1][1] : p_in[1][1];
+                    p_out[1][2] = shouldPredict ? APA[1][2] : p_in[1][2];
+                    p_out[2][0] = shouldPredict ? APA[2][0] : p_in[2][0];
+                    p_out[2][1] = shouldPredict ? APA[2][1] : p_in[2][1];
+                    p_out[2][2] = shouldPredict ? APA[2][2] : p_in[2][2];
 
                     p_out[0][0] += isDtPositive ?
                         square(MEAS_NOISE_GYRO_ROLL_PITCH * dt1 + PROC_NOISE_ATT) : 0;
