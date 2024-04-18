@@ -387,7 +387,7 @@ class Ekf {
                     _p[2][2] += isDtPositive ?
                         square(MEAS_NOISE_GYRO_ROLL_YAW * dt1 + PROC_NOISE_ATT) : 0;
 
-                    updateCovarianceMatrix(isDtPositive, _p);
+                    updateCovarianceMatrix(_p, isDtPositive, _p);
 
                     _lastUpdateMsec = isDtPositive ?  
                         stream_now_msec : 
@@ -539,7 +539,7 @@ class Ekf {
             _e1 = 0;
             _e2 = 0;
 
-            updateCovarianceMatrix(true, _p);
+            updateCovarianceMatrix(_p, true, _p);
 
             _isUpdated = false;
 
@@ -607,14 +607,16 @@ class Ekf {
             count = 0;
         }
 
-        static void updateCovarianceMatrix(const bool shouldUpdate, 
+        static void updateCovarianceMatrix(
+                const float p_in[3][3],
+                const bool shouldUpdate, 
                 float _p[3][3])
         {
             // Enforce symmetry of the covariance matrix, and ensure the
             // values stay bounded
             for (int i=0; i<3; i++) {
                 for (int j=i; j<3; j++) {
-                    updateCovarianceCell(_p, i, j, 0, shouldUpdate, _p);
+                    updateCovarianceCell(p_in, i, j, 0, shouldUpdate, _p);
                 }
             }
         }
