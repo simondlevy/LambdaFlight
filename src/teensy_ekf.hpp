@@ -135,6 +135,20 @@ class Ekf {
             axis3_t subSample;
         } axis3_tSubSampler_t;
 
+        //////////////////////////////////////////////////////////////////////////
+
+        axis3_t _gyroLatest;
+
+        axis3_tSubSampler_t _accSubSampler;
+        axis3_tSubSampler_t _gyroSubSampler;
+
+        // The covariance matrix
+        float _Pmat[KC_STATE_DIM][KC_STATE_DIM];
+
+        uint32_t _lastProcessNoiseUpdateMsec;
+
+        //////////////////////////////////////////////////////////////////////////
+
         void step_init(void)
         {
             extern uint32_t stream_now_msec;
@@ -155,8 +169,7 @@ class Ekf {
             _Pmat[KC_STATE_E1][KC_STATE_E1] = square(STDEV_INITIAL_ATTITUDE_ROLL_PITCH);
             _Pmat[KC_STATE_E2][KC_STATE_E2] = square(STDEV_INITIAL_ATTITUDE_YAW);
 
-            _lastPredictionMs = stream_now_msec;
-            _lastProcessNoiseUpdateMs = stream_now_msec;
+            _lastProcessNoiseUpdateMsec = stream_now_msec;
         }
 
         void step_normal(
@@ -170,19 +183,25 @@ class Ekf {
 
             const auto isFlying = true; // XXX
 
-            static float _nextPredictionMsec;
+            static float _nextPredictionMsecec;
 
-            const auto shouldPredict = stream_now_msec >= _nextPredictionMsec;
+            static uint32_t _lastPredictionMsec;
 
-            _nextPredictionMsec = 
-                _nextPredictionMsec == 0 ? stream_now_msec : _nextPredictionMsec;
+            const auto shouldPredict = stream_now_msec >= _nextPredictionMsecec;
+
+            _lastPredictionMsec = _lastPredictionMsec == 0 ? 
+                stream_now_msec :
+                _lastPredictionMsec;
+
+            _nextPredictionMsecec = 
+                _nextPredictionMsecec == 0 ? stream_now_msec : _nextPredictionMsecec;
 
             axis3fSubSamplerFinalize(&_accSubSampler, shouldPredict);
 
             axis3fSubSamplerFinalize(&_gyroSubSampler, shouldPredict);
 
             const axis3_t * gyro = &_gyroSubSampler.subSample; 
-            const float dt = (stream_now_msec - _lastPredictionMs) / 1000.0f;
+            const float dt = (stream_now_msec - _lastPredictionMsec) / 1000.0f;
 
             const auto e0 = gyro->x*dt/2;
             const auto e1 = gyro->y*dt/2;
@@ -265,9 +284,9 @@ class Ekf {
 
             _isUpdated = shouldPredict ? true : _isUpdated;
 
-            _lastPredictionMs = shouldPredict ? stream_now_msec : _lastPredictionMs;
+            _lastPredictionMsec = shouldPredict ? stream_now_msec : _lastPredictionMsec;
 
-            const auto dt1 = (stream_now_msec - _lastProcessNoiseUpdateMs) / 1000.0f;
+            const auto dt1 = (stream_now_msec - _lastProcessNoiseUpdateMsec) / 1000.0f;
 
             const auto isDtPositive = dt1 > 0;
 
@@ -282,13 +301,13 @@ class Ekf {
 
             updateCovarianceMatrix(isDtPositive);
 
-            _lastProcessNoiseUpdateMs = isDtPositive ?  
+            _lastProcessNoiseUpdateMsec = isDtPositive ?  
                 stream_now_msec : 
-                _lastProcessNoiseUpdateMs;
+                _lastProcessNoiseUpdateMsec;
 
-            _nextPredictionMsec = stream_now_msec >= _nextPredictionMsec ?
+            _nextPredictionMsecec = stream_now_msec >= _nextPredictionMsecec ?
                 stream_now_msec + PREDICTION_UPDATE_INTERVAL_MS :
-                _nextPredictionMsec;
+                _nextPredictionMsecec;
 
             extern float stream_accel_x, stream_accel_y, stream_accel_z;
 
@@ -315,19 +334,6 @@ class Ekf {
                         _r20, _r21, _r22);
             }
         }
-
-        //////////////////////////////////////////////////////////////////////////
-
-        axis3_t _gyroLatest;
-
-        axis3_tSubSampler_t _accSubSampler;
-        axis3_tSubSampler_t _gyroSubSampler;
-
-        // The covariance matrix
-        float _Pmat[KC_STATE_DIM][KC_STATE_DIM];
-
-        uint32_t _lastPredictionMs;
-        uint32_t _lastProcessNoiseUpdateMs;
 
         //////////////////////////////////////////////////////////////////////////
 
@@ -488,8 +494,8 @@ class Ekf {
                 subSampler->subSample.z;
 
             // Reset
+            subSampler->sum = {0, 0, 0};
             subSampler->count = 0;
-            subSampler->sum = (axis3_t){.axis={0}};
 
             return &subSampler->subSample;
         }
