@@ -614,7 +614,7 @@ class Ekf {
             // values stay bounded
             for (int i=0; i<3; i++) {
                 for (int j=i; j<3; j++) {
-                    updateCovarianceCell(i, j, 0, shouldUpdate, _p);
+                    updateCovarianceCell(_p, i, j, 0, shouldUpdate, _p);
                 }
             }
         }
@@ -630,20 +630,21 @@ class Ekf {
         }
 
         static void updateCovarianceCell(
+                const float p_in[3][3],
                 const int i, 
                 const int j, 
                 const float variance,
                 const bool shouldUpdate,
-                float _p[3][3])
+                float p_out[3][3])
         {
-            const auto p = (_p[i][j] + _p[j][i]) / 2 + variance;
+            const auto pval = (p_in[i][j] + p_in[j][i]) / 2 + variance;
 
-            _p[i][j] = !shouldUpdate ? _p[i][j] :
-                (isnan(p) || p > MAX_COVARIANCE) ?  MAX_COVARIANCE :
-                (i==j && p < MIN_COVARIANCE) ?  MIN_COVARIANCE :
-                p;
+            p_out[i][j] = !shouldUpdate ? p_in[i][j] :
+                (isnan(pval) || pval > MAX_COVARIANCE) ?  MAX_COVARIANCE :
+                (i==j && pval < MIN_COVARIANCE) ?  MIN_COVARIANCE :
+                pval;
 
-            _p[j][i] = shouldUpdate ? _p[i][j] : _p[j][i];
+            p_out[j][i] = shouldUpdate ? p_out[i][j] : p_in[j][i];
         }
 
         static float max(const float val, const float maxval)
