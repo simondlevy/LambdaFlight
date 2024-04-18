@@ -432,13 +432,15 @@ class Ekf {
 			float newAPA[3][3] = {};
 			multiply(newAP, newAt, newAPA); // APA'
 
+                        const auto shouldFinalize = _isUpdated && isErrorSufficient;
+
+			_qw = shouldFinalize ? newtmpq0 / newnorm : _qw;
+			_qx = shouldFinalize ? newtmpq1 / newnorm : _qx;
+			_qy = shouldFinalize ? newtmpq2 / newnorm : _qy;
+			_qz = shouldFinalize ? newtmpq3 / newnorm : _qz;
+
 			// Only finalize if data is updated
 			if (_isUpdated) {
-
-				_qw = isErrorSufficient ? newtmpq0 / newnorm : _qw;
-				_qx = isErrorSufficient ? newtmpq1 / newnorm : _qx;
-				_qy = isErrorSufficient ? newtmpq2 / newnorm : _qy;
-				_qz = isErrorSufficient ? newtmpq3 / newnorm : _qz;
 
 				if (isErrorSufficient) {
 					memcpy(_p, newAPA, 3*3*sizeof(float));
