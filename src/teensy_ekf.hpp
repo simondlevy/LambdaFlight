@@ -49,8 +49,13 @@ class Ekf {
             static float _qy;
             static float _qz;
 
+            _qw = !_didInit ? QW_INIT : _qw;
+            _qx = !_didInit ? QX_INIT : _qx;
+            _qy = !_didInit ? QY_INIT : _qy;
+            _qz = !_didInit ? QZ_INIT : _qz;
+
             if (!_didInit) {
-                step_init(_qw, _qx, _qy, _qz);
+                step_init();
             }
             else {
 
@@ -117,7 +122,7 @@ class Ekf {
 
         bool _didInit;
 
-        void step_init(float & _qw, float & _qx, float & _qy, float & _qz)
+        void step_init(void)
         {
             extern uint32_t stream_now_msec;
 
@@ -128,11 +133,6 @@ class Ekf {
 
             memset(&_ekfState, 0, sizeof(_ekfState));
             memset(_Pmat, 0, sizeof(_Pmat));
-
-            _qw = QW_INIT;
-            _qx = QX_INIT;
-            _qy = QY_INIT;
-            _qz = QZ_INIT;
 
             // set the initial rotation matrix to the identity. This only affects
             // the first prediction step, since in the finalization, after shifting
