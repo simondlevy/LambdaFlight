@@ -127,7 +127,6 @@ class Ekf {
             _e1 = !_didInit ? 0 : _e1;
             _e2 = !_didInit ? 0 : _e2;
 
-
             _p[0][0] = !_didInit ? square(STDEV_INITIAL_ATTITUDE_ROLL_PITCH) : _p[0][0];
             _p[0][1] = !_didInit ? 0 : _p[0][1];
             _p[0][2] = !_didInit ? 0 : _p[0][2];
@@ -146,22 +145,12 @@ class Ekf {
                         _p,
                         _p,
                         _isUpdated, 
-                        _gyro_latest_x,
-                        _gyro_latest_y,
-                        _gyro_latest_z,
-                        _gyro_sum_x,
-                        _gyro_sum_y,
-                        _gyro_sum_z,
-                        _gyro_sample_x,
-                        _gyro_sample_y,
-                        _gyro_sample_z,
+                        _gyro_latest_x, _gyro_latest_y, _gyro_latest_z,
+                        _gyro_sum_x, _gyro_sum_y, _gyro_sum_z,
+                        _gyro_sample_x, _gyro_sample_y, _gyro_sample_z,
                         _gyro_count,
-                        _accel_sum_x,
-                        _accel_sum_y,
-                        _accel_sum_z,
-                        _accel_sample_x,
-                        _accel_sample_y,
-                        _accel_sample_z,
+                        _accel_sum_x, _accel_sum_y, _accel_sum_z,
+                        _accel_sample_x, _accel_sample_y, _accel_sample_z,
                         _accel_count,
                         _e0, _e1, _e2,
                         _qw, _qx, _qy, _qz, 
@@ -193,22 +182,12 @@ class Ekf {
                 const float p_in[3][3],
                 float p_out[3][3],
                 bool & _isUpdated,
-                float & _gyro_latest_x,
-                float & _gyro_latest_y,
-                float & _gyro_latest_z,
-                float & _gyro_sum_x,
-                float & _gyro_sum_y,
-                float & _gyro_sum_z,
-                float & _gyro_sample_x,
-                float & _gyro_sample_y,
-                float & _gyro_sample_z,
+                float & _gyro_latest_x, float & _gyro_latest_y, float & _gyro_latest_z,
+                float & _gyro_sum_x, float & _gyro_sum_y, float & _gyro_sum_z,
+                float & _gyro_sample_x, float & _gyro_sample_y, float & _gyro_sample_z,
                 uint32_t & _gyro_count,
-                float & _accel_sum_x,
-                float & _accel_sum_y,
-                float & _accel_sum_z,
-                float & _accel_sample_x,
-                float & _accel_sample_y,
-                float & _accel_sample_z,
+                float & _accel_sum_x, float & _accel_sum_y, float & _accel_sum_z,
+                float & _accel_sample_x, float & _accel_sample_y, float & _accel_sample_z,
                 uint32_t & _accel_count,
                 float & _e0, float & _e1, float & _e2,
                 float & _qw, float & _qx, float & _qy, float & _qz,
@@ -319,7 +298,12 @@ class Ekf {
                     transpose(A, At);     // A'
                     float AP[3][3] = {};
                     multiply(A, p_in, AP);  // AP
-                    multiply(AP, At, p_out, shouldPredict); // APA'
+                    float APA[3][3] = {};
+                    multiply(AP, At, APA); // APA'
+
+                    if (shouldPredict) {
+                        memcpy(p_out, APA, 3*3*sizeof(float));
+                    }
 
                     // Process noise is added after the return from the prediction step
 
