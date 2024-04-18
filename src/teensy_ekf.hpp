@@ -129,7 +129,18 @@ class Ekf {
             _e2 = !_didInit ? 0 : _e2;
 
             if (!_didInit) {
-                step_init();
+
+                // set covariances to zero (diagonals will be changed from
+                // zero in the next section)
+                memset(_p, 0, sizeof(_p));
+
+                // initialize state variances
+                _p[KC_STATE_E0][KC_STATE_E0] = 
+                    square(STDEV_INITIAL_ATTITUDE_ROLL_PITCH);
+                _p[KC_STATE_E1][KC_STATE_E1] = 
+                    square(STDEV_INITIAL_ATTITUDE_ROLL_PITCH);
+                _p[KC_STATE_E2][KC_STATE_E2] = 
+                    square(STDEV_INITIAL_ATTITUDE_YAW);
             }
             else {
 
@@ -181,21 +192,9 @@ class Ekf {
         } axisSubsampler_t;
 
         // The covariance matrix
-        float _Pmat[KC_STATE_DIM][KC_STATE_DIM];
+        float _p[KC_STATE_DIM][KC_STATE_DIM];
 
         //////////////////////////////////////////////////////////////////////////
-
-        void step_init(void)
-        {
-            // set covariances to zero (diagonals will be changed from
-            // zero in the next section)
-            memset(_Pmat, 0, sizeof(_Pmat));
-
-            // initialize state variances
-            _Pmat[KC_STATE_E0][KC_STATE_E0] = square(STDEV_INITIAL_ATTITUDE_ROLL_PITCH);
-            _Pmat[KC_STATE_E1][KC_STATE_E1] = square(STDEV_INITIAL_ATTITUDE_ROLL_PITCH);
-            _Pmat[KC_STATE_E2][KC_STATE_E2] = square(STDEV_INITIAL_ATTITUDE_YAW);
-        }
 
         void step_normal(
                 bool & _isUpdated,
@@ -295,8 +294,8 @@ class Ekf {
             float At[KC_STATE_DIM][KC_STATE_DIM] = {};
             transpose(A, At);     // A'
             float AP[KC_STATE_DIM][KC_STATE_DIM] = {};
-            multiply(A, _Pmat, AP);  // AP
-            multiply(AP, At, _Pmat, shouldPredict); // APA'
+            multiply(A, _p, AP);  // AP
+            multiply(AP, At, _p, shouldPredict); // APA'
 
             // Process noise is added after the return from the prediction step
 
@@ -324,13 +323,13 @@ class Ekf {
 
             const auto isDtPositive = dt1 > 0;
 
-            _Pmat[KC_STATE_E0][KC_STATE_E0] += isDtPositive ?
+            _p[KC_STATE_E0][KC_STATE_E0] += isDtPositive ?
                 square(MEAS_NOISE_GYRO_ROLL_PITCH * dt1 + PROC_NOISE_ATT) : 0;
 
-            _Pmat[KC_STATE_E1][KC_STATE_E1] += isDtPositive ?
+            _p[KC_STATE_E1][KC_STATE_E1] += isDtPositive ?
                 square(MEAS_NOISE_GYRO_ROLL_PITCH * dt1 + PROC_NOISE_ATT) : 0;
 
-            _Pmat[KC_STATE_E2][KC_STATE_E2] += isDtPositive ?
+            _p[KC_STATE_E2][KC_STATE_E2] += isDtPositive ?
                 square(MEAS_NOISE_GYRO_ROLL_YAW * dt1 + PROC_NOISE_ATT) : 0;
 
             updateCovarianceMatrix(isDtPositive);
@@ -449,7 +448,7 @@ class Ekf {
             transpose(A, At);     // A'
 
             float AP[KC_STATE_DIM][KC_STATE_DIM] = {};
-            multiply(A, _Pmat, AP);  // AP
+            multiply(A, _p, AP);  // AP
 
             const auto isErrorSufficient  = 
                 (isErrorLarge(v0) || isErrorLarge(v1) || isErrorLarge(v2)) &&
@@ -462,7 +461,7 @@ class Ekf {
 
             // Move attitude error into attitude if any of the angle errors are
             // large enough
-            multiply(AP, At, _Pmat, isErrorSufficient); // APA'
+            multiply(AP, At, _p, isErrorSufficient); // APA'
 
             // Convert the new attitude to a rotation matrix, such that we can
             // rotate body-frame velocity and acc
@@ -561,14 +560,14 @@ class Ekf {
                 const float variance,
                 const bool shouldUpdate)
         {
-            const auto p = (_Pmat[i][j] + _Pmat[j][i]) / 2 + variance;
+            const auto p = (_p[i][j] + _p[j][i]) / 2 + variance;
 
-            _Pmat[i][j] = !shouldUpdate ? _Pmat[i][j] :
+            _p[i][j] = !shouldUpdate ? _p[i][j] :
                 (isnan(p) || p > MAX_COVARIANCE) ?  MAX_COVARIANCE :
                 (i==j && p < MIN_COVARIANCE) ?  MIN_COVARIANCE :
                 p;
 
-            _Pmat[j][i] = shouldUpdate ? _Pmat[i][j] : _Pmat[j][i];
+            _p[j][i] = shouldUpdate ? _p[i][j] : _p[j][i];
         }
 
         static float max(const float val, const float maxval)
