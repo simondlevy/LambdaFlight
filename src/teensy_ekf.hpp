@@ -51,6 +51,16 @@ class Ekf {
             static bool _isUpdated;
 
             // Covariance matrix
+            static float _p00;
+            static float _p01;
+            static float _p02;
+            static float _p10;
+            static float _p11;
+            static float _p12;
+            static float _p20;
+            static float _p21;
+            static float _p22;
+
             static float _p[KC_STATE_DIM][KC_STATE_DIM];
 
             // Quaternion
@@ -127,6 +137,19 @@ class Ekf {
             _e0 = !_didInit ? 0 : _e0;
             _e1 = !_didInit ? 0 : _e1;
             _e2 = !_didInit ? 0 : _e2;
+
+
+            _p00 = !_didInit ? square(STDEV_INITIAL_ATTITUDE_ROLL_PITCH) : _p00;
+            _p01 = !_didInit ? 0 : _p01;
+            _p02 = !_didInit ? 0 : _p02;
+
+            _p10 = !_didInit ? 0 : _p10;
+            _p11 = !_didInit ? square(STDEV_INITIAL_ATTITUDE_ROLL_PITCH) : _p11;
+            _p12 = !_didInit ? 0 : _p12;
+
+            _p20 = !_didInit ? 0 : _p20;
+            _p21 = !_didInit ? 0 : _p21;
+            _p22 = !_didInit ? square(STDEV_INITIAL_ATTITUDE_YAW) : _p22;
 
             if (!_didInit) {
 
