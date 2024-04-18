@@ -82,7 +82,6 @@ class Ekf {
 
 		static void step(vehicleState_t & vehicleState)
 		{
-
 			static bool _didInit;
 
 			// Tracks whether an update to the state has been made, and the state
@@ -276,12 +275,14 @@ class Ekf {
 					_accel_sample_z,
 					_accel_count);
 
-			// Process noise is added after the return from the prediction step
+			// Process noise is added after the return from the
+			// prediction step
 
 			// ====== PREDICTION STEP ======
-			// The prediction depends on whether we're on the ground, or in flight.
-			// When flying, the accelerometer directly measures thrust
-			// (hence is useless to estimate body angle while flying)
+			// The prediction depends on whether we're on the
+			// ground, or in flight.  When flying, the
+			// accelerometer directly measures thrust (hence is
+			// useless to estimate body angle while flying)
 
 			_qw = shouldPredict ? tmpq0/norm : _qw;
 			_qx = shouldPredict ? tmpq1/norm : _qx; 
@@ -300,7 +301,8 @@ class Ekf {
 				stream_now_msec :
 				_lastUpdateMsec;
 
-			const auto dt1 = (stream_now_msec - _lastUpdateMsec) / 1000.0f;
+			const auto dt1 = 
+                          (stream_now_msec - _lastUpdateMsec) / 1000.0f;
 
 			const auto isDtPositive = dt1 > 0;
 
@@ -371,14 +373,19 @@ class Ekf {
 
 			// Rotate the quad's attitude by the delta quaternion vector
 			// computed above
-			const auto newtmpq0 = newdqw * _qw - newdqx * _qx - newdqy * _qy - newdqz * _qz;
-			const auto newtmpq1 = newdqx * _qw + newdqw * _qx + newdqz * _qy - newdqy * _qz;
-			const auto newtmpq2 = newdqy * _qw - newdqz * _qx + newdqw * _qy + newdqx * _qz;
-			const auto newtmpq3 = newdqz * _qw + newdqy * _qx - newdqx * _qy + newdqw * _qz;
+			const auto newtmpq0 = 
+                newdqw * _qw - newdqx * _qx - newdqy * _qy - newdqz * _qz;
+			const auto newtmpq1 = 
+                newdqx * _qw + newdqw * _qx + newdqz * _qy - newdqy * _qz;
+			const auto newtmpq2 = 
+                newdqy * _qw - newdqz * _qx + newdqw * _qy + newdqx * _qz;
+			const auto newtmpq3 = 
+                newdqz * _qw + newdqy * _qx - newdqx * _qy + newdqw * _qz;
 
 			// normalize and store the result
-			const auto newnorm = sqrt(newtmpq0 * newtmpq0 + newtmpq1 * newtmpq1 + newtmpq2 * newtmpq2 + 
-					newtmpq3 * newtmpq3) + EPS;
+			const auto newnorm = 
+                sqrt(newtmpq0 * newtmpq0 + newtmpq1 * newtmpq1 + 
+                        newtmpq2 * newtmpq2 + newtmpq3 * newtmpq3) + EPS;
 
 			// the attitude error vector (v0,v1,v2) is small,
 			// so we use a first order approximation to e0 = tan(|v0|/2)*v0/|v0|
@@ -392,11 +399,10 @@ class Ekf {
 			 * Sigma_post = exps(-d) Sigma_pre exps(-d)'
 			 *            ~ (I + [[-d]] + [[-d]]^2 / 2) 
 			 Sigma_pre (I + [[-d]] + [[-d]]^2 / 2)'
-			 * where d is the attitude error expressed as Rodriges parameters, ie. 
-			 d = tan(|v|/2)*v/|v|
-			 *
-			 * As derived in "Covariance Correction Step for Kalman Filtering with an 
-			 Attitude"
+             * where d is the attitude error expressed as Rodriges parameters,
+             * ie.  d = tan(|v|/2)*v/|v|
+             * As derived in "Covariance Correction Step for Kalman Filtering
+             * with an Attitude"
 			 * http://arc.aiaa.org/doi/abs/10.2514/1.G000848
 			 */
 
@@ -425,174 +431,183 @@ class Ekf {
 				/*E2*/  {newe2e0, newe2e1, newe2e2}
 			};
 
-			float newAt[3][3] = {};
-			transpose(newA, newAt);     // A'
-			float newAP[3][3] = {};
-			multiply(newA, _p, newAP);  // AP
-			float newAPA[3][3] = {};
-			multiply(newAP, newAt, newAPA); // APA'
+            float newAt[3][3] = {};
+            transpose(newA, newAt);     // A'
+            float newAP[3][3] = {};
+            multiply(newA, _p, newAP);  // AP
+            float newAPA[3][3] = {};
+            multiply(newAP, newAt, newAPA); // APA'
 
-                        const auto shouldFinalize = _isUpdated && isErrorSufficient;
+            const auto shouldFinalize = _isUpdated && isErrorSufficient;
 
-			if (shouldFinalize) {
-				memcpy(_p, newAPA, 3*3*sizeof(float));
-			}
+            if (shouldFinalize) {
+                memcpy(_p, newAPA, 3*3*sizeof(float));
+            }
 
-			if (_isUpdated) {
+            if (_isUpdated) {
 
-				updateCovarianceMatrix(_p, true, _p);
-			}
+                updateCovarianceMatrix(_p, true, _p);
+            }
 
-			_qw = shouldFinalize ? newtmpq0 / newnorm : _qw;
-			_qx = shouldFinalize ? newtmpq1 / newnorm : _qx;
-			_qy = shouldFinalize ? newtmpq2 / newnorm : _qy;
-			_qz = shouldFinalize ? newtmpq3 / newnorm : _qz;
+            _qw = shouldFinalize ? newtmpq0 / newnorm : _qw;
+            _qx = shouldFinalize ? newtmpq1 / newnorm : _qx;
+            _qy = shouldFinalize ? newtmpq2 / newnorm : _qy;
+            _qz = shouldFinalize ? newtmpq3 / newnorm : _qz;
 
-			// Convert the new attitude to a rotation matrix, such that we can
-			// rotate body-frame velocity and acc
-			_r20 = _isUpdated ?  2 * _qx * _qz - 2 * _qw * _qy : _r20;
-			_r21 = _isUpdated ?  2 * _qy * _qz + 2 * _qw * _qx : _r21;
-			_r22 = _isUpdated ?  _qw * _qw - _qx * _qx - _qy * _qy + _qz * _qz : _r22;
+            // Convert the new attitude to a rotation matrix, such
+            // that we can rotate body-frame velocity and acc
+            _r20 = _isUpdated ?  
+                2 * _qx * _qz - 2 * _qw * _qy : 
+                _r20;
 
-			// Reset the attitude error
-			_e0 = _isUpdated ?  0 : _e0;
-			_e1 = _isUpdated ?  0 : _e1;
-			_e2 = _isUpdated ?  0 : _e2;
+            _r21 = _isUpdated ? 
+                2 * _qy * _qz + 2 * _qw * _qx : 
+                _r21;
 
-			_isUpdated = false;
+            _r22 = _isUpdated ? 
+                _qw * _qw - _qx * _qx - _qy * _qy + _qz * _qz :
+                _r22;
 
-			vehicleState.phi = RADIANS_TO_DEGREES * atan2((2 * (_qy*_qz + _qw*_qx)),
-					(_qw*_qw - _qx*_qx - _qy*_qy + _qz*_qz));
+            // Reset the attitude error
+            _e0 = _isUpdated ?  0 : _e0;
+            _e1 = _isUpdated ?  0 : _e1;
+            _e2 = _isUpdated ?  0 : _e2;
 
-			// Negate for ENU
-			vehicleState.theta = -RADIANS_TO_DEGREES * asin((-2) * 
-					(_qx*_qz - _qw*_qy));
+            _isUpdated = false;
 
-			vehicleState.psi = RADIANS_TO_DEGREES * 
-				atan2((2 * (_qx*_qy + _qw*_qz)),
-						(_qw*_qw + _qx*_qx - _qy*_qy - _qz*_qz));
+            vehicleState.phi = 
+                RADIANS_TO_DEGREES * atan2((2 * (_qy*_qz + _qw*_qx)),
+                    (_qw*_qw - _qx*_qx - _qy*_qy + _qz*_qz));
 
-			// Get angular velocities directly from gyro
-			vehicleState.dphi =    stream_gyro_x;
-			vehicleState.dtheta = -stream_gyro_y; // negate for ENU
-			vehicleState.dpsi =    stream_gyro_z;
+            // Negate for ENU
+            vehicleState.theta = -RADIANS_TO_DEGREES * asin((-2) * 
+                    (_qx*_qz - _qw*_qy));
 
-		}
+            vehicleState.psi = RADIANS_TO_DEGREES * 
+                atan2((2 * (_qx*_qy + _qw*_qz)),
+                        (_qw*_qw + _qx*_qx - _qy*_qy - _qz*_qz));
 
-	private:
+            // Get angular velocities directly from gyro
+            vehicleState.dphi =    stream_gyro_x;
+            vehicleState.dtheta = -stream_gyro_y; // negate for ENU
+            vehicleState.dpsi =    stream_gyro_z;
+
+        }
+
+    private:
 
 
-		static float rotateQuat(
-				const float val, 
-				const float initVal,
-				const bool isFlying)
-		{
-			const auto keep = 1.0f - ROLLPITCH_ZERO_REVERSION;
+        static float rotateQuat(
+                const float val, 
+                const float initVal,
+                const bool isFlying)
+        {
+            const auto keep = 1.0f - ROLLPITCH_ZERO_REVERSION;
 
-			return (val * (isFlying ? 1: keep)) +
-				(isFlying ? 0 : ROLLPITCH_ZERO_REVERSION * initVal);
-		}
+            return (val * (isFlying ? 1: keep)) +
+                (isFlying ? 0 : ROLLPITCH_ZERO_REVERSION * initVal);
+        }
 
-		static void subsamplerAccumulate(
-				const float x,
-				const float y,
-				const float z,
-				float & _sum_x,
-				float & _sum_y,
-				float & _sum_z,
-				uint32_t & _count)
-		{
-			_sum_x += x;
-			_sum_y += y;
-			_sum_z += z;
+        static void subsamplerAccumulate(
+                const float x,
+                const float y,
+                const float z,
+                float & _sum_x,
+                float & _sum_y,
+                float & _sum_z,
+                uint32_t & _count)
+        {
+            _sum_x += x;
+            _sum_y += y;
+            _sum_z += z;
 
-			_count++;
-		}
+            _count++;
+        }
 
-		static void subsamplerFinalize(
-				const bool shouldPredict, 
-				const float conversionFactor,
-				float & sum_x,
-				float & sum_y,
-				float & sum_z,
-				float & sample_x,
-				float & sample_y,
-				float & sample_z,
-				uint32_t & count)
+        static void subsamplerFinalize(
+                const bool shouldPredict, 
+                const float conversionFactor,
+                float & sum_x,
+                float & sum_y,
+                float & sum_z,
+                float & sample_x,
+                float & sample_y,
+                float & sample_z,
+                uint32_t & count)
 
-		{
-			const auto isCountNonzero = count > 0;
+        {
+            const auto isCountNonzero = count > 0;
 
-			const auto shouldFinalize = shouldPredict && isCountNonzero;
+            const auto shouldFinalize = shouldPredict && isCountNonzero;
 
-			sample_x = shouldFinalize ? 
-				sum_x * conversionFactor / count :
-				sample_x;
+            sample_x = shouldFinalize ? 
+                sum_x * conversionFactor / count :
+                sample_x;
 
-			sample_y = shouldFinalize ?
-				sum_y * conversionFactor / count :
-				sample_y;
+            sample_y = shouldFinalize ?
+                sum_y * conversionFactor / count :
+                sample_y;
 
-			sample_z = shouldFinalize ?
-				sum_z * conversionFactor / count :
-				sample_z;
+            sample_z = shouldFinalize ?
+                sum_z * conversionFactor / count :
+                sample_z;
 
-			sum_x = 0;
-			sum_y = 0;
-			sum_z = 0;
+            sum_x = 0;
+            sum_y = 0;
+            sum_z = 0;
 
-			count = 0;
-		}
+            count = 0;
+        }
 
-		static void updateCovarianceMatrix(
-				const float p_in[3][3],
-				const bool shouldUpdate, 
-				float _p[3][3])
-		{
-			// Enforce symmetry of the covariance matrix, and ensure the
-			// values stay bounded
-			for (int i=0; i<3; i++) {
-				for (int j=i; j<3; j++) {
-					updateCovarianceCell(p_in, i, j, 0, shouldUpdate, _p);
-				}
-			}
-		}
+        static void updateCovarianceMatrix(
+                const float p_in[3][3],
+                const bool shouldUpdate, 
+                float _p[3][3])
+        {
+            // Enforce symmetry of the covariance matrix, and ensure the
+            // values stay bounded
+            for (int i=0; i<3; i++) {
+                for (int j=i; j<3; j++) {
+                    updateCovarianceCell(p_in, i, j, 0, shouldUpdate, _p);
+                }
+            }
+        }
 
-		static bool isErrorLarge(const float v)
-		{
-			return fabs(v) > 0.1e-3f;
-		}
+        static bool isErrorLarge(const float v)
+        {
+            return fabs(v) > 0.1e-3f;
+        }
 
-		static bool isErrorInBounds(const float v)
-		{
-			return fabs(v) < 10;
-		}
+        static bool isErrorInBounds(const float v)
+        {
+            return fabs(v) < 10;
+        }
 
-		static void updateCovarianceCell(
-				const float p_in[3][3],
-				const int i, 
-				const int j, 
-				const float variance,
-				const bool shouldUpdate,
-				float p_out[3][3])
-		{
-			const auto pval = (p_in[i][j] + p_in[j][i]) / 2 + variance;
+        static void updateCovarianceCell(
+                const float p_in[3][3],
+                const int i, 
+                const int j, 
+                const float variance,
+                const bool shouldUpdate,
+                float p_out[3][3])
+        {
+            const auto pval = (p_in[i][j] + p_in[j][i]) / 2 + variance;
 
-			p_out[i][j] = !shouldUpdate ? p_in[i][j] :
-				(isnan(pval) || pval > MAX_COVARIANCE) ?  MAX_COVARIANCE :
-				(i==j && pval < MIN_COVARIANCE) ?  MIN_COVARIANCE :
-				pval;
+            p_out[i][j] = !shouldUpdate ? p_in[i][j] :
+                (isnan(pval) || pval > MAX_COVARIANCE) ?  MAX_COVARIANCE :
+                (i==j && pval < MIN_COVARIANCE) ?  MIN_COVARIANCE :
+                pval;
 
-			p_out[j][i] = shouldUpdate ? p_out[i][j] : p_in[j][i];
-		}
+            p_out[j][i] = shouldUpdate ? p_out[i][j] : p_in[j][i];
+        }
 
-		static float max(const float val, const float maxval)
-		{
-			return val > maxval ? maxval : val;
-		}
+        static float max(const float val, const float maxval)
+        {
+            return val > maxval ? maxval : val;
+        }
 
-		static float square(const float val)
-		{
-			return val * val;
-		}
+        static float square(const float val)
+        {
+            return val * val;
+        }
 };
