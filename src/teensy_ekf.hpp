@@ -475,13 +475,14 @@ class Ekf {
 
             float At[3][3] = {};
             transpose(A, At);     // A'
-
             float AP[3][3] = {};
             multiply(A, _p, AP);  // AP
+            float APA[3][3] = {};
+            multiply(AP, At, APA); // APA'
 
-            // Move attitude error into attitude if any of the angle errors are
-            // large enough
-            multiply(AP, At, _p, isErrorSufficient); // APA'
+            if (isErrorSufficient) {
+                memcpy(_p, APA, 3*3*sizeof(float));
+            }
 
             // Convert the new attitude to a rotation matrix, such that we can
             // rotate body-frame velocity and acc
