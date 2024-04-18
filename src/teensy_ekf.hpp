@@ -464,12 +464,6 @@ class Ekf {
                 /*E2*/  {e2e0, e2e1, e2e2}
             };
 
-            float At[3][3] = {};
-            transpose(A, At);     // A'
-
-            float AP[3][3] = {};
-            multiply(A, _p, AP);  // AP
-
             const auto isErrorSufficient  = 
                 (isErrorLarge(v0) || isErrorLarge(v1) || isErrorLarge(v2)) &&
                 isErrorInBounds(v0) && isErrorInBounds(v1) && isErrorInBounds(v2);
@@ -478,6 +472,12 @@ class Ekf {
             _qx = isErrorSufficient ? tmpq1 / norm : _qx;
             _qy = isErrorSufficient ? tmpq2 / norm : _qy;
             _qz = isErrorSufficient ? tmpq3 / norm : _qz;
+
+            float At[3][3] = {};
+            transpose(A, At);     // A'
+
+            float AP[3][3] = {};
+            multiply(A, _p, AP);  // AP
 
             // Move attitude error into attitude if any of the angle errors are
             // large enough
