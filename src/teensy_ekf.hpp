@@ -145,20 +145,12 @@ class Ekf {
         // The covariance matrix
         float _Pmat[KC_STATE_DIM][KC_STATE_DIM];
 
-        uint32_t _lastProcessNoiseUpdateMsec;
-
         //////////////////////////////////////////////////////////////////////////
 
         void step_init(void)
         {
-            extern uint32_t stream_now_msec;
-
             axis3fSubSamplerInit(&_accSubSampler, GRAVITY_MAGNITUDE);
             axis3fSubSamplerInit(&_gyroSubSampler, DEGREES_TO_RADIANS);
-
-            // Reset all data to 0 (like upon system reset)
-
-            memset(_Pmat, 0, sizeof(_Pmat));
 
             // set covariances to zero (diagonals will be changed from
             // zero in the next section)
@@ -168,8 +160,6 @@ class Ekf {
             _Pmat[KC_STATE_E0][KC_STATE_E0] = square(STDEV_INITIAL_ATTITUDE_ROLL_PITCH);
             _Pmat[KC_STATE_E1][KC_STATE_E1] = square(STDEV_INITIAL_ATTITUDE_ROLL_PITCH);
             _Pmat[KC_STATE_E2][KC_STATE_E2] = square(STDEV_INITIAL_ATTITUDE_YAW);
-
-            _lastProcessNoiseUpdateMsec = stream_now_msec;
         }
 
         void step_normal(
@@ -183,18 +173,18 @@ class Ekf {
 
             const auto isFlying = true; // XXX
 
-            static float _nextPredictionMsecec;
+            static uint32_t _nextPredictionMsec;
 
             static uint32_t _lastPredictionMsec;
 
-            const auto shouldPredict = stream_now_msec >= _nextPredictionMsecec;
+            const auto shouldPredict = stream_now_msec >= _nextPredictionMsec;
 
             _lastPredictionMsec = _lastPredictionMsec == 0 ? 
                 stream_now_msec :
                 _lastPredictionMsec;
 
-            _nextPredictionMsecec = 
-                _nextPredictionMsecec == 0 ? stream_now_msec : _nextPredictionMsecec;
+            _nextPredictionMsec = 
+                _nextPredictionMsec == 0 ? stream_now_msec : _nextPredictionMsec;
 
             axis3fSubSamplerFinalize(&_accSubSampler, shouldPredict);
 
@@ -286,7 +276,13 @@ class Ekf {
 
             _lastPredictionMsec = shouldPredict ? stream_now_msec : _lastPredictionMsec;
 
-            const auto dt1 = (stream_now_msec - _lastProcessNoiseUpdateMsec) / 1000.0f;
+            static uint32_t _lastUpdateMsec;
+
+            _lastUpdateMsec = _lastUpdateMsec == 0 ?
+                stream_now_msec :
+                _lastUpdateMsec;
+
+            const auto dt1 = (stream_now_msec - _lastUpdateMsec) / 1000.0f;
 
             const auto isDtPositive = dt1 > 0;
 
@@ -301,13 +297,13 @@ class Ekf {
 
             updateCovarianceMatrix(isDtPositive);
 
-            _lastProcessNoiseUpdateMsec = isDtPositive ?  
+            _lastUpdateMsec = isDtPositive ?  
                 stream_now_msec : 
-                _lastProcessNoiseUpdateMsec;
+                _lastUpdateMsec;
 
-            _nextPredictionMsecec = stream_now_msec >= _nextPredictionMsecec ?
+            _nextPredictionMsec = stream_now_msec >= _nextPredictionMsec ?
                 stream_now_msec + PREDICTION_UPDATE_INTERVAL_MS :
-                _nextPredictionMsecec;
+                _nextPredictionMsec;
 
             extern float stream_accel_x, stream_accel_y, stream_accel_z;
 
