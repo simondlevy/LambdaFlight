@@ -39,6 +39,9 @@ qx_init = 0 :: SFloat
 qy_init = 0 :: SFloat
 qz_init = 0 :: SFloat
 
+gravity_magnitude = 9.81 :: SFloat
+degrees_to_radians = pi / 180 :: SFloat
+
 -- Initial variances, uncertain of position, but know we're
 -- stationary and roughly flat
 stdev_initial_attitude_roll_pitch = 0.01 :: SFloat
@@ -46,8 +49,6 @@ stdev_initial_attitude_yaw = 0.01 :: SFloat
 
 proc_noise_att = 0 :: SFloat
 meas_noise_gyro = 0.1 :: SFloat -- radians per second
-
-gravity_magnitude = 9.81 :: SFloat
 
 -- Bounds on the covariance, these shouldn't be hit, but sometimes are... why?
 max_covariance = 100 :: SFloat
