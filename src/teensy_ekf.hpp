@@ -268,8 +268,9 @@ class Ekf {
 				stream_now_msec :
 				_lastPredictionMsec;
 
-			_nextPredictionMsec = 
-				_nextPredictionMsec == 0 ? stream_now_msec : _nextPredictionMsec;
+			_nextPredictionMsec = _nextPredictionMsec == 0 ? 
+                stream_now_msec : 
+                _nextPredictionMsec;
 
 			subsamplerFinalize(shouldPredict, DEGREES_TO_RADIANS, 
 					_gyro_sum_x,

@@ -73,6 +73,12 @@ gyro_y = extern "stream_gyro_y" Nothing
 gyro_z :: SFloat
 gyro_z = extern "stream_gyro_z" Nothing
 
+-- Helpers --------------------------------------------------------------------
+
+getDt :: SInt32 -> SInt32 -> SFloat
+
+getDt msec1 msec2 = (unsafeCast (msec1 - msec2)) / 1000
+
 -- EKF function --------------------------------------------------------------
 
 ekfStep :: State
@@ -82,11 +88,40 @@ ekfStep = State 0 0 0 0 0 0 0 0 0 0 where
   nextPredictionMsec = 
       if _nextPredictionMsec == 0 then now_msec else _nextPredictionMsec
 
+  lastPredictionMsec = 
+      if _lastPredictionMsec == 0 then now_msec else _lastPredictionMsec
+
   shouldPredict = now_msec > nextPredictionMsec
+
+  dt = getDt now_msec lastPredictionMsec
+
+  gyro_sample_x = 0 :: SFloat
+  gyro_sample_y = 0 :: SFloat
+  gyro_sample_z = 0 :: SFloat
+
+  e0 = gyro_sample_x * dt / 2
+  e1 = gyro_sample_y * dt / 2
+  e2 = gyro_sample_z * dt / 2
+
+  e0e0 =  1 - e1*e1/2 - e2*e2/2
+  e0e1 =  e2 + e0 * e1/2
+  e0e2 = -e1 + e0 * e2/2
+
+  e1e0 = -e2 + e0*e1/2
+  e1e1 =  1 - e0*e0/2 - e2*e2/2
+  e1e2 =  e0 + e1*e2/2
+
+  e2e0 =  e1 + e0*e2/2
+  e2e1 = -e0 + e1*e2/2
+  e2e2 = 1 - e0*e0/2 - e1*e1/2
+
+
 
   -- Internal state, represented as streams ----------------------------------
 
   _didInit = [False] ++ true
 
   _nextPredictionMsec = [0] ++ nextPredictionMsec
+
+  _lastPredictionMsec = [0] ++ lastPredictionMsec
 
