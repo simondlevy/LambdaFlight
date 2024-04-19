@@ -64,7 +64,7 @@ rollpitch_zero_reversion = 0.001 :: SFloat
 prediction_rate = 100 :: SInt32
 prediction_update_interval_ms = (div 1000  prediction_rate) :: SInt32
 
--- Datatypes ----------------------------------------------------------------
+-- Subsampler for gyro and accelerometer --------------------------------------
 
 data Subsampler = Subsampler { 
 
@@ -76,6 +76,31 @@ data Subsampler = Subsampler {
   , sample_z :: SFloat
   , count :: SInt32
 }
+
+subsamplerFinalize :: SBool -> SFloat -> Subsampler -> Subsampler
+
+subsamplerFinalize shouldPredict conversionFactor sampler = sampler' where
+
+  count' = unsafeCast (count sampler) :: SFloat
+
+  isCountNonzero = count' > 0
+
+  shouldFinalize = shouldPredict && isCountNonzero
+
+  sample_x' = if shouldFinalize 
+              then (sum_x sampler) * conversionFactor / count'
+              else (sample_x sampler)
+
+  sample_y' = if shouldFinalize 
+              then (sum_y sampler) * conversionFactor / count'
+              else (sample_y sampler)
+
+  sample_z' = if shouldFinalize 
+              then (sum_z sampler) * conversionFactor / count'
+              else (sample_z sampler)
+
+
+  sampler' = sampler
 
 -- Streams from C++ ----------------------------------------------------------
 
@@ -105,12 +130,6 @@ rotateQuat val initVal isFlying = val' where
 
     val' = (val * (if isFlying then  1 else keep)) +
            (if isFlying then 0 else rollpitch_zero_reversion * initVal)
-
-subsamplerFinalize :: SBool -> SFloat -> Subsampler -> Subsampler
-
-subsamplerFinalize shouldPredict conversionFactor sampler = sampler' where
-
-  sampler' = sampler
 
 
 -- EKF function --------------------------------------------------------------
