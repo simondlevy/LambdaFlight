@@ -264,12 +264,9 @@ class Ekf {
 			float APA[3][3] = {};
 			multiply(AP, At, APA); // APA'
 
-			_lastPredictionMsec = _lastPredictionMsec == 0 ? 
+			_lastPredictionMsec = 
+                _lastPredictionMsec == 0 || shouldPredict ? 
 				stream_now_msec :
-				_lastPredictionMsec;
-
-			_lastPredictionMsec = shouldPredict ? 
-				stream_now_msec : 
 				_lastPredictionMsec;
 
 			_nextPredictionMsec = _nextPredictionMsec == 0 ? 
