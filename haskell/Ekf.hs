@@ -115,7 +115,15 @@ ekfStep = State 0 0 0 0 0 0 0 0 0 0 where
   e2e1 = -e0 + e1*e2/2
   e2e2 = 1 - e0*e0/2 - e1*e1/2
 
+  a = [ [e0e0, e0e1, e0e2], 
+        [e1e0, e1e1, e1e2], 
+        [e2e0, e2e1, e2e2]  ]
 
+  -- Attitude update (rotate by gyroscope) done via quaternions.
+  -- This is the gyroscope angular velocity integrated over the sample period.
+  dtwx = dt * gyro_sample_x
+  dtwy = dt * gyro_sample_y
+  dtwz = dt * gyro_sample_z
 
   -- Internal state, represented as streams ----------------------------------
 
