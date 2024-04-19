@@ -79,10 +79,20 @@ getDt :: SInt32 -> SInt32 -> SFloat
 
 getDt msec1 msec2 = (unsafeCast (msec1 - msec2)) / 1000
 
+rotateQuat :: SFloat -> SFloat -> SBool -> SFloat
+
+rotateQuat val initVal isFlying = val' where
+
+    keep = 1 - rollpitch_zero_reversion
+
+    val' = (val * (if isFlying then  1 else keep)) +
+           (if isFlying then 0 else rollpitch_zero_reversion * initVal)
+
 -- EKF function --------------------------------------------------------------
 
 ekfStep :: State
 
+-- XXX
 ekfStep = State 0 0 0 0 0 0 0 0 0 0 where
 
   nextPredictionMsec = 
@@ -95,6 +105,7 @@ ekfStep = State 0 0 0 0 0 0 0 0 0 0 where
 
   dt = getDt now_msec lastPredictionMsec
 
+  -- XXX
   gyro_sample_x = 0 :: SFloat
   gyro_sample_y = 0 :: SFloat
   gyro_sample_z = 0 :: SFloat
@@ -133,6 +144,34 @@ ekfStep = State 0 0 0 0 0 0 0 0 0 0 where
   dqx = sa * dtwx / angle
   dqy = sa * dtwy / angle
   dqz = sa * dtwz / angle
+
+  isFlying = true -- XXX
+
+  -- XXX
+  qw = 0
+  qx = 0
+  qy = 0
+  qz = 0
+
+  -- Rotate the quad's attitude by the delta quaternion vector computed above
+
+  tmpq0 = rotateQuat (dqw*qw - dqx*qx - dqy*qy - dqz*qz) qw_init isFlying
+
+{--
+tmpq1 = rotateQuat(
+					dqx*_qw + dqw*_qx + dqz*_qy - dqy*_qz, QX_INIT, isFlying)
+
+tmpq2 = rotateQuat(
+					dqy*_qw - dqz*_qx + dqw*_qy + dqx*_qz, QY_INIT, isFlying)
+
+tmpq3 = rotateQuat(
+					dqz*_qw + dqy*_qx - dqx*_qy + dqw*_qz, QZ_INIT, isFlying)
+
+-- normalize and store the result
+norm = 
+				sqrt(tmpq0*tmpq0 + tmpq1*tmpq1 + tmpq2*tmpq2 + tmpq3*tmpq3) + 
+				EPS
+--}
 
 
   -- Internal state, represented as streams ----------------------------------
