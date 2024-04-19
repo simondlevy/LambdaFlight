@@ -363,8 +363,9 @@ class Ekf {
 					_accel_sum_z,
 					_accel_count);
 
-			// Incorporate the attitude error (Kalman filter state) with the attitude
-			const auto v0 = _e0;
+            // Incorporate the attitude error (Kalman filter state) with the
+            // attitude
+            const auto v0 = _e0;
 			const auto v1 = _e1;
 			const auto v2 = _e2;
 
