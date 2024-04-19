@@ -243,6 +243,19 @@ ekfStep = State dx dy zz dz phi dphi theta dtheta psi dpsi where
     (accel_sum_x, accel_sum_y, accel_sum_z, 
     accel_sample_x, accel_sample_y, accel_sample_z, accel_count)
 
+  -- Process noise is added after the return from the prediction step
+
+  -- ====== PREDICTION STEP ======
+  -- The prediction depends on whether we're on the
+  -- ground, or in flight.  When flying, the
+  -- accelerometer directly measures thrust (hence is
+  -- useless to estimate body angle while flying)
+
+  qw' = if shouldPredict then tmpq0 / norm else qw
+  qx' = if shouldPredict then tmpq1 / norm else qx 
+  qy' = if shouldPredict then tmpq2 / norm else qy 
+  qz' = if shouldPredict then tmpq3 / norm else qz
+
   -- Internal state, represented as streams ----------------------------------
 
   _didInit = [False] ++ true
