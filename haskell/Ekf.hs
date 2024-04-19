@@ -62,7 +62,7 @@ rollpitch_zero_reversion = 0.001 :: SFloat
 
 -- This is slower than the imu update rate of 1000hz
 prediction_rate = 100 :: SInt32
-prediction_update_interval_ms = (div 1000  prediction_rate) :: SInt32
+prediction_update_interval_msec = (div 1000  prediction_rate) :: SInt32
 
 -- Subsampler for gyro and accelerometer --------------------------------------
 
@@ -173,12 +173,6 @@ ekfStep = State dx dy zz dz phi dphi theta dtheta psi dpsi where
 
   ----------------------------------------------------------------------------
 
-  nextPredictionMsec = 
-      if _nextPredictionMsec == 0 then now_msec else _nextPredictionMsec
-
-  lastPredictionMsec = 
-      if _lastPredictionMsec == 0 then now_msec else _lastPredictionMsec
-
   shouldPredict = now_msec > nextPredictionMsec
 
   dt = getDt now_msec lastPredictionMsec
@@ -230,19 +224,21 @@ ekfStep = State dx dy zz dz phi dphi theta dtheta psi dpsi where
   -- Update the covariance matrix
   apa = a !*! p !*! (transpose a)
   
-  lastPredictionMsec' = if lastPredictionMsec == 0 
+  lastPredictionMsec = if _lastPredictionMsec == 0  || shouldPredict
                         then now_msec 
-                        else lastPredictionMsec
+                        else _lastPredictionMsec
 
-  nextPredictionMsec' = if nextPredictionMsec == 0 
+  nextPredictionMsec = if _nextPredictionMsec == 0 
                         then now_msec 
-                        else nextPredictionMsec
+                        else if now_msec > _nextPredictionMsec
+                        then now_msec + prediction_update_interval_msec
+                        else _nextPredictionMsec
 
   -- Internal state, represented as streams ----------------------------------
 
   _didInit = [False] ++ true
 
-  _nextPredictionMsec = [0] ++ nextPredictionMsec'
+  _nextPredictionMsec = [0] ++ nextPredictionMsec
 
-  _lastPredictionMsec = [0] ++ lastPredictionMsec'
+  _lastPredictionMsec = [0] ++ lastPredictionMsec
 
