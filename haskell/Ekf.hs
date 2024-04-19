@@ -61,6 +61,9 @@ prediction_update_interval_ms = (div 1000  prediction_rate) :: SInt32
 
 -- Streams from C++ ----------------------------------------------------------
 
+now_msec :: SInt32
+now_msec = extern "stream_now_msec" Nothing
+
 gyro_x :: SFloat
 gyro_x = extern "stream_gyro_x" Nothing
 
@@ -76,5 +79,14 @@ ekfStep :: State
 
 ekfStep = State 0 0 0 0 0 0 0 0 0 0 where
 
-  didInit = [False] ++ true
+  nextPredictionMsec = 
+      if _nextPredictionMsec == 0 then now_msec else _nextPredictionMsec
+
+  shouldPredict = now_msec > nextPredictionMsec
+
+  -- Internal state, represented as streams ----------------------------------
+
+  _didInit = [False] ++ true
+
+  _nextPredictionMsec = [0] ++ nextPredictionMsec
 
