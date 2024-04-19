@@ -24,6 +24,7 @@ module Ekf where
 import Language.Copilot
 import Copilot.Compile.C99
 
+import State
 import Utils
 
 -- Quaternion used for initial orientation
@@ -56,5 +57,7 @@ rollpitch_zero_reversion = 0.001 :: SFloat
 prediction_rate = 100 :: SInt32
 prediction_update_interval_ms = (div 1000  prediction_rate) :: SInt32
 
+ekfStep :: State
 
+ekfStep = State 0 0 0 0 0 0 0 0 0 0 
 
