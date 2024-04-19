@@ -131,6 +131,16 @@ class Ekf {
 			static float _accel_sample_z;
 			static uint32_t _accel_count;
 
+			_p00 = !_didInit ?  square(STDEV_INITIAL_ATTITUDE_ROLL_PITCH) : _p00;
+			_p01 = !_didInit ? 0 : _p01;
+			_p02 = !_didInit ? 0 : _p02;
+			_p10 = !_didInit ? 0 : _p10;
+			_p11 = !_didInit ?  square(STDEV_INITIAL_ATTITUDE_ROLL_PITCH) : _p11;
+			_p12 = !_didInit ? 0 : _p12;
+			_p20 = !_didInit ? 0 : _p20;
+			_p21 = !_didInit ? 0 : _p21;
+			_p22 = !_didInit ?  square(STDEV_INITIAL_ATTITUDE_YAW) : _p22;
+
 			_gyro_sum_x = !_didInit ? 0 : _gyro_sum_x;
 			_gyro_sum_y = !_didInit ? 0 : _gyro_sum_y;
 			_gyro_sum_z = !_didInit ? 0 : _gyro_sum_z;
