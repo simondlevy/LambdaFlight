@@ -175,7 +175,6 @@ ekfStep = State dx dy zz dz phi dphi theta dtheta psi dpsi where
   accel_sample_x = 0 :: SFloat
   accel_sample_y = 0 :: SFloat
   accel_sample_z = 0 :: SFloat
-  accel_count = 0 :: SInt32
 
   isFlying = true
 
@@ -253,10 +252,10 @@ ekfStep = State dx dy zz dz phi dphi theta dtheta psi dpsi where
     gyro_sample_x, gyro_sample_y, gyro_sample_z, _gyro_count)
 
   (accel_sum_x', accel_sum_y', accel_sum_z', 
-   accel_sample_x', accel_sample_y', accel_sample_z', accel_count') = 
+   accel_sample_x', accel_sample_y', accel_sample_z', accel_count) = 
     subsamplerFinalize shouldPredict degrees_to_radians
     (accel_sum_x, accel_sum_y, accel_sum_z, 
-    accel_sample_x, accel_sample_y, accel_sample_z, accel_count)
+    accel_sample_x, accel_sample_y, accel_sample_z, _accel_count)
 
   -- Process noise is added after the return from the prediction step
 
@@ -286,6 +285,8 @@ ekfStep = State dx dy zz dz phi dphi theta dtheta psi dpsi where
   -- Internal state, represented as streams ----------------------------------
 
   _gyro_count = [0] ++ gyro_count
+
+  _accel_count = [0] ++ accel_count
 
   _p00 = [stdev_initial_attitude_roll_pitch ** 2] ++ p00
   _p11 = [stdev_initial_attitude_roll_pitch ** 2] ++ p11
