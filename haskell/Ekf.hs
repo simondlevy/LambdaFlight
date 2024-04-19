@@ -168,7 +168,6 @@ ekfStep = State dx dy zz dz phi dphi theta dtheta psi dpsi where
   gyro_sample_x = 0 :: SFloat
   gyro_sample_y = 0 :: SFloat
   gyro_sample_z = 0 :: SFloat
-  gyro_count = 0 :: SInt32
 
   accel_sum_x = 0 :: SFloat
   accel_sum_y = 0 :: SFloat
@@ -248,10 +247,10 @@ ekfStep = State dx dy zz dz phi dphi theta dtheta psi dpsi where
                         else _nextPredictionMsec
 
   (gyro_sum_x', gyro_sum_y', gyro_sum_z', 
-   gyro_sample_x', gyro_sample_y', gyro_sample_z', gyro_count') = 
+   gyro_sample_x', gyro_sample_y', gyro_sample_z', gyro_count) = 
     subsamplerFinalize shouldPredict degrees_to_radians
     (gyro_sum_x, gyro_sum_y, gyro_sum_z, 
-    gyro_sample_x, gyro_sample_y, gyro_sample_z, gyro_count)
+    gyro_sample_x, gyro_sample_y, gyro_sample_z, _gyro_count)
 
   (accel_sum_x', accel_sum_y', accel_sum_z', 
    accel_sample_x', accel_sample_y', accel_sample_z', accel_count') = 
@@ -285,6 +284,8 @@ ekfStep = State dx dy zz dz phi dphi theta dtheta psi dpsi where
           else 0
 
   -- Internal state, represented as streams ----------------------------------
+
+  _gyro_count = [0] ++ gyro_count
 
   _p00 = [stdev_initial_attitude_roll_pitch ** 2] ++ p00
   _p11 = [stdev_initial_attitude_roll_pitch ** 2] ++ p11
