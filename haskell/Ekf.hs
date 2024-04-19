@@ -256,9 +256,13 @@ ekfStep = State dx dy zz dz phi dphi theta dtheta psi dpsi where
   qy' = if shouldPredict then tmpq2 / norm else qy 
   qz' = if shouldPredict then tmpq3 / norm else qz
 
+  isUpdated = if shouldPredict then true else _isUpdated
+
   -- Internal state, represented as streams ----------------------------------
 
   _didInit = [False] ++ true
+
+  _isUpdated = [False] ++ isUpdated
 
   _nextPredictionMsec = [0] ++ nextPredictionMsec
 
