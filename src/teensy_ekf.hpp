@@ -311,25 +311,25 @@ class Ekf {
 				square(MEAS_NOISE_GYRO * dt1 + PROC_NOISE_ATT) :
 				0;
 
-			_p00 = shouldPredict ? APA[0][0] + noise : _p00;
-			_p01 = shouldPredict ? APA[0][1] : _p01;
-			_p02 = shouldPredict ? APA[0][2] : _p02;
-			_p10 = shouldPredict ? APA[1][0] : _p10;
-			_p11 = shouldPredict ? APA[1][1] + noise: _p11;
-			_p12 = shouldPredict ? APA[1][2] : _p12;
-			_p20 = shouldPredict ? APA[2][0] : _p20;
-			_p21 = shouldPredict ? APA[2][1] : _p21;
-			_p22 = shouldPredict ? APA[2][2] + noise : _p22;
+			const auto p00_pred = shouldPredict ? APA[0][0] + noise : _p00;
+			const auto p01_pred = shouldPredict ? APA[0][1] : _p01;
+			const auto p02_pred = shouldPredict ? APA[0][2] : _p02;
+			const auto p10_pred = shouldPredict ? APA[1][0] : _p10;
+			const auto p11_pred = shouldPredict ? APA[1][1] + noise: _p11;
+			const auto p12_pred = shouldPredict ? APA[1][2] : _p12;
+			const auto p20_pred = shouldPredict ? APA[2][0] : _p20;
+			const auto p21_pred = shouldPredict ? APA[2][1] : _p21;
+			const auto p22_pred = shouldPredict ? APA[2][2] + noise : _p22;
 
-            const float p2[3][3] = { 
-                {_p00, _p01, _p02},
-                {_p10, _p11, _p12},
-                {_p20, _p21, _p22},
+            const float p_pred[3][3] = { 
+                {p00_pred, p01_pred, p02_pred},
+                {p10_pred, p11_pred, p12_pred},
+                {p20_pred, p21_pred, p22_pred},
             };
 
             float p3[3][3] = {};
 
-			updateCovarianceMatrix(p2, p3);
+			updateCovarianceMatrix(p_pred, p3);
 
 			_p00 = isDtPositive ? p3[0][0] : _p00;
 			_p01 = isDtPositive ? p3[0][1] : _p01;
