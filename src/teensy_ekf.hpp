@@ -331,15 +331,15 @@ class Ekf {
 
 			updateCovarianceMatrix(p_pred, p3);
 
-			_p00 = isDtPositive ? p3[0][0] : p00_pred;
-			_p01 = isDtPositive ? p3[0][1] : p01_pred;
-			_p02 = isDtPositive ? p3[0][2] : p02_pred;
-			_p10 = isDtPositive ? p3[1][0] : p10_pred;
-			_p11 = isDtPositive ? p3[1][1] : p11_pred;
-			_p12 = isDtPositive ? p3[1][2] : p12_pred;
-			_p20 = isDtPositive ? p3[2][0] : p20_pred;
-			_p21 = isDtPositive ? p3[2][1] : p21_pred;
-			_p22 = isDtPositive ? p3[2][2] : p22_pred;
+			const auto p00_noise = isDtPositive ? p3[0][0] : p00_pred;
+			const auto p01_noise = isDtPositive ? p3[0][1] : p01_pred;
+			const auto p02_noise = isDtPositive ? p3[0][2] : p02_pred;
+			const auto p10_noise = isDtPositive ? p3[1][0] : p10_pred;
+			const auto p11_noise = isDtPositive ? p3[1][1] : p11_pred;
+			const auto p12_noise = isDtPositive ? p3[1][2] : p12_pred;
+			const auto p20_noise = isDtPositive ? p3[2][0] : p20_pred;
+			const auto p21_noise = isDtPositive ? p3[2][1] : p21_pred;
+			const auto p22_noise = isDtPositive ? p3[2][2] : p22_pred;
 
 			_lastUpdateMsec = _lastUpdateMsec == 0 || isDtPositive ?  
 				stream_now_msec : 
@@ -439,9 +439,9 @@ class Ekf {
 			};
 
             const float p4[3][3] = { 
-                {_p00, _p01, _p02},
-                {_p10, _p11, _p12},
-                {_p20, _p21, _p22},
+                {p00_noise, p01_noise, p02_noise},
+                {p10_noise, p11_noise, p12_noise},
+                {p20_noise, p21_noise, p22_noise},
             };
 
             float newAt[3][3] = {};
@@ -453,15 +453,15 @@ class Ekf {
 
             const auto shouldFinalize = _isUpdated && isErrorSufficient;
 
-			_p00 = shouldFinalize ? newAPA[0][0] : _p00;
-			_p01 = shouldFinalize ? newAPA[0][1] : _p01;
-			_p02 = shouldFinalize ? newAPA[0][2] : _p02;
-			_p10 = shouldFinalize ? newAPA[1][0] : _p10;
-			_p11 = shouldFinalize ? newAPA[1][1] : _p11;
-			_p12 = shouldFinalize ? newAPA[1][2] : _p12;
-			_p20 = shouldFinalize ? newAPA[2][0] : _p20;
-			_p21 = shouldFinalize ? newAPA[2][1] : _p21;
-			_p22 = shouldFinalize ? newAPA[2][2] : _p22;
+			_p00 = shouldFinalize ? newAPA[0][0] : p00_noise;
+			_p01 = shouldFinalize ? newAPA[0][1] : p01_noise;
+			_p02 = shouldFinalize ? newAPA[0][2] : p02_noise;
+			_p10 = shouldFinalize ? newAPA[1][0] : p10_noise;
+			_p11 = shouldFinalize ? newAPA[1][1] : p11_noise;
+			_p12 = shouldFinalize ? newAPA[1][2] : p12_noise;
+			_p20 = shouldFinalize ? newAPA[2][0] : p20_noise;
+			_p21 = shouldFinalize ? newAPA[2][1] : p21_noise;
+			_p22 = shouldFinalize ? newAPA[2][2] : p22_noise;
 
             const float p5[3][3] = { 
                 {_p00, _p01, _p02},
