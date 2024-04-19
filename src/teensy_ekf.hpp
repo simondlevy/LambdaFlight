@@ -276,7 +276,7 @@ class Ekf {
 				stream_now_msec + PREDICTION_UPDATE_INTERVAL_MS :
 				_nextPredictionMsec;
 
-			subsamplerFinalize(shouldPredict, DEGREES_TO_RADIANS, 
+			subsamplerTakeMean(shouldPredict, DEGREES_TO_RADIANS, 
 					_gyro_sum_x,
 					_gyro_sum_y,
 					_gyro_sum_z,
@@ -285,7 +285,7 @@ class Ekf {
 					_gyro_sample_z,
 					_gyro_count);
 
-			subsamplerFinalize(shouldPredict, GRAVITY_MAGNITUDE, 
+			subsamplerTakeMean(shouldPredict, GRAVITY_MAGNITUDE, 
 					_accel_sum_x,
 					_accel_sum_y,
 					_accel_sum_z,
@@ -569,7 +569,7 @@ class Ekf {
             _count++;
         }
 
-        static void subsamplerFinalize(
+        static void subsamplerTakeMean(
                 const bool shouldPredict, 
                 const float conversionFactor,
                 float & sum_x,
@@ -579,7 +579,6 @@ class Ekf {
                 float & sample_y,
                 float & sample_z,
                 uint32_t & count)
-
         {
             const auto isCountNonzero = count > 0;
 
