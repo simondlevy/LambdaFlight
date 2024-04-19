@@ -122,7 +122,6 @@ class Ekf {
 			static float _gyro_sample_x;
 			static float _gyro_sample_y;
 			static float _gyro_sample_z;
-			static uint32_t _gyro_count;
 
 			static float _accel_sum_x;
 			static float _accel_sum_y;
@@ -130,7 +129,6 @@ class Ekf {
 			static float _accel_sample_x;
 			static float _accel_sample_y;
 			static float _accel_sample_z;
-			static uint32_t _accel_count;
 
 			_p00 = !_didInit ?  square(STDEV_INITIAL_ATTITUDE_ROLL_PITCH) : _p00;
 			_p01 = !_didInit ? 0 : _p01;
@@ -148,7 +146,6 @@ class Ekf {
 			_gyro_sample_x = !_didInit ? 0 : _gyro_sample_x;
 			_gyro_sample_y = !_didInit ? 0 : _gyro_sample_y;
 			_gyro_sample_z = !_didInit ? 0 : _gyro_sample_z;
-			_gyro_count = !_didInit ? 0 : _gyro_count;
 
 			_accel_sum_x = !_didInit ? 0 : _accel_sum_x;
 			_accel_sum_y = !_didInit ? 0 : _accel_sum_y;
@@ -156,7 +153,6 @@ class Ekf {
 			_accel_sample_x = !_didInit ? 0 : _accel_sample_x;
 			_accel_sample_y = !_didInit ? 0 : _accel_sample_y;
 			_accel_sample_z = !_didInit ? 0 : _accel_sample_z;
-			_accel_count = !_didInit ? 0 : _accel_count;
 
 			_isUpdated = !_didInit ? false : _isUpdated;
 
@@ -282,8 +278,7 @@ class Ekf {
 					_gyro_sum_z,
 					_gyro_sample_x,
 					_gyro_sample_y,
-					_gyro_sample_z,
-					_gyro_count);
+					_gyro_sample_z);
 
 			subsamplerTakeMean(shouldPredict, GRAVITY_MAGNITUDE, 
 					_accel_sum_x,
@@ -291,8 +286,7 @@ class Ekf {
 					_accel_sum_z,
 					_accel_sample_x,
 					_accel_sample_y,
-					_accel_sample_z,
-					_accel_count);
+					_accel_sample_z);
 
 			// Process noise is added after the return from the
 			// prediction step
@@ -362,8 +356,7 @@ class Ekf {
 					stream_gyro_z,
 					_gyro_sum_x,
 					_gyro_sum_y,
-					_gyro_sum_z,
-					_gyro_count);
+					_gyro_sum_z);
 
 			subsamplerAccumulate(
 					stream_accel_x,
@@ -371,8 +364,7 @@ class Ekf {
 					stream_accel_z,
 					_accel_sum_x,
 					_accel_sum_y,
-					_accel_sum_z,
-					_accel_count);
+					_accel_sum_z);
 
             // Incorporate the attitude error (Kalman filter state) with the
             // attitude
@@ -559,14 +551,11 @@ class Ekf {
                 const float z,
                 float & _sum_x,
                 float & _sum_y,
-                float & _sum_z,
-                uint32_t & _count)
+                float & _sum_z)
         {
             _sum_x += x;
             _sum_y += y;
             _sum_z += z;
-
-            _count++;
         }
 
         static void subsamplerTakeMean(
@@ -577,30 +566,15 @@ class Ekf {
                 float & sum_z,
                 float & sample_x,
                 float & sample_y,
-                float & sample_z,
-                uint32_t & count)
+                float & sample_z)
         {
-            const auto isCountNonzero = count > 0;
-
-            const auto shouldFinalize = shouldPredict && isCountNonzero;
-
-            sample_x = shouldFinalize ? 
-                sum_x * conversionFactor / count :
-                sample_x;
-
-            sample_y = shouldFinalize ?
-                sum_y * conversionFactor / count :
-                sample_y;
-
-            sample_z = shouldFinalize ?
-                sum_z * conversionFactor / count :
-                sample_z;
+            sample_x = shouldPredict ?  sum_x * conversionFactor : sample_x;
+            sample_y = shouldPredict ?  sum_y * conversionFactor : sample_y;
+            sample_z = shouldPredict ?  sum_z * conversionFactor : sample_z;
 
             sum_x = 0;
             sum_y = 0;
             sum_z = 0;
-
-            count = 0;
         }
 
         static void updateCovarianceMatrix(
