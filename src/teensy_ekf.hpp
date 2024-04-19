@@ -311,10 +311,6 @@ class Ekf {
 
 			static uint32_t _lastUpdateMsec;
 
-			_lastUpdateMsec = _lastUpdateMsec == 0 ?
-				stream_now_msec :
-				_lastUpdateMsec;
-
 			const auto dt1 = 
                           (stream_now_msec - _lastUpdateMsec) / 1000.0f;
 
@@ -345,7 +341,7 @@ class Ekf {
 
 			updateCovarianceMatrix(_p, isDtPositive, _p);
 
-			_lastUpdateMsec = isDtPositive ?  
+			_lastUpdateMsec = _lastUpdateMsec == 0 || isDtPositive ?  
 				stream_now_msec : 
 				_lastUpdateMsec;
 
