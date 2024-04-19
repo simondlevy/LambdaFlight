@@ -135,26 +135,37 @@ rotateQuat val initVal isFlying = val' where
 
 ekfStep :: State
 
--- XXX
-ekfStep = State 0 0 0 0 0 0 0 0 0 0 where
+ekfStep = State dx dy zz dz phi dphi theta dtheta psi dpsi where
 
-  -- XXX
+  -- XXX ---------------------------------------------------------------------
+
+  dx = 0
+  dy = 0
+  zz = 0
+  dz = 0
+  phi = 0
+  dphi = 0
+  theta = 0
+  dtheta = 0
+  psi = 0
+  dpsi = 0
+
   gyro_sample_x = 0 :: SFloat
   gyro_sample_y = 0 :: SFloat
   gyro_sample_z = 0 :: SFloat
 
-  isFlying = true -- XXX
+  isFlying = true
 
-  -- XXX
   qw = 0
   qx = 0
   qy = 0
   qz = 0
 
-  -- XXX
   p = [ [0.0, 0.0, 0.0],
         [0.0, 0.0, 0.0],
         [0.0, 0.0, 0.0] ]
+
+  ----------------------------------------------------------------------------
 
   nextPredictionMsec = 
       if _nextPredictionMsec == 0 then now_msec else _nextPredictionMsec
