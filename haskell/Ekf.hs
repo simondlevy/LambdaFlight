@@ -225,6 +225,12 @@ ekfStep = State dx dy zz dz phi dphi theta dtheta psi dpsi where
                         then now_msec + prediction_update_interval_msec
                         else _nextPredictionMsec
 
+  (gyro_sum_x', gyro_sum_y', gyro_sum_z', 
+   gyro_sample_x', gyro_sample_y', gyro_sample_z', gyro_count') = 
+    subsamplerFinalize shouldPredict degrees_to_radians
+    (gyro_sum_x, gyro_sum_y, gyro_sum_z, 
+    gyro_sample_x, gyro_sample_y, gyro_sample_z, gyro_count)
+
   -- Internal state, represented as streams ----------------------------------
 
   _didInit = [False] ++ true
