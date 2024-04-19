@@ -106,14 +106,15 @@ gyro_y = extern "stream_gyro_y" Nothing
 gyro_z :: SFloat
 gyro_z = extern "stream_gyro_z" Nothing
 
--- Helpers --------------------------------------------------------------------
+-- Utilities ------------------------------------------------------------------
+
+square :: SFloat -> SFloat
+square x = x * x
 
 getDt :: SInt32 -> SInt32 -> SFloat
-
 getDt msec1 msec2 = (unsafeCast (msec1 - msec2)) / 1000
 
 rotateQuat :: SFloat -> SFloat -> SBool -> SFloat
-
 rotateQuat val initVal isFlying = val' where
 
     keep = 1 - rollpitch_zero_reversion
@@ -257,6 +258,16 @@ ekfStep = State dx dy zz dz phi dphi theta dtheta psi dpsi where
   qz' = if shouldPredict then tmpq3 / norm else qz
 
   isUpdated = if shouldPredict then true else _isUpdated
+
+  lastUpdateMsec = 0 -- XXX
+
+  dt' = getDt now_msec lastUpdateMsec
+
+  isDtPositive = dt' > 0
+
+  noise = if isDtPositive 
+          then square (meas_noise_gyro + dt' + proc_noise_att)
+          else 0
 
   -- Internal state, represented as streams ----------------------------------
 
