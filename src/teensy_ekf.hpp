@@ -350,21 +350,13 @@ class Ekf {
 				stream_now_msec : 
 				_lastUpdateMsec;
 
-			subsamplerAccumulate(
-					stream_gyro_x,
-					stream_gyro_y,
-					stream_gyro_z,
-					_gyro_sum_x,
-					_gyro_sum_y,
-					_gyro_sum_z);
+            _gyro_sum_x = stream_gyro_x;
+            _gyro_sum_y = stream_gyro_y;
+            _gyro_sum_z = stream_gyro_z;
 
-			subsamplerAccumulate(
-					stream_accel_x,
-					stream_accel_y,
-					stream_accel_z,
-					_accel_sum_x,
-					_accel_sum_y,
-					_accel_sum_z);
+            _accel_sum_x = stream_accel_x;
+            _accel_sum_y = stream_accel_y;
+            _accel_sum_z = stream_accel_z;
 
             // Incorporate the attitude error (Kalman filter state) with the
             // attitude
@@ -543,19 +535,6 @@ class Ekf {
 
             return (val * (isFlying ? 1: keep)) +
                 (isFlying ? 0 : ROLLPITCH_ZERO_REVERSION * initVal);
-        }
-
-        static void subsamplerAccumulate(
-                const float x,
-                const float y,
-                const float z,
-                float & _sum_x,
-                float & _sum_y,
-                float & _sum_z)
-        {
-            _sum_x += x;
-            _sum_y += y;
-            _sum_z += z;
         }
 
         static void subsamplerTakeMean(
