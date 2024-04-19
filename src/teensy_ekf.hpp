@@ -88,8 +88,6 @@ class Ekf {
 			// therefore requires finalization
 			static bool _isUpdated;
 
-			static float _p[3][3];
-
             static float _p00;
             static float _p01;
             static float _p02;
@@ -323,7 +321,25 @@ class Ekf {
 			_p21 = shouldPredict ? APA[2][1] : _p21;
 			_p22 = shouldPredict ? APA[2][2] + noise : _p22;
 
-			updateCovarianceMatrix(_p, isDtPositive, _p);
+            const float p2[3][3] = { 
+                {_p00, _p01, _p02},
+                {_p10, _p11, _p12},
+                {_p20, _p21, _p22},
+            };
+
+            float p3[3][3] = {};
+
+			updateCovarianceMatrix(p2, true, p3);
+
+			_p00 = isDtPositive ? p3[0][0] : _p00;
+			_p01 = isDtPositive ? p3[0][1] : _p01;
+			_p02 = isDtPositive ? p3[0][2] : _p02;
+			_p10 = isDtPositive ? p3[1][0] : _p10;
+			_p11 = isDtPositive ? p3[1][1] : _p11;
+			_p12 = isDtPositive ? p3[1][2] : _p12;
+			_p20 = isDtPositive ? p3[2][0] : _p20;
+			_p21 = isDtPositive ? p3[2][1] : _p21;
+			_p22 = isDtPositive ? p3[2][2] : _p22;
 
 			_lastUpdateMsec = _lastUpdateMsec == 0 || isDtPositive ?  
 				stream_now_msec : 
@@ -422,7 +438,7 @@ class Ekf {
 				/*E2*/  {newe2e0, newe2e1, newe2e2}
 			};
 
-            const float p2[3][3] = { 
+            const float p4[3][3] = { 
                 {_p00, _p01, _p02},
                 {_p10, _p11, _p12},
                 {_p20, _p21, _p22},
@@ -431,7 +447,7 @@ class Ekf {
             float newAt[3][3] = {};
             transpose(newA, newAt);     // A'
             float newAP[3][3] = {};
-            multiply(newA, p2, newAP);  // AP
+            multiply(newA, p4, newAP);  // AP
             float newAPA[3][3] = {};
             multiply(newAP, newAt, newAPA); // APA'
 
@@ -447,25 +463,25 @@ class Ekf {
 			_p21 = shouldFinalize ? newAPA[2][1] : _p21;
 			_p22 = shouldFinalize ? newAPA[2][2] : _p22;
 
-            const float p3[3][3] = { 
+            const float p5[3][3] = { 
                 {_p00, _p01, _p02},
                 {_p10, _p11, _p12},
                 {_p20, _p21, _p22},
             };
 
-            float p4[3][3] = {};
+            float p6[3][3] = {};
 
-            updateCovarianceMatrix(p3, true, p4);
+            updateCovarianceMatrix(p5, true, p6);
 
-			_p00 = _isUpdated ? p4[0][0] : _p00;
-			_p01 = _isUpdated ? p4[0][1] : _p01;
-			_p02 = _isUpdated ? p4[0][2] : _p02;
-			_p10 = _isUpdated ? p4[1][0] : _p10;
-			_p11 = _isUpdated ? p4[1][1] : _p11;
-			_p12 = _isUpdated ? p4[1][2] : _p12;
-			_p20 = _isUpdated ? p4[2][0] : _p20;
-			_p21 = _isUpdated ? p4[2][1] : _p21;
-			_p22 = _isUpdated ? p4[2][2] : _p22;
+			_p00 = _isUpdated ? p6[0][0] : _p00;
+			_p01 = _isUpdated ? p6[0][1] : _p01;
+			_p02 = _isUpdated ? p6[0][2] : _p02;
+			_p10 = _isUpdated ? p6[1][0] : _p10;
+			_p11 = _isUpdated ? p6[1][1] : _p11;
+			_p12 = _isUpdated ? p6[1][2] : _p12;
+			_p20 = _isUpdated ? p6[2][0] : _p20;
+			_p21 = _isUpdated ? p6[2][1] : _p21;
+			_p22 = _isUpdated ? p6[2][2] : _p22;
 
             _qw = shouldFinalize ? newtmpq0 / newnorm : _qw;
             _qx = shouldFinalize ? newtmpq1 / newnorm : _qx;
