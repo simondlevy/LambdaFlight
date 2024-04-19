@@ -66,40 +66,31 @@ prediction_update_interval_msec = (div 1000  prediction_rate) :: SInt32
 
 -- Subsampler for gyro and accelerometer --------------------------------------
 
-data Subsampler = Subsampler { 
-
-    sum_x :: SFloat
-  , sum_y :: SFloat
-  , sum_z :: SFloat
-  , sample_x :: SFloat
-  , sample_y :: SFloat
-  , sample_z :: SFloat
-  , count :: SInt32
-}
+type Subsampler = (SFloat, SFloat, SFloat, SFloat, SFloat, SFloat, SInt32)
 
 subsamplerFinalize :: SBool -> SFloat -> Subsampler -> Subsampler
 
-subsamplerFinalize shouldPredict conversionFactor sampler = sampler' where
+subsamplerFinalize shouldPredict conversionFactor 
+  (sum_x, sum_y, sum_z, sample_x, sample_y, sample_z, count) = 
+  (0, 0, 0, sample_x', sample_y', sample_z', 0) where 
 
-  count' = unsafeCast (count sampler) :: SFloat
+  isCountNonzero = count > 0
 
-  isCountNonzero = count' > 0
+  count' = unsafeCast count :: SFloat
 
   shouldFinalize = shouldPredict && isCountNonzero
 
   sample_x' = if shouldFinalize 
-              then (sum_x sampler) * conversionFactor / count'
-              else (sample_x sampler)
+              then sum_x * conversionFactor / count'
+              else sample_x
 
   sample_y' = if shouldFinalize 
-              then (sum_y sampler) * conversionFactor / count'
-              else (sample_y sampler)
+              then sum_y * conversionFactor / count'
+              else sample_y
 
   sample_z' = if shouldFinalize 
-              then (sum_z sampler) * conversionFactor / count'
-              else (sample_z sampler)
-
-  sampler' = Subsampler 0.0 0.0 0.0 sample_x' sample_y' sample_z' 0
+              then sum_z * conversionFactor / count'
+              else sample_z
 
 -- Streams from C++ ----------------------------------------------------------
 
