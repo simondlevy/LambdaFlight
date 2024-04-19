@@ -24,6 +24,9 @@ module Ekf where
 import Language.Copilot
 import Copilot.Compile.C99
 
+import Data.List(transpose)
+import Linear.Matrix
+
 import LinAlg
 import State
 import Utils
@@ -96,6 +99,24 @@ ekfStep :: State
 -- XXX
 ekfStep = State 0 0 0 0 0 0 0 0 0 0 where
 
+  -- XXX
+  gyro_sample_x = 0 :: SFloat
+  gyro_sample_y = 0 :: SFloat
+  gyro_sample_z = 0 :: SFloat
+
+  isFlying = true -- XXX
+
+  -- XXX
+  qw = 0
+  qx = 0
+  qy = 0
+  qz = 0
+
+  -- XXX
+  p = [ [0.0, 0.0, 0.0],
+        [0.0, 0.0, 0.0],
+        [0.0, 0.0, 0.0] ]
+
   nextPredictionMsec = 
       if _nextPredictionMsec == 0 then now_msec else _nextPredictionMsec
 
@@ -105,11 +126,6 @@ ekfStep = State 0 0 0 0 0 0 0 0 0 0 where
   shouldPredict = now_msec > nextPredictionMsec
 
   dt = getDt now_msec lastPredictionMsec
-
-  -- XXX
-  gyro_sample_x = 0 :: SFloat
-  gyro_sample_y = 0 :: SFloat
-  gyro_sample_z = 0 :: SFloat
 
   e0 = gyro_sample_x * dt / 2
   e1 = gyro_sample_y * dt / 2
@@ -146,14 +162,6 @@ ekfStep = State 0 0 0 0 0 0 0 0 0 0 where
   dqy = sa * dtwy / angle
   dqz = sa * dtwz / angle
 
-  isFlying = true -- XXX
-
-  -- XXX
-  qw = 0
-  qx = 0
-  qy = 0
-  qz = 0
-
   -- Rotate the quad's attitude by the delta quaternion vector computed above
   tmpq0 = rotateQuat (dqw*qw - dqx*qx - dqy*qy - dqz*qz) qw_init isFlying
   tmpq1 = rotateQuat (dqx*qw + dqw*qx + dqz*qy - dqy*qz) qx_init isFlying
@@ -163,6 +171,10 @@ ekfStep = State 0 0 0 0 0 0 0 0 0 0 where
   -- Normalize and store the result
   norm = sqrt (tmpq0*tmpq0 + tmpq1*tmpq1 + tmpq2*tmpq2 + tmpq3*tmpq3) + eps
 
+
+  -- Update the covariance matrix
+  apa = a !*! p -- (transpose a)
+  
 
   -- Internal state, represented as streams ----------------------------------
 
