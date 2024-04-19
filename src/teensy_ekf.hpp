@@ -600,8 +600,15 @@ class Ekf {
             // Enforce symmetry of the covariance matrix, and ensure the
             // values stay bounded
             for (int i=0; i<3; i++) {
+
                 for (int j=i; j<3; j++) {
-                    updateCovarianceCell(p_in, i, j, 0, p_out);
+
+                    const auto pval = (p_in[i][j] + p_in[j][i]) / 2;
+
+                    p_out[i][j] = p_out[j][i] =
+                        (isnan(pval) || pval > MAX_COVARIANCE) ?  MAX_COVARIANCE :
+                        (i==j && pval < MIN_COVARIANCE) ?  MIN_COVARIANCE :
+                        pval;
                 }
             }
         }
@@ -623,14 +630,6 @@ class Ekf {
                 const float variance,
                 float p_out[3][3])
         {
-            const auto pval = (p_in[i][j] + p_in[j][i]) / 2 + variance;
-
-            p_out[i][j] = 
-                (isnan(pval) || pval > MAX_COVARIANCE) ?  MAX_COVARIANCE :
-                (i==j && pval < MIN_COVARIANCE) ?  MIN_COVARIANCE :
-                pval;
-
-            p_out[j][i] = p_out[i][j] : p_in[j][i];
         }
 
         static float max(const float val, const float maxval)
