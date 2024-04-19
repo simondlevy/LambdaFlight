@@ -60,16 +60,6 @@ stateTheta = extern "stream_state_theta" Nothing
 dt :: SFloat
 dt = extern "stream_dt" Nothing
 
-gyro_x :: SFloat
-gyro_x = extern "stream_gyro_x" Nothing
-
-gyro_y :: SFloat
-gyro_y = extern "stream_gyro_y" Nothing
-
-gyro_z :: SFloat
-gyro_z = extern "stream_gyro_z" Nothing
-
-
 -- PID tuning constants -----------------------------------------------------
 
 i_limit = 25 :: SFloat

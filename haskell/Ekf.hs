@@ -27,6 +27,8 @@ import Copilot.Compile.C99
 import State
 import Utils
 
+-- Constants -----------------------------------------------------------------
+
 -- Quaternion used for initial orientation
 qw_init = 1 :: SFloat
 qx_init = 0 :: SFloat
@@ -57,7 +59,22 @@ rollpitch_zero_reversion = 0.001 :: SFloat
 prediction_rate = 100 :: SInt32
 prediction_update_interval_ms = (div 1000  prediction_rate) :: SInt32
 
+-- Streams from C++ ----------------------------------------------------------
+
+gyro_x :: SFloat
+gyro_x = extern "stream_gyro_x" Nothing
+
+gyro_y :: SFloat
+gyro_y = extern "stream_gyro_y" Nothing
+
+gyro_z :: SFloat
+gyro_z = extern "stream_gyro_z" Nothing
+
+-- EKF function --------------------------------------------------------------
+
 ekfStep :: State
 
-ekfStep = State 0 0 0 0 0 0 0 0 0 0 
+ekfStep = State 0 0 0 0 0 0 0 0 0 0 where
+
+  didInit = [False] ++ true
 
