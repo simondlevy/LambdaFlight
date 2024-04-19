@@ -453,20 +453,20 @@ class Ekf {
 
             const auto shouldFinalize = _isUpdated && isErrorSufficient;
 
-			_p00 = shouldFinalize ? newAPA[0][0] : p00_noise;
-			_p01 = shouldFinalize ? newAPA[0][1] : p01_noise;
-			_p02 = shouldFinalize ? newAPA[0][2] : p02_noise;
-			_p10 = shouldFinalize ? newAPA[1][0] : p10_noise;
-			_p11 = shouldFinalize ? newAPA[1][1] : p11_noise;
-			_p12 = shouldFinalize ? newAPA[1][2] : p12_noise;
-			_p20 = shouldFinalize ? newAPA[2][0] : p20_noise;
-			_p21 = shouldFinalize ? newAPA[2][1] : p21_noise;
-			_p22 = shouldFinalize ? newAPA[2][2] : p22_noise;
+			const auto p00_final = shouldFinalize ? newAPA[0][0] : p00_noise;
+			const auto p01_final = shouldFinalize ? newAPA[0][1] : p01_noise;
+			const auto p02_final = shouldFinalize ? newAPA[0][2] : p02_noise;
+			const auto p10_final = shouldFinalize ? newAPA[1][0] : p10_noise;
+			const auto p11_final = shouldFinalize ? newAPA[1][1] : p11_noise;
+			const auto p12_final = shouldFinalize ? newAPA[1][2] : p12_noise;
+			const auto p20_final = shouldFinalize ? newAPA[2][0] : p20_noise;
+			const auto p21_final = shouldFinalize ? newAPA[2][1] : p21_noise;
+			const auto p22_final = shouldFinalize ? newAPA[2][2] : p22_noise;
 
             const float p5[3][3] = { 
-                {_p00, _p01, _p02},
-                {_p10, _p11, _p12},
-                {_p20, _p21, _p22},
+                {p00_final, p01_final, p02_final},
+                {p10_final, p11_final, p12_final},
+                {p20_final, p21_final, p22_final},
             };
 
             float p6[3][3] = {};
