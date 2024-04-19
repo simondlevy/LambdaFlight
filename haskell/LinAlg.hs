@@ -1,4 +1,4 @@
-module Main where
+module LinAlg where
 
 import Linear.Matrix hiding(transpose)
 import Data.List

@@ -24,6 +24,7 @@ module Ekf where
 import Language.Copilot
 import Copilot.Compile.C99
 
+import LinAlg
 import State
 import Utils
 
