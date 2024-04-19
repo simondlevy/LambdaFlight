@@ -169,38 +169,6 @@ class Ekf {
 			_e1 = !_didInit ? 0 : _e1;
 			_e2 = !_didInit ? 0 : _e2;
 
-			_p[0][0] = !_didInit ? 
-                square(STDEV_INITIAL_ATTITUDE_ROLL_PITCH) : 
-                _p[0][0];
-			_p[0][1] = !_didInit ? 0 : _p[0][1];
-			_p[0][2] = !_didInit ? 0 : _p[0][2];
-			_p[1][0] = !_didInit ? 0 : _p[1][0];
-			_p[1][1] = !_didInit ? 
-                square(STDEV_INITIAL_ATTITUDE_ROLL_PITCH) : 
-                _p[1][1];
-			_p[1][2] = !_didInit ? 0 : _p[1][2];
-			_p[2][0] = !_didInit ? 0 : _p[2][0];
-			_p[2][1] = !_didInit ? 0 : _p[2][1];
-			_p[2][2] = !_didInit ? 
-                square(STDEV_INITIAL_ATTITUDE_YAW) : 
-                _p[2][2];
-
-			_p00 = !_didInit ? 
-                square(STDEV_INITIAL_ATTITUDE_ROLL_PITCH) : 
-                _p00;
-			_p01 = !_didInit ? 0 : _p01;
-			_p02 = !_didInit ? 0 : _p02;
-			_p10 = !_didInit ? 0 : _p10;
-			_p11 = !_didInit ? 
-                square(STDEV_INITIAL_ATTITUDE_ROLL_PITCH) : 
-                _p11;
-			_p12 = !_didInit ? 0 : _p12;
-			_p20 = !_didInit ? 0 : _p20;
-			_p21 = !_didInit ? 0 : _p21;
-			_p22 = !_didInit ? 
-                square(STDEV_INITIAL_ATTITUDE_YAW) : 
-                _p22;
-
 			_didInit = true;
 
 			const auto isFlying = true; // XXX
@@ -275,10 +243,16 @@ class Ekf {
 
 			// ====== COVARIANCE UPDATE ======
 
+            const float p[3][3] = { 
+                {_p00, _p01, _p02},
+                {_p10, _p11, _p12},
+                {_p20, _p21, _p22},
+            };
+
 			float At[3][3] = {};
 			transpose(A, At);     // A'
 			float AP[3][3] = {};
-			multiply(A, _p, AP);  // AP
+			multiply(A, p, AP);  // AP
 			float APA[3][3] = {};
 			multiply(AP, At, APA); // APA'
 
@@ -339,23 +313,15 @@ class Ekf {
 				square(MEAS_NOISE_GYRO * dt1 + PROC_NOISE_ATT) :
 				0;
 
-			_p[0][0] = shouldPredict ? APA[0][0] + noise : _p[0][0];
-
-			_p[0][1] = shouldPredict ? APA[0][1] : _p[0][1];
-
-			_p[0][2] = shouldPredict ? APA[0][2] : _p[0][2];
-
-			_p[1][0] = shouldPredict ? APA[1][0] : _p[1][0];
-
-			_p[1][1] = shouldPredict ? APA[1][1] + noise: _p[1][1];
-
-			_p[1][2] = shouldPredict ? APA[1][2] : _p[1][2];
-
-			_p[2][0] = shouldPredict ? APA[2][0] : _p[2][0];
-
-			_p[2][1] = shouldPredict ? APA[2][1] : _p[2][1];
-
-			_p[2][2] = shouldPredict ? APA[2][2] + noise : _p[2][2];
+			_p00 = shouldPredict ? APA[0][0] + noise : _p00;
+			_p01 = shouldPredict ? APA[0][1] : _p01;
+			_p02 = shouldPredict ? APA[0][2] : _p02;
+			_p10 = shouldPredict ? APA[1][0] : _p10;
+			_p11 = shouldPredict ? APA[1][1] + noise: _p11;
+			_p12 = shouldPredict ? APA[1][2] : _p12;
+			_p20 = shouldPredict ? APA[2][0] : _p20;
+			_p21 = shouldPredict ? APA[2][1] : _p21;
+			_p22 = shouldPredict ? APA[2][2] + noise : _p22;
 
 			updateCovarianceMatrix(_p, isDtPositive, _p);
 
@@ -456,23 +422,50 @@ class Ekf {
 				/*E2*/  {newe2e0, newe2e1, newe2e2}
 			};
 
+            const float p2[3][3] = { 
+                {_p00, _p01, _p02},
+                {_p10, _p11, _p12},
+                {_p20, _p21, _p22},
+            };
+
             float newAt[3][3] = {};
             transpose(newA, newAt);     // A'
             float newAP[3][3] = {};
-            multiply(newA, _p, newAP);  // AP
+            multiply(newA, p2, newAP);  // AP
             float newAPA[3][3] = {};
             multiply(newAP, newAt, newAPA); // APA'
 
             const auto shouldFinalize = _isUpdated && isErrorSufficient;
 
-            if (shouldFinalize) {
-                memcpy(_p, newAPA, 3*3*sizeof(float));
-            }
+			_p00 = shouldFinalize ? newAPA[0][0] : _p00;
+			_p01 = shouldFinalize ? newAPA[0][1] : _p01;
+			_p02 = shouldFinalize ? newAPA[0][2] : _p02;
+			_p10 = shouldFinalize ? newAPA[1][0] : _p10;
+			_p11 = shouldFinalize ? newAPA[1][1] : _p11;
+			_p12 = shouldFinalize ? newAPA[1][2] : _p12;
+			_p20 = shouldFinalize ? newAPA[2][0] : _p20;
+			_p21 = shouldFinalize ? newAPA[2][1] : _p21;
+			_p22 = shouldFinalize ? newAPA[2][2] : _p22;
 
-            if (_isUpdated) {
+            const float p3[3][3] = { 
+                {_p00, _p01, _p02},
+                {_p10, _p11, _p12},
+                {_p20, _p21, _p22},
+            };
 
-                updateCovarianceMatrix(_p, true, _p);
-            }
+            float p4[3][3] = {};
+
+            updateCovarianceMatrix(p3, true, p4);
+
+			_p00 = _isUpdated ? p4[0][0] : _p00;
+			_p01 = _isUpdated ? p4[0][1] : _p01;
+			_p02 = _isUpdated ? p4[0][2] : _p02;
+			_p10 = _isUpdated ? p4[1][0] : _p10;
+			_p11 = _isUpdated ? p4[1][1] : _p11;
+			_p12 = _isUpdated ? p4[1][2] : _p12;
+			_p20 = _isUpdated ? p4[2][0] : _p20;
+			_p21 = _isUpdated ? p4[2][1] : _p21;
+			_p22 = _isUpdated ? p4[2][2] : _p22;
 
             _qw = shouldFinalize ? newtmpq0 / newnorm : _qw;
             _qx = shouldFinalize ? newtmpq1 / newnorm : _qx;
