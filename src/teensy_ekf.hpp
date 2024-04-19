@@ -271,7 +271,9 @@ class Ekf {
 
 			_nextPredictionMsec = _nextPredictionMsec == 0 ? 
                 stream_now_msec : 
-                _nextPredictionMsec;
+                stream_now_msec >= _nextPredictionMsec ?
+				stream_now_msec + PREDICTION_UPDATE_INTERVAL_MS :
+				_nextPredictionMsec;
 
 			subsamplerFinalize(shouldPredict, DEGREES_TO_RADIANS, 
 					_gyro_sum_x,
@@ -346,10 +348,6 @@ class Ekf {
 			_lastUpdateMsec = isDtPositive ?  
 				stream_now_msec : 
 				_lastUpdateMsec;
-
-			_nextPredictionMsec = stream_now_msec >= _nextPredictionMsec ?
-				stream_now_msec + PREDICTION_UPDATE_INTERVAL_MS :
-				_nextPredictionMsec;
 
 			subsamplerAccumulate(
 					stream_gyro_x,
