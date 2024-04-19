@@ -88,6 +88,7 @@ class Ekf {
 			// therefore requires finalization
 			static bool _isUpdated;
 
+            // Covariance matrix entries
             static float _p00;
             static float _p01;
             static float _p02;

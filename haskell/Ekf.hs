@@ -142,6 +142,29 @@ ekfStep = State dx dy zz dz phi dphi theta dtheta psi dpsi where
   psi = 0
   dpsi = 0
 
+  -- Covariance matrix entries
+  p00 = 0 :: SFloat
+  p01 = 0 :: SFloat
+  p02 = 0 :: SFloat
+  p10 = 0 :: SFloat
+  p11 = 0 :: SFloat
+  p12 = 0 :: SFloat
+  p20 = 0 :: SFloat
+  p21 = 0 :: SFloat
+  p22 = 0 :: SFloat
+
+  -- Quaternion
+  qw = 0
+  qx = 0
+  qy = 0
+  qz = 0
+
+  -- Third row (Z) of attitude as a rotation matrix (used by prediction,
+  -- updated by finalization)
+  r20 = 0 :: SFloat
+  r21 = 0 :: SFloat
+  r22 = 0 :: SFloat
+
   gyro_sum_x = 0 :: SFloat
   gyro_sum_y = 0 :: SFloat
   gyro_sum_z = 0 :: SFloat
@@ -159,11 +182,6 @@ ekfStep = State dx dy zz dz phi dphi theta dtheta psi dpsi where
   accel_count = 0 :: SInt32
 
   isFlying = true
-
-  qw = 0
-  qx = 0
-  qy = 0
-  qz = 0
 
   p = [ [0.0, 0.0, 0.0],
         [0.0, 0.0, 0.0],
