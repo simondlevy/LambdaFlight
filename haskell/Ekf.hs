@@ -150,9 +150,15 @@ ekfStep = State dx dy zz dz phi dphi theta dtheta psi dpsi where
   psi = 0
   dpsi = 0
 
+  gyro_sum_x = 0 :: SFloat
+  gyro_sum_y = 0 :: SFloat
+  gyro_sum_z = 0 :: SFloat
+
   gyro_sample_x = 0 :: SFloat
   gyro_sample_y = 0 :: SFloat
   gyro_sample_z = 0 :: SFloat
+
+  gyro_count = 0 :: SInt32
 
   isFlying = true
 
@@ -221,10 +227,12 @@ ekfStep = State dx dy zz dz phi dphi theta dtheta psi dpsi where
   -- Normalize and store the result
   norm = sqrt (tmpq0*tmpq0 + tmpq1*tmpq1 + tmpq2*tmpq2 + tmpq3*tmpq3) + eps
 
-
   -- Update the covariance matrix
   apa = a !*! p !*! (transpose a)
   
+  lastPredictionMsec' = if lastPredictionMsec == 0 
+                        then now_msec 
+                        else lastPredictionMsec
 
   -- Internal state, represented as streams ----------------------------------
 
@@ -232,5 +240,5 @@ ekfStep = State dx dy zz dz phi dphi theta dtheta psi dpsi where
 
   _nextPredictionMsec = [0] ++ nextPredictionMsec
 
-  _lastPredictionMsec = [0] ++ lastPredictionMsec
+  _lastPredictionMsec = [0] ++ lastPredictionMsec'
 
