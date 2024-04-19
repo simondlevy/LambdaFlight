@@ -25,7 +25,7 @@ import Language.Copilot
 import Copilot.Compile.C99
 
 import Data.List(transpose)
-import Linear.Matrix
+import Linear.Matrix hiding(transpose)
 
 import LinAlg
 import State
@@ -173,7 +173,7 @@ ekfStep = State 0 0 0 0 0 0 0 0 0 0 where
 
 
   -- Update the covariance matrix
-  apa = a !*! p -- (transpose a)
+  apa = a !*! p !*! (transpose a)
   
 
   -- Internal state, represented as streams ----------------------------------
