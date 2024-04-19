@@ -99,8 +99,7 @@ subsamplerFinalize shouldPredict conversionFactor sampler = sampler' where
               then (sum_z sampler) * conversionFactor / count'
               else (sample_z sampler)
 
-
-  sampler' = sampler
+  sampler' = Subsampler 0.0 0.0 0.0 sample_x' sample_y' sample_z' 0
 
 -- Streams from C++ ----------------------------------------------------------
 
