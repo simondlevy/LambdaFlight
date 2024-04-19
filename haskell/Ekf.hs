@@ -125,6 +125,16 @@ ekfStep = State 0 0 0 0 0 0 0 0 0 0 where
   dtwy = dt * gyro_sample_y
   dtwz = dt * gyro_sample_z
 
+  -- Compute the quaternion values in [w,x,y,z] order
+  angle = sqrt (dtwx*dtwx + dtwy*dtwy + dtwz*dtwz) + eps
+  ca = cos $ angle / 2
+  sa = sin $ angle / 2
+  dqw = ca
+  dqx = sa * dtwx / angle
+  dqy = sa * dtwy / angle
+  dqz = sa * dtwz / angle
+
+
   -- Internal state, represented as streams ----------------------------------
 
   _didInit = [False] ++ true
