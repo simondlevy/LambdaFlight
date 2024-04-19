@@ -64,6 +64,19 @@ rollpitch_zero_reversion = 0.001 :: SFloat
 prediction_rate = 100 :: SInt32
 prediction_update_interval_ms = (div 1000  prediction_rate) :: SInt32
 
+-- Datatypes ----------------------------------------------------------------
+
+data Subsampler = Subsampler { 
+
+    sum_x :: SFloat
+  , sum_y :: SFloat
+  , sum_z :: SFloat
+  , sample_x :: SFloat
+  , sample_y :: SFloat
+  , sample_z :: SFloat
+  , count :: SInt32
+}
+
 -- Streams from C++ ----------------------------------------------------------
 
 now_msec :: SInt32
@@ -92,6 +105,13 @@ rotateQuat val initVal isFlying = val' where
 
     val' = (val * (if isFlying then  1 else keep)) +
            (if isFlying then 0 else rollpitch_zero_reversion * initVal)
+
+subsamplerFinalize :: SBool -> SFloat -> Subsampler -> Subsampler
+
+subsamplerFinalize shouldPredict conversionFactor sampler = sampler' where
+
+  sampler' = sampler
+
 
 -- EKF function --------------------------------------------------------------
 
