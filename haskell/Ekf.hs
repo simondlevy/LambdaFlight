@@ -143,7 +143,9 @@ ekfStep = State dx dy zz dz phi dphi theta dtheta psi dpsi where
   dpsi = 0
 
   -- Covariance matrix entries
-  p00 = 0 :: SFloat
+
+  p00 = if _didInit then _p00 else square stdev_initial_attitude_roll_pitch
+
   p01 = 0 :: SFloat
   p02 = 0 :: SFloat
   p10 = 0 :: SFloat
@@ -288,6 +290,8 @@ ekfStep = State dx dy zz dz phi dphi theta dtheta psi dpsi where
           else 0
 
   -- Internal state, represented as streams ----------------------------------
+
+  _p00 = [0] ++ p00
 
   _didInit = [False] ++ true
 
