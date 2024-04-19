@@ -44,8 +44,8 @@ degrees_to_radians = pi / 180 :: SFloat
 
 -- Initial variances, uncertain of position, but know we're
 -- stationary and roughly flat
-stdev_initial_attitude_roll_pitch = 0.01 :: SFloat
-stdev_initial_attitude_yaw = 0.01 :: SFloat
+stdev_initial_attitude_roll_pitch = 0.01
+stdev_initial_attitude_yaw = 0.01
 
 proc_noise_att = 0 :: SFloat
 meas_noise_gyro = 0.1 :: SFloat -- radians per second
@@ -108,9 +108,6 @@ gyro_z = extern "stream_gyro_z" Nothing
 
 -- Utilities ------------------------------------------------------------------
 
-square :: SFloat -> SFloat
-square x = x * x
-
 getDt :: SInt32 -> SInt32 -> SFloat
 getDt msec1 msec2 = (unsafeCast (msec1 - msec2)) / 1000
 
@@ -143,9 +140,7 @@ ekfStep = State dx dy zz dz phi dphi theta dtheta psi dpsi where
   dpsi = 0
 
   -- Covariance matrix entries
-
-  p00 = if _didInit then _p00 else square stdev_initial_attitude_roll_pitch
-
+  p00 = 0 :: SFloat
   p01 = 0 :: SFloat
   p02 = 0 :: SFloat
   p10 = 0 :: SFloat
@@ -286,12 +281,14 @@ ekfStep = State dx dy zz dz phi dphi theta dtheta psi dpsi where
   isDtPositive = dt' > 0
 
   noise = if isDtPositive 
-          then square (meas_noise_gyro + dt' + proc_noise_att)
+          then (meas_noise_gyro + dt' + proc_noise_att) ** 2
           else 0
 
   -- Internal state, represented as streams ----------------------------------
 
-  _p00 = [0] ++ p00
+  _p00 = [stdev_initial_attitude_roll_pitch ** 2] ++ p00
+  _p11 = [stdev_initial_attitude_roll_pitch ** 2] ++ p11
+  _p22 = [stdev_initial_attitude_yaw ** 2] ++ p22
 
   _didInit = [False] ++ true
 
