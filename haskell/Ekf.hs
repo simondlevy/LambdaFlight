@@ -144,12 +144,18 @@ ekfStep = State dx dy zz dz phi dphi theta dtheta psi dpsi where
   gyro_sum_x = 0 :: SFloat
   gyro_sum_y = 0 :: SFloat
   gyro_sum_z = 0 :: SFloat
-
   gyro_sample_x = 0 :: SFloat
   gyro_sample_y = 0 :: SFloat
   gyro_sample_z = 0 :: SFloat
-
   gyro_count = 0 :: SInt32
+
+  accel_sum_x = 0 :: SFloat
+  accel_sum_y = 0 :: SFloat
+  accel_sum_z = 0 :: SFloat
+  accel_sample_x = 0 :: SFloat
+  accel_sample_y = 0 :: SFloat
+  accel_sample_z = 0 :: SFloat
+  accel_count = 0 :: SInt32
 
   isFlying = true
 
@@ -230,6 +236,12 @@ ekfStep = State dx dy zz dz phi dphi theta dtheta psi dpsi where
     subsamplerFinalize shouldPredict degrees_to_radians
     (gyro_sum_x, gyro_sum_y, gyro_sum_z, 
     gyro_sample_x, gyro_sample_y, gyro_sample_z, gyro_count)
+
+  (accel_sum_x', accel_sum_y', accel_sum_z', 
+   accel_sample_x', accel_sample_y', accel_sample_z', accel_count') = 
+    subsamplerFinalize shouldPredict degrees_to_radians
+    (accel_sum_x, accel_sum_y, accel_sum_z, 
+    accel_sample_x, accel_sample_y, accel_sample_z, accel_count)
 
   -- Internal state, represented as streams ----------------------------------
 
