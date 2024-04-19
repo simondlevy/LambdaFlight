@@ -331,15 +331,15 @@ class Ekf {
 
 			updateCovarianceMatrix(p_pred, p3);
 
-			_p00 = isDtPositive ? p3[0][0] : _p00;
-			_p01 = isDtPositive ? p3[0][1] : _p01;
-			_p02 = isDtPositive ? p3[0][2] : _p02;
-			_p10 = isDtPositive ? p3[1][0] : _p10;
-			_p11 = isDtPositive ? p3[1][1] : _p11;
-			_p12 = isDtPositive ? p3[1][2] : _p12;
-			_p20 = isDtPositive ? p3[2][0] : _p20;
-			_p21 = isDtPositive ? p3[2][1] : _p21;
-			_p22 = isDtPositive ? p3[2][2] : _p22;
+			_p00 = isDtPositive ? p3[0][0] : p00_pred;
+			_p01 = isDtPositive ? p3[0][1] : p01_pred;
+			_p02 = isDtPositive ? p3[0][2] : p02_pred;
+			_p10 = isDtPositive ? p3[1][0] : p10_pred;
+			_p11 = isDtPositive ? p3[1][1] : p11_pred;
+			_p12 = isDtPositive ? p3[1][2] : p12_pred;
+			_p20 = isDtPositive ? p3[2][0] : p20_pred;
+			_p21 = isDtPositive ? p3[2][1] : p21_pred;
+			_p22 = isDtPositive ? p3[2][2] : p22_pred;
 
 			_lastUpdateMsec = _lastUpdateMsec == 0 || isDtPositive ?  
 				stream_now_msec : 
