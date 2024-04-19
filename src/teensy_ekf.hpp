@@ -268,6 +268,10 @@ class Ekf {
 				stream_now_msec :
 				_lastPredictionMsec;
 
+			_lastPredictionMsec = shouldPredict ? 
+				stream_now_msec : 
+				_lastPredictionMsec;
+
 			_nextPredictionMsec = _nextPredictionMsec == 0 ? 
                 stream_now_msec : 
                 _nextPredictionMsec;
@@ -305,10 +309,6 @@ class Ekf {
 			_qz = shouldPredict ? tmpq3/norm : _qz;
 
 			_isUpdated = shouldPredict ? true : _isUpdated;
-
-			_lastPredictionMsec = shouldPredict ? 
-				stream_now_msec : 
-				_lastPredictionMsec;
 
 			static uint32_t _lastUpdateMsec;
 

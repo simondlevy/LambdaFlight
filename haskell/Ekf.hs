@@ -234,11 +234,15 @@ ekfStep = State dx dy zz dz phi dphi theta dtheta psi dpsi where
                         then now_msec 
                         else lastPredictionMsec
 
+  nextPredictionMsec' = if nextPredictionMsec == 0 
+                        then now_msec 
+                        else nextPredictionMsec
+
   -- Internal state, represented as streams ----------------------------------
 
   _didInit = [False] ++ true
 
-  _nextPredictionMsec = [0] ++ nextPredictionMsec
+  _nextPredictionMsec = [0] ++ nextPredictionMsec'
 
   _lastPredictionMsec = [0] ++ lastPredictionMsec'
 
