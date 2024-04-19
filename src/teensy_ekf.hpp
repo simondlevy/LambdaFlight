@@ -329,7 +329,7 @@ class Ekf {
 
             float p3[3][3] = {};
 
-			updateCovarianceMatrix(p2, true, p3);
+			updateCovarianceMatrix(p2, p3);
 
 			_p00 = isDtPositive ? p3[0][0] : _p00;
 			_p01 = isDtPositive ? p3[0][1] : _p01;
@@ -471,7 +471,7 @@ class Ekf {
 
             float p6[3][3] = {};
 
-            updateCovarianceMatrix(p5, true, p6);
+            updateCovarianceMatrix(p5, p6);
 
 			_p00 = _isUpdated ? p6[0][0] : _p00;
 			_p01 = _isUpdated ? p6[0][1] : _p01;
@@ -595,14 +595,13 @@ class Ekf {
 
         static void updateCovarianceMatrix(
                 const float p_in[3][3],
-                const bool shouldUpdate, 
-                float _p[3][3])
+                float p_out[3][3])
         {
             // Enforce symmetry of the covariance matrix, and ensure the
             // values stay bounded
             for (int i=0; i<3; i++) {
                 for (int j=i; j<3; j++) {
-                    updateCovarianceCell(p_in, i, j, 0, shouldUpdate, _p);
+                    updateCovarianceCell(p_in, i, j, 0, p_out);
                 }
             }
         }
@@ -622,17 +621,16 @@ class Ekf {
                 const int i, 
                 const int j, 
                 const float variance,
-                const bool shouldUpdate,
                 float p_out[3][3])
         {
             const auto pval = (p_in[i][j] + p_in[j][i]) / 2 + variance;
 
-            p_out[i][j] = !shouldUpdate ? p_in[i][j] :
+            p_out[i][j] = 
                 (isnan(pval) || pval > MAX_COVARIANCE) ?  MAX_COVARIANCE :
                 (i==j && pval < MIN_COVARIANCE) ?  MIN_COVARIANCE :
                 pval;
 
-            p_out[j][i] = shouldUpdate ? p_out[i][j] : p_in[j][i];
+            p_out[j][i] = p_out[i][j] : p_in[j][i];
         }
 
         static float max(const float val, const float maxval)
