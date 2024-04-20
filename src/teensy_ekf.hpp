@@ -116,16 +116,10 @@ class Ekf {
 			static float _e1;
 			static float _e2;
 
-			static float _gyro_sum_x;
-			static float _gyro_sum_y;
-			static float _gyro_sum_z;
 			static float _gyro_sample_x;
 			static float _gyro_sample_y;
 			static float _gyro_sample_z;
 
-			static float _accel_sum_x;
-			static float _accel_sum_y;
-			static float _accel_sum_z;
 			static float _accel_sample_x;
 			static float _accel_sample_y;
 			static float _accel_sample_z;
@@ -139,20 +133,6 @@ class Ekf {
 			_p20 = !_didInit ? 0 : _p20;
 			_p21 = !_didInit ? 0 : _p21;
 			_p22 = !_didInit ?  square(STDEV_INITIAL_ATTITUDE_YAW) : _p22;
-
-			_gyro_sum_x = !_didInit ? 0 : _gyro_sum_x;
-			_gyro_sum_y = !_didInit ? 0 : _gyro_sum_y;
-			_gyro_sum_z = !_didInit ? 0 : _gyro_sum_z;
-			_gyro_sample_x = !_didInit ? 0 : _gyro_sample_x;
-			_gyro_sample_y = !_didInit ? 0 : _gyro_sample_y;
-			_gyro_sample_z = !_didInit ? 0 : _gyro_sample_z;
-
-			_accel_sum_x = !_didInit ? 0 : _accel_sum_x;
-			_accel_sum_y = !_didInit ? 0 : _accel_sum_y;
-			_accel_sum_z = !_didInit ? 0 : _accel_sum_z;
-			_accel_sample_x = !_didInit ? 0 : _accel_sample_x;
-			_accel_sample_y = !_didInit ? 0 : _accel_sample_y;
-			_accel_sample_z = !_didInit ? 0 : _accel_sample_z;
 
 			_isUpdated = !_didInit ? false : _isUpdated;
 
@@ -272,21 +252,13 @@ class Ekf {
 				stream_now_msec + PREDICTION_UPDATE_INTERVAL_MS :
 				_nextPredictionMsec;
 
-			subsamplerTakeMean(shouldPredict, DEGREES_TO_RADIANS, 
-					_gyro_sum_x,
-					_gyro_sum_y,
-					_gyro_sum_z,
-					_gyro_sample_x,
-					_gyro_sample_y,
-					_gyro_sample_z);
+            _gyro_sample_x = stream_gyro_x * DEGREES_TO_RADIANS;
+            _gyro_sample_y = stream_gyro_y * DEGREES_TO_RADIANS;
+            _gyro_sample_z = stream_gyro_z * DEGREES_TO_RADIANS;
 
-			subsamplerTakeMean(shouldPredict, GRAVITY_MAGNITUDE, 
-					_accel_sum_x,
-					_accel_sum_y,
-					_accel_sum_z,
-					_accel_sample_x,
-					_accel_sample_y,
-					_accel_sample_z);
+            _accel_sample_x = stream_accel_x * GRAVITY_MAGNITUDE;
+            _accel_sample_y = stream_accel_y * GRAVITY_MAGNITUDE;
+            _accel_sample_z = stream_accel_z * GRAVITY_MAGNITUDE;
 
 			// Process noise is added after the return from the
 			// prediction step
@@ -349,14 +321,6 @@ class Ekf {
 			_lastUpdateMsec = _lastUpdateMsec == 0 || isDtPositive ?  
 				stream_now_msec : 
 				_lastUpdateMsec;
-
-            _gyro_sum_x = stream_gyro_x;
-            _gyro_sum_y = stream_gyro_y;
-            _gyro_sum_z = stream_gyro_z;
-
-            _accel_sum_x = stream_accel_x;
-            _accel_sum_y = stream_accel_y;
-            _accel_sum_z = stream_accel_z;
 
             // Incorporate the attitude error (Kalman filter state) with the
             // attitude
@@ -535,25 +499,6 @@ class Ekf {
 
             return (val * (isFlying ? 1: keep)) +
                 (isFlying ? 0 : ROLLPITCH_ZERO_REVERSION * initVal);
-        }
-
-        static void subsamplerTakeMean(
-                const bool shouldPredict, 
-                const float conversionFactor,
-                float & sum_x,
-                float & sum_y,
-                float & sum_z,
-                float & sample_x,
-                float & sample_y,
-                float & sample_z)
-        {
-            sample_x = shouldPredict ?  sum_x * conversionFactor : sample_x;
-            sample_y = shouldPredict ?  sum_y * conversionFactor : sample_y;
-            sample_z = shouldPredict ?  sum_z * conversionFactor : sample_z;
-
-            sum_x = 0;
-            sum_y = 0;
-            sum_z = 0;
         }
 
         static void updateCovarianceMatrix(
