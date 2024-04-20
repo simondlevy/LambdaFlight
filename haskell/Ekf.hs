@@ -64,47 +64,28 @@ rollpitch_zero_reversion = 0.001 :: SFloat
 prediction_rate = 100 :: SInt32
 prediction_update_interval_msec = (div 1000  prediction_rate) :: SInt32
 
--- Subsampler for gyro and accelerometer --------------------------------------
-
-type Subsampler = (SFloat, SFloat, SFloat, SFloat, SFloat, SFloat, SInt32)
-
-subsamplerFinalize :: SBool -> SFloat -> Subsampler -> Subsampler
-
-subsamplerFinalize shouldPredict conversionFactor 
-  (sum_x, sum_y, sum_z, sample_x, sample_y, sample_z, count) = 
-  (0, 0, 0, sample_x', sample_y', sample_z', 0) where 
-
-  isCountNonzero = count > 0
-
-  count' = unsafeCast count :: SFloat
-
-  shouldFinalize = shouldPredict && isCountNonzero
-
-  sample_x' = if shouldFinalize 
-              then sum_x * conversionFactor / count'
-              else sample_x
-
-  sample_y' = if shouldFinalize 
-              then sum_y * conversionFactor / count'
-              else sample_y
-
-  sample_z' = if shouldFinalize 
-              then sum_z * conversionFactor / count'
-              else sample_z
-
 -- Streams from C++ ----------------------------------------------------------
 
-now_msec :: SInt32
-now_msec = extern "stream_now_msec" Nothing
+stream_now_msec :: SInt32
+stream_now_msec = extern "stream_now_msec" Nothing
 
-gyro_x :: SFloat
-gyro_x = extern "stream_gyro_x" Nothing
+stream_gyro_x :: SFloat
+stream_gyro_x = extern "stream_gyro_x" Nothing
 
-gyro_y :: SFloat
-gyro_y = extern "stream_gyro_y" Nothing
+stream_gyro_y :: SFloat
+stream_gyro_y = extern "stream_gyro_y" Nothing
 
-gyro_z :: SFloat
-gyro_z = extern "stream_gyro_z" Nothing
+stream_gyro_z :: SFloat
+stream_gyro_z = extern "stream_gyro_z" Nothing
+
+stream_accel_x :: SFloat
+stream_accel_x = extern "stream_accel_x" Nothing
+
+stream_accel_y :: SFloat
+stream_accel_y = extern "stream_accel_y" Nothing
+
+stream_accel_z :: SFloat
+stream_accel_z = extern "stream_accel_z" Nothing
 
 -- Utilities ------------------------------------------------------------------
 
@@ -162,20 +143,6 @@ ekfStep = State dx dy zz dz phi dphi theta dtheta psi dpsi where
   r21 = 0 :: SFloat
   r22 = 0 :: SFloat
 
-  gyro_sum_x = 0 :: SFloat
-  gyro_sum_y = 0 :: SFloat
-  gyro_sum_z = 0 :: SFloat
-  gyro_sample_x = 0 :: SFloat
-  gyro_sample_y = 0 :: SFloat
-  gyro_sample_z = 0 :: SFloat
-
-  accel_sum_x = 0 :: SFloat
-  accel_sum_y = 0 :: SFloat
-  accel_sum_z = 0 :: SFloat
-  accel_sample_x = 0 :: SFloat
-  accel_sample_y = 0 :: SFloat
-  accel_sample_z = 0 :: SFloat
-
   isFlying = true
 
   p = [ [0.0, 0.0, 0.0],
@@ -184,9 +151,17 @@ ekfStep = State dx dy zz dz phi dphi theta dtheta psi dpsi where
 
   ----------------------------------------------------------------------------
 
-  shouldPredict = now_msec > nextPredictionMsec
+  shouldPredict = stream_now_msec > nextPredictionMsec
 
-  dt = getDt now_msec lastPredictionMsec
+  dt = getDt stream_now_msec lastPredictionMsec
+
+  gyro_sample_x = stream_gyro_x * degrees_to_radians
+  gyro_sample_y = stream_gyro_y * degrees_to_radians
+  gyro_sample_z = stream_gyro_z * degrees_to_radians
+
+  accel_sample_x = stream_accel_x * gravity_magnitude
+  accel_sample_y = stream_accel_y * gravity_magnitude
+  accel_sample_z = stream_accel_z * gravity_magnitude
 
   e0 = gyro_sample_x * dt / 2
   e1 = gyro_sample_y * dt / 2
@@ -236,26 +211,14 @@ ekfStep = State dx dy zz dz phi dphi theta dtheta psi dpsi where
   apa = a !*! p !*! (transpose a)
   
   lastPredictionMsec = if _lastPredictionMsec == 0  || shouldPredict
-                        then now_msec 
+                        then stream_now_msec 
                         else _lastPredictionMsec
 
   nextPredictionMsec = if _nextPredictionMsec == 0 
-                        then now_msec 
-                        else if now_msec > _nextPredictionMsec
-                        then now_msec + prediction_update_interval_msec
+                        then stream_now_msec 
+                        else if stream_now_msec > _nextPredictionMsec
+                        then stream_now_msec + prediction_update_interval_msec
                         else _nextPredictionMsec
-
-  (gyro_sum_x', gyro_sum_y', gyro_sum_z', 
-   gyro_sample_x', gyro_sample_y', gyro_sample_z', gyro_count) = 
-    subsamplerFinalize shouldPredict degrees_to_radians
-    (gyro_sum_x, gyro_sum_y, gyro_sum_z, 
-    gyro_sample_x, gyro_sample_y, gyro_sample_z, _gyro_count)
-
-  (accel_sum_x', accel_sum_y', accel_sum_z', 
-   accel_sample_x', accel_sample_y', accel_sample_z', accel_count) = 
-    subsamplerFinalize shouldPredict degrees_to_radians
-    (accel_sum_x, accel_sum_y, accel_sum_z, 
-    accel_sample_x, accel_sample_y, accel_sample_z, _accel_count)
 
   -- Process noise is added after the return from the prediction step
 
@@ -274,7 +237,7 @@ ekfStep = State dx dy zz dz phi dphi theta dtheta psi dpsi where
 
   lastUpdateMsec = 0 -- XXX
 
-  dt' = getDt now_msec lastUpdateMsec
+  dt' = getDt stream_now_msec lastUpdateMsec
 
   isDtPositive = dt' > 0
 
@@ -283,10 +246,6 @@ ekfStep = State dx dy zz dz phi dphi theta dtheta psi dpsi where
           else 0
 
   -- Internal state, represented as streams ----------------------------------
-
-  _gyro_count = [0] ++ gyro_count
-
-  _accel_count = [0] ++ accel_count
 
   _p00 = [stdev_initial_attitude_roll_pitch ** 2] ++ p00
   _p11 = [stdev_initial_attitude_roll_pitch ** 2] ++ p11

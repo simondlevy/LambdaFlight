@@ -97,9 +97,9 @@ getGyro = (gyroX, gyroY, gyroZ) where
 
   glpf = \g g' -> lpf g g' b_gyro
 
-  gyroX = glpf gyro_x gyroX'
-  gyroY = glpf gyro_y gyroY'
-  gyroZ = glpf gyro_z gyroZ'
+  gyroX = glpf stream_gyro_x gyroX'
+  gyroY = glpf stream_gyro_y gyroY'
+  gyroZ = glpf stream_gyro_z gyroZ'
 
   gyroX' = [0] ++ gyroX
   gyroY' = [0] ++ gyroY
