@@ -116,14 +116,6 @@ class Ekf {
 			static float _e1;
 			static float _e2;
 
-			static float _gyro_sample_x;
-			static float _gyro_sample_y;
-			static float _gyro_sample_z;
-
-			static float _accel_sample_x;
-			static float _accel_sample_y;
-			static float _accel_sample_z;
-
 			_p00 = !_didInit ?  square(STDEV_INITIAL_ATTITUDE_ROLL_PITCH) : _p00;
 			_p01 = !_didInit ? 0 : _p01;
 			_p02 = !_didInit ? 0 : _p02;
@@ -166,9 +158,17 @@ class Ekf {
 
 			const float dt = (stream_now_msec - _lastPredictionMsec) / 1000.0f;
 
-			const auto e0 = _gyro_sample_x*dt/2;
-			const auto e1 = _gyro_sample_y*dt/2;
-			const auto e2 = _gyro_sample_z*dt/2;
+            const auto gyro_sample_x = stream_gyro_x * DEGREES_TO_RADIANS;
+            const auto gyro_sample_y = stream_gyro_y * DEGREES_TO_RADIANS;
+            const auto gyro_sample_z = stream_gyro_z * DEGREES_TO_RADIANS;
+
+            //const auto accel_sample_x = stream_accel_x * GRAVITY_MAGNITUDE;
+            //const auto accel_sample_y = stream_accel_y * GRAVITY_MAGNITUDE;
+            //const auto accel_sample_z = stream_accel_z * GRAVITY_MAGNITUDE;
+
+			const auto e0 = gyro_sample_x * dt/2;
+			const auto e1 = gyro_sample_y * dt/2;
+			const auto e2 = gyro_sample_z * dt/2;
 
 			const auto e0e0 =  1 - e1*e1/2 - e2*e2/2;
 			const auto e0e1 =  e2 + e0*e1/2;
@@ -193,9 +193,9 @@ class Ekf {
 			// attitude update (rotate by gyroscope), we do this in quaternions
 			// this is the gyroscope angular velocity integrated over
 			// the sample period
-			const auto dtwx = dt*_gyro_sample_x;
-			const auto dtwy = dt*_gyro_sample_y;
-			const auto dtwz = dt*_gyro_sample_z;
+			const auto dtwx = dt * gyro_sample_x;
+			const auto dtwy = dt * gyro_sample_y;
+			const auto dtwz = dt * gyro_sample_z;
 
 			// compute the quaternion values in [w,x,y,z] order
 			const auto angle = sqrt(dtwx*dtwx + dtwy*dtwy + dtwz*dtwz) + EPS;
@@ -251,14 +251,6 @@ class Ekf {
                 stream_now_msec >= _nextPredictionMsec ?
 				stream_now_msec + PREDICTION_UPDATE_INTERVAL_MS :
 				_nextPredictionMsec;
-
-            _gyro_sample_x = stream_gyro_x * DEGREES_TO_RADIANS;
-            _gyro_sample_y = stream_gyro_y * DEGREES_TO_RADIANS;
-            _gyro_sample_z = stream_gyro_z * DEGREES_TO_RADIANS;
-
-            _accel_sample_x = stream_accel_x * GRAVITY_MAGNITUDE;
-            _accel_sample_y = stream_accel_y * GRAVITY_MAGNITUDE;
-            _accel_sample_z = stream_accel_z * GRAVITY_MAGNITUDE;
 
 			// Process noise is added after the return from the
 			// prediction step
