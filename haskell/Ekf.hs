@@ -108,7 +108,7 @@ rotateQuat val initVal isFlying = val' where
 
 updateCovarianceMatrix :: Matrix -> Matrix
 updateCovarianceMatrix p = p' where
-  p00 = updateCovarianceCell p 0 0
+  p00 = updateCovarianceCell p 0 0 true
   p01 = 0-- updateCovarianceCell (p!(0,1))
   p02 = 0-- updateCovarianceCell (p!(0,2))
   p10 = p01
@@ -121,10 +121,12 @@ updateCovarianceMatrix p = p' where
         [p10, p11, p12],
         [p20, p21, p22]]
 
-updateCovarianceCell :: Matrix -> Index -> Index -> SFloat
-updateCovarianceCell p i j = 0
-
-
+updateCovarianceCell :: Matrix -> Index -> Index -> SBool -> SFloat
+updateCovarianceCell p i j isdiag = pij where 
+  pval = (p!(i, j) + p!(j,i)) / 2
+  pij = if pval > max_covariance then max_covariance
+        else if isdiag && pval < min_covariance then min_covariance
+        else pval
 
 -- EKF function --------------------------------------------------------------
 
