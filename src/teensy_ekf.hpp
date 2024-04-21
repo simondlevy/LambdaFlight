@@ -509,7 +509,7 @@ class Ekf {
                     const auto pval = (p_in[i][j] + p_in[j][i]) / 2;
 
                     p_out[i][j] = p_out[j][i] =
-                        (isnan(pval) || pval > MAX_COVARIANCE) ?  MAX_COVARIANCE :
+                        pval > MAX_COVARIANCE ?  MAX_COVARIANCE :
                         (i==j && pval < MIN_COVARIANCE) ?  MIN_COVARIANCE :
                         pval;
                 }
