@@ -21,13 +21,12 @@
 
 module Ekf where
 
-import Language.Copilot
+import Language.Copilot hiding((!!))
 import Copilot.Compile.C99
 
-import Data.List(transpose)
 import Linear.Matrix hiding(transpose)
+import Data.List hiding((++), sum) -- gives us transpose
 
-import LinAlg
 import State
 import Utils
 
@@ -88,6 +87,13 @@ stream_accel_z :: SFloat
 stream_accel_z = extern "stream_accel_z" Nothing
 
 -- Utilities ------------------------------------------------------------------
+
+type Vector = [SFloat]
+type Matrix = [Vector]
+type Index = Int
+
+(!) :: Matrix -> (Index, Index) -> SFloat
+a ! (i, j) = (a !! i) !! j
 
 getDt :: SInt32 -> SInt32 -> SFloat
 getDt msec1 msec2 = (unsafeCast (msec1 - msec2)) / 1000
@@ -245,10 +251,20 @@ ekfStep = State dx dy zz dz phi dphi theta dtheta psi dpsi where
           then (meas_noise_gyro + dt' + proc_noise_att) ** 2
           else 0
 
+  p00' = if shouldPredict then apa!(0,0) + noise else p00;
+
   -- Internal state, represented as streams ----------------------------------
 
   _p00 = [stdev_initial_attitude_roll_pitch ** 2] ++ p00
+  _p01 = [0] ++ p01
+  _p02 = [0] ++ p01
+
+  _p10 = [0] ++ p01
   _p11 = [stdev_initial_attitude_roll_pitch ** 2] ++ p11
+  _p12 = [0] ++ p01
+
+  _p20 = [0] ++ p01
+  _p21 = [0] ++ p01
   _p22 = [stdev_initial_attitude_yaw ** 2] ++ p22
 
   _didInit = [False] ++ true

@@ -22,6 +22,9 @@ from threading import Thread
 import tkinter as tk
 import numpy as np
 
+# PORT = '/dev/ttyACM0'
+PORT = 'COM6'
+
 BAUD = 115200
 
 DISPLAY_WIDTH = 800
@@ -737,7 +740,7 @@ class Comms:
 
         self.viz = viz
 
-        portname = '/dev/ttyACM0'
+        portname = PORT
 
         baud = BAUD
 
