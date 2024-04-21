@@ -286,6 +286,8 @@ ekfStep = State dx dy zz dz phi dphi theta dtheta psi dpsi where
         [p10',  p11',  p12'],
         [p20',  p21',  p22']]
 
+  p'' = updateCovarianceMatrix p'
+ 
 
   -- Internal state, represented as streams ----------------------------------
 
