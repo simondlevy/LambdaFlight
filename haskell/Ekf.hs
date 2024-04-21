@@ -252,17 +252,23 @@ ekfStep = State dx dy zz dz phi dphi theta dtheta psi dpsi where
           else 0
 
   p00' = if shouldPredict then apa!(0,0) + noise else p00;
+  p01' = if shouldPredict then apa!(0,1) + noise else p01;
+  p02' = if shouldPredict then apa!(0,2) + noise else p02;
+  p10' = if shouldPredict then apa!(1,0) + noise else p10;
+  p11' = if shouldPredict then apa!(1,1) + noise else p11;
+  p12' = if shouldPredict then apa!(1,2) + noise else p12;
+  p20' = if shouldPredict then apa!(2,0) + noise else p20;
+  p21' = if shouldPredict then apa!(2,1) + noise else p21;
+  p22' = if shouldPredict then apa!(2,2) + noise else p22;
 
   -- Internal state, represented as streams ----------------------------------
 
   _p00 = [stdev_initial_attitude_roll_pitch ** 2] ++ p00
   _p01 = [0] ++ p01
   _p02 = [0] ++ p01
-
   _p10 = [0] ++ p01
   _p11 = [stdev_initial_attitude_roll_pitch ** 2] ++ p11
   _p12 = [0] ++ p01
-
   _p20 = [0] ++ p01
   _p21 = [0] ++ p01
   _p22 = [stdev_initial_attitude_yaw ** 2] ++ p22
