@@ -151,10 +151,6 @@ ekfStep = State dx dy zz dz phi dphi theta dtheta psi dpsi where
 
   isFlying = true
 
-  p = [ [0.0, 0.0, 0.0],
-        [0.0, 0.0, 0.0],
-        [0.0, 0.0, 0.0] ]
-
   ----------------------------------------------------------------------------
 
   shouldPredict = stream_now_msec > nextPredictionMsec
@@ -213,6 +209,10 @@ ekfStep = State dx dy zz dz phi dphi theta dtheta psi dpsi where
   -- Normalize and store the result
   norm = sqrt (tmpq0*tmpq0 + tmpq1*tmpq1 + tmpq2*tmpq2 + tmpq3*tmpq3) + eps
 
+  p = [[p00,  p01,  p02],
+       [p10,  p11,  p12],
+       [p20,  p21,  p22]]
+
   -- Update the covariance matrix
   apa = a !*! p !*! (transpose a)
   
@@ -260,6 +260,7 @@ ekfStep = State dx dy zz dz phi dphi theta dtheta psi dpsi where
   p20' = if shouldPredict then apa!(2,0) + noise else p20;
   p21' = if shouldPredict then apa!(2,1) + noise else p21;
   p22' = if shouldPredict then apa!(2,2) + noise else p22;
+
 
   -- Internal state, represented as streams ----------------------------------
 
