@@ -108,16 +108,19 @@ rotateQuat val initVal isFlying = val' where
 
 updateCovarianceMatrix :: Matrix -> Matrix
 updateCovarianceMatrix p = p' where
-  p00 = p!(0,0)
-  p01 = p!(0,1)
-  p02 = p!(0,2)
+  p00 = updateCovarianceCell (p!(0,0))
+  p01 = updateCovarianceCell (p!(0,1))
+  p02 = updateCovarianceCell (p!(0,2))
   p10 = p01
-  p11 = p!(1,1)
-  p12 = p!(1,2)
+  p11 = updateCovarianceCell (p!(1,1))
+  p12 = updateCovarianceCell (p!(1,2))
   p20 = p02
   p21 = p12
-  p22 = p!(1,2)
+  p22 = updateCovarianceCell (p!(1,2))
   p' = p
+
+updateCovarianceCell :: SFloat -> SFloat
+updateCovarianceCell pij = pij
 
 
 
