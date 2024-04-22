@@ -21,7 +21,7 @@
 
 module Ekf where
 
-import Language.Copilot hiding((!!))
+import Language.Copilot hiding(atan2, (!!))
 import Copilot.Compile.C99
 
 import Linear.Matrix hiding(transpose)
@@ -384,8 +384,12 @@ ekfStep = State dx dy zz dz phi dphi theta dtheta psi dpsi where
 
   -- Get the vehicle state
   
-  phi = 0
+  phi = radians_to_degrees * atan2 (2 * (qy*qz + qw*qx))
+                                   (qw*qw - qx*qx - qy*qy + qz*qz)
+ 
+
   theta = 0
+
   psi = 0
 
   -- Internal state, represented as streams ----------------------------------
