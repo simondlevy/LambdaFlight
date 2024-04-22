@@ -237,8 +237,6 @@ ekfStep = State dx dy zz dz phi dphi theta dtheta psi dpsi where
   qy_pred = if shouldPredict then tmpq2 / norm else _qy 
   qz_pred = if shouldPredict then tmpq3 / norm else _qz
 
-  isUpdated = if shouldPredict then true else _isUpdated
-
   dt' = getDt stream_now_msec lastUpdateMsec
 
   isDtPositive = dt' > 0
@@ -349,17 +347,15 @@ ekfStep = State dx dy zz dz phi dphi theta dtheta psi dpsi where
 
   newapa = newa !*! p4 !*! (transpose newa)
 
-  shouldFinalize = isUpdated && isErrorSufficient
-
-  p00_final = if shouldFinalize then newapa!(0,0) else p00_noise
-  p01_final = if shouldFinalize then newapa!(0,1) else p01_noise
-  p02_final = if shouldFinalize then newapa!(0,2) else p02_noise
-  p10_final = if shouldFinalize then newapa!(1,0) else p10_noise
-  p11_final = if shouldFinalize then newapa!(1,1) else p11_noise
-  p12_final = if shouldFinalize then newapa!(1,2) else p12_noise
-  p20_final = if shouldFinalize then newapa!(2,0) else p20_noise
-  p21_final = if shouldFinalize then newapa!(2,1) else p21_noise
-  p22_final = if shouldFinalize then newapa!(2,2) else p22_noise
+  p00_final = if isErrorSufficient then newapa!(0,0) else p00_noise
+  p01_final = if isErrorSufficient then newapa!(0,1) else p01_noise
+  p02_final = if isErrorSufficient then newapa!(0,2) else p02_noise
+  p10_final = if isErrorSufficient then newapa!(1,0) else p10_noise
+  p11_final = if isErrorSufficient then newapa!(1,1) else p11_noise
+  p12_final = if isErrorSufficient then newapa!(1,2) else p12_noise
+  p20_final = if isErrorSufficient then newapa!(2,0) else p20_noise
+  p21_final = if isErrorSufficient then newapa!(2,1) else p21_noise
+  p22_final = if isErrorSufficient then newapa!(2,2) else p22_noise
 
   p5 =  [ [p00_final, p01_final, p02_final],
           [p10_final, p11_final, p12_final],
@@ -367,26 +363,26 @@ ekfStep = State dx dy zz dz phi dphi theta dtheta psi dpsi where
 
   p6 = updateCovarianceMatrix p5
 
-  p00 = if isUpdated then p6!(0,0) else _p00
-  p01 = if isUpdated then p6!(0,1) else _p01
-  p02 = if isUpdated then p6!(0,2) else _p02
-  p10 = if isUpdated then p6!(1,0) else _p10
-  p11 = if isUpdated then p6!(1,1) else _p11
-  p12 = if isUpdated then p6!(1,2) else _p12
-  p20 = if isUpdated then p6!(2,0) else _p20
-  p21 = if isUpdated then p6!(2,1) else _p21
-  p22 = if isUpdated then p6!(2,2) else _p22
+  p00 = if isErrorSufficient then p6!(0,0) else _p00
+  p01 = if isErrorSufficient then p6!(0,1) else _p01
+  p02 = if isErrorSufficient then p6!(0,2) else _p02
+  p10 = if isErrorSufficient then p6!(1,0) else _p10
+  p11 = if isErrorSufficient then p6!(1,1) else _p11
+  p12 = if isErrorSufficient then p6!(1,2) else _p12
+  p20 = if isErrorSufficient then p6!(2,0) else _p20
+  p21 = if isErrorSufficient then p6!(2,1) else _p21
+  p22 = if isErrorSufficient then p6!(2,2) else _p22
 
-  qw = if shouldFinalize then newtmpq0 / newnorm else qw_pred
-  qx = if shouldFinalize then newtmpq1 / newnorm else qx_pred
-  qy = if shouldFinalize then newtmpq2 / newnorm else qy_pred
-  qz = if shouldFinalize then newtmpq3 / newnorm else qz_pred
+  qw = if isErrorSufficient then newtmpq0 / newnorm else qw_pred
+  qx = if isErrorSufficient then newtmpq1 / newnorm else qx_pred
+  qy = if isErrorSufficient then newtmpq2 / newnorm else qy_pred
+  qz = if isErrorSufficient then newtmpq3 / newnorm else qz_pred
 
   -- Convert the new attitude to a rotation matrix, such  that we can rotate 
   -- body-frame velocity and acc
-  r20 = if isUpdated then  2 * qx * qz - 2 * qw * qy else _r20
-  r21 = if isUpdated then  2 * qy * qz + 2 * qw * qx else _r21
-  r22 = if isUpdated then qw * qw - qx * qx - qy * qy + qz * qz else _r22
+  r20 = if isErrorSufficient then  2 * qx * qz - 2 * qw * qy else _r20
+  r21 = if isErrorSufficient then  2 * qy * qz + 2 * qw * qx else _r21
+  r22 = if isErrorSufficient then qw * qw - qx * qx - qy * qy + qz * qz else _r22
 
   -- Internal state, represented as streams ----------------------------------
 
@@ -410,8 +406,6 @@ ekfStep = State dx dy zz dz phi dphi theta dtheta psi dpsi where
   _r22 = [1] ++ r22
 
   _didInit = [False] ++ true
-
-  _isUpdated = [False] ++ isUpdated
 
   _nextPredictionMsec = [0] ++ nextPredictionMsec
 
