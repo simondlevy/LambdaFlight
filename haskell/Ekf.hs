@@ -314,6 +314,43 @@ ekfStep = State dx dy zz dz phi dphi theta dtheta psi dpsi where
   newtmpq2 = newdqy * _qw - newdqz * _qx + newdqw * _qy + newdqx * _qz
   newtmpq3 = newdqz * _qw + newdqy * _qx - newdqx * _qy + newdqw * _qz
 
+   -- Normalize and store the result
+  newnorm = sqrt (newtmpq0 * newtmpq0 + newtmpq1 * newtmpq1 + 
+                  newtmpq2 * newtmpq2 + newtmpq3 * newtmpq3) + eps
+
+  -- The attitude error vector (v0,v1,v2) is small,  so we use a first-order
+  -- approximation to e0 = tan(|v0|/2)*v0/|v0|
+  newe0 = v0 / 2 
+  newe1 = v1 / 2 
+  newe2 = v2 / 2
+  
+  {--
+    Rotate the covariance, since we've rotated the body
+             
+    This comes from a second order approximation to:
+    Sigma_post = exps(-d) 
+    Sigma_pre exps(-d)'
+               ~ (I + [[-d]] + [[-d]]^2 / 2) 
+    (I + [[-d]] + [[-d]]^2 / 2)'
+    where d is the attitude error expressed as Rodriges parameters,
+    ie.  d = tan(|v|/2)*v/|v|
+    As derived in "Covariance Correction Step for Kalman Filtering
+    with an Attitude"
+    http://arc.aiaa.org/doi/abs/10.2514/1.G000848
+  --}
+
+  newe0e0 =  1 - newe1*newe1/2 - newe2*newe2/2
+  newe0e1 =  newe2 + newe0*newe1/2
+  newe0e2 = -newe1 + newe0*newe2/2
+
+  newe1e0 =  -newe2 + newe0*newe1/2
+  newe1e1 = 1 - newe0*newe0/2 - newe2*newe2/2
+  newe1e2 = newe0 + newe1*newe2/2
+
+  newe2e0 = newe1 + newe0*newe2/2
+  newe2e1 = -newe0 + newe1*newe2/2
+  newe2e2 = 1 - newe0*newe0/2 - newe1*newe1/2
+
  
   -- Internal state, represented as streams ----------------------------------
 
