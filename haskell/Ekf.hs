@@ -147,12 +147,6 @@ ekfStep = State dx dy zz dz phi dphi theta dtheta psi dpsi where
   psi = 0
   dpsi = 0
 
-  -- Quaternion
-  qw = 0
-  qx = 0
-  qy = 0
-  qz = 0
-
   -- Third row (Z) of attitude as a rotation matrix (used by prediction,
   -- updated by finalization)
   r20 = 0 :: SFloat
@@ -244,10 +238,10 @@ ekfStep = State dx dy zz dz phi dphi theta dtheta psi dpsi where
   -- accelerometer directly measures thrust (hence is
   -- useless to estimate body angle while flying)
 
-  qw' = if shouldPredict then tmpq0 / norm else qw
-  qx' = if shouldPredict then tmpq1 / norm else qx 
-  qy' = if shouldPredict then tmpq2 / norm else qy 
-  qz' = if shouldPredict then tmpq3 / norm else qz
+  qw_pred = if shouldPredict then tmpq0 / norm else _qw
+  qx_pred = if shouldPredict then tmpq1 / norm else _qx 
+  qy_pred = if shouldPredict then tmpq2 / norm else _qy 
+  qz_pred = if shouldPredict then tmpq3 / norm else _qz
 
   isUpdated = if shouldPredict then true else _isUpdated
 
@@ -388,6 +382,12 @@ ekfStep = State dx dy zz dz phi dphi theta dtheta psi dpsi where
   p20 = if isUpdated then p6!(2,0) else _p20
   p21 = if isUpdated then p6!(2,1) else _p21
   p22 = if isUpdated then p6!(2,2) else _p22
+
+  qw = if shouldFinalize then newtmpq0 / newnorm else qw_pred
+  qx = if shouldFinalize then newtmpq1 / newnorm else qx_pred
+  qy = if shouldFinalize then newtmpq2 / newnorm else qy_pred
+  qz = if shouldFinalize then newtmpq3 / newnorm else qz_pred
+
  
   -- Internal state, represented as streams ----------------------------------
 
