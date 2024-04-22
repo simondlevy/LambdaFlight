@@ -288,6 +288,16 @@ ekfStep = State dx dy zz dz phi dphi theta dtheta psi dpsi where
 
   p'' = updateCovarianceMatrix p'
  
+  p00'' = if isDtPositive then p''!(0,0) else p00'
+  p01'' = if isDtPositive then p''!(0,1) else p01'
+  p02'' = if isDtPositive then p''!(0,2) else p02'
+  p10'' = if isDtPositive then p''!(1,0) else p10'
+  p11'' = if isDtPositive then p''!(1,1) else p11'
+  p12'' = if isDtPositive then p''!(1,2) else p12'
+  p20'' = if isDtPositive then p''!(2,0) else p20'
+  p21'' = if isDtPositive then p''!(2,1) else p21'
+  p22'' = if isDtPositive then p''!(2,2) else p22'
+
 
   -- Internal state, represented as streams ----------------------------------
 
