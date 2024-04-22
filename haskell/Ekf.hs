@@ -141,9 +141,6 @@ ekfStep = State dx dy zz dz phi dphi theta dtheta psi dpsi where
   dy = 0
   zz = 0
   dz = 0
-  dphi = 0
-  dtheta = 0
-  dpsi = 0
 
   isFlying = true
 
@@ -382,7 +379,7 @@ ekfStep = State dx dy zz dz phi dphi theta dtheta psi dpsi where
   r21 = if isErrorSufficient then  2 * qy * qz + 2 * qw * qx else _r21
   r22 = if isErrorSufficient then qw * qw - qx * qx - qy * qy + qz * qz else _r22
 
-  -- Get the vehicle state
+  -- Get the vehicle state ---------------------------------------------------
   
   phi = radians_to_degrees * atan2 (2 * (qy*qz + qw*qx))
                                    (qw*qw - qx*qx - qy*qy + qz*qz)
@@ -393,7 +390,12 @@ ekfStep = State dx dy zz dz phi dphi theta dtheta psi dpsi where
   psi = radians_to_degrees * atan2 (2 * (qx*qy + qw*qz))
                                    (qw*qw + qx*qx - qy*qy - qz*qz)
 
-  -- Internal state, represented as streams ----------------------------------
+  -- Get angular velocities directly from gyro
+  dphi =    stream_gyro_x
+  dtheta = -stream_gyro_y -- negate for ENU
+  dpsi =    stream_gyro_z
+
+   -- Internal state, represented as streams ----------------------------------
 
   _didInit = [False] ++ true
   _nextPredictionMsec = [0] ++ nextPredictionMsec

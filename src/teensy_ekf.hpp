@@ -470,7 +470,6 @@ class Ekf {
             vehicleState.dphi =    stream_gyro_x;
             vehicleState.dtheta = -stream_gyro_y; // negate for ENU
             vehicleState.dpsi =    stream_gyro_z;
-
         }
 
     private:
