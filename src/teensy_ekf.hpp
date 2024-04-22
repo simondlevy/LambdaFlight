@@ -84,10 +84,6 @@ class Ekf {
         {
             static bool _didInit;
 
-            // Tracks whether an update to the state has been made, and the state
-            // therefore requires finalization
-            static bool _isUpdated;
-
             // Covariance matrix entries
             static float _p00;
             static float _p01;
@@ -128,8 +124,6 @@ class Ekf {
             _p21 = !_didInit ? 0 : _p21;
             _p22 = !_didInit ?  
                 square(STDEV_INITIAL_ATTITUDE_YAW) : _p22;
-
-            _isUpdated = !_didInit ? false : _isUpdated;
 
             _qw = !_didInit ? QW_INIT : _qw;
             _qx = !_didInit ? QX_INIT : _qx;
@@ -269,8 +263,6 @@ class Ekf {
             _qy = shouldPredict ? tmpq2/norm : _qy; 
             _qz = shouldPredict ? tmpq3/norm : _qz;
 
-            _isUpdated = shouldPredict ? true : _isUpdated;
-
             static uint32_t _lastUpdateMsec;
 
             const auto dt1 = 
@@ -405,17 +397,15 @@ class Ekf {
             float newAPA[3][3] = {};
             multiply(newAP, newAt, newAPA); // APA'
 
-            const auto shouldFinalize = _isUpdated && isErrorSufficient;
-
-            const auto p00_final = shouldFinalize ? newAPA[0][0] : p00_noise;
-            const auto p01_final = shouldFinalize ? newAPA[0][1] : p01_noise;
-            const auto p02_final = shouldFinalize ? newAPA[0][2] : p02_noise;
-            const auto p10_final = shouldFinalize ? newAPA[1][0] : p10_noise;
-            const auto p11_final = shouldFinalize ? newAPA[1][1] : p11_noise;
-            const auto p12_final = shouldFinalize ? newAPA[1][2] : p12_noise;
-            const auto p20_final = shouldFinalize ? newAPA[2][0] : p20_noise;
-            const auto p21_final = shouldFinalize ? newAPA[2][1] : p21_noise;
-            const auto p22_final = shouldFinalize ? newAPA[2][2] : p22_noise;
+            const auto p00_final = isErrorSufficient ? newAPA[0][0] : p00_noise;
+            const auto p01_final = isErrorSufficient ? newAPA[0][1] : p01_noise;
+            const auto p02_final = isErrorSufficient ? newAPA[0][2] : p02_noise;
+            const auto p10_final = isErrorSufficient ? newAPA[1][0] : p10_noise;
+            const auto p11_final = isErrorSufficient ? newAPA[1][1] : p11_noise;
+            const auto p12_final = isErrorSufficient ? newAPA[1][2] : p12_noise;
+            const auto p20_final = isErrorSufficient ? newAPA[2][0] : p20_noise;
+            const auto p21_final = isErrorSufficient ? newAPA[2][1] : p21_noise;
+            const auto p22_final = isErrorSufficient ? newAPA[2][2] : p22_noise;
 
             const float p5[3][3] = { 
                 {p00_final, p01_final, p02_final},
@@ -427,41 +417,39 @@ class Ekf {
 
             updateCovarianceMatrix(p5, p6);
 
-            _p00 = _isUpdated ? p6[0][0] : _p00;
-            _p01 = _isUpdated ? p6[0][1] : _p01;
-            _p02 = _isUpdated ? p6[0][2] : _p02;
-            _p10 = _isUpdated ? p6[1][0] : _p10;
-            _p11 = _isUpdated ? p6[1][1] : _p11;
-            _p12 = _isUpdated ? p6[1][2] : _p12;
-            _p20 = _isUpdated ? p6[2][0] : _p20;
-            _p21 = _isUpdated ? p6[2][1] : _p21;
-            _p22 = _isUpdated ? p6[2][2] : _p22;
+            _p00 = isErrorSufficient ? p6[0][0] : _p00;
+            _p01 = isErrorSufficient ? p6[0][1] : _p01;
+            _p02 = isErrorSufficient ? p6[0][2] : _p02;
+            _p10 = isErrorSufficient ? p6[1][0] : _p10;
+            _p11 = isErrorSufficient ? p6[1][1] : _p11;
+            _p12 = isErrorSufficient ? p6[1][2] : _p12;
+            _p20 = isErrorSufficient ? p6[2][0] : _p20;
+            _p21 = isErrorSufficient ? p6[2][1] : _p21;
+            _p22 = isErrorSufficient ? p6[2][2] : _p22;
 
-            _qw = shouldFinalize ? newtmpq0 / newnorm : _qw;
-            _qx = shouldFinalize ? newtmpq1 / newnorm : _qx;
-            _qy = shouldFinalize ? newtmpq2 / newnorm : _qy;
-            _qz = shouldFinalize ? newtmpq3 / newnorm : _qz;
+            _qw = isErrorSufficient ? newtmpq0 / newnorm : _qw;
+            _qx = isErrorSufficient ? newtmpq1 / newnorm : _qx;
+            _qy = isErrorSufficient ? newtmpq2 / newnorm : _qy;
+            _qz = isErrorSufficient ? newtmpq3 / newnorm : _qz;
 
             // Convert the new attitude to a rotation matrix, such
             // that we can rotate body-frame velocity and acc
-            _r20 = _isUpdated ?  
+            _r20 = isErrorSufficient ?  
                 2 * _qx * _qz - 2 * _qw * _qy : 
                 _r20;
 
-            _r21 = _isUpdated ? 
+            _r21 = isErrorSufficient ? 
                 2 * _qy * _qz + 2 * _qw * _qx : 
                 _r21;
 
-            _r22 = _isUpdated ? 
+            _r22 = isErrorSufficient ? 
                 _qw * _qw - _qx * _qx - _qy * _qy + _qz * _qz :
                 _r22;
 
             // Reset the attitude error
-            _e0 = _isUpdated ?  0 : _e0;
-            _e1 = _isUpdated ?  0 : _e1;
-            _e2 = _isUpdated ?  0 : _e2;
-
-            _isUpdated = false;
+            _e0 = isErrorSufficient ?  0 : _e0;
+            _e1 = isErrorSufficient ?  0 : _e1;
+            _e2 = isErrorSufficient ?  0 : _e2;
 
             vehicleState.phi = 
                 RADIANS_TO_DEGREES * atan2((2 * (_qy*_qz + _qw*_qx)),

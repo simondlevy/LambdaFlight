@@ -278,9 +278,9 @@ ekfStep = State dx dy zz dz phi dphi theta dtheta psi dpsi where
                    else _lastUpdateMsec
 
   -- Incorporate the attitude error (Kalman filter state) with the attitude
-  v0 = e0
-  v1 = e1
-  v2 = e2
+  v0 = 0 -- e0
+  v1 = 0 -- e1
+  v2 = 0 -- e2
 
   newangle = sqrt (v0*v0 + v1*v1 + v2*v2) + eps
   newca = cos(newangle / 2)
@@ -388,7 +388,6 @@ ekfStep = State dx dy zz dz phi dphi theta dtheta psi dpsi where
   r21 = if isUpdated then  2 * qy * qz + 2 * qw * qx else _r21
   r22 = if isUpdated then qw * qw - qx * qx - qy * qy + qz * qz else _r22
 
-  
   -- Internal state, represented as streams ----------------------------------
 
   _qw = [1] ++ qw
