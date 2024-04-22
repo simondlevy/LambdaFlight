@@ -270,15 +270,15 @@ ekfStep = State dx dy zz dz phi dphi theta dtheta psi dpsi where
           then (meas_noise_gyro + dt' + proc_noise_att) ** 2
           else 0
 
-  p00' = if shouldPredict then apa!(0,0) + noise else p00;
-  p01' = if shouldPredict then apa!(0,1) + noise else p01;
-  p02' = if shouldPredict then apa!(0,2) + noise else p02;
-  p10' = if shouldPredict then apa!(1,0) + noise else p10;
-  p11' = if shouldPredict then apa!(1,1) + noise else p11;
-  p12' = if shouldPredict then apa!(1,2) + noise else p12;
-  p20' = if shouldPredict then apa!(2,0) + noise else p20;
-  p21' = if shouldPredict then apa!(2,1) + noise else p21;
-  p22' = if shouldPredict then apa!(2,2) + noise else p22;
+  p00' = if shouldPredict then apa!(0,0) + noise else p00
+  p01' = if shouldPredict then apa!(0,1) + noise else p01
+  p02' = if shouldPredict then apa!(0,2) + noise else p02
+  p10' = if shouldPredict then apa!(1,0) + noise else p10
+  p11' = if shouldPredict then apa!(1,1) + noise else p11
+  p12' = if shouldPredict then apa!(1,2) + noise else p12
+  p20' = if shouldPredict then apa!(2,0) + noise else p20
+  p21' = if shouldPredict then apa!(2,1) + noise else p21
+  p22' = if shouldPredict then apa!(2,2) + noise else p22
 
   p' = [[p00',  p01',  p02'],
         [p10',  p11',  p12'],
@@ -298,8 +298,21 @@ ekfStep = State dx dy zz dz phi dphi theta dtheta psi dpsi where
 
   lastUpdateMsec = if _lastUpdateMsec == 0 || isDtPositive 
                    then  stream_now_msec 
-                   else _lastUpdateMsec;
+                   else _lastUpdateMsec
 
+  -- Incorporate the attitude error (Kalman filter state) with the attitude
+  v0 = e0
+  v1 = e1
+  v2 = e2
+
+  newangle = sqrt (v0*v0 + v1*v1 + v2*v2) + eps
+  newca = cos(newangle / 2)
+  newsa = sin(newangle / 2)
+
+  newdqw = newca
+  newdqx = newsa * v0 / newangle
+  newdqy = newsa * v1 / newangle
+  newdqz = newsa * v2 / newangle
 
   -- Internal state, represented as streams ----------------------------------
 
