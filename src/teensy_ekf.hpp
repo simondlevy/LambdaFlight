@@ -82,7 +82,12 @@ class Ekf {
 
         static void step(vehicleState_t & vehicleState)
         {
+            // Internal state ------------------------------------------------
+
             static bool _didInit;
+            static uint32_t _nextPredictionMsec;
+            static uint32_t _lastPredictionMsec;
+            static uint32_t _lastUpdateMsec;
 
             // Covariance matrix entries
             static float _p00;
@@ -111,6 +116,8 @@ class Ekf {
             static float _e0;
             static float _e1;
             static float _e2;
+
+            // ---------------------------------------------------------------
 
             _p00 = !_didInit ?  
                 square(STDEV_INITIAL_ATTITUDE_ROLL_PITCH) : _p00;
@@ -146,10 +153,6 @@ class Ekf {
             _didInit = true;
 
             const auto isFlying = true; // XXX
-
-            static uint32_t _nextPredictionMsec;
-
-            static uint32_t _lastPredictionMsec;
 
             const auto shouldPredict = stream_now_msec >= _nextPredictionMsec;
 
@@ -262,8 +265,6 @@ class Ekf {
             _qx = shouldPredict ? tmpq1/norm : _qx; 
             _qy = shouldPredict ? tmpq2/norm : _qy; 
             _qz = shouldPredict ? tmpq3/norm : _qz;
-
-            static uint32_t _lastUpdateMsec;
 
             const auto dt1 = 
                 (stream_now_msec - _lastUpdateMsec) / 1000.0f;
@@ -450,6 +451,8 @@ class Ekf {
             _e0 = isErrorSufficient ?  0 : _e0;
             _e1 = isErrorSufficient ?  0 : _e1;
             _e2 = isErrorSufficient ?  0 : _e2;
+
+            // Get the vehicle state -----------------------------------------
 
             vehicleState.phi = 
                 RADIANS_TO_DEGREES * atan2((2 * (_qy*_qz + _qw*_qx)),

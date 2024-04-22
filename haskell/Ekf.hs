@@ -34,6 +34,7 @@ import Utils
 
 gravity_magnitude = 9.81 :: SFloat
 degrees_to_radians = pi / 180 :: SFloat
+radians_to_degrees = 180 / pi :: SFloat
 
 -- Initial variances, uncertain of position, but know we're
 -- stationary and roughly flat
@@ -140,11 +141,8 @@ ekfStep = State dx dy zz dz phi dphi theta dtheta psi dpsi where
   dy = 0
   zz = 0
   dz = 0
-  phi = 0
   dphi = 0
-  theta = 0
   dtheta = 0
-  psi = 0
   dpsi = 0
 
   isFlying = true
@@ -384,13 +382,20 @@ ekfStep = State dx dy zz dz phi dphi theta dtheta psi dpsi where
   r21 = if isErrorSufficient then  2 * qy * qz + 2 * qw * qx else _r21
   r22 = if isErrorSufficient then qw * qw - qx * qx - qy * qy + qz * qz else _r22
 
+  -- Get the vehicle state
+  
+  phi = 0
+  theta = 0
+  psi = 0
+
   -- Internal state, represented as streams ----------------------------------
 
-  _qw = [1] ++ qw
-  _qx = [0] ++ qx
-  _qy = [0] ++ qy
-  _qz = [0] ++ qz
+  _didInit = [False] ++ true
+  _nextPredictionMsec = [0] ++ nextPredictionMsec
+  _lastPredictionMsec = [0] ++ lastPredictionMsec
+  _lastUpdateMsec = [0] ++ lastUpdateMsec
 
+  -- Covariance matrix entries
   _p00 = [stdev_initial_attitude_roll_pitch ** 2] ++ p00
   _p01 = [0] ++ p01
   _p02 = [0] ++ p01
@@ -401,15 +406,15 @@ ekfStep = State dx dy zz dz phi dphi theta dtheta psi dpsi where
   _p21 = [0] ++ p01
   _p22 = [stdev_initial_attitude_yaw ** 2] ++ p22
 
+  -- Quaternion
+  _qw = [1] ++ qw
+  _qx = [0] ++ qx
+  _qy = [0] ++ qy
+  _qz = [0] ++ qz
+
+  -- Third row (Z) of attitude as a rotation matrix (used by prediction, 
+  -- updated by finalization)
   _r20 = [0] ++ r20
   _r21 = [0] ++ r21
   _r22 = [1] ++ r22
-
-  _didInit = [False] ++ true
-
-  _nextPredictionMsec = [0] ++ nextPredictionMsec
-
-  _lastPredictionMsec = [0] ++ lastPredictionMsec
-
-  _lastUpdateMsec = [0] ++ lastUpdateMsec
 
