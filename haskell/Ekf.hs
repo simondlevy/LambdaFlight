@@ -122,6 +122,12 @@ updateCovarianceCell p i j isdiag = pij where
         else if isdiag && pval < min_covariance then min_covariance
         else pval
 
+isErrorLarge :: SFloat -> SBool
+isErrorLarge v = abs v > 0.1e-3
+
+isErrorInBounds :: SFloat -> SBool
+isErrorInBounds v = abs v < 10
+ 
 -- EKF function --------------------------------------------------------------
 
 ekfStep :: State
@@ -351,6 +357,11 @@ ekfStep = State dx dy zz dz phi dphi theta dtheta psi dpsi where
   newe2e1 = -newe0 + newe1*newe2/2
   newe2e2 = 1 - newe0*newe0/2 - newe1*newe1/2
 
+  isErrorSufficient  = 
+    (isErrorLarge v0 || isErrorLarge v1 || isErrorLarge v2) &&
+    isErrorInBounds v0 && isErrorInBounds v1 && isErrorInBounds v2
+
+
   -- Matrix to rotate the attitude covariances once updated
   newa = [ [newe0e0, newe0e1, newe0e2],
            [newe1e0, newe1e1, newe1e2],
@@ -361,6 +372,8 @@ ekfStep = State dx dy zz dz phi dphi theta dtheta psi dpsi where
            [p20'', p21'', p22''] ]
 
   newapa = newa !*! p''' !*! (transpose newa)
+
+  shouldFinalize = isUpdated && isErrorSufficient
  
   -- Internal state, represented as streams ----------------------------------
 
