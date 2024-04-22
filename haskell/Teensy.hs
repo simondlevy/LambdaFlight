@@ -210,6 +210,8 @@ spec = do
   let (gyroX, gyroY, gyroZ) = getGyro
 
   let (m1_pwm, m2_pwm, m3_pwm, m4_pwm, c1) = step gyroX gyroY gyroZ
+  
+  let vehicleState = ekfStep
 
   trigger "setMotors" true [arg m1_pwm, arg m2_pwm, arg m3_pwm, arg m4_pwm] 
 
