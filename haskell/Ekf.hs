@@ -147,12 +147,6 @@ ekfStep = State dx dy zz dz phi dphi theta dtheta psi dpsi where
   psi = 0
   dpsi = 0
 
-  -- Third row (Z) of attitude as a rotation matrix (used by prediction,
-  -- updated by finalization)
-  r20 = 0 :: SFloat
-  r21 = 0 :: SFloat
-  r22 = 0 :: SFloat
-
   isFlying = true
 
   ----------------------------------------------------------------------------
@@ -388,7 +382,13 @@ ekfStep = State dx dy zz dz phi dphi theta dtheta psi dpsi where
   qy = if shouldFinalize then newtmpq2 / newnorm else qy_pred
   qz = if shouldFinalize then newtmpq3 / newnorm else qz_pred
 
- 
+  -- Convert the new attitude to a rotation matrix, such  that we can rotate 
+  -- body-frame velocity and acc
+  r20 = if isUpdated then  2 * qx * qz - 2 * qw * qy else _r20
+  r21 = if isUpdated then  2 * qy * qz + 2 * qw * qx else _r21
+  r22 = if isUpdated then qw * qw - qx * qx - qy * qy + qz * qz else _r22
+
+  
   -- Internal state, represented as streams ----------------------------------
 
   _qw = [1] ++ qw
@@ -406,6 +406,10 @@ ekfStep = State dx dy zz dz phi dphi theta dtheta psi dpsi where
   _p21 = [0] ++ p01
   _p22 = [stdev_initial_attitude_yaw ** 2] ++ p22
 
+  _r20 = [0] ++ r20
+  _r21 = [0] ++ r21
+  _r22 = [1] ++ r22
+
   _didInit = [False] ++ true
 
   _isUpdated = [False] ++ isUpdated
@@ -415,9 +419,4 @@ ekfStep = State dx dy zz dz phi dphi theta dtheta psi dpsi where
   _lastPredictionMsec = [0] ++ lastPredictionMsec
 
   _lastUpdateMsec = [0] ++ lastUpdateMsec
-
-
-
-
-
 
