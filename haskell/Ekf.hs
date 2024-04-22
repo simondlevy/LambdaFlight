@@ -147,17 +147,6 @@ ekfStep = State dx dy zz dz phi dphi theta dtheta psi dpsi where
   psi = 0
   dpsi = 0
 
-  -- Covariance matrix entries
-  p00 = 0 :: SFloat
-  p01 = 0 :: SFloat
-  p02 = 0 :: SFloat
-  p10 = 0 :: SFloat
-  p11 = 0 :: SFloat
-  p12 = 0 :: SFloat
-  p20 = 0 :: SFloat
-  p21 = 0 :: SFloat
-  p22 = 0 :: SFloat
-
   -- Quaternion
   qw = 0
   qx = 0
@@ -270,31 +259,31 @@ ekfStep = State dx dy zz dz phi dphi theta dtheta psi dpsi where
           then (meas''_gyro + dt' + proc''_att) ** 2
           else 0
 
-  p00' = if shouldPredict then apa!(0,0) + noise else p00
-  p01' = if shouldPredict then apa!(0,1) + noise else p01
-  p02' = if shouldPredict then apa!(0,2) + noise else p02
-  p10' = if shouldPredict then apa!(1,0) + noise else p10
-  p11' = if shouldPredict then apa!(1,1) + noise else p11
-  p12' = if shouldPredict then apa!(1,2) + noise else p12
-  p20' = if shouldPredict then apa!(2,0) + noise else p20
-  p21' = if shouldPredict then apa!(2,1) + noise else p21
-  p22' = if shouldPredict then apa!(2,2) + noise else p22
+  p00_pred = if shouldPredict then apa!(0,0) + noise else p00
+  p01_pred = if shouldPredict then apa!(0,1) + noise else p01
+  p02_pred = if shouldPredict then apa!(0,2) + noise else p02
+  p10_pred = if shouldPredict then apa!(1,0) + noise else p10
+  p11_pred = if shouldPredict then apa!(1,1) + noise else p11
+  p12_pred = if shouldPredict then apa!(1,2) + noise else p12
+  p20_pred = if shouldPredict then apa!(2,0) + noise else p20
+  p21_pred = if shouldPredict then apa!(2,1) + noise else p21
+  p22_pred = if shouldPredict then apa!(2,2) + noise else p22
 
-  p' = [[p00',  p01',  p02'],
-        [p10',  p11',  p12'],
-        [p20',  p21',  p22']]
+  p_pred = [[p00_pred,  p01_pred,  p02_pred],
+            [p10_pred,  p11_pred,  p12_pred],
+            [p20_pred,  p21_pred,  p22_pred]]
 
-  p'' = updateCovarianceMatrix p'
+  p3 = updateCovarianceMatrix p_pred
  
-  p00'' = if isDtPositive then p''!(0,0) else p00'
-  p01'' = if isDtPositive then p''!(0,1) else p01'
-  p02'' = if isDtPositive then p''!(0,2) else p02'
-  p10'' = if isDtPositive then p''!(1,0) else p10'
-  p11'' = if isDtPositive then p''!(1,1) else p11'
-  p12'' = if isDtPositive then p''!(1,2) else p12'
-  p20'' = if isDtPositive then p''!(2,0) else p20'
-  p21'' = if isDtPositive then p''!(2,1) else p21'
-  p22'' = if isDtPositive then p''!(2,2) else p22'
+  p00_noise = if isDtPositive then p3!(0,0) else p00_pred
+  p01_noise = if isDtPositive then p3!(0,1) else p01_pred
+  p02_noise = if isDtPositive then p3!(0,2) else p02_pred
+  p10_noise = if isDtPositive then p3!(1,0) else p10_pred
+  p11_noise = if isDtPositive then p3!(1,1) else p11_pred
+  p12_noise = if isDtPositive then p3!(1,2) else p12_pred
+  p20_noise = if isDtPositive then p3!(2,0) else p20_pred
+  p21_noise = if isDtPositive then p3!(2,1) else p21_pred
+  p22_noise = if isDtPositive then p3!(2,2) else p22_pred
 
   lastUpdateMsec = if _lastUpdateMsec == 0 || isDtPositive 
                    then  stream_now_msec 
@@ -366,29 +355,39 @@ ekfStep = State dx dy zz dz phi dphi theta dtheta psi dpsi where
            [newe1e0, newe1e1, newe1e2],
            [newe2e0, newe2e1, newe2e2] ]
 
-  p''' = [ [p00'', p01'', p02''],
-           [p10'', p11'', p12''],
-           [p20'', p21'', p22''] ]
+  p4 = [ [p00_noise, p01_noise, p02_noise],
+         [p10_noise, p11_noise, p12_noise],
+         [p20_noise, p21_noise, p22_noise] ]
 
-  newapa = newa !*! p''' !*! (transpose newa)
+  newapa = newa !*! p4 !*! (transpose newa)
 
   shouldFinalize = isUpdated && isErrorSufficient
 
-  p00''' = if shouldFinalize then newapa!(0,0) else p00''
-  p01''' = if shouldFinalize then newapa!(0,1) else p01''
-  p02''' = if shouldFinalize then newapa!(0,2) else p02''
-  p10''' = if shouldFinalize then newapa!(1,0) else p10''
-  p11''' = if shouldFinalize then newapa!(1,1) else p11''
-  p12''' = if shouldFinalize then newapa!(1,2) else p12''
-  p20''' = if shouldFinalize then newapa!(2,0) else p20''
-  p21''' = if shouldFinalize then newapa!(2,1) else p21''
-  p22''' = if shouldFinalize then newapa!(2,2) else p22''
+  p00_final = if shouldFinalize then newapa!(0,0) else p00_noise
+  p01_final = if shouldFinalize then newapa!(0,1) else p01_noise
+  p02_final = if shouldFinalize then newapa!(0,2) else p02_noise
+  p10_final = if shouldFinalize then newapa!(1,0) else p10_noise
+  p11_final = if shouldFinalize then newapa!(1,1) else p11_noise
+  p12_final = if shouldFinalize then newapa!(1,2) else p12_noise
+  p20_final = if shouldFinalize then newapa!(2,0) else p20_noise
+  p21_final = if shouldFinalize then newapa!(2,1) else p21_noise
+  p22_final = if shouldFinalize then newapa!(2,2) else p22_noise
 
-  p'''' =  [ [p00''', p01''', p02'''],
-             [p10''', p11''', p12'''],
-             [p20''', p21''', p22'''] ]
+  p5 =  [ [p00_final, p01_final, p02_final],
+          [p10_final, p11_final, p12_final],
+          [p20_final, p21_final, p22_final] ]
 
-  p''''' = updateCovarianceMatrix p''''
+  p6 = updateCovarianceMatrix p5
+
+  p00 = if isUpdated then p6!(0,0) else _p00
+  p01 = if isUpdated then p6!(0,1) else _p01
+  p02 = if isUpdated then p6!(0,2) else _p02
+  p10 = if isUpdated then p6!(1,0) else _p10
+  p11 = if isUpdated then p6!(1,1) else _p11
+  p12 = if isUpdated then p6!(1,2) else _p12
+  p20 = if isUpdated then p6!(2,0) else _p20
+  p21 = if isUpdated then p6!(2,1) else _p21
+  p22 = if isUpdated then p6!(2,2) else _p22
  
   -- Internal state, represented as streams ----------------------------------
 
