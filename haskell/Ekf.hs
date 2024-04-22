@@ -384,6 +384,11 @@ ekfStep = State dx dy zz dz phi dphi theta dtheta psi dpsi where
   p21''' = if shouldFinalize then newapa!(2,1) else p21''
   p22''' = if shouldFinalize then newapa!(2,2) else p22''
 
+  p'''' =  [ [p00''', p01''', p02'''],
+             [p10''', p11''', p12'''],
+             [p20''', p21''', p22'''] ]
+
+  p''''' = updateCovarianceMatrix p''''
  
   -- Internal state, represented as streams ----------------------------------
 
