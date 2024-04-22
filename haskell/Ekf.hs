@@ -262,8 +262,6 @@ ekfStep = State dx dy zz dz phi dphi theta dtheta psi dpsi where
 
   isUpdated = if shouldPredict then true else _isUpdated
 
-  lastUpdateMsec = 0 -- XXX
-
   dt' = getDt stream_now_msec lastUpdateMsec
 
   isDtPositive = dt' > 0
@@ -298,6 +296,10 @@ ekfStep = State dx dy zz dz phi dphi theta dtheta psi dpsi where
   p21'' = if isDtPositive then p''!(2,1) else p21'
   p22'' = if isDtPositive then p''!(2,2) else p22'
 
+  lastUpdateMsec = if _lastUpdateMsec == 0 || isDtPositive 
+                   then  stream_now_msec 
+                   else _lastUpdateMsec;
+
 
   -- Internal state, represented as streams ----------------------------------
 
@@ -318,4 +320,6 @@ ekfStep = State dx dy zz dz phi dphi theta dtheta psi dpsi where
   _nextPredictionMsec = [0] ++ nextPredictionMsec
 
   _lastPredictionMsec = [0] ++ lastPredictionMsec
+
+  _lastUpdateMsec = [0] ++ lastUpdateMsec
 
