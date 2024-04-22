@@ -323,7 +323,7 @@ ekfStep = State dx dy zz dz phi dphi theta dtheta psi dpsi where
   newe0 = v0 / 2 
   newe1 = v1 / 2 
   newe2 = v2 / 2
-  
+
   {--
     Rotate the covariance, since we've rotated the body
              
@@ -350,6 +350,15 @@ ekfStep = State dx dy zz dz phi dphi theta dtheta psi dpsi where
   newe2e0 = newe1 + newe0*newe2/2
   newe2e1 = -newe0 + newe1*newe2/2
   newe2e2 = 1 - newe0*newe0/2 - newe1*newe1/2
+
+  -- Matrix to rotate the attitude covariances once updated
+  newa = [ [newe0e0, newe0e1, newe0e2],
+           [newe1e0, newe1e1, newe1e2],
+           [newe2e0, newe2e1, newe2e2] ]
+
+  p''' = [ [p00'', p01'', p02''],
+           [p10'', p11'', p12''],
+           [p20'', p21'', p22''] ]
 
  
   -- Internal state, represented as streams ----------------------------------
