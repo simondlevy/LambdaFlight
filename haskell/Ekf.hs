@@ -32,12 +32,6 @@ import Utils
 
 -- Constants -----------------------------------------------------------------
 
--- Quaternion used for initial orientation
-qw_init = 1 :: SFloat
-qx_init = 0 :: SFloat
-qy_init = 0 :: SFloat
-qz_init = 0 :: SFloat
-
 gravity_magnitude = 9.81 :: SFloat
 degrees_to_radians = pi / 180 :: SFloat
 
@@ -222,10 +216,10 @@ ekfStep = State dx dy zz dz phi dphi theta dtheta psi dpsi where
   dqz = sa * dtwz / angle
 
   -- Rotate the quad's attitude by the delta quaternion vector computed above
-  tmpq0 = rotateQuat (dqw*qw - dqx*qx - dqy*qy - dqz*qz) qw_init isFlying
-  tmpq1 = rotateQuat (dqx*qw + dqw*qx + dqz*qy - dqy*qz) qx_init isFlying
-  tmpq2 = rotateQuat (dqy*qw - dqz*qx + dqw*qy + dqx*qz) qy_init isFlying
-  tmpq3 = rotateQuat (dqz*qw + dqy*qx - dqx*qy + dqw*qz) qz_init isFlying
+  tmpq0 = rotateQuat (dqw*qw - dqx*qx - dqy*qy - dqz*qz) 1 isFlying
+  tmpq1 = rotateQuat (dqx*qw + dqw*qx + dqz*qy - dqy*qz) 0 isFlying
+  tmpq2 = rotateQuat (dqy*qw - dqz*qx + dqw*qy + dqx*qz) 0 isFlying
+  tmpq3 = rotateQuat (dqz*qw + dqy*qx - dqx*qy + dqw*qz) 0 isFlying
 
   -- Normalize and store the result
   norm = sqrt (tmpq0*tmpq0 + tmpq1*tmpq1 + tmpq2*tmpq2 + tmpq3*tmpq3) + eps
@@ -313,8 +307,20 @@ ekfStep = State dx dy zz dz phi dphi theta dtheta psi dpsi where
   newdqx = newsa * v0 / newangle
   newdqy = newsa * v1 / newangle
   newdqz = newsa * v2 / newangle
+            
+  -- Rotate the quad's attitude by the delta quaternion vector computed above
+  newtmpq0 = newdqw * _qw - newdqx * _qx - newdqy * _qy - newdqz * _qz
+  newtmpq1 = newdqx * _qw + newdqw * _qx + newdqz * _qy - newdqy * _qz
+  newtmpq2 = newdqy * _qw - newdqz * _qx + newdqw * _qy + newdqx * _qz
+  newtmpq3 = newdqz * _qw + newdqy * _qx - newdqx * _qy + newdqw * _qz
 
+ 
   -- Internal state, represented as streams ----------------------------------
+
+  _qw = [1] ++ qw
+  _qx = [0] ++ qx
+  _qy = [0] ++ qy
+  _qz = [0] ++ qz
 
   _p00 = [stdev_initial_attitude_roll_pitch ** 2] ++ p00
   _p01 = [0] ++ p01
@@ -335,4 +341,9 @@ ekfStep = State dx dy zz dz phi dphi theta dtheta psi dpsi where
   _lastPredictionMsec = [0] ++ lastPredictionMsec
 
   _lastUpdateMsec = [0] ++ lastUpdateMsec
+
+
+
+
+
 
