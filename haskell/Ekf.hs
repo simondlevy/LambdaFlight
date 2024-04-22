@@ -40,8 +40,8 @@ degrees_to_radians = pi / 180 :: SFloat
 stdev_initial_attitude_roll_pitch = 0.01
 stdev_initial_attitude_yaw = 0.01
 
-proc_noise_att = 0 :: SFloat
-meas_noise_gyro = 0.1 :: SFloat -- radians per second
+proc''_att = 0 :: SFloat
+meas''_gyro = 0.1 :: SFloat -- radians per second
 
 -- Bounds on the covariance, these shouldn't be hit, but sometimes are... why?
 max_covariance = 100 :: SFloat
@@ -267,7 +267,7 @@ ekfStep = State dx dy zz dz phi dphi theta dtheta psi dpsi where
   isDtPositive = dt' > 0
 
   noise = if isDtPositive 
-          then (meas_noise_gyro + dt' + proc_noise_att) ** 2
+          then (meas''_gyro + dt' + proc''_att) ** 2
           else 0
 
   p00' = if shouldPredict then apa!(0,0) + noise else p00
@@ -361,7 +361,6 @@ ekfStep = State dx dy zz dz phi dphi theta dtheta psi dpsi where
     (isErrorLarge v0 || isErrorLarge v1 || isErrorLarge v2) &&
     isErrorInBounds v0 && isErrorInBounds v1 && isErrorInBounds v2
 
-
   -- Matrix to rotate the attitude covariances once updated
   newa = [ [newe0e0, newe0e1, newe0e2],
            [newe1e0, newe1e1, newe1e2],
@@ -374,6 +373,17 @@ ekfStep = State dx dy zz dz phi dphi theta dtheta psi dpsi where
   newapa = newa !*! p''' !*! (transpose newa)
 
   shouldFinalize = isUpdated && isErrorSufficient
+
+  p00''' = if shouldFinalize then newapa!(0,0) else p00''
+  p01''' = if shouldFinalize then newapa!(0,1) else p01''
+  p02''' = if shouldFinalize then newapa!(0,2) else p02''
+  p10''' = if shouldFinalize then newapa!(1,0) else p10''
+  p11''' = if shouldFinalize then newapa!(1,1) else p11''
+  p12''' = if shouldFinalize then newapa!(1,2) else p12''
+  p20''' = if shouldFinalize then newapa!(2,0) else p20''
+  p21''' = if shouldFinalize then newapa!(2,1) else p21''
+  p22''' = if shouldFinalize then newapa!(2,2) else p22''
+
  
   -- Internal state, represented as streams ----------------------------------
 
