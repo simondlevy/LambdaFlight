@@ -387,10 +387,11 @@ ekfStep = State dx dy zz dz phi dphi theta dtheta psi dpsi where
   phi = radians_to_degrees * atan2 (2 * (qy*qz + qw*qx))
                                    (qw*qw - qx*qx - qy*qy + qz*qz)
  
+  -- Negate for ENU
+  theta = (-radians_to_degrees) * asin ((-2) * (_qx*_qz - _qw*_qy))
 
-  theta = 0
-
-  psi = 0
+  psi = radians_to_degrees * atan2 (2 * (qx*qy + qw*qz))
+                                   (qw*qw + qx*qx - qy*qy - qz*qz)
 
   -- Internal state, represented as streams ----------------------------------
 
