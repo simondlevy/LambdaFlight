@@ -120,7 +120,7 @@ ekfStep = qw where
 
   ----------------------------------------------------------------------------
 
-  shouldPredict = stream_now_msec > nextPredictionMsec
+  shouldPredict = true
 
   dt = getDt stream_now_msec lastPredictionMsec
 
@@ -186,20 +186,6 @@ ekfStep = qw where
   lastPredictionMsec = if _lastPredictionMsec == 0  || shouldPredict
                         then stream_now_msec 
                         else _lastPredictionMsec
-
-  nextPredictionMsec = if _nextPredictionMsec == 0 
-                        then stream_now_msec 
-                        else if stream_now_msec > _nextPredictionMsec
-                        then stream_now_msec + prediction_update_interval_msec
-                        else _nextPredictionMsec
-
-  -- Process noise is added after the return from the prediction step
-
-  -- ====== PREDICTION STEP ======
-  -- The prediction depends on whether we're on the
-  -- ground, or in flight.  When flying, the
-  -- accelerometer directly measures thrust (hence is
-  -- useless to estimate body angle while flying)
 
   qw_pred = if shouldPredict then tmpq0 / norm else _qw
   qx_pred = if shouldPredict then tmpq1 / norm else _qx 
@@ -334,35 +320,28 @@ ekfStep = qw where
 
   -- Convert the new attitude to a rotation matrix, such  that we can rotate 
   -- body-frame velocity and acc
-  r20 = 2 * qx * qz - 2 * qw * qy
+  r20 = 0
   r21 = 0
   r22 = 0
 
    -- Internal state, represented as streams ----------------------------------
 
-  _didInit = [False] ++ true
-  _nextPredictionMsec = [0] ++ nextPredictionMsec
   _lastPredictionMsec = [0] ++ lastPredictionMsec
   _lastUpdateMsec = [0] ++ lastUpdateMsec
 
   -- Covariance matrix entries
-  _p00 = [stdev_initial_attitude_roll_pitch ** 2] ++ p00
-  _p01 = [0] ++ p01
-  _p02 = [0] ++ p01
-  _p10 = [0] ++ p01
-  _p11 = [stdev_initial_attitude_roll_pitch ** 2] ++ p11
-  _p12 = [0] ++ p01
-  _p20 = [0] ++ p01
-  _p21 = [0] ++ p01
-  _p22 = [stdev_initial_attitude_yaw ** 2] ++ p22
+  _p00 = 0
+  _p01 = 0
+  _p02 = 0
+  _p10 = 0
+  _p11 = 0
+  _p12 = 0
+  _p20 = 0
+  _p21 = 0
+  _p22 = 0
 
   -- Quaternion
   _qw = [1] ++ qw
   _qx = [0] ++ qx
   _qy = [0] ++ qy
   _qz = [0] ++ qz
-
-  -- Third row (Z) of attitude as a rotation matrix (used by prediction, 
-  -- updated by finalization)
-  _r20 = [0] ++ r20
-
