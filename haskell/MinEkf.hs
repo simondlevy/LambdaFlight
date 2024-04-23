@@ -102,26 +102,7 @@ rotateQuat val initVal isFlying = val' where
            (if isFlying then 0 else rollpitch_zero_reversion * initVal)
 
 updateCovarianceMatrix :: Matrix -> Matrix
-updateCovarianceMatrix p = p' where
-  p00 = updateCovarianceCell p 0 0 true
-  p01 = updateCovarianceCell p 0 1 false
-  p02 = updateCovarianceCell p 0 2 false
-  p10 = p01
-  p11 = updateCovarianceCell p 1 1 true
-  p12 = updateCovarianceCell p 1 2 false
-  p20 = p02
-  p21 = p12
-  p22 = updateCovarianceCell p 1 2 false
-  p' = [[p00, p01, p02],
-        [p10, p11, p12],
-        [p20, p21, p22]]
-
-updateCovarianceCell :: Matrix -> Index -> Index -> SBool -> SFloat
-updateCovarianceCell p i j isdiag = pij where 
-  pval = (p!(i, j) + p!(j,i)) / 2
-  pij = if pval > max_covariance then max_covariance
-        else if isdiag && pval < min_covariance then min_covariance
-        else pval
+updateCovarianceMatrix p = p
 
 isErrorLarge :: SFloat -> SBool
 isErrorLarge v = abs v > 0.1e-3
@@ -131,9 +112,9 @@ isErrorInBounds v = abs v < 10
  
 -- EKF function --------------------------------------------------------------
 
-ekfStep :: State
+ekfStep :: SFloat
 
-ekfStep = State dx dy zz dz phi dphi theta dtheta psi dpsi where
+ekfStep = dx where
 
   -- XXX ---------------------------------------------------------------------
 

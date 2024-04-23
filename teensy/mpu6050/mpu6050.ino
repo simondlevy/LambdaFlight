@@ -325,6 +325,10 @@ void loop()
 
 // Called by Copilot ---------------------------------------------------------
 
+void setVehicleState(const float foo)
+{
+}
+
 void setMotors(const float m1, const float m2, const float m3, const float m4)
 {
     m1_command_PWM = m1;

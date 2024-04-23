@@ -212,9 +212,9 @@ spec = do
 
   let (m1_pwm, m2_pwm, m3_pwm, m4_pwm, c1) = step gyroX gyroY gyroZ
   
-  let vehicleState = ekfStep
+  let dx = ekfStep
 
-  trigger "setVehicleState" true [arg $ phi vehicleState]
+  trigger "setVehicleState" true [arg dx]
 
   trigger "setMotors" true [arg m1_pwm, arg m2_pwm, arg m3_pwm, arg m4_pwm] 
 
