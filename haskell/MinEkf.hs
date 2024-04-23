@@ -173,15 +173,7 @@ ekfStep = qw where
   tmpq2 = rotateQuat (dqy*qw - dqz*qx + dqw*qy + dqx*qz) 0 isFlying
   tmpq3 = rotateQuat (dqz*qw + dqy*qx - dqx*qy + dqw*qz) 0 isFlying
 
-  -- Normalize and store the result
-  norm = sqrt (tmpq0*tmpq0 + tmpq1*tmpq1 + tmpq2*tmpq2 + tmpq3*tmpq3) + eps
-
-  p = [[p00,  p01,  p02],
-       [p10,  p11,  p12],
-       [p20,  p21,  p22]]
-
-  -- Update the covariance matrix
-  apa = a !*! p !*! (transpose a)
+  norm = 1
   
   qw_pred = if shouldPredict then tmpq0 / norm else _qw
   qx_pred = if shouldPredict then tmpq1 / norm else _qx 
