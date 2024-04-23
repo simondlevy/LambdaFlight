@@ -188,7 +188,7 @@ ekfStep = qw where
   qy_pred = if shouldPredict then tmpq2 / norm else _qy 
   qz_pred = if shouldPredict then tmpq3 / norm else _qz
 
-  dt' = getDt stream_now_msec lastUpdateMsec
+  dt' = 1
 
   isDtPositive = dt' > 0
 
@@ -222,10 +222,6 @@ ekfStep = qw where
   p21_noise = if isDtPositive then p3!(2,1) else p21_pred
   p22_noise = if isDtPositive then p3!(2,2) else p22_pred
 
-  lastUpdateMsec = if _lastUpdateMsec == 0 || isDtPositive 
-                   then  stream_now_msec 
-                   else _lastUpdateMsec
-
   p00 = 0 
   p01 = 0 
   p02 = 0 
@@ -244,8 +240,6 @@ ekfStep = qw where
   r20 = 0
   r21 = 0
   r22 = 0
-
-  _lastUpdateMsec = [0] ++ lastUpdateMsec
 
   _p00 = 0
   _p01 = 0
