@@ -122,7 +122,7 @@ ekfStep = qw where
 
   shouldPredict = true
 
-  dt = getDt stream_now_msec lastPredictionMsec
+  dt = 1
 
   gyro_sample_x = stream_gyro_x * degrees_to_radians
   gyro_sample_y = stream_gyro_y * degrees_to_radians
@@ -183,10 +183,6 @@ ekfStep = qw where
   -- Update the covariance matrix
   apa = a !*! p !*! (transpose a)
   
-  lastPredictionMsec = if _lastPredictionMsec == 0  || shouldPredict
-                        then stream_now_msec 
-                        else _lastPredictionMsec
-
   qw_pred = if shouldPredict then tmpq0 / norm else _qw
   qx_pred = if shouldPredict then tmpq1 / norm else _qx 
   qy_pred = if shouldPredict then tmpq2 / norm else _qy 
@@ -260,49 +256,6 @@ ekfStep = qw where
   newe1 = v1 / 2 
   newe2 = v2 / 2
 
-  {--
-    Rotate the covariance, since we've rotated the body
-             
-    This comes from a second order approximation to:
-    Sigma_post = exps(-d) 
-    Sigma_pre exps(-d)'
-               ~ (I + [[-d]] + [[-d]]^2 / 2) 
-    (I + [[-d]] + [[-d]]^2 / 2)'
-    where d is the attitude error expressed as Rodriges parameters,
-    ie.  d = tan(|v|/2)*v/|v|
-    As derived in "Covariance Correction Step for Kalman Filtering
-    with an Attitude"
-    http://arc.aiaa.org/doi/abs/10.2514/1.G000848
-  --}
-
-{--
-  newe0e0 =  1 - newe1*newe1/2 - newe2*newe2/2
-  newe0e1 =  newe2 + newe0*newe1/2
-  newe0e2 = -newe1 + newe0*newe2/2
-
-  newe1e0 =  -newe2 + newe0*newe1/2
-  newe1e1 = 1 - newe0*newe0/2 - newe2*newe2/2
-  newe1e2 = newe0 + newe1*newe2/2
-
-  newe2e0 = newe1 + newe0*newe2/2
-  newe2e1 = -newe0 + newe1*newe2/2
-  newe2e2 = 1 - newe0*newe0/2 - newe1*newe1/2
-
-  isErrorSufficient  = 
-    (isErrorLarge v0 || isErrorLarge v1 || isErrorLarge v2) &&
-    isErrorInBounds v0 && isErrorInBounds v1 && isErrorInBounds v2
-
-  -- Matrix to rotate the attitude covariances once updated
-  newa = [ [newe0e0, newe0e1, newe0e2],
-           [newe1e0, newe1e1, newe1e2],
-           [newe2e0, newe2e1, newe2e2] ]
-
-  p4 = [ [p00_noise, p01_noise, p02_noise],
-         [p10_noise, p11_noise, p12_noise],
-         [p20_noise, p21_noise, p22_noise] ]
-
-  newapa = newa !*! p4 !*! (transpose newa)
---}
   p00 = 0 
   p01 = 0 
   p02 = 0 
@@ -318,18 +271,12 @@ ekfStep = qw where
   qy = 0 
   qz = 0 
 
-  -- Convert the new attitude to a rotation matrix, such  that we can rotate 
-  -- body-frame velocity and acc
   r20 = 0
   r21 = 0
   r22 = 0
 
-   -- Internal state, represented as streams ----------------------------------
-
-  _lastPredictionMsec = [0] ++ lastPredictionMsec
   _lastUpdateMsec = [0] ++ lastUpdateMsec
 
-  -- Covariance matrix entries
   _p00 = 0
   _p01 = 0
   _p02 = 0
@@ -340,7 +287,6 @@ ekfStep = qw where
   _p21 = 0
   _p22 = 0
 
-  -- Quaternion
   _qw = [1] ++ qw
   _qx = [0] ++ qx
   _qy = [0] ++ qy
