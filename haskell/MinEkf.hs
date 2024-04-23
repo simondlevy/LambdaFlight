@@ -188,40 +188,6 @@ ekfStep = qw where
   qy_pred = if shouldPredict then tmpq2 / norm else _qy 
   qz_pred = if shouldPredict then tmpq3 / norm else _qz
 
-  dt' = 1
-
-  isDtPositive = dt' > 0
-
-  noise = if isDtPositive 
-          then (meas''_gyro + dt' + proc''_att) ** 2
-          else 0
-
-  p00_pred = if shouldPredict then apa!(0,0) + noise else p00
-  p01_pred = if shouldPredict then apa!(0,1) + noise else p01
-  p02_pred = if shouldPredict then apa!(0,2) + noise else p02
-  p10_pred = if shouldPredict then apa!(1,0) + noise else p10
-  p11_pred = if shouldPredict then apa!(1,1) + noise else p11
-  p12_pred = if shouldPredict then apa!(1,2) + noise else p12
-  p20_pred = if shouldPredict then apa!(2,0) + noise else p20
-  p21_pred = if shouldPredict then apa!(2,1) + noise else p21
-  p22_pred = if shouldPredict then apa!(2,2) + noise else p22
-
-  p_pred = [[p00_pred,  p01_pred,  p02_pred],
-            [p10_pred,  p11_pred,  p12_pred],
-            [p20_pred,  p21_pred,  p22_pred]]
-
-  p3 = updateCovarianceMatrix p_pred
- 
-  p00_noise = if isDtPositive then p3!(0,0) else p00_pred
-  p01_noise = if isDtPositive then p3!(0,1) else p01_pred
-  p02_noise = if isDtPositive then p3!(0,2) else p02_pred
-  p10_noise = if isDtPositive then p3!(1,0) else p10_pred
-  p11_noise = if isDtPositive then p3!(1,1) else p11_pred
-  p12_noise = if isDtPositive then p3!(1,2) else p12_pred
-  p20_noise = if isDtPositive then p3!(2,0) else p20_pred
-  p21_noise = if isDtPositive then p3!(2,1) else p21_pred
-  p22_noise = if isDtPositive then p3!(2,2) else p22_pred
-
   p00 = 0 
   p01 = 0 
   p02 = 0 
