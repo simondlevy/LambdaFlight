@@ -169,9 +169,9 @@ ekfStep = qw where
 
   -- Rotate the quad's attitude by the delta quaternion vector computed above
   tmpq0 = rotateQuat (dqw*qw - dqx*qx - dqy*qy - dqz*qz) 1 isFlying
-  tmpq1 = rotateQuat (dqx*qw + dqw*qx + dqz*qy - dqy*qz) 0 isFlying
-  tmpq2 = rotateQuat (dqy*qw - dqz*qx + dqw*qy + dqx*qz) 0 isFlying
-  tmpq3 = rotateQuat (dqz*qw + dqy*qx - dqx*qy + dqw*qz) 0 isFlying
+  tmpq1 = 0
+  tmpq2 = 0
+  tmpq3 = 0
 
   norm = 1
   
