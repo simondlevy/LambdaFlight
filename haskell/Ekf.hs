@@ -131,9 +131,11 @@ isErrorInBounds v = abs v < 10
  
 -- EKF function --------------------------------------------------------------
 
-ekfStep :: State
+--ekfStep :: State
+--ekfStep = State dx dy zz dz phi dphi theta dtheta psi dpsi where
 
-ekfStep = State dx dy zz dz phi dphi theta dtheta psi dpsi where
+ekfStep :: SFloat
+ekfStep = qw where
 
   -- XXX ---------------------------------------------------------------------
 
@@ -194,10 +196,10 @@ ekfStep = State dx dy zz dz phi dphi theta dtheta psi dpsi where
   dqz = sa * dtwz / angle
 
   -- Rotate the quad's attitude by the delta quaternion vector computed above
-  tmpq0 = rotateQuat (dqw*qw - dqx*qx - dqy*qy - dqz*qz) 1 isFlying
-  tmpq1 = rotateQuat (dqx*qw + dqw*qx + dqz*qy - dqy*qz) 0 isFlying
-  tmpq2 = rotateQuat (dqy*qw - dqz*qx + dqw*qy + dqx*qz) 0 isFlying
-  tmpq3 = rotateQuat (dqz*qw + dqy*qx - dqx*qy + dqw*qz) 0 isFlying
+  tmpq0 = rotateQuat (dqw*_qw - dqx*_qx - dqy*_qy - dqz*_qz) 1 isFlying
+  tmpq1 = rotateQuat (dqx*_qw + dqw*_qx + dqz*_qy - dqy*_qz) 0 isFlying
+  tmpq2 = rotateQuat (dqy*_qw - dqz*_qx + dqw*_qy + dqx*_qz) 0 isFlying
+  tmpq3 = rotateQuat (dqz*_qw + dqy*_qx - dqx*_qy + dqw*_qz) 0 isFlying
 
   -- Normalize and store the result
   norm = sqrt (tmpq0*tmpq0 + tmpq1*tmpq1 + tmpq2*tmpq2 + tmpq3*tmpq3) + eps

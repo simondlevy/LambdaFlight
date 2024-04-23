@@ -26,7 +26,7 @@ import Language.Copilot
 import Copilot.Compile.C99
 
 import Demands
-import MinEkf
+import Ekf
 import Mixers
 import Motors
 import State
