@@ -226,36 +226,6 @@ ekfStep = qw where
                    then  stream_now_msec 
                    else _lastUpdateMsec
 
-  -- Incorporate the attitude error (Kalman filter state) with the attitude
-  v0 = 0 -- e0
-  v1 = 0 -- e1
-  v2 = 0 -- e2
-
-  newangle = sqrt (v0*v0 + v1*v1 + v2*v2) + eps
-  newca = cos(newangle / 2)
-  newsa = sin(newangle / 2)
-
-  newdqw = newca
-  newdqx = newsa * v0 / newangle
-  newdqy = newsa * v1 / newangle
-  newdqz = newsa * v2 / newangle
-            
-  -- Rotate the quad's attitude by the delta quaternion vector computed above
-  newtmpq0 = newdqw * _qw - newdqx * _qx - newdqy * _qy - newdqz * _qz
-  newtmpq1 = newdqx * _qw + newdqw * _qx + newdqz * _qy - newdqy * _qz
-  newtmpq2 = newdqy * _qw - newdqz * _qx + newdqw * _qy + newdqx * _qz
-  newtmpq3 = newdqz * _qw + newdqy * _qx - newdqx * _qy + newdqw * _qz
-
-   -- Normalize and store the result
-  newnorm = sqrt (newtmpq0 * newtmpq0 + newtmpq1 * newtmpq1 + 
-                  newtmpq2 * newtmpq2 + newtmpq3 * newtmpq3) + eps
-
-  -- The attitude error vector (v0,v1,v2) is small,  so we use a first-order
-  -- approximation to e0 = tan(|v0|/2)*v0/|v0|
-  newe0 = v0 / 2 
-  newe1 = v1 / 2 
-  newe2 = v2 / 2
-
   p00 = 0 
   p01 = 0 
   p02 = 0 
