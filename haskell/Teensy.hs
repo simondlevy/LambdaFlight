@@ -26,9 +26,10 @@ import Language.Copilot
 import Copilot.Compile.C99
 
 import Demands
-import Ekf
+import MinEkf
 import Mixers
 import Motors
+import State
 import Utils
 
 -- Streams from C++ ----------------------------------------------------------
@@ -212,6 +213,8 @@ spec = do
   let (m1_pwm, m2_pwm, m3_pwm, m4_pwm, c1) = step gyroX gyroY gyroZ
   
   let vehicleState = ekfStep
+
+  trigger "setVehicleState" true [arg $ phi vehicleState]
 
   trigger "setMotors" true [arg m1_pwm, arg m2_pwm, arg m3_pwm, arg m4_pwm] 
 
