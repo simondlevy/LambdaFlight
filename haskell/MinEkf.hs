@@ -114,14 +114,7 @@ isErrorInBounds v = abs v < 10
 
 ekfStep :: SFloat
 
-ekfStep = dx where
-
-  -- XXX ---------------------------------------------------------------------
-
-  dx = 0
-  dy = 0
-  zz = 0
-  dz = 0
+ekfStep = qw where
 
   isFlying = true
 
@@ -296,6 +289,7 @@ ekfStep = dx where
     http://arc.aiaa.org/doi/abs/10.2514/1.G000848
   --}
 
+{--
   newe0e0 =  1 - newe1*newe1/2 - newe2*newe2/2
   newe0e1 =  newe2 + newe0*newe1/2
   newe0e2 = -newe1 + newe0*newe2/2
@@ -322,59 +316,27 @@ ekfStep = dx where
          [p20_noise, p21_noise, p22_noise] ]
 
   newapa = newa !*! p4 !*! (transpose newa)
+--}
+  p00 = 0 
+  p01 = 0 
+  p02 = 0 
+  p10 = 0 
+  p11 = 0 
+  p12 = 0 
+  p20 = 0 
+  p21 = 0 
+  p22 = 0 
 
-  p00_final = if isErrorSufficient then newapa!(0,0) else p00_noise
-  p01_final = if isErrorSufficient then newapa!(0,1) else p01_noise
-  p02_final = if isErrorSufficient then newapa!(0,2) else p02_noise
-  p10_final = if isErrorSufficient then newapa!(1,0) else p10_noise
-  p11_final = if isErrorSufficient then newapa!(1,1) else p11_noise
-  p12_final = if isErrorSufficient then newapa!(1,2) else p12_noise
-  p20_final = if isErrorSufficient then newapa!(2,0) else p20_noise
-  p21_final = if isErrorSufficient then newapa!(2,1) else p21_noise
-  p22_final = if isErrorSufficient then newapa!(2,2) else p22_noise
-
-  p5 =  [ [p00_final, p01_final, p02_final],
-          [p10_final, p11_final, p12_final],
-          [p20_final, p21_final, p22_final] ]
-
-  p6 = updateCovarianceMatrix p5
-
-  p00 = if isErrorSufficient then p6!(0,0) else _p00
-  p01 = if isErrorSufficient then p6!(0,1) else _p01
-  p02 = if isErrorSufficient then p6!(0,2) else _p02
-  p10 = if isErrorSufficient then p6!(1,0) else _p10
-  p11 = if isErrorSufficient then p6!(1,1) else _p11
-  p12 = if isErrorSufficient then p6!(1,2) else _p12
-  p20 = if isErrorSufficient then p6!(2,0) else _p20
-  p21 = if isErrorSufficient then p6!(2,1) else _p21
-  p22 = if isErrorSufficient then p6!(2,2) else _p22
-
-  qw = if isErrorSufficient then newtmpq0 / newnorm else qw_pred
-  qx = if isErrorSufficient then newtmpq1 / newnorm else qx_pred
-  qy = if isErrorSufficient then newtmpq2 / newnorm else qy_pred
-  qz = if isErrorSufficient then newtmpq3 / newnorm else qz_pred
+  qw = qw_pred
+  qx = 0 
+  qy = 0 
+  qz = 0 
 
   -- Convert the new attitude to a rotation matrix, such  that we can rotate 
   -- body-frame velocity and acc
-  r20 = if isErrorSufficient then  2 * qx * qz - 2 * qw * qy else _r20
-  r21 = if isErrorSufficient then  2 * qy * qz + 2 * qw * qx else _r21
-  r22 = if isErrorSufficient then qw * qw - qx * qx - qy * qy + qz * qz else _r22
-
-  -- Get the vehicle state ---------------------------------------------------
-  
-  phi = radians_to_degrees * atan2 (2 * (qy*qz + qw*qx))
-                                   (qw*qw - qx*qx - qy*qy + qz*qz)
- 
-  -- Negate for ENU
-  theta = (-radians_to_degrees) * asin ((-2) * (_qx*_qz - _qw*_qy))
-
-  psi = radians_to_degrees * atan2 (2 * (qx*qy + qw*qz))
-                                   (qw*qw + qx*qx - qy*qy - qz*qz)
-
-  -- Get angular velocities directly from gyro
-  dphi =    stream_gyro_x
-  dtheta = -stream_gyro_y -- negate for ENU
-  dpsi =    stream_gyro_z
+  r20 = 2 * qx * qz - 2 * qw * qy
+  r21 = 0
+  r22 = 0
 
    -- Internal state, represented as streams ----------------------------------
 
@@ -403,6 +365,4 @@ ekfStep = dx where
   -- Third row (Z) of attitude as a rotation matrix (used by prediction, 
   -- updated by finalization)
   _r20 = [0] ++ r20
-  _r21 = [0] ++ r21
-  _r22 = [1] ++ r22
 
