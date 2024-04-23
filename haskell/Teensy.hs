@@ -22,7 +22,7 @@
 
 module Copilot where
 
-import Language.Copilot
+import Language.Copilot hiding(atan2)
 import Copilot.Compile.C99
 
 import Demands
@@ -208,15 +208,18 @@ step gyroX gyroY gyroZ = motors' where
 
 spec = do
 
-  let (gyroX, gyroY, gyroZ) = getGyro
+  --let (gyroX, gyroY, gyroZ) = getGyro
 
-  let (m1_pwm, m2_pwm, m3_pwm, m4_pwm, c1) = step gyroX gyroY gyroZ
+  --let (m1_pwm, m2_pwm, m3_pwm, m4_pwm, c1) = step gyroX gyroY gyroZ
   
-  let dx = ekfStep
+  -- let (qw, qx, qy, qz) = ekfStep
 
-  trigger "setVehicleState" true [arg dx]
+  let val = ekfStep
+  trigger "debugEkf" true [arg val]
 
-  trigger "setMotors" true [arg m1_pwm, arg m2_pwm, arg m3_pwm, arg m4_pwm] 
+  --trigger "setVehicleState" true [arg qw, arg qx, arg qy, arg qz]
+
+  --trigger "setMotors" true [arg m1_pwm, arg m2_pwm, arg m3_pwm, arg m4_pwm] 
 
 -- Compile the spec
 main = reify spec >>= 

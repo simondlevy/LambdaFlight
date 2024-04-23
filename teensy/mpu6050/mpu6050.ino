@@ -325,8 +325,9 @@ void loop()
 
 // Called by Copilot ---------------------------------------------------------
 
-void setVehicleState(const float foo)
+void debugEkf(const float qw)
 {
+    //Serial.printf("%+3.3f\n", qw);
 }
 
 void setMotors(const float m1, const float m2, const float m3, const float m4)

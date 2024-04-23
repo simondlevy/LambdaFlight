@@ -154,6 +154,8 @@ class Ekf {
 
             const auto isFlying = true; // XXX
 
+            // Serial.printf("%06d %06d\n", stream_now_msec, _nextPredictionMsec);
+
             const auto shouldPredict = stream_now_msec >= _nextPredictionMsec;
 
             const float dt = (stream_now_msec - _lastPredictionMsec) / 1000.0f;
@@ -312,9 +314,9 @@ class Ekf {
 
             // Incorporate the attitude error (Kalman filter state) with the
             // attitude
-            const auto v0 = _e0;
-            const auto v1 = _e1;
-            const auto v2 = _e2;
+            const auto v0 = 0;//_e0;
+            const auto v1 = 0;//_e1;
+            const auto v2 = 0;//_e2;
 
             const auto newangle = sqrt(v0*v0 + v1*v1 + v2*v2) + EPS;
             const auto newca = cos(newangle / 2.0f);

@@ -41,8 +41,8 @@ radians_to_degrees = 180 / pi :: SFloat
 stdev_initial_attitude_roll_pitch = 0.01
 stdev_initial_attitude_yaw = 0.01
 
-proc''_att = 0 :: SFloat
-meas''_gyro = 0.1 :: SFloat -- radians per second
+proc_att = 0 :: SFloat
+meas_gyro = 0.1 :: SFloat -- radians per second
 
 -- Bounds on the covariance, these shouldn't be hit, but sometimes are... why?
 max_covariance = 100 :: SFloat
@@ -134,8 +134,11 @@ isErrorInBounds v = abs v < 10
 --ekfStep :: State
 --ekfStep = State dx dy zz dz phi dphi theta dtheta psi dpsi where
 
+--ekfStep :: (SFloat, SFloat, SFloat, SFloat)
+--ekfStep = (qw, qx, qy, qz) where
+
 ekfStep :: SFloat
-ekfStep = qw where
+ekfStep = norm  where
 
   -- XXX ---------------------------------------------------------------------
 
@@ -148,7 +151,7 @@ ekfStep = qw where
 
   ----------------------------------------------------------------------------
 
-  shouldPredict = stream_now_msec > nextPredictionMsec
+  shouldPredict = stream_now_msec >= _nextPredictionMsec
 
   dt = getDt stream_now_msec lastPredictionMsec
 
@@ -217,7 +220,7 @@ ekfStep = qw where
 
   nextPredictionMsec = if _nextPredictionMsec == 0 
                         then stream_now_msec 
-                        else if stream_now_msec > _nextPredictionMsec
+                        else if stream_now_msec >= _nextPredictionMsec
                         then stream_now_msec + prediction_update_interval_msec
                         else _nextPredictionMsec
 
@@ -238,9 +241,7 @@ ekfStep = qw where
 
   isDtPositive = dt' > 0
 
-  noise = if isDtPositive 
-          then (meas''_gyro + dt' + proc''_att) ** 2
-          else 0
+  noise = if isDtPositive then (meas_gyro + dt' + proc_att) ** 2 else 0
 
   p00_pred = if shouldPredict then apa!(0,0) + noise else p00
   p01_pred = if shouldPredict then apa!(0,1) + noise else p01
