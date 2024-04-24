@@ -7,12 +7,6 @@
 #include <linalg.h>
 #include <streams.h>
 
-// Quaternion used for initial orientation
-static const float QW_INIT = 1;
-static const float QX_INIT = 0;
-static const float QY_INIT = 0;
-static const float QZ_INIT = 0;
-
 // Initial variances, uncertain of position, but know we're
 // stationary and roughly flat
 static const float STDEV_INITIAL_POSITION_Z = 1;
@@ -93,14 +87,6 @@ static const float mymax(const float val, const float maxval)
 static const float square(const float x)
 {
     return x * x;
-}
-
-static float rotateQuat( const float val, const float initVal)
-{
-    const auto keep = 1.0f - ROLLPITCH_ZERO_REVERSION;
-
-    return (val * (stream_isFlying ? 1: keep)) +
-        (stream_isFlying ? 0 : ROLLPITCH_ZERO_REVERSION * initVal);
 }
 
 static void updateCovarianceMatrix(const matrix_t & p_in, matrix_t & p_out) 
@@ -323,33 +309,6 @@ static void ekf_predict(
     const auto accx = stream_isFlying ? 0 : _accel_x;
     const auto accy = stream_isFlying ? 0 : _accel_y;
 
-    // attitude update (rotate by gyroscope), we do this in quaternions
-    // this is the gyroscope angular velocity integrated over the sample period
-    const auto dtwx = dt*_gyro_x;
-    const auto dtwy = dt*_gyro_y;
-    const auto dtwz = dt*_gyro_z;
-
-    // compute the quaternion values in [w,x,y,z] order
-    const auto angle = sqrt(dtwx*dtwx + dtwy*dtwy + dtwz*dtwz) + EPS;
-    const auto ca = cos(angle/2);
-    const auto sa = sin(angle/2);
-    const auto dqw = ca;
-    const auto dqx = sa*dtwx/angle;
-    const auto dqy = sa*dtwy/angle;
-    const auto dqz = sa*dtwz/angle;
-
-    // rotate the quad's attitude by the delta quaternion vector computed above
-
-    const auto tmpq0 = rotateQuat(dqw*q.w - dqx*q.x - dqy*q.y - dqz*q.z, QW_INIT);
-    const auto tmpq1 = rotateQuat(dqx*q.w + dqw*q.x + dqz*q.y - dqy*q.z, QX_INIT);
-    const auto tmpq2 = rotateQuat(dqy*q.w - dqz*q.x + dqw*q.y + dqx*q.z, QY_INIT);
-    const auto tmpq3 = rotateQuat(dqz*q.w + dqy*q.x - dqx*q.y + dqw*q.z, QZ_INIT);
-
-    // normalize and store the result
-    const auto norm = 
-        sqrt(tmpq0*tmpq0 + tmpq1*tmpq1 + tmpq2*tmpq2 + tmpq3*tmpq3) + 
-        EPS;
-
     // Process noise is added after the return from the prediction step
 
     // ====== PREDICTION STEP ======
@@ -372,11 +331,6 @@ static void ekf_predict(
     linear_out.dz =  linear_in.dz +
         dt * (_accel_z + _gyro_y * tmpSDX - _gyro_x * tmpSDY - MSS_TO_GS * r.z);
 
-    // predict()
-    quat_out.w = tmpq0/norm;
-    quat_out.x = tmpq1/norm; 
-    quat_out.y = tmpq2/norm; 
-    quat_out.z = tmpq3/norm;
 
     // ====== COVARIANCE UPDATE ======
 
