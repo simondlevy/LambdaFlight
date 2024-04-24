@@ -39,41 +39,6 @@ static const uint32_t PREDICTION_UPDATE_INTERVAL_MS = 1000 / PREDICTION_RATE;
 
 static const uint8_t N = 3;
 
-static void transpose(const float a[N][N], float at[N][N])
-{
-    for (uint8_t i=0; i<N; ++i) {
-        for (uint8_t j=0; j<N; ++j) {
-            auto tmp = a[i][j];
-            at[i][j] = a[j][i];
-            at[j][i] = tmp;
-        }
-    }
-}
-
-static float dot(const float a[N][N], const float b[N][N], 
-        const uint8_t i, const uint8_t j)
-{
-    float d = 0;
-
-    for (uint8_t k=0; k<N; k++) {
-        d += a[i][k] * b[k][j];
-    }
-
-    return d;
-}
-
-// Matrix * Matrix
-static void multiply(const float a[N][N], const float b[N][N], float c[N][N])
-{
-    for (uint8_t i=0; i<N; i++) {
-
-        for (uint8_t j=0; j<N; j++) {
-
-            c[i][j] = dot(a, b, i, j);
-        }
-    }
-}
-
 extern float stream_gyro_x, stream_gyro_y, stream_gyro_z;
 extern float stream_accel_x, stream_accel_y, stream_accel_z;
 extern uint32_t stream_now_msec;
@@ -372,36 +337,29 @@ class Ekf {
                 isErrorInBounds(v0) && isErrorInBounds(v1) && isErrorInBounds(v2);
 
             // Matrix to rotate the attitude covariances once updated
-            const float newA[3][3] = 
-            { 
-                //       E0     E1    E2
-                /*E0*/  {newe0e0, newe0e1, newe0e2},
-                /*E1*/  {newe1e0, newe1e1, newe1e2},
-                /*E2*/  {newe2e0, newe2e1, newe2e2}
+            const BLA::Matrix<3, 3> newA = {
+                newe0e0, newe0e1, newe0e2,
+                newe1e0, newe1e1, newe1e2,
+                newe2e0, newe2e1, newe2e2
             };
 
-            const float p4[3][3] = { 
-                {p00_noise, p01_noise, p02_noise},
-                {p10_noise, p11_noise, p12_noise},
-                {p20_noise, p21_noise, p22_noise},
+            const BLA::Matrix<3, 3> P4 = { 
+                p00_noise, p01_noise, p02_noise,
+                p10_noise, p11_noise, p12_noise,
+                p20_noise, p21_noise, p22_noise
             };
 
-            float newAt[3][3] = {};
-            transpose(newA, newAt);     // A'
-            float newAP[3][3] = {};
-            multiply(newA, p4, newAP);  // AP
-            float newAPA[3][3] = {};
-            multiply(newAP, newAt, newAPA); // APA'
+            const auto newAPA = newA * P4 * ~newA;
 
-            const auto p00_final = isErrorSufficient ? newAPA[0][0] : p00_noise;
-            const auto p01_final = isErrorSufficient ? newAPA[0][1] : p01_noise;
-            const auto p02_final = isErrorSufficient ? newAPA[0][2] : p02_noise;
-            const auto p10_final = isErrorSufficient ? newAPA[1][0] : p10_noise;
-            const auto p11_final = isErrorSufficient ? newAPA[1][1] : p11_noise;
-            const auto p12_final = isErrorSufficient ? newAPA[1][2] : p12_noise;
-            const auto p20_final = isErrorSufficient ? newAPA[2][0] : p20_noise;
-            const auto p21_final = isErrorSufficient ? newAPA[2][1] : p21_noise;
-            const auto p22_final = isErrorSufficient ? newAPA[2][2] : p22_noise;
+            const auto p00_final = isErrorSufficient ? newAPA(0,0) : p00_noise;
+            const auto p01_final = isErrorSufficient ? newAPA(0,1) : p01_noise;
+            const auto p02_final = isErrorSufficient ? newAPA(0,2) : p02_noise;
+            const auto p10_final = isErrorSufficient ? newAPA(1,0) : p10_noise;
+            const auto p11_final = isErrorSufficient ? newAPA(1,1) : p11_noise;
+            const auto p12_final = isErrorSufficient ? newAPA(1,2) : p12_noise;
+            const auto p20_final = isErrorSufficient ? newAPA(2,0) : p20_noise;
+            const auto p21_final = isErrorSufficient ? newAPA(2,1) : p21_noise;
+            const auto p22_final = isErrorSufficient ? newAPA(2,2) : p22_noise;
 
             const float p5[3][3] = { 
                 {p00_final, p01_final, p02_final},
