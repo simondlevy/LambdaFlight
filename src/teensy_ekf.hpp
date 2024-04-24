@@ -361,25 +361,25 @@ class Ekf {
             const auto p21_final = isErrorSufficient ? newAPA(2,1) : p21_noise;
             const auto p22_final = isErrorSufficient ? newAPA(2,2) : p22_noise;
 
-            const float p5[3][3] = { 
-                {p00_final, p01_final, p02_final},
-                {p10_final, p11_final, p12_final},
-                {p20_final, p21_final, p22_final},
+            const BLA::Matrix<3, 3> P5 = {
+                p00_final, p01_final, p02_final,
+                p10_final, p11_final, p12_final,
+                p20_final, p21_final, p22_final
             };
 
-            float p6[3][3] = {};
+            BLA::Matrix<3, 3> P6;
 
-            updateCovarianceMatrix(p5, p6);
+            updateCovarianceMatrix(P5, P6);
 
-            _p00 = isErrorSufficient ? p6[0][0] : _p00;
-            _p01 = isErrorSufficient ? p6[0][1] : _p01;
-            _p02 = isErrorSufficient ? p6[0][2] : _p02;
-            _p10 = isErrorSufficient ? p6[1][0] : _p10;
-            _p11 = isErrorSufficient ? p6[1][1] : _p11;
-            _p12 = isErrorSufficient ? p6[1][2] : _p12;
-            _p20 = isErrorSufficient ? p6[2][0] : _p20;
-            _p21 = isErrorSufficient ? p6[2][1] : _p21;
-            _p22 = isErrorSufficient ? p6[2][2] : _p22;
+            _p00 = isErrorSufficient ? P6(0,0) : _p00;
+            _p01 = isErrorSufficient ? P6(0,1) : _p01;
+            _p02 = isErrorSufficient ? P6(0,2) : _p02;
+            _p10 = isErrorSufficient ? P6(1,0) : _p10;
+            _p11 = isErrorSufficient ? P6(1,1) : _p11;
+            _p12 = isErrorSufficient ? P6(1,2) : _p12;
+            _p20 = isErrorSufficient ? P6(2,0) : _p20;
+            _p21 = isErrorSufficient ? P6(2,1) : _p21;
+            _p22 = isErrorSufficient ? P6(2,2) : _p22;
 
             _qw = isErrorSufficient ? newtmpq0 / newnorm : _qw;
             _qx = isErrorSufficient ? newtmpq1 / newnorm : _qx;
@@ -459,26 +459,6 @@ class Ekf {
             }
         }
 
-         static void updateCovarianceMatrix(
-                const float p_in[3][3],
-                float p_out[3][3])
-        {
-            // Enforce symmetry of the covariance matrix, and ensure the
-            // values stay bounded
-            for (int i=0; i<3; i++) {
-
-                for (int j=i; j<3; j++) {
-
-                    const auto pval = (p_in[i][j] + p_in[j][i]) / 2;
-
-                    p_out[i][j] = p_out[j][i] =
-                        pval > MAX_COVARIANCE ?  MAX_COVARIANCE :
-                        (i==j && pval < MIN_COVARIANCE) ?  MIN_COVARIANCE :
-                        pval;
-                }
-            }
-        }
-
         static bool isErrorLarge(const float v)
         {
             return fabs(v) > 0.1e-3f;
@@ -487,15 +467,6 @@ class Ekf {
         static bool isErrorInBounds(const float v)
         {
             return fabs(v) < 10;
-        }
-
-        static void updateCovarianceCell(
-                const float p_in[3][3],
-                const int i, 
-                const int j, 
-                const float variance,
-                float p_out[3][3])
-        {
         }
 
         static float max(const float val, const float maxval)
