@@ -11,8 +11,6 @@
 // stationary and roughly flat
 static const float STDEV_INITIAL_POSITION_Z = 1;
 static const float STDEV_INITIAL_VELOCITY = 0.01;
-static const float STDEV_INITIAL_ATTITUDE_ROLL_PITCH = 0.01;
-static const float STDEV_INITIAL_ATTITUDE_YAW = 0.01;
 
 static const float MSS_TO_GS = 9.81;
 
@@ -26,12 +24,6 @@ static const float MIN_COVARIANCE = 1e-6;
 // The bounds on states, these shouldn't be hit...
 static const float MAX_POSITION = 100; //meters
 static const float MAX_VELOCITY = 10; //meters per second
-
-// Small number epsilon, to prevent dividing by zero
-static const float EPS = 1e-6f;
-
-// the reversion of pitch and roll to zero
-static const float ROLLPITCH_ZERO_REVERSION = 0.001;
 
 // Indexes to access the state
 enum {
