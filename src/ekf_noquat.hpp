@@ -54,16 +54,6 @@ typedef struct {
 
 typedef struct {
 
-    float w;
-    float x;
-    float y;
-    float z;
-
-} new_quat_t;
-
-
-typedef struct {
-
     float z;
     float dx;
     float dy;
@@ -271,10 +261,8 @@ static void ekf_predict(
         const uint32_t accelCount,
         const matrix_t & p_in,
         const ekfLinear_t & linear_in,
-        const new_quat_t & q,
         const axis3_t & r,
         const uint32_t lastPredictionMsec, 
-        new_quat_t & quat_out,
         matrix_t & p_out,
         ekfLinear_t & linear_out) 
 {
@@ -538,44 +526,16 @@ static bool ekf_updateWithFlow(
 static void ekf_finalize(
         const matrix_t & p_in,
         const ekfState_t & ekfs,
-        const new_quat_t & q,
-        matrix_t & p_out,
-        new_quat_t & q_out)
+        matrix_t & p_out)
 {
     // Incorporate the attitude error (Kalman filter state) with the attitude
     const auto v0 = ekfs.ang.x;
     const auto v1 = ekfs.ang.y;
     const auto v2 = ekfs.ang.z;
 
-    const auto angle = sqrt(v0*v0 + v1*v1 + v2*v2) + EPS;
-    const auto ca = cos(angle / 2.0f);
-    const auto sa = sin(angle / 2.0f);
-
-    const auto dqw = ca;
-    const auto dqx = sa * v0 / angle;
-    const auto dqy = sa * v1 / angle;
-    const auto dqz = sa * v2 / angle;
-
-    // Rotate the quad's attitude by the delta quaternion vector
-    // computed above
-    const auto tmpq0 = dqw * q.w - dqx * q.x - dqy * q.y - dqz * q.z;
-    const auto tmpq1 = dqx * q.w + dqw * q.x + dqz * q.y - dqy * q.z;
-    const auto tmpq2 = dqy * q.w - dqz * q.x + dqw * q.y + dqx * q.z;
-    const auto tmpq3 = dqz * q.w + dqy * q.x - dqx * q.y + dqw * q.z;
-
-    // normalize and store the result
-    const auto norm = sqrt(tmpq0 * tmpq0 + tmpq1 * tmpq1 + tmpq2 * tmpq2 + 
-            tmpq3 * tmpq3) + EPS;
-
     const auto isErrorSufficient  = 
         (isErrorLarge(v0) || isErrorLarge(v1) || isErrorLarge(v2)) &&
         isErrorInBounds(v0) && isErrorInBounds(v1) && isErrorInBounds(v2);
-
-    // finalize()
-    q_out.w = isErrorSufficient ? tmpq0 / norm : q.w;
-    q_out.x = isErrorSufficient ? tmpq1 / norm : q.x;
-    q_out.y = isErrorSufficient ? tmpq2 / norm : q.y;
-    q_out.z = isErrorSufficient ? tmpq3 / norm : q.z;
 
     // Move attitude error into attitude if any of the angle errors are
     // large enough
@@ -595,7 +555,6 @@ static void ekf_finalize(
 static void ekf_getVehicleState(
         const ekfState_t & ekfs, 
         const axis3_t & gyroLatest,
-        const new_quat_t & q,
         const axis3_t & r,
         vehicleState_t & state)
 {
@@ -606,20 +565,6 @@ static void ekf_getVehicleState(
     state.z = ekfs.lin.z;
 
     state.dz = r.x * ekfs.lin.dx + r.y * ekfs.lin.dy + r.z * ekfs.lin.dz;
-
-    state.phi = RADIANS_TO_DEGREES * atan2((2 * (q.y*q.z + q.w*q.x)),
-            (q.w*q.w - q.x*q.x - q.y*q.y + q.z*q.z));
-
-    // Negate for ENU
-    state.theta = -RADIANS_TO_DEGREES * asin((-2) * (q.x*q.z - q.w*q.y));
-
-    state.psi = RADIANS_TO_DEGREES * atan2((2 * (q.x*q.y + q.w*q.z)),
-            (q.w*q.w + q.x*q.x - q.y*q.y - q.z*q.z));
-
-    // Get angular velocities directly from gyro
-    state.dphi =    gyroLatest.x;
-    state.dtheta = -gyroLatest.y; // negate for ENU
-    state.dpsi =    gyroLatest.z;
 }
 
 // ===========================================================================
@@ -663,7 +608,6 @@ static void ekf_step(void)
 
     const auto ekfs = ekfState_t { {_z, _dx, _dy, _dz}, {_e0, _e1, _e2}};
 
-    const auto quat = new_quat_t {_qw, _qx, _qy, _qz };
     const auto r = axis3_t {_rx, _ry, _rz};
 
     // Initialize
@@ -675,7 +619,6 @@ static void ekf_step(void)
     const auto didPredict = stream_ekfAction == EKF_PREDICT && 
         stream_nowMsec >= stream_nextPredictionMsec;
     ekfLinear_t lin_predicted = {};
-    new_quat_t quat_predicted = {};
     if (didPredict) {
         ekf_predict(
                 _gyroSum_x,
@@ -688,11 +631,8 @@ static void ekf_step(void)
                 _accelCount,
                 _p,
                 ekfs.lin,
-                quat,
                 r,
                 _lastPredictionMsec, 
-
-                quat_predicted,
                 _p,
                 lin_predicted);
     }
@@ -703,10 +643,8 @@ static void ekf_step(void)
     // Finalize
     const auto finalizing = stream_ekfAction == EKF_FINALIZE;
     const auto didFinalize = finalizing && _isUpdated;
-    new_quat_t quat_finalized = {};
     if (didFinalize) {
-        ekf_finalize(_p, ekfs, quat, 
-                _p, quat_finalized);
+        ekf_finalize(_p, ekfs, _p);
     }
 
     // Update with flow
@@ -729,7 +667,7 @@ static void ekf_step(void)
 
     // Get vehicle state
     vehicleState_t vehicleState = {};
-    ekf_getVehicleState(ekfs, _gyroLatest, quat, r, vehicleState);
+    ekf_getVehicleState(ekfs, _gyroLatest, r, vehicleState);
 
     if (stream_ekfAction == EKF_GET_STATE) {
         setState(vehicleState);
@@ -784,26 +722,6 @@ static void ekf_step(void)
     _accelCount = isDtPositive ? 0 : 
         didUpdateWithAccel ? _accelCount + 1 :
         _accelCount;
-
-    _qw = didInitialize ? 1 : 
-        didFinalize ? quat_finalized.w :
-        isDtPositive ? quat_predicted.w :
-        _qw;
-
-    _qx = didInitialize ? 0 : 
-        didFinalize ? quat_finalized.x :
-        isDtPositive ? quat_predicted.x :
-        _qx;
-
-    _qy = didInitialize ? 0 : 
-        didFinalize ? quat_finalized.y :
-        isDtPositive ? quat_predicted.y :
-        _qy;
-
-    _qz = didInitialize ? 0 : 
-        didFinalize ? quat_finalized.z :
-        isDtPositive ? quat_predicted.z :
-        _qz;
 
     _rx = didInitialize ? 0 : 
         didFinalize ? 2 * _qx * _qz - 2 * _qw * _qy :
