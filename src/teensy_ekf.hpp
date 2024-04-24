@@ -2,6 +2,8 @@
 
 #include <string.h>
 
+#include <BasicLinearAlgebra.h>
+
 #include "math3d.h"
 #include "datatypes.h"
 
@@ -154,8 +156,6 @@ class Ekf {
 
             const auto isFlying = true; // XXX
 
-            // Serial.printf("%06d %06d\n", stream_now_msec, _nextPredictionMsec);
-
             const auto shouldPredict = stream_now_msec >= _nextPredictionMsec;
 
             const float dt = (stream_now_msec - _lastPredictionMsec) / 1000.0f;
@@ -183,14 +183,6 @@ class Ekf {
             const auto e2e0 =  e1 + e0*e2/2;
             const auto e2e1 = -e0 + e1*e2/2;
             const auto e2e2 = 1 - e0*e0/2 - e1*e1/2;
-
-            const float A[3][3] = 
-            { 
-                //        E0    E1    E2
-                /*E0*/   {e0e0, e0e1, e0e2}, 
-                /*E1*/   {e1e0, e1e1, e1e2}, 
-                /*E2*/   {e2e0, e2e1, e2e2}  
-            };
 
             // attitude update (rotate by gyroscope), we do this in quaternions
             // this is the gyroscope angular velocity integrated over
@@ -230,18 +222,19 @@ class Ekf {
 
             // ====== COVARIANCE UPDATE ======
 
-            const float p[3][3] = { 
-                {_p00, _p01, _p02},
-                {_p10, _p11, _p12},
-                {_p20, _p21, _p22},
+            const BLA::Matrix<3, 3> A = {
+                e0e0, e0e1, e0e2, 
+                e1e0, e1e1, e1e2, 
+                e2e0, e2e1, e2e2  
             };
 
-            float At[3][3] = {};
-            transpose(A, At);     // A'
-            float AP[3][3] = {};
-            multiply(A, p, AP);  // AP
-            float APA[3][3] = {};
-            multiply(AP, At, APA); // APA'
+            const BLA::Matrix<3, 3> P = { 
+                _p00, _p01, _p02,
+                _p10, _p11, _p12,
+                _p20, _p21, _p22,
+            };
+
+            const auto APA = A * P * ~A;
 
             _lastPredictionMsec = 
                 _lastPredictionMsec == 0 || shouldPredict ? 
@@ -278,15 +271,15 @@ class Ekf {
                 square(MEAS_NOISE_GYRO * dt1 + PROC_NOISE_ATT) :
                 0;
 
-            const auto p00_pred = shouldPredict ? APA[0][0] + noise : _p00;
-            const auto p01_pred = shouldPredict ? APA[0][1] : _p01;
-            const auto p02_pred = shouldPredict ? APA[0][2] : _p02;
-            const auto p10_pred = shouldPredict ? APA[1][0] : _p10;
-            const auto p11_pred = shouldPredict ? APA[1][1] + noise: _p11;
-            const auto p12_pred = shouldPredict ? APA[1][2] : _p12;
-            const auto p20_pred = shouldPredict ? APA[2][0] : _p20;
-            const auto p21_pred = shouldPredict ? APA[2][1] : _p21;
-            const auto p22_pred = shouldPredict ? APA[2][2] + noise : _p22;
+            const auto p00_pred = shouldPredict ? APA(0,0) + noise : _p00;
+            const auto p01_pred = shouldPredict ? APA(0,1) : _p01;
+            const auto p02_pred = shouldPredict ? APA(0,2) : _p02;
+            const auto p10_pred = shouldPredict ? APA(1,0) : _p10;
+            const auto p11_pred = shouldPredict ? APA(1,1) + noise: _p11;
+            const auto p12_pred = shouldPredict ? APA(1,2) : _p12;
+            const auto p20_pred = shouldPredict ? APA(2,0) : _p20;
+            const auto p21_pred = shouldPredict ? APA(2,1) : _p21;
+            const auto p22_pred = shouldPredict ? APA(2,2) + noise : _p22;
 
             const float p_pred[3][3] = { 
                 {p00_pred, p01_pred, p02_pred},
