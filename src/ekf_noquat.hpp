@@ -40,9 +40,6 @@ enum {
     KC_STATE_DX,
     KC_STATE_DY,
     KC_STATE_DZ,
-    KC_STATE_E0,
-    KC_STATE_E1,
-    KC_STATE_E2,
     KC_STATE_DIM
 };
 
@@ -58,14 +55,6 @@ typedef struct {
     float dx;
     float dy;
     float dz;
-
-} ekfLinear_t;
-
-typedef struct {
-
-    ekfLinear_t lin;
-
-    axis3_t ang;
 
 } ekfState_t;
 
@@ -121,19 +110,13 @@ static void scalarUpdate(
         ph[1] / hphr, 
         ph[2] / hphr, 
         ph[3] / hphr, 
-        ph[4] / hphr, 
-        ph[5] / hphr, 
-        ph[6] / hphr
     };
 
     // Perform the state update
-    ekfs_out.lin.z  = ekfs_in.lin.z  + g[0] * error;
-    ekfs_out.lin.dx = ekfs_in.lin.dx + g[1] * error;
-    ekfs_out.lin.dy = ekfs_in.lin.dy + g[2] * error;
-    ekfs_out.lin.dz = ekfs_in.lin.dz + g[3] * error;
-    ekfs_out.ang.x = ekfs_in.ang.x + g[4] * error;
-    ekfs_out.ang.y = ekfs_in.ang.y + g[5] * error;
-    ekfs_out.ang.z = ekfs_in.ang.z + g[6] * error;
+    ekfs_out.z  = ekfs_in.z  + g[0] * error;
+    ekfs_out.dx = ekfs_in.dx + g[1] * error;
+    ekfs_out.dy = ekfs_in.dy + g[2] * error;
+    ekfs_out.dz = ekfs_in.dz + g[3] * error;
 
     // ====== COVARIANCE UPDATE ======
 
@@ -170,55 +153,6 @@ static bool isVelocityWithinBounds(const float vel)
     return fabs(vel) < MAX_VELOCITY;
 }
 
-static bool isErrorLarge(const float v)
-{
-    return fabs(v) > 0.1e-3f;
-}
-
-static bool isErrorInBounds(const float v)
-{
-    return fabs(v) < 10;
-}
-
-static void afinalize(
-        const float v0, 
-        const float v1, 
-        const float v2,
-        matrix_t & A)
-{
-    // the attitude error vector (v0,v1,v2) is small,
-    // so we use a first order approximation to e0 = tan(|v0|/2)*v0/|v0|
-    const auto e0 = v0/2; 
-    const auto e1 = v1/2; 
-    const auto e2 = v2/2;
-
-    const auto e0e0 =  1 - e1*e1/2 - e2*e2/2;
-    const auto e0e1 =  e2 + e0*e1/2;
-    const auto e0e2 = -e1 + e0*e2/2;
-
-    const auto e1e0 =  -e2 + e0*e1/2;
-    const auto e1e1 = 1 - e0*e0/2 - e2*e2/2;
-    const auto e1e2 = e0 + e1*e2/2;
-
-    const auto e2e0 = e1 + e0*e2/2;
-    const auto e2e1 = -e0 + e1*e2/2;
-    const auto e2e2 = 1 - e0*e0/2 - e1*e1/2;
-
-    const float a[KC_STATE_DIM][KC_STATE_DIM] = 
-    { 
-        //    Z  DX DY DZ    E0     E1    E2
-        /*Z*/   {0, 0, 0, 0, 0,     0,    0},   
-        /*DX*/  {0, 1, 0, 0, 0,     0,    0},  
-        /*DY*/  {0, 0, 1, 0, 0,     0,    0}, 
-        /*DX*/  {0, 0, 0, 1, 0,     0,    0},  
-        /*E0*/  {0, 0, 0, 0, e0e0, e0e1, e0e2},
-        /*E1*/  {0, 0, 0, 0, e1e0, e1e1, e1e2},
-        /*E2*/  {0, 0, 0, 0, e2e0, e2e1, e2e2}
-    };
-
-    memcpy(&A.dat, a, sizeof(A));
-} 
-
 static void subSamplerTakeMean(
         const float sumx,
         const float sumy,
@@ -245,9 +179,6 @@ static void ekf_init(matrix_t & p_out)
     p_out.dat[KC_STATE_DX][KC_STATE_DX] = square(STDEV_INITIAL_VELOCITY);
     p_out.dat[KC_STATE_DY][KC_STATE_DY] = square(STDEV_INITIAL_VELOCITY);
     p_out.dat[KC_STATE_DZ][KC_STATE_DZ] = square(STDEV_INITIAL_VELOCITY);
-    p_out.dat[KC_STATE_E0][KC_STATE_E0] = square(STDEV_INITIAL_ATTITUDE_ROLL_PITCH);
-    p_out.dat[KC_STATE_E1][KC_STATE_E1] = square(STDEV_INITIAL_ATTITUDE_ROLL_PITCH);
-    p_out.dat[KC_STATE_E2][KC_STATE_E2] = square(STDEV_INITIAL_ATTITUDE_YAW);
 }
 
 static void ekf_predict(
@@ -260,11 +191,11 @@ static void ekf_predict(
         const float accelSum_z,
         const uint32_t accelCount,
         const matrix_t & p_in,
-        const ekfLinear_t & linear_in,
+        const ekfState_t & ekfs_in,
         const axis3_t & r,
         const uint32_t lastPredictionMsec, 
         matrix_t & p_out,
-        ekfLinear_t & linear_out) 
+        ekfState_t & ekfs_out) 
 {
     static float _gyro_x;
     static float _gyro_y;
@@ -285,14 +216,14 @@ static void ekf_predict(
 
     // Position updates in the body frame (will be rotated to inertial frame);
     // thrust can only be produced in the body's Z direction
-    const auto dx = linear_in.dx * dt + stream_isFlying ? 0 : _accel_x * dt2 / 2;
-    const auto dy = linear_in.dy * dt + stream_isFlying ? 0 : _accel_y * dt2 / 2;
-    const auto dz = linear_in.dz * dt + _accel_z * dt2 / 2; 
+    const auto dx = ekfs_in.dx * dt + stream_isFlying ? 0 : _accel_x * dt2 / 2;
+    const auto dy = ekfs_in.dy * dt + stream_isFlying ? 0 : _accel_y * dt2 / 2;
+    const auto dz = ekfs_in.dz * dt + _accel_z * dt2 / 2; 
 
     // keep previous time step's state for the update
-    const auto tmpSDX = linear_in.dx;
-    const auto tmpSDY = linear_in.dy;
-    const auto tmpSDZ = linear_in.dz;
+    const auto tmpSDX = ekfs_in.dx;
+    const auto tmpSDY = ekfs_in.dy;
+    const auto tmpSDZ = ekfs_in.dz;
 
     const auto accx = stream_isFlying ? 0 : _accel_x;
     const auto accy = stream_isFlying ? 0 : _accel_y;
@@ -305,48 +236,27 @@ static void ekf_predict(
     // to estimate body angle while flying)
 
     // altitude update
-    linear_out.z = linear_in.z + r.x * dx + r.y * dy + r.z * dz - MSS_TO_GS * dt2 / 2;
+    ekfs_out.z = ekfs_in.z + r.x * dx + r.y * dy + r.z * dz - MSS_TO_GS * dt2 / 2;
 
     // body-velocity update: accelerometers - gyros cross velocity
     // - gravity in body frame
 
-    linear_out.dx = linear_in.dx +
+    ekfs_out.dx = ekfs_in.dx +
         dt * (accx + _gyro_z * tmpSDY - _gyro_y * tmpSDZ - MSS_TO_GS * r.x);
 
-    linear_out.dy = linear_in.dy +
+    ekfs_out.dy = ekfs_in.dy +
         dt * (accy - _gyro_z * tmpSDX + _gyro_x * tmpSDZ - MSS_TO_GS * r.y); 
 
-    linear_out.dz =  linear_in.dz +
+    ekfs_out.dz =  ekfs_in.dz +
         dt * (_accel_z + _gyro_y * tmpSDX - _gyro_x * tmpSDY - MSS_TO_GS * r.z);
 
 
     // ====== COVARIANCE UPDATE ======
 
-    const auto e0 = _gyro_x*dt/2;
-    const auto e1 = _gyro_y*dt/2;
-    const auto e2 = _gyro_z*dt/2;
-
-    const auto e0e0 =  1 - e1*e1/2 - e2*e2/2;
-    const auto e0e1 =  e2 + e0*e1/2;
-    const auto e0e2 = -e1 + e0*e2/2;
-
-    const auto e1e0 =  -e2 + e0*e1/2;
-    const auto e1e1 = 1 - e0*e0/2 - e2*e2/2;
-    const auto e1e2 = e0 + e1*e2/2;
-
-    const auto e2e0 = e1 + e0*e2/2;
-    const auto e2e1 = -e0 + e1*e2/2;
-    const auto e2e2 = 1 - e0*e0/2 - e1*e1/2;
-
     // altitude from body-frame velocity
     const auto zdx  = r.x*dt;
     const auto zdy  = r.y*dt;
     const auto zdz  = r.z*dt;
-
-    // altitude from attitude error
-    const auto ze0  = (linear_out.dy*r.z - linear_out.dz*r.y)*dt;
-    const auto ze1  = (- linear_out.dx*r.z + linear_out.dz*r.x)*dt;
-    const auto ze2  = (linear_out.dx*r.y - linear_out.dy*r.x)*dt;
 
     // body-frame velocity from body-frame velocity
     const auto dxdx  = 1; //drag negligible
@@ -361,30 +271,15 @@ static void ekf_predict(
     const auto dydz  = _gyro_x*dt;
     const auto dzdz  = 1; //drag negligible
 
-    // body-frame velocity from attitude error
-    const auto dxe0  = 0;
-    const auto dye0  = -MSS_TO_GS*r.z*dt;
-    const auto dze0  = MSS_TO_GS*r.y*dt;
-
-    const auto dxe1  = MSS_TO_GS*r.z*dt;
-    const auto dye1  = 0;
-    const auto dze1  = -MSS_TO_GS*r.x*dt;
-
-    const auto dxe2  = -MSS_TO_GS*r.y*dt;
-    const auto dye2  = MSS_TO_GS*r.x*dt;
-    const auto dze2  = 0;
-
     const float A[KC_STATE_DIM][KC_STATE_DIM] = 
     { 
-        //        Z  DX    DY    DZ    E0    E1    E2
-        /*Z*/    {0, zdx,  zdy,  zdz,  ze0,  ze1,  ze2}, 
-        /*DX*/   {0, dxdx, dxdy, dxdz, dxe0, dxe1, dxe2}, 
-        /*DY*/   {0, dydx, dydy, dydz, dye0, dye1, dye2},
-        /*DZ*/   {0, dzdx, dzdy, dzdz, dze0, dze1, dze2},
-        /*E0*/   {0, 0,    0,    0,    e0e0, e0e1, e0e2}, 
-        /*E1*/   {0, 0,    0,    0,    e1e0, e1e1, e1e2}, 
-        /*E2*/   {0, 0,    0,    0,    e2e0, e2e1, e2e2}  
+        //        Z  DX    DY    DZ
+        /*Z*/    {0, zdx,  zdy,  zdz}, 
+        /*DX*/   {0, dxdx, dxdy, dxdz}, 
+        /*DY*/   {0, dydx, dydy, dydz},
+        /*DZ*/   {0, dzdx, dzdy, dzdz},
     };
+
 
     matrix_t  At = {};
     transpose(A, At.dat);     // A'
@@ -406,7 +301,7 @@ static bool ekf_updateWithRange(
             fabsf(acosf(rz)) - 
             DEGREES_TO_RADIANS * (15.0f / 2.0f));
 
-    const auto predictedDistance = ekfs_in.lin.z / cosf(angle);
+    const auto predictedDistance = ekfs_in.z / cosf(angle);
     const auto measuredDistance = stream_range.distance; // [m]
 
     // The sensor model (Pg.95-96,
@@ -424,7 +319,7 @@ static bool ekf_updateWithRange(
     // alpha = angle between [line made by measured point <---> sensor] 
     // and [the intertial z-axis] 
 
-    const float h[KC_STATE_DIM] = {1 / cosf(angle), 0, 0, 0, 0, 0, 0};
+    const float h[KC_STATE_DIM] = {1 / cosf(angle), 0, 0, 0};
 
     // Only update the filter if the measurement is reliable 
     // (\hat{h} -> infty when R[2][2] -> 0)
@@ -467,11 +362,11 @@ static bool ekf_updateWithFlow(
     const auto omegax_b = gyroLatest.x * DEGREES_TO_RADIANS;
     const auto omegay_b = gyroLatest.y * DEGREES_TO_RADIANS;
 
-    const auto dx_g = ekfs_in.lin.dx;
-    const auto dy_g = ekfs_in.lin.dy;
+    const auto dx_g = ekfs_in.dx;
+    const auto dy_g = ekfs_in.dy;
 
     // Saturate elevation in prediction and correction to avoid singularities
-    const auto z_g = ekfs_in.lin.z < 0.1f ? 0.1f : ekfs_in.lin.z;
+    const auto z_g = ekfs_in.z < 0.1f ? 0.1f : ekfs_in.z;
 
     // ~~~ X velocity prediction and update ~~~
     // predicts the number of accumulated pixels in the x-direction
@@ -528,28 +423,6 @@ static void ekf_finalize(
         const ekfState_t & ekfs,
         matrix_t & p_out)
 {
-    // Incorporate the attitude error (Kalman filter state) with the attitude
-    const auto v0 = ekfs.ang.x;
-    const auto v1 = ekfs.ang.y;
-    const auto v2 = ekfs.ang.z;
-
-    const auto isErrorSufficient  = 
-        (isErrorLarge(v0) || isErrorLarge(v1) || isErrorLarge(v2)) &&
-        isErrorInBounds(v0) && isErrorInBounds(v1) && isErrorInBounds(v2);
-
-    // Move attitude error into attitude if any of the angle errors are
-    // large enough
-    if (isErrorSufficient) {
-        matrix_t  A = {};
-        afinalize(v0, v2, v2, A);
-        matrix_t At = {};
-        transpose(A.dat, At.dat);     // A'
-        matrix_t AP = {};
-        multiply(A.dat, p_in.dat, AP.dat);  // AP
-        matrix_t APA = {};
-        multiply(AP.dat, At.dat, APA.dat); // APA'
-        updateCovarianceMatrix(APA, p_out);
-    }
 } 
 
 static void ekf_getVehicleState(
@@ -558,13 +431,10 @@ static void ekf_getVehicleState(
         const axis3_t & r,
         vehicleState_t & state)
 {
-    state.dx = ekfs.lin.dx;
-
-    state.dy = ekfs.lin.dy;
-
-    state.z = ekfs.lin.z;
-
-    state.dz = r.x * ekfs.lin.dx + r.y * ekfs.lin.dy + r.z * ekfs.lin.dz;
+    state.dx = ekfs.dx;
+    state.dy = ekfs.dy;
+    state.z = ekfs.z;
+    state.dz = r.x * ekfs.dx + r.y * ekfs.dy + r.z * ekfs.dz;
 }
 
 // ===========================================================================
@@ -575,9 +445,6 @@ static void ekf_step(void)
     static float _dx;
     static float _dy;
     static float _dz;
-    static float _e0;
-    static float _e1;
-    static float _e2;
 
     static matrix_t _p;
 
@@ -606,7 +473,7 @@ static void ekf_step(void)
     static float _qy;
     static float _qz;
 
-    const auto ekfs = ekfState_t { {_z, _dx, _dy, _dz}, {_e0, _e1, _e2}};
+    const auto ekfs = ekfState_t {_z, _dx, _dy, _dz};
 
     const auto r = axis3_t {_rx, _ry, _rz};
 
@@ -618,7 +485,7 @@ static void ekf_step(void)
     // Predict
     const auto didPredict = stream_ekfAction == EKF_PREDICT && 
         stream_nowMsec >= stream_nextPredictionMsec;
-    ekfLinear_t lin_predicted = {};
+    ekfState_t ekfs_predicted = {};
     if (didPredict) {
         ekf_predict(
                 _gyroSum_x,
@@ -630,11 +497,11 @@ static void ekf_step(void)
                 _accelSum_z,
                 _accelCount,
                 _p,
-                ekfs.lin,
+                ekfs,
                 r,
                 _lastPredictionMsec, 
                 _p,
-                lin_predicted);
+                ekfs_predicted);
     }
 
     const auto isDtPositive = didPredict && 
@@ -675,10 +542,10 @@ static void ekf_step(void)
 
     if (finalizing) {
         setStateIsInBounds(
-                isPositionWithinBounds(ekfs.lin.z) &&
-                isVelocityWithinBounds(ekfs.lin.dx) &&
-                isVelocityWithinBounds(ekfs.lin.dy) &&
-                isVelocityWithinBounds(ekfs.lin.dz));
+                isPositionWithinBounds(ekfs.z) &&
+                isVelocityWithinBounds(ekfs.dx) &&
+                isVelocityWithinBounds(ekfs.dy) &&
+                isVelocityWithinBounds(ekfs.dz));
     }
 
     //////////////////////////////////////////////////////////////////////////
@@ -736,43 +603,28 @@ static void ekf_step(void)
         _rz;
 
     _z = didInitialize ? 0 : 
-        isDtPositive ? lin_predicted.z :
-        didUpdateWithFlow ? ekfs_updatedWithFlow.lin.z :
-        didUpdateWithRange ? ekfs_updatedWithRange.lin.z :
+        isDtPositive ? ekfs_predicted.z :
+        didUpdateWithFlow ? ekfs_updatedWithFlow.z :
+        didUpdateWithRange ? ekfs_updatedWithRange.z :
         _z;
 
     _dx = didInitialize ? 0 : 
-        isDtPositive ? lin_predicted.dx :
-        didUpdateWithFlow ? ekfs_updatedWithFlow.lin.dx :
-        didUpdateWithRange ? ekfs_updatedWithRange.lin.dx :
+        isDtPositive ? ekfs_predicted.dx :
+        didUpdateWithFlow ? ekfs_updatedWithFlow.dx :
+        didUpdateWithRange ? ekfs_updatedWithRange.dx :
         _dx;
 
     _dy = didInitialize ? 0 : 
-        isDtPositive ? lin_predicted.dy :
-        didUpdateWithFlow ? ekfs_updatedWithFlow.lin.dy :
-        didUpdateWithRange ? ekfs_updatedWithRange.lin.dy :
+        isDtPositive ? ekfs_predicted.dy :
+        didUpdateWithFlow ? ekfs_updatedWithFlow.dy :
+        didUpdateWithRange ? ekfs_updatedWithRange.dy :
         _dy;
 
     _dz = didInitialize ? 0 : 
-        isDtPositive ? lin_predicted.dz :
-        didUpdateWithFlow ? ekfs_updatedWithFlow.lin.dz :
-        didUpdateWithRange ? ekfs_updatedWithRange.lin.dz :
+        isDtPositive ? ekfs_predicted.dz :
+        didUpdateWithFlow ? ekfs_updatedWithFlow.dz :
+        didUpdateWithRange ? ekfs_updatedWithRange.dz :
         _dz;
-
-    _e0 = didInitialize || didFinalize ? 0 : 
-        didUpdateWithFlow ? ekfs_updatedWithFlow.ang.x :
-        didUpdateWithRange ? ekfs_updatedWithRange.ang.x :
-        _e0;
-
-    _e1 = didInitialize || didFinalize ? 0 : 
-        didUpdateWithFlow ? ekfs_updatedWithFlow.ang.y :
-        didUpdateWithRange ? ekfs_updatedWithRange.ang.y :
-        _e1;
-
-    _e2 = didInitialize || didFinalize ? 0 : 
-        didUpdateWithFlow ? ekfs_updatedWithFlow.ang.z :
-        didUpdateWithRange ? ekfs_updatedWithRange.ang.z :
-        _e2;
 
     _lastProcessNoiseUpdateMsec = 
         didInitialize || isDtPositive ?  
