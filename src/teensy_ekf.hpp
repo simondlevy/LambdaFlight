@@ -281,25 +281,25 @@ class Ekf {
             const auto p21_pred = shouldPredict ? APA(2,1) : _p21;
             const auto p22_pred = shouldPredict ? APA(2,2) + noise : _p22;
 
-            const float p_pred[3][3] = { 
-                {p00_pred, p01_pred, p02_pred},
-                {p10_pred, p11_pred, p12_pred},
-                {p20_pred, p21_pred, p22_pred},
+            const BLA::Matrix<3, 3> P_pred = { 
+                p00_pred, p01_pred, p02_pred,
+                p10_pred, p11_pred, p12_pred,
+                p20_pred, p21_pred, p22_pred
             };
 
-            float p3[3][3] = {};
+            BLA::Matrix<3, 3> P3; 
 
-            updateCovarianceMatrix(p_pred, p3);
+            updateCovarianceMatrix(P_pred, P3);
 
-            const auto p00_noise = isDtPositive ? p3[0][0] : p00_pred;
-            const auto p01_noise = isDtPositive ? p3[0][1] : p01_pred;
-            const auto p02_noise = isDtPositive ? p3[0][2] : p02_pred;
-            const auto p10_noise = isDtPositive ? p3[1][0] : p10_pred;
-            const auto p11_noise = isDtPositive ? p3[1][1] : p11_pred;
-            const auto p12_noise = isDtPositive ? p3[1][2] : p12_pred;
-            const auto p20_noise = isDtPositive ? p3[2][0] : p20_pred;
-            const auto p21_noise = isDtPositive ? p3[2][1] : p21_pred;
-            const auto p22_noise = isDtPositive ? p3[2][2] : p22_pred;
+            const auto p00_noise = isDtPositive ? P3(0,0) : p00_pred;
+            const auto p01_noise = isDtPositive ? P3(0,1) : p01_pred;
+            const auto p02_noise = isDtPositive ? P3(0,2) : p02_pred;
+            const auto p10_noise = isDtPositive ? P3(1,0) : p10_pred;
+            const auto p11_noise = isDtPositive ? P3(1,1) : p11_pred;
+            const auto p12_noise = isDtPositive ? P3(1,2) : p12_pred;
+            const auto p20_noise = isDtPositive ? P3(2,0) : p20_pred;
+            const auto p21_noise = isDtPositive ? P3(2,1) : p21_pred;
+            const auto p22_noise = isDtPositive ? P3(2,2) : p22_pred;
 
             _lastUpdateMsec = _lastUpdateMsec == 0 || isDtPositive ?  
                 stream_now_msec : 
@@ -482,6 +482,26 @@ class Ekf {
         }
 
         static void updateCovarianceMatrix(
+                const BLA::Matrix<3, 3> p_in,
+                BLA::Matrix<3, 3> & p_out)
+        {
+            // Enforce symmetry of the covariance matrix, and ensure the
+            // values stay bounded
+            for (int i=0; i<3; i++) {
+
+                for (int j=i; j<3; j++) {
+
+                    const auto pval = (p_in(i,j) + p_in(j,i)) / 2;
+
+                    p_out(i,j) = p_out(j,i) =
+                        pval > MAX_COVARIANCE ?  MAX_COVARIANCE :
+                        (i==j && pval < MIN_COVARIANCE) ?  MIN_COVARIANCE :
+                        pval;
+                }
+            }
+        }
+
+         static void updateCovarianceMatrix(
                 const float p_in[3][3],
                 float p_out[3][3])
         {
