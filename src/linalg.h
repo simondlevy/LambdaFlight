@@ -7,7 +7,7 @@ static const uint8_t N =
 #ifdef _TEST
 3
 #else
-4
+7
 #endif
 ;
 
