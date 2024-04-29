@@ -4,9 +4,99 @@
 
 #include <math3d.h>
 #include <datatypes.h>
-#include <linalg.h>
 #include <streams.h>
 
+static const uint8_t N = 4;
+
+static void transpose(const float a[N][N], float at[N][N])
+{
+    for (uint8_t i=0; i<N; ++i) {
+        for (uint8_t j=0; j<N; ++j) {
+            auto tmp = a[i][j];
+            at[i][j] = a[j][i];
+            at[j][i] = tmp;
+        }
+    }
+}
+
+static float dot(const float x[N], const float y[N]) 
+{
+    float d = 0;
+
+    for (uint8_t k=0; k<N; k++) {
+        d += x[k] * y[k];
+    }
+
+    return d;
+}
+
+static float dot(const float a[N][N], const float b[N][N], 
+        const uint8_t i, const uint8_t j)
+{
+    float d = 0;
+
+    for (uint8_t k=0; k<N; k++) {
+        d += a[i][k] * b[k][j];
+    }
+
+    return d;
+}
+
+// Matrix * Matrix
+static void multiply(const float a[N][N], const float b[N][N], float c[N][N])
+{
+    for (uint8_t i=0; i<N; i++) {
+
+        for (uint8_t j=0; j<N; j++) {
+
+            c[i][j] = dot(a, b, i, j);
+        }
+    }
+}
+
+// Matrix * Vector
+static void multiply(const float a[N][N], const float x[N], float y[N])
+{
+    for (uint8_t i=0; i<N; i++) {
+        y[i] = 0;
+        for (uint8_t j=0; j<N; j++) {
+            y[i] += a[i][j] * x[j];
+        }
+    }
+}
+
+// Outer product
+static void multiply(const float x[N], const float y[N], float a[N][N])
+{
+    for (uint8_t i=0; i<N; i++) {
+        for (uint8_t j=0; j<N; j++) {
+            a[i][j] = x[i] * y[j];
+        }
+    }
+}
+
+#ifdef _TEST
+
+static void show(const float a[N][N])
+{
+    for (uint8_t i=0; i<N; ++i) {
+
+        for (uint8_t j=0; j<N; ++j) {
+            printf("%3.0f ", (double)a[i][j]);
+        }
+
+        printf("\n");
+    }
+}
+
+static void show(const float x[N])
+{
+    for (uint8_t i=0; i<N; ++i) {
+        printf("%3.0f ", (double)x[i]);
+    }
+    printf("\n");
+}
+#endif
 // Initial variances, uncertain of position, but know we're
 // stationary and roughly flat
 static const float STDEV_INITIAL_POSITION_Z = 1;
@@ -49,6 +139,75 @@ typedef struct {
     float dz;
 
 } ekfState_t;
+
+static float invSqrt(const float x)
+{
+    return 1 / sqrt(x);
+}
+
+
+static void madgwick(
+        const float gx,  const float gy, const float gz,
+        const float ax,  const float ay, const float az,
+        const float invSampFreq,
+        float & q0, float & q1, float & q2, float & q3)
+{
+
+  // Tunable parameter
+  const float b_madgwick = 0.04;
+
+  // Normalize accelerometer measurement
+  const auto recipNorm = invSqrt(ax * ax + ay * ay + az * az);
+  const auto aax = ax * recipNorm;
+  const auto aay = ay * recipNorm;
+  const auto aaz = az * recipNorm;
+
+  // Rate of change of quaternion from gyroscope
+  const auto qDot1 = 0.5f * ((-q1) * gx - q2 * gy - q3 * gz);
+  const auto qDot2 = 0.5f * (q0 * gx + q2 * gz - q3 * gy);
+  const auto qDot3 = 0.5f * (q0 * gy - q1 * gz + q3 * gx);
+  const auto qDot4 = 0.5f * (q0 * gz + q1 * gy - q2 * gx);
+
+  //Auxiliary variables to avoid repeated arithmetic
+  const auto _2q0 = 2 * q0;
+  const auto _2q1 = 2 * q1;
+  const auto _2q2 = 2 * q2;
+  const auto _2q3 = 2 * q3;
+  const auto _4q0 = 4 * q0;
+  const auto _4q1 = 4 * q1;
+  const auto _4q2 = 4 * q2;
+  const auto _8q1 = 8 * q1;
+  const auto _8q2 = 8 * q2;
+  const auto q0q0 = q0 * q0;
+  const auto q1q1 = q1 * q1;
+  const auto q2q2 = q2 * q2;
+  const auto q3q3 = q3 * q3;
+
+  // Gradient descent algorithm corrective step
+  const auto s0 = _4q0 * q2q2 + _2q2 * aax + _4q0 * q1q1 - _2q1 * aay;
+  const auto s1 = _4q1 * q3q3 - _2q3 * aax + 4 * q0q0 * q1 - _2q0 * aay - _4q1 +
+      _8q1 * q1q1 + _8q1 * q2q2 + _4q1 * aaz;
+  const auto s2 = 4 * q0q0 * q2 + _2q0
+      * aax + _4q2 * q3q3 - _2q3 * aay - _4q2 + _8q2 * q1q1 + _8q2 * q2q2 +
+      _4q2 * aaz;
+  const auto s3 = 4 * q1q1 * q3 - _2q1 * aax + 4 * q2q2 * q3 - _2q2 * aay;
+
+  const auto recipNorm1 = invSqrt(s0 * s0 + s1 * s1 + s2 * s2 + s3 * s3);
+
+  const auto isAccelOkay = not (ax == 0 && ay == 0 && az == 0);
+
+  // Compute feedback only if accelerometer measurement valid (avoids NaN in
+  // accelerometer normalisation)
+  const auto qqDot1 = qDot1 - (isAccelOkay ? b_madgwick * s0 * recipNorm1 : 0);
+  const auto qqDot2 = qDot2 - (isAccelOkay ? b_madgwick * s1 * recipNorm1 : 0);
+  const auto qqDot3 = qDot3 - (isAccelOkay ? b_madgwick * s2 * recipNorm1 : 0);
+  const auto qqDot4 = qDot4 - (isAccelOkay ? b_madgwick * s3 * recipNorm1 : 0);
+
+  q0 = q0 + qqDot1 * invSampFreq;
+  q1 = q1 + qqDot2 * invSampFreq;
+  q2 = q2 + qqDot3 * invSampFreq;
+  q3 = q3 + qqDot4 * invSampFreq;
+}
 
 static const float mymax(const float val, const float maxval)
 {
@@ -186,8 +345,9 @@ static void ekf_predict(
         const ekfState_t & ekfs_in,
         const axis3_t & r,
         const uint32_t lastPredictionMsec, 
+        new_quat_t & quat_out,
         matrix_t & p_out,
-        ekfState_t & ekfs_out) 
+        ekfState_t & ekfs_out)
 {
     static float _gyro_x;
     static float _gyro_y;
@@ -201,10 +361,13 @@ static void ekf_predict(
     const auto dt2 = dt * dt;
 
     subSamplerTakeMean(gyroSum_x, gyroSum_y, gyroSum_z, gyroCount,
-            DEGREES_TO_RADIANS,_gyro_x, _gyro_y, _gyro_z);
+            DEGREES_TO_RADIANS, _gyro_x, _gyro_y, _gyro_z);
 
     subSamplerTakeMean(accelSum_x, accelSum_y, accelSum_z, accelCount, 
             MSS_TO_GS, _accel_x, _accel_y, _accel_z);
+
+    madgwick(_gyro_x, _gyro_y, _gyro_z, _accel_x, _accel_y, _accel_z, dt,
+            quat_out.w, quat_out.x, quat_out.y, quat_out.z);
 
     // Position updates in the body frame (will be rotated to inertial frame);
     // thrust can only be produced in the body's Z direction
@@ -413,26 +576,51 @@ static bool ekf_updateWithFlow(
 static void ekf_finalize(
         const matrix_t & p_in,
         const ekfState_t & ekfs,
-        matrix_t & p_out)
+        const new_quat_t & q,
+        matrix_t & p_out,
+        new_quat_t & q_out)
 {
-} 
-
+}
+ 
 static void ekf_getVehicleState(
         const ekfState_t & ekfs, 
         const axis3_t & gyroLatest,
         const axis3_t & r,
+        const float qw, 
+        const float qx, 
+        const float qy, 
+        const float qz, 
         vehicleState_t & state)
 {
     state.dx = ekfs.dx;
     state.dy = ekfs.dy;
     state.z = ekfs.z;
     state.dz = r.x * ekfs.dx + r.y * ekfs.dy + r.z * ekfs.dz;
+
+    state.phi = RADIANS_TO_DEGREES * atan2((2 * (qy*qz + qw*qx)),
+            (qw*qw - qx*qx - qy*qy + qz*qz));
+
+    // Negate for ENU
+    state.theta = -RADIANS_TO_DEGREES * asin((-2) * (qx*qz - qw*qy));
+
+    state.psi = RADIANS_TO_DEGREES * atan2((2 * (qx*qy + qw*qz)),
+            (qw*qw + qx*qx - qy*qy - qz*qz));
+
+    // Get angular velocities directly from gyro
+    state.dphi =    gyroLatest.x;
+    state.dtheta = -gyroLatest.y; // negate for ENU
+    state.dpsi =    gyroLatest.z;
 }
 
 // ===========================================================================
 
 static void ekf_step(void)
 {
+    static float _qw;
+    static float _qx;
+    static float _qy;
+    static float _qz;
+
     static float _z;
     static float _dx;
     static float _dy;
@@ -460,13 +648,9 @@ static void ekf_step(void)
     static float _ry;
     static float _rz;
 
-    static float _qw;
-    static float _qx;
-    static float _qy;
-    static float _qz;
-
     const auto ekfs = ekfState_t {_z, _dx, _dy, _dz};
 
+    const auto quat = new_quat_t {_qw, _qx, _qy, _qz };
     const auto r = axis3_t {_rx, _ry, _rz};
 
     // Initialize
@@ -478,6 +662,7 @@ static void ekf_step(void)
     const auto didPredict = stream_ekfAction == EKF_PREDICT && 
         stream_nowMsec >= stream_nextPredictionMsec;
     ekfState_t ekfs_predicted = {};
+    new_quat_t quat_predicted = {};
     if (didPredict) {
         ekf_predict(
                 _gyroSum_x,
@@ -492,6 +677,8 @@ static void ekf_step(void)
                 ekfs,
                 r,
                 _lastPredictionMsec, 
+
+                quat_predicted,
                 _p,
                 ekfs_predicted);
     }
@@ -502,8 +689,9 @@ static void ekf_step(void)
     // Finalize
     const auto finalizing = stream_ekfAction == EKF_FINALIZE;
     const auto didFinalize = finalizing && _isUpdated;
+    new_quat_t quat_finalized = {};
     if (didFinalize) {
-        ekf_finalize(_p, ekfs, _p);
+        ekf_finalize(_p, ekfs, quat, _p, quat_finalized);
     }
 
     // Update with flow
@@ -526,7 +714,7 @@ static void ekf_step(void)
 
     // Get vehicle state
     vehicleState_t vehicleState = {};
-    ekf_getVehicleState(ekfs, _gyroLatest, r, vehicleState);
+    ekf_getVehicleState(ekfs, _gyroLatest, r, _qw, _qx, _qy, _qz, vehicleState);
 
     if (stream_ekfAction == EKF_GET_STATE) {
         setState(vehicleState);
@@ -581,6 +769,27 @@ static void ekf_step(void)
     _accelCount = isDtPositive ? 0 : 
         didUpdateWithAccel ? _accelCount + 1 :
         _accelCount;
+
+    _qw = didInitialize ? 1 : 
+        didFinalize ? quat_finalized.w :
+        isDtPositive ? quat_predicted.w :
+        _qw;
+
+    _qx = didInitialize ? 0 : 
+        didFinalize ? quat_finalized.x :
+        isDtPositive ? quat_predicted.x :
+        _qx;
+
+    _qy = didInitialize ? 0 : 
+        didFinalize ? quat_finalized.y :
+        isDtPositive ? quat_predicted.y :
+        _qy;
+
+    _qz = didInitialize ? 0 : 
+        didFinalize ? quat_finalized.z :
+        isDtPositive ? quat_predicted.z :
+        _qz;
+
 
     _rx = didInitialize ? 0 : 
         didFinalize ? 2 * _qx * _qz - 2 * _qw * _qy :
