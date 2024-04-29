@@ -13,7 +13,14 @@ To try out LambdaFlight, you'll first need to install
 and
 [NASA Copilot](https://copilot-language.github.io) (the &ldquo;secret sauce&rdquo; that
 allows you to compile Haskell code to a form suitable for running on a flight 
-controller.)  Then you can run a simulated
+controller.)  I was able to do this via:
+
+```
+cabal install copilot
+cabal install copilot-c99
+```
+
+Then you can run a simulated
 quadcopter in Webots or an actual Crazyflie, following the instructions below:
 
 ## Webots
