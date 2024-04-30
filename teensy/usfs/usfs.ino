@@ -56,13 +56,16 @@ static void interruptHandler()
 
 static Usfs usfs;
 
+static void powerPin(const uint8_t pin, const bool hilo)
+{
+    pinMode(pin, OUTPUT);
+    digitalWrite(pin, hilo);
+}
+
 void setup()
 {
-    pinMode(21, OUTPUT);
-    digitalWrite(21, HIGH);
-
-    pinMode(22, OUTPUT);
-    digitalWrite(22, LOW);
+    powerPin(21, HIGH);
+    powerPin(22, LOW);
 
     Serial.begin(115200);
     delay(4000);
