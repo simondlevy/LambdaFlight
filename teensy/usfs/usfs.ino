@@ -198,8 +198,6 @@ static void imuInit(void)
     Wire.setClock(400000); 
     delay(100);
 
-    // usfs.reportChipId();        
-
     usfs.loadFirmware(VERBOSE); 
 
     usfs.begin(
@@ -215,6 +213,16 @@ static void imuInit(void)
 
     // Clear interrupts
     Usfs::checkStatus();
+}
+
+static void ledInit(void)
+{
+    for (uint32_t j = 1; j<= NUM_BLINKS; j++) {
+        digitalWrite(LED_PIN, LOW);
+        delay(BLINK_DOWNTIME);
+        digitalWrite(LED_PIN, HIGH);
+        delay(BLINK_UPTIME);
+    }
 }
 
 void setup()
@@ -234,12 +242,7 @@ void setup()
     // Initialize radio communication
     sbus.Begin();
 
-    for (uint32_t j = 1; j<= NUM_BLINKS; j++) {
-        digitalWrite(LED_PIN, LOW);
-        delay(BLINK_DOWNTIME);
-        digitalWrite(LED_PIN, HIGH);
-        delay(BLINK_UPTIME);
-    }
+    ledInit();
 
 } // setup
 
