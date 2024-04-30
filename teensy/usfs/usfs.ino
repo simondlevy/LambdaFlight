@@ -14,7 +14,7 @@
 
 #include <teensy_ekf.hpp>
 
-
+void copilot_step(void);
 
 // LED settings -------------------------------------------------------------
 
@@ -339,8 +339,25 @@ void loop()
 
     ekfStep();
 
+    copilot_step(); 
+
     readReceiver();
 
     maintainLoopRate(_current_time); 
 
 }  // loop
+
+// Called by Copilot ---------------------------------------------------------
+
+void debugEkf(const float qw)
+{
+    //Serial.printf("%+3.3f\n", qw);
+}
+
+void setMotors(const float m1, const float m2, const float m3, const float m4)
+{
+    m1_command_PWM = m1;
+    m2_command_PWM = m2;
+    m3_command_PWM = m3;
+    m4_command_PWM = m4;
+}
