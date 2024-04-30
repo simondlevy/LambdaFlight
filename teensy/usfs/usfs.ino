@@ -43,7 +43,7 @@ static const uint8_t INTERRUPT_ENABLE = Usfs::INTERRUPT_RESET_REQUIRED |
                                         Usfs::INTERRUPT_ERROR |
                                         Usfs::INTERRUPT_QUAT;
 
-static const bool VERBOSE = true;
+static const bool VERBOSE = false;
 
 static const uint8_t REPORT_HZ = 2;
 
