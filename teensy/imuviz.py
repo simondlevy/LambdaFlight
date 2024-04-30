@@ -21,6 +21,7 @@ from serial import Serial
 from threading import Thread
 import tkinter as tk
 import numpy as np
+import sys
 
 PORT = '/dev/ttyACM0'
 # PORT = 'COM5'
@@ -774,6 +775,9 @@ class Comms:
 
         self.viz.newconnect = True
 
+def close(_):
+    sys.exit(0)
+
 # Viz class runs the show =====================================================
 
 
@@ -797,6 +801,9 @@ class Viz:
         top = (self.root.winfo_screenheight() - DISPLAY_HEIGHT) / 2
         self.root.geometry('%dx%d+%d+%d' % (DISPLAY_WIDTH, DISPLAY_HEIGHT,
                                             left, top))
+
+        self.root.bind('<Escape>', close)
+
         self.frame = tk.Frame(self.root)
 
         self.root.protocol('WM_DELETE_WINDOW', self.quit)
