@@ -3,11 +3,21 @@
  */
 
 
-#include <math.h>
+#include <Wire.h> 
 
-#include <Wire.h>
+#include <sbus.h>
 
-#include "usfs.hpp"
+#include <usfs.hpp>
+
+#include <oneshot125.hpp>
+#include <vector>
+
+#include <teensy_ekf.hpp>
+
+static const uint8_t LED_PIN = 9;
+
+
+// USFS settings ------------------------------------------------------------
 
 static const uint8_t ACCEL_BANDWIDTH = 3;
 static const uint8_t GYRO_BANDWIDTH  = 3;
@@ -22,6 +32,8 @@ static const uint8_t INTERRUPT_ENABLE = Usfs::INTERRUPT_RESET_REQUIRED |
                                         Usfs::INTERRUPT_QUAT;
 
 static const bool VERBOSE = false;
+
+// ---------------------------------------------------------------------------
 
 static const uint8_t REPORT_HZ = 2;
 
