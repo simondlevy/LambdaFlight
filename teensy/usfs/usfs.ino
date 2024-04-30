@@ -189,14 +189,10 @@ void debugLoopRate(const uint32_t current_time)
     }
 }
 
-
-void setup()
+static void imuInit(void)
 {
     powerPin(21, HIGH);
     powerPin(22, LOW);
-
-    Serial.begin(115200);
-    delay(4000);
 
     Wire.begin(); 
     Wire.setClock(400000); 
@@ -219,6 +215,14 @@ void setup()
 
     // Clear interrupts
     Usfs::checkStatus();
+}
+
+void setup()
+{
+    Serial.begin(115200);
+    delay(4000);
+
+    imuInit();
 
     stream_radio_failsafe = false;
 
