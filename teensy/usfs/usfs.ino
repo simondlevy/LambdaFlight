@@ -90,7 +90,20 @@ static void powerPin(const uint8_t pin, const bool hilo)
     digitalWrite(pin, hilo);
 }
 
-static void blinkLed(const uint32_t current_time) 
+static void ledInit(void)
+{
+    pinMode(LED_PIN, OUTPUT); 
+    digitalWrite(LED_PIN, HIGH);
+
+    for (uint32_t j = 1; j<= NUM_BLINKS; j++) {
+        digitalWrite(LED_PIN, LOW);
+        delay(BLINK_DOWNTIME);
+        digitalWrite(LED_PIN, HIGH);
+        delay(BLINK_UPTIME);
+    }
+}
+
+static void ledBlink(const uint32_t current_time) 
 {
     //DESCRIPTION: Blink LED on board to indicate main loop is running
     /*
@@ -114,6 +127,55 @@ static void blinkLed(const uint32_t current_time)
         }
     }
 }
+
+static void imuInit(void)
+{
+    powerPin(21, HIGH);
+    powerPin(22, LOW);
+
+    Wire.begin(); 
+    Wire.setClock(400000); 
+    delay(100);
+
+    usfs.loadFirmware(VERBOSE); 
+
+    usfs.begin(
+            ACCEL_BANDWIDTH,
+            GYRO_BANDWIDTH,
+            QUAT_DIVISOR,
+            MAG_RATE,
+            ACCEL_RATE,
+            GYRO_RATE,
+            BARO_RATE,
+            INTERRUPT_ENABLE,
+            VERBOSE); 
+
+    // Clear interrupts
+    Usfs::checkStatus();
+}
+
+static void imuRead(void)
+{
+    const auto eventStatus = Usfs::checkStatus(); 
+
+    if (Usfs::eventStatusIsError(eventStatus)) { 
+
+        Usfs::reportError(eventStatus);
+    }
+
+    if (Usfs::eventStatusIsAccelerometer(eventStatus)) { 
+
+        usfs.readAccelerometerScaled(
+                stream_accel_x, stream_accel_y, stream_accel_z);
+    }
+
+    if (Usfs::eventStatusIsGyrometer(eventStatus)) { 
+
+        usfs.readGyrometerScaled(
+                stream_gyro_x, stream_gyro_y, stream_gyro_z);
+    }
+}
+
 
 static void ekfStep(void)
 {
@@ -200,67 +262,6 @@ void debugLoopRate(const uint32_t current_time)
     }
 }
 
-static void imuInit(void)
-{
-    powerPin(21, HIGH);
-    powerPin(22, LOW);
-
-    Wire.begin(); 
-    Wire.setClock(400000); 
-    delay(100);
-
-    usfs.loadFirmware(VERBOSE); 
-
-    usfs.begin(
-            ACCEL_BANDWIDTH,
-            GYRO_BANDWIDTH,
-            QUAT_DIVISOR,
-            MAG_RATE,
-            ACCEL_RATE,
-            GYRO_RATE,
-            BARO_RATE,
-            INTERRUPT_ENABLE,
-            VERBOSE); 
-
-    // Clear interrupts
-    Usfs::checkStatus();
-}
-
-static void ledInit(void)
-{
-    pinMode(LED_PIN, OUTPUT); 
-    digitalWrite(LED_PIN, HIGH);
-
-    for (uint32_t j = 1; j<= NUM_BLINKS; j++) {
-        digitalWrite(LED_PIN, LOW);
-        delay(BLINK_DOWNTIME);
-        digitalWrite(LED_PIN, HIGH);
-        delay(BLINK_UPTIME);
-    }
-}
-
-static void imuRead(void)
-{
-    const auto eventStatus = Usfs::checkStatus(); 
-
-    if (Usfs::eventStatusIsError(eventStatus)) { 
-
-        Usfs::reportError(eventStatus);
-    }
-
-    if (Usfs::eventStatusIsAccelerometer(eventStatus)) { 
-
-        usfs.readAccelerometerScaled(
-                stream_accel_x, stream_accel_y, stream_accel_z);
-    }
-
-    if (Usfs::eventStatusIsGyrometer(eventStatus)) { 
-
-        usfs.readGyrometerScaled(
-                stream_gyro_x, stream_gyro_y, stream_gyro_z);
-    }
-}
-
 void setup()
 {
     Serial.begin(115200);
@@ -291,7 +292,7 @@ void loop()
     _current_time = micros();      
     stream_dt = (_current_time - _prev_time)/1e6;
 
-    blinkLed(_current_time);
+    ledBlink(_current_time);
 
     debug(_current_time);
 
