@@ -217,6 +217,9 @@ static void imuInit(void)
 
 static void ledInit(void)
 {
+    pinMode(LED_PIN, OUTPUT); 
+    digitalWrite(LED_PIN, HIGH);
+
     for (uint32_t j = 1; j<= NUM_BLINKS; j++) {
         digitalWrite(LED_PIN, LOW);
         delay(BLINK_DOWNTIME);
@@ -254,10 +257,6 @@ void setup()
     imuInit();
 
     stream_radio_failsafe = false;
-
-    // Initialize LED
-    pinMode(LED_PIN, OUTPUT); 
-    digitalWrite(LED_PIN, HIGH);
 
     delay(5);
 
