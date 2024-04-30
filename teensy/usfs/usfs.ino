@@ -192,6 +192,17 @@ static void readReceiver()
     }
 }
 
+/*
+static void runMotors() 
+{
+    motors.set(0, m1_command_PWM);
+    motors.set(1, m2_command_PWM);
+    motors.set(2, m3_command_PWM);
+    motors.set(3, m4_command_PWM);
+
+    motors.run();
+}*/
+
 static void maintainLoopRate(const uint32_t current_time) 
 {
     //DESCRIPTION: Regulate main loop rate to specified frequency in Hz
@@ -340,6 +351,8 @@ void loop()
     ekfStep();
 
     copilot_step(); 
+
+    //runMotors();
 
     readReceiver();
 
