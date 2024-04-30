@@ -176,6 +176,22 @@ static void imuRead(void)
     }
 }
 
+static void readReceiver() 
+{
+    if (sbus.Read()) {
+
+        stream_channel1_raw = sbus.data().ch[0];
+        stream_channel2_raw = sbus.data().ch[1];
+        stream_channel3_raw = sbus.data().ch[2];
+        stream_channel4_raw = sbus.data().ch[3];
+        stream_channel5_raw = sbus.data().ch[4];
+    }
+
+    if (sbus.data().failsafe) {
+        stream_radio_failsafe = true;
+    }
+}
+
 
 static void ekfStep(void)
 {
@@ -299,5 +315,7 @@ void loop()
     imuRead();
 
     ekfStep();
+
+    readReceiver();
 
 }  // loop
