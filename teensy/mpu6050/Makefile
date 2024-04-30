@@ -5,7 +5,6 @@ PORT = /dev/ttyS4
 
 BOARD = teensy:avr:teensy40
 
-# LIBS = $(HOME)/Documents/Arduino/libraries/
 LIBS = ../../../
 
 HASKELL = ../../haskell

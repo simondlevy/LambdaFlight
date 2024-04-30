@@ -1,4 +1,4 @@
-SKETCH = usfs
+SKETCH = old_usfs
 
 PORT = /dev/ttyACM0
 

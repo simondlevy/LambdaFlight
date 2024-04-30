@@ -1,39 +1,49 @@
 /*
    Based on https://github.com/nickrehm/dRehmFlight
-*/
+ */
 
 #include <Wire.h> 
 
 #include <sbus.h>
 
-#include <I2Cdev.h>
-#include <MPU6050.h>
+#include <usfs.hpp>
 
 #include <oneshot125.hpp>
 #include <vector>
 
 #include <teensy_ekf.hpp>
 
-// Gyro and accel full scale value selection
-const uint8_t GYRO_SCALE = MPU6050_GYRO_FS_2000;
-const uint8_t ACCEL_SCALE = MPU6050_ACCEL_FS_8;
+static const uint8_t LED_PIN = 9;
 
-// Scaling factors for above
-const float GYRO_SCALE_FACTOR = 16.4;
-const float ACCEL_SCALE_FACTOR = 4096;
+// USFS settings ------------------------------------------------------------
+
+static const uint8_t USFS_ACCEL_BANDWIDTH = 3;
+static const uint8_t USFS_GYRO_BANDWIDTH  = 3;
+static const uint8_t USFS_QUAT_DIVISOR    = 1;
+static const uint8_t USFS_MAG_RATE        = 100;
+static const uint8_t USFS_ACCEL_RATE      = 20; // Multiply by 10 to get actual rate
+static const uint8_t USFS_GYRO_RATE       = 100; // Multiply by 10 to get actual rate
+static const uint8_t USFS_BARO_RATE       = 50;
+
+
+static const uint8_t USFS_INTERRUPT_ENABLE = Usfs::INTERRUPT_RESET_REQUIRED |
+Usfs::INTERRUPT_ERROR |
+Usfs::INTERRUPT_QUAT;
+
+static const bool USFS_VERBOSE = false;
+
+// ---------------------------------------------------------------------------
 
 // Do not exceed 2000Hz, all filter paras tuned to 2000Hz by default
 static const uint32_t LOOP_RATE = 2000;
-
-// ---------------------------------------------------------------------------
 
 static const std::vector<uint8_t> MOTOR_PINS = {0, 1, 2, 3};
 
 static auto motors = OneShot125(MOTOR_PINS);
 
-static MPU6050 mpu6050;
+static Usfs usfs;
 
-bfs::SbusRx sbus(&Serial5);
+bfs::SbusRx sbus(&Serial2);
 
 // Streams read by Haskell
 uint32_t stream_now_msec;
@@ -63,42 +73,56 @@ static float _statePsi;
 
 static vehicleState_t _vehicleState;
 
-// ---------------------------------------------------------------------------
+static void powerPin(const uint8_t pin, const bool hilo)
+{
+    pinMode(pin, OUTPUT);
+    digitalWrite(pin, hilo);
+}
 
 static void imuInit() 
 {
-    Wire.begin();
-    Wire.setClock(1000000); //Note this is 2.5 times the spec sheet 400 kHz max...
+    Wire.begin(); 
+    Wire.setClock(400000); 
+    delay(1000);
 
-    mpu6050.initialize();
+    usfs.reportChipId();        
 
-    if (mpu6050.testConnection() == false) {
-        Serial.println("MPU6050 initialization unsuccessful");
-        Serial.println("Check MPU6050 wiring or try cycling power");
-        while(1) {}
-    }
+    usfs.loadFirmware(USFS_VERBOSE); 
 
-    //From the reset state all registers should be 0x00, so we should be at
-    //max sample rate with digital low pass filter(s) off.  All we need to
-    //do is set the desired fullscale ranges
-    mpu6050.setFullScaleGyroRange(GYRO_SCALE);
-    mpu6050.setFullScaleAccelRange(ACCEL_SCALE);
+    usfs.begin(
+            USFS_ACCEL_BANDWIDTH,
+            USFS_GYRO_BANDWIDTH,
+            USFS_QUAT_DIVISOR,
+            USFS_MAG_RATE,
+            USFS_ACCEL_RATE,
+            USFS_GYRO_RATE,
+            USFS_BARO_RATE,
+            USFS_INTERRUPT_ENABLE,
+            USFS_VERBOSE); 
+
+    // Clear interrupts
+    Usfs::checkStatus();
 }
 
 static void readImu() 
 {
-    int16_t ax=0, ay=0, az=0, gx=0, gy=0, gz=0;
+    auto eventStatus = Usfs::checkStatus(); 
 
-    mpu6050.getMotion6(&ax, &ay, &az, &gx, &gy, &gz);
+    if (Usfs::eventStatusIsAccelerometer(eventStatus)) { 
 
-    stream_accel_x = ax / ACCEL_SCALE_FACTOR;
-    stream_accel_y = ay / ACCEL_SCALE_FACTOR;
-    stream_accel_z = az / ACCEL_SCALE_FACTOR;
+        usfs.readAccelerometerScaled(stream_accel_x, stream_accel_y, stream_accel_z);
 
-    stream_gyro_x = gx / GYRO_SCALE_FACTOR;
-    stream_gyro_y = gy / GYRO_SCALE_FACTOR;
-    stream_gyro_z = gz / GYRO_SCALE_FACTOR;
+        // Mounted upside-down
+        stream_accel_y = -stream_accel_y;
+        stream_accel_z = -stream_accel_z; 
+    }
 
+    if (Usfs::eventStatusIsGyrometer(eventStatus)) { 
+
+        usfs.readGyrometerScaled(stream_gyro_x, stream_gyro_y, stream_gyro_z);
+
+        stream_gyro_x = -stream_gyro_x;
+    }
 }
 
 static void readReceiver() 
@@ -162,7 +186,7 @@ static void blinkLed(const uint32_t current_time)
 
     if (current_time - blink_counter > blink_delay) {
         blink_counter = micros();
-        digitalWrite(13, blinkAlternate); //Pin 13 is built in LED
+        digitalWrite(LED_PIN, blinkAlternate); //Pin LED_PIN is built in LED
 
         if (blinkAlternate == 1) {
             blinkAlternate = 0;
@@ -181,9 +205,9 @@ static void setupBlink(
         const uint32_t downTime) 
 {
     for (uint32_t j = 1; j<= numBlinks; j++) {
-        digitalWrite(13, LOW);
+        digitalWrite(LED_PIN, LOW);
         delay(downTime);
-        digitalWrite(13, HIGH);
+        digitalWrite(LED_PIN, HIGH);
         delay(upTime);
     }
 }
@@ -191,11 +215,23 @@ static void setupBlink(
 static void debug(const uint32_t current_time)
 {
     //Print data at 100hz (uncomment one at a time for troubleshooting) - SELECT ONE:
-    //debugAccel(current_time);
-    //debugGyro(current_time);
-    debugState(current_time);  
+    debugAccel(current_time);  
+    //debugGyro(current_time);  
+    //debugState(current_time);  
     //debugMotorCommands(current_time); 
     //debugLoopRate(current_time);      
+}
+
+void debugRadio(const uint32_t current_time) 
+{
+    static uint32_t print_counter;
+    if (current_time - print_counter > 10000) {
+        print_counter = micros();
+        Serial.printf("ch1:%4.0f ch2:%4.0f ch3:%4.0f ch4:%4.0f ch5:%4.0f\n",
+                stream_channel1_raw, stream_channel2_raw, stream_channel3_raw, 
+                stream_channel4_raw, stream_channel5_raw);
+
+    }
 }
 
 void debugAccel(const uint32_t current_time) 
@@ -203,7 +239,7 @@ void debugAccel(const uint32_t current_time)
     static uint32_t print_counter;
     if (current_time - print_counter > 10000) {
         print_counter = micros();
-        Serial.printf("accelX:%+03.3f accelY:%+03.3f accelZ:%+03.3f\n", 
+        Serial.printf("accelX:%+3.3f accelY:%+3.3f accelZ:%+3.3f\n", 
                 stream_accel_x, stream_accel_y, stream_accel_z);
     }
 }
@@ -217,6 +253,7 @@ void debugGyro(const uint32_t current_time)
                 stream_gyro_x, stream_gyro_y, stream_gyro_z);
     }
 }
+
 
 void debugState(const uint32_t current_time) 
 {
@@ -262,14 +299,17 @@ static void ekfStep(void)
 
 void setup() 
 {
+    powerPin(21, HIGH);
+    powerPin(22, LOW);
+
     Serial.begin(500000); //USB serial
     delay(500);
 
     stream_radio_failsafe = false;
 
-    // Pin 13 LED blinker on board, do not modify     
-    pinMode(13, OUTPUT); 
-    digitalWrite(13, HIGH);
+    // Initialize LED
+    pinMode(LED_PIN, OUTPUT); 
+    digitalWrite(LED_PIN, HIGH);
 
     delay(5);
 
