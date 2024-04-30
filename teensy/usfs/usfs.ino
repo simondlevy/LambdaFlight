@@ -67,9 +67,6 @@ void setup()
 
 void loop()
 {
-    static uint32_t _interruptCount;
-
-    static float temperature, pressure;
     static float ax, ay, az;
     static float gx, gy, gz;
 
@@ -94,11 +91,8 @@ void loop()
 
     uint32_t msec = millis();
 
-    static float yaw, pitch, roll;
-
     if (msec-_msec > 1000/REPORT_HZ) { 
 
-        _interruptCount = 0;
         _msec = msec;
 
         Serial.print("Ax = ");
