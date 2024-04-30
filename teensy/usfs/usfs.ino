@@ -115,12 +115,23 @@ static void blinkLed(const uint32_t current_time)
     }
 }
 
+static void ekfStep(void)
+{
+    stream_now_msec = millis();
+
+    Ekf::step(_vehicleState);
+
+    stream_state_phi = _vehicleState.phi;
+    stream_state_theta = -_vehicleState.theta; // note negation
+    _statePsi = _vehicleState.psi;
+}
+
 static void debug(const uint32_t current_time)
 {
     //Print data at 100hz (uncomment one at a time for troubleshooting) - SELECT ONE:
-    debugAccel(current_time);  
+    //debugAccel(current_time);  
     //debugGyro(current_time);  
-    //debugState(current_time);  
+    debugState(current_time);  
     //debugMotorCommands(current_time); 
     //debugLoopRate(current_time);      
 }
@@ -260,10 +271,13 @@ void setup()
 
     delay(5);
 
-    // Initialize radio communication
     sbus.Begin();
 
     ledInit();
+
+    delay(5);
+
+    //motors.arm();
 
 } // setup
 
@@ -282,5 +296,7 @@ void loop()
     debug(_current_time);
 
     imuRead();
+
+    ekfStep();
 
 }  // loop

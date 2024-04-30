@@ -22,8 +22,8 @@ from threading import Thread
 import tkinter as tk
 import numpy as np
 
-# PORT = '/dev/ttyACM0'
-PORT = 'COM5'
+PORT = '/dev/ttyACM0'
+# PORT = 'COM5'
 
 BAUD = 115200
 
