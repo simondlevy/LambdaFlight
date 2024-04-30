@@ -225,6 +225,28 @@ static void ledInit(void)
     }
 }
 
+static void imuRead(void)
+{
+    const auto eventStatus = Usfs::checkStatus(); 
+
+    if (Usfs::eventStatusIsError(eventStatus)) { 
+
+        Usfs::reportError(eventStatus);
+    }
+
+    if (Usfs::eventStatusIsAccelerometer(eventStatus)) { 
+
+        usfs.readAccelerometerScaled(
+                stream_accel_x, stream_accel_y, stream_accel_z);
+    }
+
+    if (Usfs::eventStatusIsGyrometer(eventStatus)) { 
+
+        usfs.readGyrometerScaled(
+                stream_gyro_x, stream_gyro_y, stream_gyro_z);
+    }
+}
+
 void setup()
 {
     Serial.begin(115200);
@@ -260,23 +282,6 @@ void loop()
 
     debug(_current_time);
 
-    uint8_t eventStatus = Usfs::checkStatus(); 
-
-    if (Usfs::eventStatusIsError(eventStatus)) { 
-
-        Usfs::reportError(eventStatus);
-    }
-
-    if (Usfs::eventStatusIsAccelerometer(eventStatus)) { 
-
-        usfs.readAccelerometerScaled(
-                stream_accel_x, stream_accel_y, stream_accel_z);
-    }
-
-    if (Usfs::eventStatusIsGyrometer(eventStatus)) { 
-
-        usfs.readGyrometerScaled(
-                stream_gyro_x, stream_gyro_y, stream_gyro_z);
-    }
+    imuRead();
 
 }  // loop
