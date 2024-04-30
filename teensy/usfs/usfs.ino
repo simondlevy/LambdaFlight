@@ -196,9 +196,9 @@ static void imuInit(void)
 
     Wire.begin(); 
     Wire.setClock(400000); 
-    delay(1000);
+    delay(100);
 
-    usfs.reportChipId();        
+    // usfs.reportChipId();        
 
     usfs.loadFirmware(VERBOSE); 
 
@@ -220,7 +220,6 @@ static void imuInit(void)
 void setup()
 {
     Serial.begin(115200);
-    delay(4000);
 
     imuInit();
 
