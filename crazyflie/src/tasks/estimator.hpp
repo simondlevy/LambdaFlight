@@ -94,11 +94,11 @@ class EstimatorTask : public FreeRTOSTask {
             enqueue(&m, isInInterrupt);
         }
 
-        void enqueueRange(const rangeMeasurement_t * range, const bool isInInterrupt)
+        void enqueueRange(const int16_t distance, const bool isInInterrupt)
         {
             measurement_t m = {};
             m.type = MeasurementTypeRange;
-            m.data.range = *range;
+            m.data.rangefinder_distance = distance;
             enqueue(&m, isInInterrupt);
         }
 
@@ -200,8 +200,8 @@ class EstimatorTask : public FreeRTOSTask {
 
                     case MeasurementTypeRange:
                         stream_ekfAction = EKF_UPDATE_WITH_RANGE;
-                        memcpy(&stream_range, &measurement.data.range, 
-                                sizeof(stream_range));
+                        stream_rangefinder_distance = 
+                            measurement.data.rangefinder_distance;
                         ekf_step();
                         break;
 
