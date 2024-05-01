@@ -46,7 +46,7 @@ data ThreeAxisSensor = ThreeAxisSensor {
 
 instance Struct ThreeAxisSensorStruct where
 
-    typename _ = "axis3" -- Name of the type in C
+    typeName _ = "axis3" -- Name of the type in C
 
     toValues v = [ Value Float (x' v)
                  , Value Float (y' v)

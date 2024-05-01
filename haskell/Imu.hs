@@ -46,7 +46,7 @@ data Imu = Imu {
 
 instance Struct ImuStruct where
 
-    typename _ = "axes" -- Name of the type in C
+    typeName _ = "axes" -- Name of the type in C
 
     toValues v = [ Value Float (x' v)
                  , Value Float (y' v)

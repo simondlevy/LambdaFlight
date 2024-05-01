@@ -41,7 +41,7 @@ data Quat = Quat {
 
 instance Struct QuatStruct where
 
-    typename _ = "quat"
+    typeName _ = "quat"
 
     toValues v = [  Value Float (qw' v)
                   , Value Float (qx' v)
