@@ -37,7 +37,7 @@ static const float ROLLPITCH_ZERO_REVERSION = 0.001;
 static const uint32_t PREDICTION_RATE = 100;
 static const uint32_t PREDICTION_UPDATE_INTERVAL_MS = 1000 / PREDICTION_RATE;
 
-static const uint8_t N = 3;
+static const uint8_t N = 7;
 
 extern float stream_gyro_x, stream_gyro_y, stream_gyro_z;
 extern float stream_accel_x, stream_accel_y, stream_accel_z;
@@ -57,32 +57,24 @@ class Ekf {
             static uint32_t _lastUpdateMsec;
 
             // Covariance matrix entries
-            static float _p00;
-            static float _p01;
-            static float _p02;
-            static float _p10;
-            static float _p11;
-            static float _p12;
-            static float _p20;
-            static float _p21;
-            static float _p22;
+            static float 
+                _p00, _p01, _p02, _p03, _p04, _p05, _p06,
+                _p10, _p11, _p12, _p13, _p14, _p15, _p16,
+                _p20, _p21, _p22, _p23, _p24, _p25, _p26,
+                _p30, _p31, _p32, _p33, _p34, _p35, _p36,
+                _p40, _p41, _p42, _p43, _p44, _p45, _p46,
+                _p50, _p51, _p52, _p53, _p54, _p55, _p56,
+                _p60, _p61, _p62, _p63, _p64, _p65, _p66;
 
             // Quaternion
-            static float _qw;
-            static float _qx;
-            static float _qy;
-            static float _qz;
+            static float _qw, _qx, _qy, _qz;
 
             // Third row (Z) of attitude as a rotation matrix (used by
             // prediction, updated by finalization)
-            static float _r20;
-            static float _r21;
-            static float _r22;
+            static float _r20, _r21, _r22;
 
             // Attitude error
-            static float _e0;
-            static float _e1;
-            static float _e2;
+            static float _e0, _e1, _e2;
 
             // ---------------------------------------------------------------
 
@@ -187,16 +179,24 @@ class Ekf {
 
             // ====== COVARIANCE UPDATE ======
 
-            const BLA::Matrix<3, 3> A = {
-                e0e0, e0e1, e0e2, 
-                e1e0, e1e1, e1e2, 
-                e2e0, e2e1, e2e2  
+            const BLA::Matrix<N, N> A = {
+                e0e0, e0e1, e0e2, 0, 0, 0, 0,
+                e1e0, e1e1, e1e2, 0, 0, 0, 0,
+                e2e0, e2e1, e2e2, 0, 0, 0, 0,
+                0, 0, 0, 0, 0, 0, 0,
+                0, 0, 0, 0, 0, 0, 0,
+                0, 0, 0, 0, 0, 0, 0,
+                0, 0, 0, 0, 0, 0, 0
             };
 
-            const BLA::Matrix<3, 3> P = { 
-                _p00, _p01, _p02,
-                _p10, _p11, _p12,
-                _p20, _p21, _p22,
+            const BLA::Matrix<N, N> P = { 
+                _p00, _p01, _p02, _p03, _p04, _p05, _p06,
+                _p10, _p11, _p12, _p13, _p14, _p15, _p16,
+                _p20, _p21, _p22, _p23, _p24, _p25, _p26,
+                _p30, _p31, _p32, _p33, _p34, _p35, _p36,
+                _p40, _p41, _p42, _p43, _p44, _p45, _p46,
+                _p50, _p51, _p52, _p53, _p54, _p55, _p56,
+                _p60, _p61, _p62, _p63, _p64, _p65, _p66
             };
 
             const auto APA = A * P * ~A;
@@ -246,13 +246,17 @@ class Ekf {
             const auto p21_pred = shouldPredict ? APA(2,1) : _p21;
             const auto p22_pred = shouldPredict ? APA(2,2) + noise : _p22;
 
-            const BLA::Matrix<3, 3> P_pred = { 
-                p00_pred, p01_pred, p02_pred,
-                p10_pred, p11_pred, p12_pred,
-                p20_pred, p21_pred, p22_pred
+            const BLA::Matrix<N, N> P_pred = { 
+                p00_pred, p01_pred, p02_pred, 0, 0, 0, 0, 
+                p10_pred, p11_pred, p12_pred, 0, 0, 0, 0,
+                p20_pred, p21_pred, p22_pred, 0, 0, 0, 0,
+                0, 0, 0, 0, 0, 0, 0,
+                0, 0, 0, 0, 0, 0, 0,
+                0, 0, 0, 0, 0, 0, 0,
+                0, 0, 0, 0, 0, 0, 0
             };
 
-            BLA::Matrix<3, 3> P3; 
+            BLA::Matrix<N, N> P3; 
 
             updateCovarianceMatrix(P_pred, P3);
 
@@ -337,16 +341,24 @@ class Ekf {
                 isErrorInBounds(v0) && isErrorInBounds(v1) && isErrorInBounds(v2);
 
             // Matrix to rotate the attitude covariances once updated
-            const BLA::Matrix<3, 3> newA = {
-                newe0e0, newe0e1, newe0e2,
-                newe1e0, newe1e1, newe1e2,
-                newe2e0, newe2e1, newe2e2
+            const BLA::Matrix<N, N> newA = {
+                newe0e0, newe0e1, newe0e2, 0, 0, 0, 0,
+                newe1e0, newe1e1, newe1e2, 0, 0, 0, 0,
+                newe2e0, newe2e1, newe2e2, 0, 0, 0, 0,
+                0, 0, 0, 0, 0, 0, 0,
+                0, 0, 0, 0, 0, 0, 0,
+                0, 0, 0, 0, 0, 0, 0,
+                0, 0, 0, 0, 0, 0, 0
             };
 
-            const BLA::Matrix<3, 3> P4 = { 
-                p00_noise, p01_noise, p02_noise,
-                p10_noise, p11_noise, p12_noise,
-                p20_noise, p21_noise, p22_noise
+            const BLA::Matrix<N, N> P4 = { 
+                p00_noise, p01_noise, p02_noise, 0, 0, 0, 0,
+                p10_noise, p11_noise, p12_noise, 0, 0, 0, 0,
+                p20_noise, p21_noise, p22_noise, 0, 0, 0, 0,
+                0, 0, 0, 0, 0, 0, 0,
+                0, 0, 0, 0, 0, 0, 0,
+                0, 0, 0, 0, 0, 0, 0,
+                0, 0, 0, 0, 0, 0, 0
             };
 
             const auto newAPA = newA * P4 * ~newA;
@@ -361,13 +373,17 @@ class Ekf {
             const auto p21_final = isErrorSufficient ? newAPA(2,1) : p21_noise;
             const auto p22_final = isErrorSufficient ? newAPA(2,2) : p22_noise;
 
-            const BLA::Matrix<3, 3> P5 = {
-                p00_final, p01_final, p02_final,
-                p10_final, p11_final, p12_final,
-                p20_final, p21_final, p22_final
+            const BLA::Matrix<N, N> P5 = {
+                p00_final, p01_final, p02_final, 0, 0, 0, 0,
+                p10_final, p11_final, p12_final, 0, 0, 0, 0,
+                p20_final, p21_final, p22_final, 0, 0, 0, 0,
+                0, 0, 0, 0, 0, 0, 0,
+                0, 0, 0, 0, 0, 0, 0,
+                0, 0, 0, 0, 0, 0, 0,
+                0, 0, 0, 0, 0, 0, 0
             };
 
-            BLA::Matrix<3, 3> P6;
+            BLA::Matrix<N, N> P6;
 
             updateCovarianceMatrix(P5, P6);
 
@@ -440,14 +456,14 @@ class Ekf {
         }
 
         static void updateCovarianceMatrix(
-                const BLA::Matrix<3, 3> p_in,
-                BLA::Matrix<3, 3> & p_out)
+                const BLA::Matrix<N, N> p_in,
+                BLA::Matrix<N, N> & p_out)
         {
             // Enforce symmetry of the covariance matrix, and ensure the
             // values stay bounded
-            for (int i=0; i<3; i++) {
+            for (int i=0; i<N; i++) {
 
-                for (int j=i; j<3; j++) {
+                for (int j=i; j<N; j++) {
 
                     const auto pval = (p_in(i,j) + p_in(j,i)) / 2;
 
