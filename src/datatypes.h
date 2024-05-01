@@ -92,12 +92,6 @@ typedef struct flowMeasurement_s {
   float dt;           // Time during which pixels were accumulated
 } flowMeasurement_t;
 
-
-typedef struct rangeMeasurement_s {
-  float distance;
-  float stdDev;
-} rangeMeasurement_t;
-
 typedef struct
 {
   Axis3f gyro; // deg/s, for legacy reasons
@@ -121,7 +115,7 @@ typedef struct {
 
     union {
 
-        rangeMeasurement_t range;
+        float rangefinder_distance;
         flowMeasurement_t flow;
         gyroscopeMeasurement_t gyroscope;
         accelerationMeasurement_t acceleration;

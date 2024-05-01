@@ -39,6 +39,18 @@ static const float EPS = 1e-6f;
 // the reversion of pitch and roll to zero
 static const float ROLLPITCH_ZERO_REVERSION = 0.001;
 
+static const uint16_t RANGEFINDER_OUTLIER_LIMIT_MM = 5000;
+
+// Rangefinder measurement noise model
+static constexpr float RANGEFINDER_EXP_POINT_A = 2.5;
+static constexpr float RANGEFINDER_EXP_STD_A = 0.0025; 
+static constexpr float RANGEFINDER_EXP_POINT_B = 4.0;
+static constexpr float RANGEFINDER_EXP_STD_B = 0.2;   
+
+static constexpr float RANGEFINDER_EXP_COEFF = 
+  logf( RANGEFINDER_EXP_STD_B / RANGEFINDER_EXP_STD_A) / 
+  (RANGEFINDER_EXP_POINT_B - RANGEFINDER_EXP_POINT_A);
+
 // Indexes to access the state
 enum {
 
@@ -465,7 +477,13 @@ static bool ekf_updateWithRange(
             DEGREES_TO_RADIANS * (15.0f / 2.0f));
 
     const auto predictedDistance = ekfs_in.lin.z / cosf(angle);
-    const auto measuredDistance = stream_range.distance; // [m]
+
+    const auto measuredDistance = stream_rangefinder_distance / 1000; // mm => m
+
+    const auto stdDev =
+        RANGEFINDER_EXP_STD_A * 
+        (1 + expf(RANGEFINDER_EXP_COEFF * (measuredDistance - RANGEFINDER_EXP_POINT_A)));
+
 
     // The sensor model (Pg.95-96,
     // https://lup.lub.lu.se/student-papers/search/publication/8905295)
@@ -486,14 +504,15 @@ static bool ekf_updateWithRange(
 
     // Only update the filter if the measurement is reliable 
     // (\hat{h} -> infty when R[2][2] -> 0)
-    const auto shouldUpdate = fabs(rz) > 0.1f && rz > 0;
+    const auto shouldUpdate = fabs(rz) > 0.1f && rz > 0 && 
+        stream_rangefinder_distance < RANGEFINDER_OUTLIER_LIMIT_MM;
     if (shouldUpdate) {
         scalarUpdate(
                 p_in,
                 ekfs_in,
                 h , 
                 measuredDistance-predictedDistance, 
-                stream_range.stdDev, 
+                stdDev, 
                 p_out,
                 ekfs_out);
     }
