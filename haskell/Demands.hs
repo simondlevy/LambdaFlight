@@ -50,7 +50,7 @@ liftDemands demands = Demands (demands # thrust')
 
 instance Struct DemandsStruct where
 
-    typename _ = "demands" -- Name of the type in C
+    typeName _ = "demands" -- Name of the type in C
 
     toValues v = [ Value Float (thrust' v)
                  , Value Float (roll' v)
