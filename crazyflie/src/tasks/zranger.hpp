@@ -98,7 +98,6 @@ class ZRangerTask : public FreeRTOSTask {
                         EXP_STD_A * (1 + expf(_expCoeff * (distance - EXP_POINT_A)));
 
                     rangeMeasurement_t rangeData;
-                    rangeData.timestamp = xTaskGetTickCount();
                     rangeData.distance = distance;
                     rangeData.stdDev = stdDev;
 

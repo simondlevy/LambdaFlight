@@ -94,7 +94,6 @@ typedef struct flowMeasurement_s {
 
 
 typedef struct rangeMeasurement_s {
-  uint32_t timestamp;
   float distance;
   float stdDev;
 } rangeMeasurement_t;
