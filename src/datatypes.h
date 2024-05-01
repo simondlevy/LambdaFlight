@@ -79,17 +79,11 @@ typedef union {
 } Axis3f;
 
 typedef struct flowMeasurement_s {
-  uint32_t timestamp;
-  union {
-    struct {
-      float dpixelx;  // Accumulated pixel count x
-      float dpixely;  // Accumulated pixel count y
-    };
-    float dpixel[2];  // Accumulated pixel count
-  };
-  float stdDevX;      // Measurement standard deviation
-  float stdDevY;      // Measurement standard deviation
-  float dt;           // Time during which pixels were accumulated
+    float dpixelx;  // Accumulated pixel count x
+    float dpixely;  // Accumulated pixel count y
+    float stdDevX;      // Measurement standard deviation
+    float stdDevY;      // Measurement standard deviation
+    float dt;           // Time during which pixels were accumulated
 } flowMeasurement_t;
 
 typedef struct
