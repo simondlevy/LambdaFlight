@@ -53,10 +53,7 @@ class FlowDeckTask : public FreeRTOSTask {
 
     private:
 
-        static const int16_t OUTLIER_LIMIT = 100;
-
-        // Disables pushing the flow measurement in the EKF
-        static const auto USE_FLOW_DISABLED = false;
+        static const int16_t FLOW_OUTLIER_LIMIT = 100;
 
         // Set standard deviation flow
         static constexpr float FLOW_STD_FIXED = 2.0;
@@ -92,7 +89,7 @@ class FlowDeckTask : public FreeRTOSTask {
                 int16_t accpy = -deltaX;
 
                 // Outlier removal
-                if (abs(accpx) < OUTLIER_LIMIT && abs(accpy) < OUTLIER_LIMIT) {
+                if (abs(accpx) < FLOW_OUTLIER_LIMIT && abs(accpy) < FLOW_OUTLIER_LIMIT) {
 
                     // Form flow measurement struct and push into the EKF
                     flowMeasurement_t flowData;
@@ -111,7 +108,7 @@ class FlowDeckTask : public FreeRTOSTask {
 
                     // Push measurements into the estimator if flow is not disabled
                     //    and the PMW flow sensor indicates motion detection
-                    if (!USE_FLOW_DISABLED && gotMotion) {
+                    if (gotMotion) {
                         _estimatorTask->enqueueFlow(&flowData, hal_isInInterrupt());
                     }
                 }
