@@ -200,7 +200,6 @@ static void readReceiver()
     }
 }
 
-/*
 static void runMotors() 
 {
     motors.set(0, m1_command_PWM);
@@ -209,7 +208,7 @@ static void runMotors()
     motors.set(3, m4_command_PWM);
 
     motors.run();
-}*/
+}
 
 static void maintainLoopRate(const uint32_t current_time) 
 {
@@ -343,7 +342,7 @@ void setup()
 
     delay(5);
 
-    //motors.arm();
+    motors.arm();
 
 } // setup
 
@@ -367,7 +366,7 @@ void loop()
 
     copilot_step(); 
 
-    //runMotors();
+    runMotors();
 
     readReceiver();
 
