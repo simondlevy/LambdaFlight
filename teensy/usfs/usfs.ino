@@ -1,4 +1,4 @@
- /*
+/*
    Based on https://github.com/nickrehm/dRehmFlight
  */
 
@@ -35,10 +35,14 @@ static const uint8_t GYRO_RATE       = 100; // Multiply by 10 to get actual rate
 static const uint8_t BARO_RATE       = 50;
 
 static const uint8_t INTERRUPT_ENABLE = Usfs::INTERRUPT_RESET_REQUIRED |
-                                        Usfs::INTERRUPT_ERROR |
-                                        Usfs::INTERRUPT_QUAT;
+Usfs::INTERRUPT_ERROR |
+Usfs::INTERRUPT_QUAT;
 
 static const bool VERBOSE = false;
+
+// VL53L1 settings -----------------------------------------------------------
+
+static const uint32_t RANGEFINDER_FREQ = 40;
 
 // ---------------------------------------------------------------------------
 
@@ -68,6 +72,8 @@ float stream_gyro_y;
 float stream_gyro_z;
 float stream_state_phi;
 float stream_state_theta;
+float stream_range_distance;
+float stream_range_stdev;
 
 // Motors set by Haskell
 static int m1_command_PWM;
@@ -247,83 +253,65 @@ static void ekfStep(void)
 
 static void debug(const uint32_t current_time)
 {
-    //Print data at 100hz (uncomment one at a time for troubleshooting) - SELECT ONE:
-    //debugAccel(current_time);  
-    //debugGyro(current_time);  
-    //debugState(current_time);  
-    //debugMotorCommands(current_time); 
-    //debugLoopRate(current_time);      
-    debugRangefinder(current_time);      
-}
 
-void debugRangefinder(const uint32_t current_time) 
-{
-    Serial.println(vl53l1.readDistance());
-}
-
-
-void debugRadio(const uint32_t current_time) 
-{
     static uint32_t print_counter;
+
     if (current_time - print_counter > 10000) {
         print_counter = micros();
-        Serial.printf("ch1:%4.0f ch2:%4.0f ch3:%4.0f ch4:%4.0f ch5:%4.0f\n",
-                stream_channel1_raw, stream_channel2_raw, stream_channel3_raw, 
-                stream_channel4_raw, stream_channel5_raw);
 
-    }
-}
-
-void debugAccel(const uint32_t current_time) 
-{
-    static uint32_t print_counter;
-    if (current_time - print_counter > 10000) {
-        print_counter = micros();
-        Serial.printf("accelX:%+3.3f accelY:%+3.3f accelZ:%+3.3f\n", 
-                stream_accel_x, stream_accel_y, stream_accel_z);
-    }
-}
-
-void debugGyro(const uint32_t current_time) 
-{
-    static uint32_t print_counter;
-    if (current_time - print_counter > 10000) {
-        print_counter = micros();
-        Serial.printf("gyroX:%+03.3f gyroY:%+03.3f gyroZ:%+03.3f\n", 
-                stream_gyro_x, stream_gyro_y, stream_gyro_z);
+        //debugAccel();  
+        //debugGyro();  
+        debugState();  
+        //debugMotorCommands(); 
+        //debugLoopRate();      
+        //debugRangefinder();      
     }
 }
 
 
-void debugState(const uint32_t current_time) 
+void debugRangefinder(void) 
 {
-    static uint32_t print_counter;
-    if (current_time - print_counter > 10000) {
-        print_counter = micros();
-        Serial.printf("roll:%2.2f pitch:%2.2f yaw:%2.2f\n", 
-                stream_state_phi, stream_state_theta, _statePsi);
-    }
+    //Serial.println(vl53l1.readDistance());
 }
 
-void debugMotorCommands(const uint32_t current_time) 
+
+void debugRadio(void) 
 {
-    static uint32_t print_counter;
-    if (current_time - print_counter > 10000) {
-        print_counter = micros();
-        Serial.printf(
-                "m1_command:%d m2_command:%d m3_command:%d m4_command:%d\n",
-                m1_command_PWM, m2_command_PWM,
-                m3_command_PWM, m4_command_PWM);
-    }
+    Serial.printf("ch1:%4.0f ch2:%4.0f ch3:%4.0f ch4:%4.0f ch5:%4.0f\n",
+            stream_channel1_raw, stream_channel2_raw, stream_channel3_raw, 
+            stream_channel4_raw, stream_channel5_raw);
 }
 
-void debugLoopRate(const uint32_t current_time) 
+void debugAccel(void) 
 {
-    static uint32_t print_counter;
-    if (current_time - print_counter > 10000) {
-        print_counter = micros();
-        Serial.printf("dt:%f\n", stream_dt*1e6);
-    }
+    Serial.printf("accelX:%+3.3f accelY:%+3.3f accelZ:%+3.3f\n", 
+            stream_accel_x, stream_accel_y, stream_accel_z);
+}
+
+void debugGyro(void) 
+{
+    Serial.printf("gyroX:%+03.3f gyroY:%+03.3f gyroZ:%+03.3f\n", 
+            stream_gyro_x, stream_gyro_y, stream_gyro_z);
+}
+
+
+void debugState(void) 
+{
+    Serial.printf("roll:%2.2f pitch:%2.2f yaw:%2.2f\n", 
+            stream_state_phi, stream_state_theta, _statePsi);
+}
+
+void debugMotorCommands(void) 
+{
+    Serial.printf(
+            "m1_command:%d m2_command:%d m3_command:%d m4_command:%d\n",
+            m1_command_PWM, m2_command_PWM,
+            m3_command_PWM, m4_command_PWM);
+}
+
+void debugLoopRate(void) 
+{
+    Serial.printf("dt:%f\n", stream_dt*1e6);
 }
 
 void setup()
