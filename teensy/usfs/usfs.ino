@@ -99,7 +99,7 @@ static void powerPin(const uint8_t pin, const bool hilo)
     digitalWrite(pin, hilo);
 }
 
-static void ledInit(void)
+static void initLed(void)
 {
     pinMode(LED_PIN, OUTPUT); 
     digitalWrite(LED_PIN, HIGH);
@@ -112,7 +112,7 @@ static void ledInit(void)
     }
 }
 
-static void ledBlink(const uint32_t current_time) 
+static void blinkLed(const uint32_t current_time) 
 {
     //DESCRIPTION: Blink LED on board to indicate main loop is running
     /*
@@ -137,7 +137,7 @@ static void ledBlink(const uint32_t current_time)
     }
 }
 
-static void imuInit(void)
+static void initImu(void)
 {
     powerPin(21, HIGH);
     powerPin(22, LOW);
@@ -168,7 +168,7 @@ static void imuInit(void)
     Usfs::checkStatus();
 }
 
-static void imuRead(void)
+static void readImu(void)
 {
     const auto eventStatus = Usfs::checkStatus(); 
 
@@ -204,6 +204,19 @@ static void readReceiver()
     if (sbus.data().failsafe) {
         stream_radio_failsafe = true;
     }
+}
+
+static void readRangefinder(void)
+{
+    
+    const auto msec_curr = millis();
+    static uint32_t msec_prev;
+
+    if (msec_curr - msec_prev > (1000 / RANGEFINDER_FREQ)) {
+        stream_range_distance =  vl53l1.readDistance();
+        msec_prev = msec_curr;
+    }
+
 }
 
 static void runMotors() 
@@ -257,21 +270,23 @@ static void debug(const uint32_t current_time)
     static uint32_t print_counter;
 
     if (current_time - print_counter > 10000) {
+
         print_counter = micros();
 
         //debugAccel();  
         //debugGyro();  
-        debugState();  
+        //debugState();  
         //debugMotorCommands(); 
         //debugLoopRate();      
-        //debugRangefinder();      
+        debugRangefinder();      
     }
 }
 
 
 void debugRangefinder(void) 
 {
-    //Serial.println(vl53l1.readDistance());
+    Serial.printf("dist: %f  stdev: %f\n", 
+        stream_range_distance, stream_range_stdev);
 }
 
 
@@ -318,7 +333,7 @@ void setup()
 {
     Serial.begin(115200);
 
-    imuInit();
+    initImu();
 
     stream_radio_failsafe = false;
 
@@ -326,7 +341,7 @@ void setup()
 
     sbus.Begin();
 
-    ledInit();
+    initLed();
 
     delay(5);
 
@@ -344,11 +359,13 @@ void loop()
     _current_time = micros();      
     stream_dt = (_current_time - _prev_time)/1e6;
 
-    ledBlink(_current_time);
+    blinkLed(_current_time);
 
     debug(_current_time);
 
-    imuRead();
+    readImu();
+
+    readRangefinder();
 
     ekfStep();
 
