@@ -8,8 +8,9 @@
 #include <sbus.h>
 
 #include <usfs.hpp>
-
+#include <vl53l1_arduino.h>
 #include <oneshot125.hpp>
+
 #include <vector>
 
 #include <teensy_ekf.hpp>
@@ -84,6 +85,8 @@ static const uint8_t REPORT_HZ = 2;
 
 static Usfs usfs;
 
+static auto vl53l1 = VL53L1_Arduino(&Wire1);
+
 static void powerPin(const uint8_t pin, const bool hilo)
 {
     pinMode(pin, OUTPUT);
@@ -136,6 +139,11 @@ static void imuInit(void)
     Wire.begin(); 
     Wire.setClock(400000); 
     delay(100);
+
+    Wire1.begin(); 
+    delay(100);
+
+    vl53l1.begin();
 
     usfs.loadFirmware(VERBOSE); 
 
@@ -243,10 +251,17 @@ static void debug(const uint32_t current_time)
     //Print data at 100hz (uncomment one at a time for troubleshooting) - SELECT ONE:
     //debugAccel(current_time);  
     //debugGyro(current_time);  
-    debugState(current_time);  
+    //debugState(current_time);  
     //debugMotorCommands(current_time); 
     //debugLoopRate(current_time);      
+    debugRangefinder(current_time);      
 }
+
+void debugRangefinder(const uint32_t current_time) 
+{
+    Serial.println(vl53l1.readDistance());
+}
+
 
 void debugRadio(const uint32_t current_time) 
 {
