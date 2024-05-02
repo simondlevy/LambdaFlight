@@ -75,10 +75,10 @@ float stream_state_theta;
 float stream_range_distance;
 
 // Motors set by Haskell
-static int m1_command_PWM;
-static int m2_command_PWM;
-static int m3_command_PWM;
-static int m4_command_PWM;
+static int m1_command;
+static int m2_command;
+static int m3_command;
+static int m4_command;
 
 static float _statePsi;
 
@@ -220,10 +220,10 @@ static void readRangefinder(void)
 
 static void runMotors() 
 {
-    motors.set(0, m1_command_PWM);
-    motors.set(1, m2_command_PWM);
-    motors.set(2, m3_command_PWM);
-    motors.set(3, m4_command_PWM);
+    motors.set(0, m1_command);
+    motors.set(1, m2_command);
+    motors.set(2, m3_command);
+    motors.set(3, m4_command);
 
     motors.run();
 }
@@ -309,7 +309,7 @@ void debugGyro(void)
 
 void debugState(void) 
 {
-    Serial.printf("roll:%2.2f pitch:%2.2f yaw:%2.2f\n", 
+    Serial.printf("roll:%2.2f pitch:%2.2f yaw:%2.2f alt:0\n", 
             stream_state_phi, stream_state_theta, _statePsi);
 }
 
@@ -317,8 +317,8 @@ void debugMotorCommands(void)
 {
     Serial.printf(
             "m1_command:%d m2_command:%d m3_command:%d m4_command:%d\n",
-            m1_command_PWM, m2_command_PWM,
-            m3_command_PWM, m4_command_PWM);
+            m1_command, m2_command,
+            m3_command, m4_command);
 }
 
 void debugLoopRate(void) 
@@ -385,8 +385,8 @@ void debugEkf(const float qw)
 
 void setMotors(const float m1, const float m2, const float m3, const float m4)
 {
-    m1_command_PWM = m1;
-    m2_command_PWM = m2;
-    m3_command_PWM = m3;
-    m4_command_PWM = m4;
+    m1_command = m1;
+    m2_command = m2;
+    m3_command = m3;
+    m4_command = m4;
 }

@@ -393,6 +393,14 @@ class Ekf {
             const auto p32_final = isErrorSufficient ? newAPA(3,2) : p32_noise;
             const auto p33_final = isErrorSufficient ? newAPA(3,3) : p33_noise;
 
+            (void)p00_final;
+            (void)p01_final;
+            (void)p02_final;
+            (void)p03_final;
+            (void)p10_final;
+            (void)p20_final;
+            (void)p30_final;
+
             const BLA::Matrix<N, N> P5 = {
                 0,         0,         0,         0,
                 0, p11_final, p12_final, p13_final,
