@@ -215,6 +215,9 @@ static void readRangefinder(void)
     if (msec_curr - msec_prev > (1000 / RANGEFINDER_FREQ)) {
         stream_range_distance =  vl53l1.readDistance();
         msec_prev = msec_curr;
+
+        stream_ekfAction = EKF_UPDATE_WITH_RANGE;
+        ekf_step();
     }
 
 }
