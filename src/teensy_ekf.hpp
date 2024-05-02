@@ -15,6 +15,7 @@ static const float QZ_INIT = 0;
 
 // Initial variances, uncertain of position, but know we're
 // stationary and roughly flat
+static const float STDEV_INITIAL_POSITION_Z = 1;
 static const float STDEV_INITIAL_ATTITUDE_ROLL_PITCH = 0.01;
 static const float STDEV_INITIAL_ATTITUDE_YAW = 0.01;
 
@@ -75,17 +76,25 @@ class Ekf {
 
             // ---------------------------------------------------------------
 
-            initEntry(_p00, _didInit, square(STDEV_INITIAL_ATTITUDE_ROLL_PITCH));
+            initEntry(_p00, _didInit, square(STDEV_INITIAL_POSITION_Z));
             initEntry(_p01, _didInit);
             initEntry(_p02, _didInit);
+            initEntry(_p03, _didInit);
 
             initEntry(_p10, _didInit);
             initEntry(_p11, _didInit, square(STDEV_INITIAL_ATTITUDE_ROLL_PITCH));
             initEntry(_p12, _didInit);
+            initEntry(_p13, _didInit);
 
             initEntry(_p20, _didInit);
             initEntry(_p21, _didInit);
-            initEntry(_p22, _didInit, square(STDEV_INITIAL_ATTITUDE_YAW));
+            initEntry(_p22, _didInit, square(STDEV_INITIAL_ATTITUDE_ROLL_PITCH));
+            initEntry(_p23, _didInit);
+
+            initEntry(_p30, _didInit);
+            initEntry(_p31, _didInit);
+            initEntry(_p32, _didInit);
+            initEntry(_p33, _didInit, square(STDEV_INITIAL_ATTITUDE_YAW));
 
             _qw = !_didInit ? QW_INIT : _qw;
             _qx = !_didInit ? QX_INIT : _qx;
@@ -176,10 +185,10 @@ class Ekf {
             // ====== COVARIANCE UPDATE ======
 
             const BLA::Matrix<N, N> A = {
-                e0e0, e0e1, e0e2, 0, 
-                e1e0, e1e1, e1e2, 0,
-                e2e0, e2e1, e2e2, 0,
-                0,    0,    0,    0
+                0,    0,    0,    0,
+                0, e0e0, e0e1, e0e2, 
+                0, e1e0, e1e1, e1e2,
+                0, e2e0, e2e1, e2e2,
             };
 
             const BLA::Matrix<N, N> P = { 
@@ -229,18 +238,28 @@ class Ekf {
             const auto p00_pred = shouldPredict ? APA(0,0) + noise : _p00;
             const auto p01_pred = shouldPredict ? APA(0,1) : _p01;
             const auto p02_pred = shouldPredict ? APA(0,2) : _p02;
+            const auto p03_pred = shouldPredict ? APA(0,3) : _p03;
+
             const auto p10_pred = shouldPredict ? APA(1,0) : _p10;
             const auto p11_pred = shouldPredict ? APA(1,1) + noise: _p11;
             const auto p12_pred = shouldPredict ? APA(1,2) : _p12;
+            const auto p13_pred = shouldPredict ? APA(1,3) : _p13;
+
             const auto p20_pred = shouldPredict ? APA(2,0) : _p20;
             const auto p21_pred = shouldPredict ? APA(2,1) : _p21;
             const auto p22_pred = shouldPredict ? APA(2,2) + noise : _p22;
+            const auto p23_pred = shouldPredict ? APA(2,3) : _p23;
+
+            const auto p30_pred = shouldPredict ? APA(3,0) : _p30;
+            const auto p31_pred = shouldPredict ? APA(3,1) : _p31;
+            const auto p32_pred = shouldPredict ? APA(3,2) : _p31;
+            const auto p33_pred = shouldPredict ? APA(3,3) + noise : _p33;
 
             const BLA::Matrix<N, N> P_pred = { 
-                p00_pred, p01_pred, p02_pred, 0, 
-                p10_pred, p11_pred, p12_pred, 0, 
-                p20_pred, p21_pred, p22_pred, 0, 
-                0,        0,        0,        0
+                p00_pred, p01_pred, p02_pred, p03_pred,
+                p10_pred, p11_pred, p12_pred, p13_pred,
+                p20_pred, p21_pred, p22_pred, p23_pred,
+                p30_pred, p31_pred, p32_pred, p33_pred
             };
 
             BLA::Matrix<N, N> P3; 
@@ -250,12 +269,22 @@ class Ekf {
             const auto p00_noise = isDtPositive ? P3(0,0) : p00_pred;
             const auto p01_noise = isDtPositive ? P3(0,1) : p01_pred;
             const auto p02_noise = isDtPositive ? P3(0,2) : p02_pred;
+            const auto p03_noise = isDtPositive ? P3(0,3) : p03_pred;
+
             const auto p10_noise = isDtPositive ? P3(1,0) : p10_pred;
             const auto p11_noise = isDtPositive ? P3(1,1) : p11_pred;
             const auto p12_noise = isDtPositive ? P3(1,2) : p12_pred;
+            const auto p13_noise = isDtPositive ? P3(1,3) : p13_pred;
+
             const auto p20_noise = isDtPositive ? P3(2,0) : p20_pred;
             const auto p21_noise = isDtPositive ? P3(2,1) : p21_pred;
             const auto p22_noise = isDtPositive ? P3(2,2) : p22_pred;
+            const auto p23_noise = isDtPositive ? P3(2,3) : p23_pred;
+
+            const auto p30_noise = isDtPositive ? P3(3,0) : p30_pred;
+            const auto p31_noise = isDtPositive ? P3(3,1) : p31_pred;
+            const auto p32_noise = isDtPositive ? P3(3,2) : p32_pred;
+            const auto p33_noise = isDtPositive ? P3(3,3) : p33_pred;
 
             _lastUpdateMsec = _lastUpdateMsec == 0 || isDtPositive ?  
                 stream_now_msec : 
@@ -329,17 +358,17 @@ class Ekf {
 
             // Matrix to rotate the attitude covariances once updated
             const BLA::Matrix<N, N> newA = {
-                newe0e0, newe0e1, newe0e2, 0, 
-                newe1e0, newe1e1, newe1e2, 0, 
-                newe2e0, newe2e1, newe2e2, 0, 
-                0,       0,       0,       0
+                0,       0,       0,       0,
+                0, newe0e0, newe0e1, newe0e2,
+                0, newe1e0, newe1e1, newe1e2,
+                0, newe2e0, newe2e1, newe2e2
             };
 
             const BLA::Matrix<N, N> P4 = { 
-                p00_noise, p01_noise, p02_noise, 0, 
-                p10_noise, p11_noise, p12_noise, 0, 
-                p20_noise, p21_noise, p22_noise, 0, 
-                0,         0,         0,         0 
+                0,         0,         0,         0,
+                0, p11_noise, p12_noise, p13_noise, 
+                0, p21_noise, p22_noise, p23_noise, 
+                0, p31_noise, p32_noise, p33_noise
             };
 
             const auto newAPA = newA * P4 * ~newA;
@@ -347,18 +376,28 @@ class Ekf {
             const auto p00_final = isErrorSufficient ? newAPA(0,0) : p00_noise;
             const auto p01_final = isErrorSufficient ? newAPA(0,1) : p01_noise;
             const auto p02_final = isErrorSufficient ? newAPA(0,2) : p02_noise;
+            const auto p03_final = isErrorSufficient ? newAPA(0,3) : p03_noise;
+
             const auto p10_final = isErrorSufficient ? newAPA(1,0) : p10_noise;
             const auto p11_final = isErrorSufficient ? newAPA(1,1) : p11_noise;
             const auto p12_final = isErrorSufficient ? newAPA(1,2) : p12_noise;
+            const auto p13_final = isErrorSufficient ? newAPA(1,3) : p13_noise;
+
             const auto p20_final = isErrorSufficient ? newAPA(2,0) : p20_noise;
             const auto p21_final = isErrorSufficient ? newAPA(2,1) : p21_noise;
             const auto p22_final = isErrorSufficient ? newAPA(2,2) : p22_noise;
+            const auto p23_final = isErrorSufficient ? newAPA(2,3) : p23_noise;
+
+            const auto p30_final = isErrorSufficient ? newAPA(3,0) : p30_noise;
+            const auto p31_final = isErrorSufficient ? newAPA(3,1) : p31_noise;
+            const auto p32_final = isErrorSufficient ? newAPA(3,2) : p32_noise;
+            const auto p33_final = isErrorSufficient ? newAPA(3,3) : p33_noise;
 
             const BLA::Matrix<N, N> P5 = {
-                p00_final, p01_final, p02_final, 0, 
-                p10_final, p11_final, p12_final, 0, 
-                p20_final, p21_final, p22_final, 0, 
-                0,         0,         0,         0
+                0,         0,         0,         0,
+                0, p11_final, p12_final, p13_final,
+                0, p21_final, p22_final, p23_final,
+                0, p31_final, p32_final, p33_final,
             };
 
             BLA::Matrix<N, N> P6;
@@ -368,12 +407,22 @@ class Ekf {
             _p00 = isErrorSufficient ? P6(0,0) : _p00;
             _p01 = isErrorSufficient ? P6(0,1) : _p01;
             _p02 = isErrorSufficient ? P6(0,2) : _p02;
+            _p03 = isErrorSufficient ? P6(0,3) : _p03;
+
             _p10 = isErrorSufficient ? P6(1,0) : _p10;
             _p11 = isErrorSufficient ? P6(1,1) : _p11;
             _p12 = isErrorSufficient ? P6(1,2) : _p12;
+            _p13 = isErrorSufficient ? P6(1,3) : _p13;
+
             _p20 = isErrorSufficient ? P6(2,0) : _p20;
             _p21 = isErrorSufficient ? P6(2,1) : _p21;
             _p22 = isErrorSufficient ? P6(2,2) : _p22;
+            _p23 = isErrorSufficient ? P6(2,3) : _p23;
+
+            _p30 = isErrorSufficient ? P6(3,0) : _p30;
+            _p31 = isErrorSufficient ? P6(3,1) : _p31;
+            _p32 = isErrorSufficient ? P6(3,2) : _p32;
+            _p33 = isErrorSufficient ? P6(3,3) : _p33;
 
             _qw = isErrorSufficient ? newtmpq0 / newnorm : _qw;
             _qx = isErrorSufficient ? newtmpq1 / newnorm : _qx;
