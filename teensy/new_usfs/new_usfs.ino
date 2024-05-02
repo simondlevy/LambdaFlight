@@ -66,14 +66,7 @@ float stream_channel3_raw;
 float stream_channel4_raw;
 float stream_channel5_raw;
 bool stream_radio_failsafe;
-float stream_accel_x;
-float stream_accel_y;
-float stream_accel_z;
-float stream_gyro_x;
-float stream_gyro_y;
-float stream_gyro_z;
-float stream_state_phi;
-float stream_state_theta;
+
 float stream_range_distance;
 
 // Motors set by Haskell
@@ -81,8 +74,6 @@ static int m1_command_PWM;
 static int m2_command_PWM;
 static int m3_command_PWM;
 static int m4_command_PWM;
-
-static float _statePsi;
 
 static vehicleState_t _vehicleState;
 
@@ -181,13 +172,21 @@ static void readImu(void)
     if (Usfs::eventStatusIsAccelerometer(eventStatus)) { 
 
         usfs.readAccelerometerScaled(
-                stream_accel_x, stream_accel_y, stream_accel_z);
+                stream_accel.x, stream_accel.y, stream_accel.z);
+
+        stream_ekfAction = EKF_UPDATE_WITH_ACCEL;
+
+        ekf_step();
     }
 
     if (Usfs::eventStatusIsGyrometer(eventStatus)) { 
 
         usfs.readGyrometerScaled(
-                stream_gyro_x, stream_gyro_y, stream_gyro_z);
+                stream_gyro.x, stream_gyro.y, stream_gyro.z);
+
+        stream_ekfAction = EKF_UPDATE_WITH_GYRO;
+
+        ekf_step();
     }
 }
 
@@ -254,17 +253,6 @@ static void maintainLoopRate(const uint32_t current_time)
 }
 
 
-static void ekfStep(void)
-{
-    stream_now_msec = millis();
-
-    ekf_step();
-
-    stream_state_phi = _vehicleState.phi;
-    stream_state_theta = -_vehicleState.theta; // note negation
-    _statePsi = _vehicleState.psi;
-}
-
 static void debug(const uint32_t current_time)
 {
     static uint32_t previous_time;
@@ -299,19 +287,19 @@ void debugRadio(void)
 void debugAccel(void) 
 {
     Serial.printf("accelX:%+3.3f accelY:%+3.3f accelZ:%+3.3f\n", 
-            stream_accel_x, stream_accel_y, stream_accel_z);
+            stream_accel.x, stream_accel.y, stream_accel.z);
 }
 
 void debugGyro(void) 
 {
     Serial.printf("gyroX:%+03.3f gyroY:%+03.3f gyroZ:%+03.3f\n", 
-            stream_gyro_x, stream_gyro_y, stream_gyro_z);
+            stream_gyro.x, stream_gyro.y, stream_gyro.z);
 }
 
 void debugState(void) 
 {
     Serial.printf("roll:%2.2f pitch:%2.2f yaw:%2.2f\n", 
-            stream_state_phi, stream_state_theta, _statePsi);
+            _vehicleState.phi, _vehicleState.theta, _vehicleState.psi);
 }
 
 void debugMotorCommands(void) 
@@ -368,8 +356,6 @@ void loop()
 
     readRangefinder();
 
-    ekfStep();
-
     copilot_step(); 
 
     runMotors();
@@ -382,23 +368,15 @@ void loop()
 
 // Called by Copilot ---------------------------------------------------------
 
-void debugEkf(const float qw)
-{
-    //Serial.printf("%+3.3f\n", qw);
-}
-
-void setStateIsInBounds(const bool inBounds)
+void foo(void)
 {
 }
 
 void setState(const vehicleState_t & vehicleState)
 {
+    memcpy(&_vehicleState, &vehicleState, sizeof(vehicleState));
 }
 
-void setMotors(const float m1, const float m2, const float m3, const float m4)
+void setStateIsInBounds(const bool inBounds)
 {
-    m1_command_PWM = m1;
-    m2_command_PWM = m2;
-    m3_command_PWM = m3;
-    m4_command_PWM = m4;
 }

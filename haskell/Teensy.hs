@@ -26,7 +26,7 @@ import Language.Copilot hiding(atan2)
 import Copilot.Compile.C99
 
 import Demands
-import Ekf
+-- import Ekf
 import Mixers
 import Motors
 import State
@@ -87,24 +87,6 @@ maxYaw = 160 :: SFloat
 
 -- IMU LP filter parameters
 b_gyro = 0.1 :: SFloat
-
------------------------------------------------------------------------------
-
-getGyro :: (SFloat, SFloat, SFloat)
-
-getGyro = (gyroX, gyroY, gyroZ) where
-
-  lpf = \v v' b -> let s = v in (1 - b) * v' + b * s
-
-  glpf = \g g' -> lpf g g' b_gyro
-
-  gyroX = glpf stream_gyro_x gyroX'
-  gyroY = glpf stream_gyro_y gyroY'
-  gyroZ = glpf stream_gyro_z gyroZ'
-
-  gyroX' = [0] ++ gyroX
-  gyroY' = [0] ++ gyroY
-  gyroZ' = [0] ++ gyroZ
 
 -----------------------------------------------------------------------------
 
@@ -208,18 +190,15 @@ step gyroX gyroY gyroZ = motors' where
 
 spec = do
 
-  --let (gyroX, gyroY, gyroZ) = getGyro
-
-  --let (m1_pwm, m2_pwm, m3_pwm, m4_pwm, c1) = step gyroX gyroY gyroZ
-  
-  -- let (qw, qx, qy, qz) = ekfStep
-
-  let val = ekfStep
-  trigger "debugEkf" true [arg val]
+  --let val = ekfStep
+  --trigger "debugEkf" true [arg val]
 
   --trigger "setVehicleState" true [arg qw, arg qx, arg qy, arg qz]
 
   --trigger "setMotors" true [arg m1_pwm, arg m2_pwm, arg m3_pwm, arg m4_pwm] 
+
+  trigger "foo" true []
+
 
 -- Compile the spec
 main = reify spec >>= 
