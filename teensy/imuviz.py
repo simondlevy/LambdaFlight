@@ -759,12 +759,18 @@ class Comms:
             byte = str(self.port.read(1).decode())
 
             if byte == '\n':
+
                 toks = line.split()
-                if len(toks) == 3:
-                    self.viz.roll_pitch_yaw = [
+
+                if len(toks) == 4:
+
+                    roll, pitch, yaw, alt = [
                             np.radians(float(toks[k].split(':')[1]))
-                            for k in range(3)]
-                    line = ''
+                            for k in range(4)]
+
+                    self.viz.roll_pitch_yaw = roll, pitch, yaw
+
+                line = ''
 
             else:
                 line += byte

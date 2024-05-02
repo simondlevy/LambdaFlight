@@ -303,8 +303,9 @@ void debugGyro(void)
 
 void debugState(void) 
 {
-    Serial.printf("roll:%2.2f pitch:%2.2f yaw:%2.2f\n", 
-            _vehicleState.phi, _vehicleState.theta, _vehicleState.psi);
+    Serial.printf("roll:%2.2f pitch:%2.2f yaw:%2.2f alt:%2.2f\n", 
+            _vehicleState.phi, _vehicleState.theta, _vehicleState.psi, 
+            _vehicleState.z);
 }
 
 void debugMotorCommands(void) 
