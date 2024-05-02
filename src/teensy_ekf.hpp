@@ -42,6 +42,7 @@ static const uint8_t N = 4;
 
 extern float stream_gyro_x, stream_gyro_y, stream_gyro_z;
 extern float stream_accel_x, stream_accel_y, stream_accel_z;
+extern float stream_range_distance;
 extern uint32_t stream_now_msec;
 
 class Ekf { 
@@ -74,7 +75,7 @@ class Ekf {
             // Attitude error
             static float _e0, _e1, _e2;
 
-            // ---------------------------------------------------------------
+            // Initialize -----------------------------------------------------
 
             initEntry(_p00, _didInit, square(STDEV_INITIAL_POSITION_Z));
             initEntry(_p01, _didInit);
@@ -115,6 +116,8 @@ class Ekf {
             _e2 = !_didInit ? 0 : _e2;
 
             _didInit = true;
+
+            // Predict --------------------------------------------------------
 
             const auto isFlying = true; // XXX
 
@@ -290,11 +293,13 @@ class Ekf {
                 stream_now_msec : 
                 _lastUpdateMsec;
 
+            // Finalize ------------------------------------------------------
+
             // Incorporate the attitude error (Kalman filter state) with the
             // attitude
-            const auto v0 = 0;//_e0;
-            const auto v1 = 0;//_e1;
-            const auto v2 = 0;//_e2;
+            const auto v0 = _e0;
+            const auto v1 = _e1;
+            const auto v2 = _e2;
 
             const auto newangle = sqrt(v0*v0 + v1*v1 + v2*v2) + EPS;
             const auto newca = cos(newangle / 2.0f);
