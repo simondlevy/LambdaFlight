@@ -67,8 +67,6 @@ float stream_channel4_raw;
 float stream_channel5_raw;
 bool stream_radio_failsafe;
 
-float stream_range_distance;
-
 // Motors set by Haskell
 static int m1_command_PWM;
 static int m2_command_PWM;
@@ -213,7 +211,7 @@ static void readRangefinder(void)
     static uint32_t msec_prev;
 
     if (msec_curr - msec_prev > (1000 / RANGEFINDER_FREQ)) {
-        stream_range_distance =  vl53l1.readDistance();
+        stream_rangefinder_distance =  vl53l1.readDistance();
         msec_prev = msec_curr;
 
         stream_ekfAction = EKF_UPDATE_WITH_RANGE;
@@ -276,7 +274,7 @@ static void debug(const uint32_t current_time)
 
 void debugRangefinder(void) 
 {
-    Serial.printf("dist: %f\n", stream_range_distance);
+    Serial.printf("dist: %f\n", stream_rangefinder_distance);
 }
 
 
