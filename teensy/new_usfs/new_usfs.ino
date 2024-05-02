@@ -15,6 +15,7 @@
 
 #define _MAIN
 
+#include <clock.hpp>
 #include <streams.h>
 #include <new_teensy_ekf.hpp>
 
@@ -48,6 +49,9 @@ static const bool VERBOSE = false;
 static const uint32_t RANGEFINDER_FREQ = 40;
 
 // ---------------------------------------------------------------------------
+
+static const uint32_t PREDICT_RATE = Clock::RATE_100_HZ; 
+static const uint32_t PREDICTION_UPDATE_INTERVAL_MS = 1000 / PREDICT_RATE;
 
 // Do not exceed 2000Hz, all filter paras tuned to 2000Hz by default
 static const uint32_t LOOP_RATE = 2000;
@@ -318,12 +322,24 @@ void debugLoopRate(void)
 
 static void ekfInit(void)
 {
+    stream_nowMsec = millis();
     stream_ekfAction = EKF_INIT;
     ekf_step();
 }
 
 static void ekfStep(void)
 {
+    static uint32_t nextPredictionMsec;
+
+    const auto nowMsec = millis();
+
+    stream_nowMsec = nowMsec;
+    stream_nextPredictionMsec = nextPredictionMsec;
+
+    if (nowMsec >= nextPredictionMsec) {
+        nextPredictionMsec = nowMsec + PREDICTION_UPDATE_INTERVAL_MS;
+    }
+
     stream_ekfAction = EKF_PREDICT;
     ekf_step();
 
@@ -336,6 +352,8 @@ static void ekfStep(void)
 
 void setup()
 {
+    stream_isFlying = false;  // XXX
+
     Serial.begin(115200);
 
     initImu();
