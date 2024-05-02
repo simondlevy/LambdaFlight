@@ -318,6 +318,24 @@ void debugLoopRate(void)
     Serial.printf("dt:%f\n", stream_dt*1e6);
 }
 
+static void ekfInit(void)
+{
+    stream_ekfAction = EKF_INIT;
+    ekf_step();
+}
+
+static void ekfStep(void)
+{
+    stream_ekfAction = EKF_PREDICT;
+    ekf_step();
+
+    stream_ekfAction = EKF_FINALIZE;
+    ekf_step();
+
+    stream_ekfAction = EKF_GET_STATE;
+    ekf_step();
+}
+
 void setup()
 {
     Serial.begin(115200);
@@ -334,8 +352,7 @@ void setup()
 
     delay(5);
 
-    stream_ekfAction = EKF_INIT;
-    ekf_step();
+    ekfInit();
 
     motors.arm();
 
@@ -358,6 +375,8 @@ void loop()
     readImu();
 
     readRangefinder();
+
+    ekfStep();
 
     copilot_step(); 
 
