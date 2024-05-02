@@ -266,18 +266,18 @@ static void ekfStep(void)
 static void debug(const uint32_t current_time)
 {
 
-    static uint32_t print_counter;
+    static uint32_t previous_time;
 
-    if (current_time - print_counter > 10000) {
+    if (current_time - previous_time > 10000) {
 
-        print_counter = micros();
+        previous_time = current_time;
 
         //debugAccel();  
         //debugGyro();  
-        //debugState();  
+        debugState();  
         //debugMotorCommands(); 
         //debugLoopRate();      
-        debugRangefinder();      
+        //debugRangefinder();      
     }
 }
 

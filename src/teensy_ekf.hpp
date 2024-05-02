@@ -75,18 +75,17 @@ class Ekf {
 
             // ---------------------------------------------------------------
 
-            _p00 = !_didInit ?  
-                square(STDEV_INITIAL_ATTITUDE_ROLL_PITCH) : _p00;
-            _p01 = !_didInit ? 0 : _p01;
-            _p02 = !_didInit ? 0 : _p02;
-            _p10 = !_didInit ? 0 : _p10;
-            _p11 = !_didInit ?  
-                square(STDEV_INITIAL_ATTITUDE_ROLL_PITCH) : _p11;
-            _p12 = !_didInit ? 0 : _p12;
-            _p20 = !_didInit ? 0 : _p20;
-            _p21 = !_didInit ? 0 : _p21;
-            _p22 = !_didInit ?  
-                square(STDEV_INITIAL_ATTITUDE_YAW) : _p22;
+            initEntry(_p00, _didInit, square(STDEV_INITIAL_ATTITUDE_ROLL_PITCH));
+            initEntry(_p01, _didInit);
+            initEntry(_p02, _didInit);
+
+            initEntry(_p10, _didInit);
+            initEntry(_p11, _didInit, square(STDEV_INITIAL_ATTITUDE_ROLL_PITCH));
+            initEntry(_p12, _didInit);
+
+            initEntry(_p20, _didInit);
+            initEntry(_p21, _didInit);
+            initEntry(_p22, _didInit, square(STDEV_INITIAL_ATTITUDE_YAW));
 
             _qw = !_didInit ? QW_INIT : _qw;
             _qx = !_didInit ? QX_INIT : _qx;
@@ -422,6 +421,10 @@ class Ekf {
 
     private:
 
+        static void initEntry(float & entry, const bool didInit, const float value=0)
+        {
+            entry = didInit ? entry : value;
+        }
 
         static float rotateQuat(
                 const float val, 
