@@ -51,7 +51,6 @@ static constexpr float RANGEFINDER_EXP_COEFF =
 logf( RANGEFINDER_EXP_STD_B / RANGEFINDER_EXP_STD_A) / 
 (RANGEFINDER_EXP_POINT_B - RANGEFINDER_EXP_POINT_A);
 
-static const int16_t FLOW_OUTLIER_LIMIT = 100;
 static constexpr float FLOW_STD_FIXED = 2.0;
 
 // Indexes to access the state
