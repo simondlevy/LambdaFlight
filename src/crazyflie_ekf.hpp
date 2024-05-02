@@ -48,8 +48,11 @@ static constexpr float RANGEFINDER_EXP_POINT_B = 4.0;
 static constexpr float RANGEFINDER_EXP_STD_B = 0.2;   
 
 static constexpr float RANGEFINDER_EXP_COEFF = 
-  logf( RANGEFINDER_EXP_STD_B / RANGEFINDER_EXP_STD_A) / 
-  (RANGEFINDER_EXP_POINT_B - RANGEFINDER_EXP_POINT_A);
+logf( RANGEFINDER_EXP_STD_B / RANGEFINDER_EXP_STD_A) / 
+(RANGEFINDER_EXP_POINT_B - RANGEFINDER_EXP_POINT_A);
+
+static const int16_t FLOW_OUTLIER_LIMIT = 100;
+static constexpr float FLOW_STD_FIXED = 2.0;
 
 // Indexes to access the state
 enum {
@@ -572,7 +575,7 @@ static bool ekf_updateWithFlow(
             ekfs_in,
             hx, 
             measuredNX-predictedNX, 
-            stream_flow.stdDevX*FLOW_RESOLUTION, 
+            FLOW_STD_FIXED*FLOW_RESOLUTION, 
             p_first,
             ekfs_first);
 
@@ -593,7 +596,7 @@ static bool ekf_updateWithFlow(
             ekfs_first,
             hy, 
             measuredNY-predictedNY, 
-            stream_flow.stdDevY*FLOW_RESOLUTION, 
+            FLOW_STD_FIXED*FLOW_RESOLUTION, 
             p_out,
             ekfs_out);
 

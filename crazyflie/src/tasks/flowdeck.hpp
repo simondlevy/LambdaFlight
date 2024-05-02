@@ -55,9 +55,6 @@ class FlowDeckTask : public FreeRTOSTask {
 
         static const int16_t FLOW_OUTLIER_LIMIT = 100;
 
-        // Set standard deviation flow
-        static constexpr float FLOW_STD_FIXED = 2.0;
-
         static void runFlowdeckTask(void *obj)
         {
             ((FlowDeckTask *)obj)->run();
@@ -93,8 +90,6 @@ class FlowDeckTask : public FreeRTOSTask {
 
                     // Form flow measurement struct and push into the EKF
                     flowMeasurement_t flowData;
-                    flowData.stdDevX = FLOW_STD_FIXED;
-                    flowData.stdDevY = FLOW_STD_FIXED;
                     flowData.dt = (float)(micros()-lastTime)/1000000.0f;
                     // we do want to update dt every measurement and not only in the
                     // ones with detected motion, as we work with instantaneous gyro

@@ -81,8 +81,6 @@ typedef union {
 typedef struct flowMeasurement_s {
     float dpixelx;  // Accumulated pixel count x
     float dpixely;  // Accumulated pixel count y
-    float stdDevX;      // Measurement standard deviation
-    float stdDevY;      // Measurement standard deviation
     float dt;           // Time during which pixels were accumulated
 } flowMeasurement_t;
 
