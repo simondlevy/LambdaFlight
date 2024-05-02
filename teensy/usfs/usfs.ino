@@ -73,7 +73,6 @@ float stream_gyro_z;
 float stream_state_phi;
 float stream_state_theta;
 float stream_range_distance;
-float stream_range_stdev;
 
 // Motors set by Haskell
 static int m1_command_PWM;
@@ -285,8 +284,7 @@ static void debug(const uint32_t current_time)
 
 void debugRangefinder(void) 
 {
-    Serial.printf("dist: %f  stdev: %f\n", 
-        stream_range_distance, stream_range_stdev);
+    Serial.printf("dist: %f\n", stream_range_distance);
 }
 
 
@@ -308,7 +306,6 @@ void debugGyro(void)
     Serial.printf("gyroX:%+03.3f gyroY:%+03.3f gyroZ:%+03.3f\n", 
             stream_gyro_x, stream_gyro_y, stream_gyro_z);
 }
-
 
 void debugState(void) 
 {

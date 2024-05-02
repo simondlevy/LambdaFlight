@@ -37,7 +37,7 @@ static const float ROLLPITCH_ZERO_REVERSION = 0.001;
 static const uint32_t PREDICTION_RATE = 100;
 static const uint32_t PREDICTION_UPDATE_INTERVAL_MS = 1000 / PREDICTION_RATE;
 
-static const uint8_t N = 7;
+static const uint8_t N = 4;
 
 extern float stream_gyro_x, stream_gyro_y, stream_gyro_z;
 extern float stream_accel_x, stream_accel_y, stream_accel_z;
@@ -58,13 +58,10 @@ class Ekf {
 
             // Covariance matrix entries
             static float 
-                _p00, _p01, _p02, _p03, _p04, _p05, _p06,
-                _p10, _p11, _p12, _p13, _p14, _p15, _p16,
-                _p20, _p21, _p22, _p23, _p24, _p25, _p26,
-                _p30, _p31, _p32, _p33, _p34, _p35, _p36,
-                _p40, _p41, _p42, _p43, _p44, _p45, _p46,
-                _p50, _p51, _p52, _p53, _p54, _p55, _p56,
-                _p60, _p61, _p62, _p63, _p64, _p65, _p66;
+                _p00, _p01, _p02, _p03, 
+                _p10, _p11, _p12, _p13,
+                _p20, _p21, _p22, _p23,
+                _p30, _p31, _p32, _p33;
 
             // Quaternion
             static float _qw, _qx, _qy, _qz;
@@ -180,23 +177,17 @@ class Ekf {
             // ====== COVARIANCE UPDATE ======
 
             const BLA::Matrix<N, N> A = {
-                e0e0, e0e1, e0e2, 0, 0, 0, 0,
-                e1e0, e1e1, e1e2, 0, 0, 0, 0,
-                e2e0, e2e1, e2e2, 0, 0, 0, 0,
-                0, 0, 0, 0, 0, 0, 0,
-                0, 0, 0, 0, 0, 0, 0,
-                0, 0, 0, 0, 0, 0, 0,
-                0, 0, 0, 0, 0, 0, 0
+                e0e0, e0e1, e0e2, 0, 
+                e1e0, e1e1, e1e2, 0,
+                e2e0, e2e1, e2e2, 0,
+                0,    0,    0,    0
             };
 
             const BLA::Matrix<N, N> P = { 
-                _p00, _p01, _p02, _p03, _p04, _p05, _p06,
-                _p10, _p11, _p12, _p13, _p14, _p15, _p16,
-                _p20, _p21, _p22, _p23, _p24, _p25, _p26,
-                _p30, _p31, _p32, _p33, _p34, _p35, _p36,
-                _p40, _p41, _p42, _p43, _p44, _p45, _p46,
-                _p50, _p51, _p52, _p53, _p54, _p55, _p56,
-                _p60, _p61, _p62, _p63, _p64, _p65, _p66
+                _p00, _p01, _p02, _p03,
+                _p10, _p11, _p12, _p13,
+                _p20, _p21, _p22, _p23,
+                _p30, _p31, _p32, _p33
             };
 
             const auto APA = A * P * ~A;
@@ -247,13 +238,10 @@ class Ekf {
             const auto p22_pred = shouldPredict ? APA(2,2) + noise : _p22;
 
             const BLA::Matrix<N, N> P_pred = { 
-                p00_pred, p01_pred, p02_pred, 0, 0, 0, 0, 
-                p10_pred, p11_pred, p12_pred, 0, 0, 0, 0,
-                p20_pred, p21_pred, p22_pred, 0, 0, 0, 0,
-                0, 0, 0, 0, 0, 0, 0,
-                0, 0, 0, 0, 0, 0, 0,
-                0, 0, 0, 0, 0, 0, 0,
-                0, 0, 0, 0, 0, 0, 0
+                p00_pred, p01_pred, p02_pred, 0, 
+                p10_pred, p11_pred, p12_pred, 0, 
+                p20_pred, p21_pred, p22_pred, 0, 
+                0,        0,        0,        0
             };
 
             BLA::Matrix<N, N> P3; 
@@ -342,23 +330,17 @@ class Ekf {
 
             // Matrix to rotate the attitude covariances once updated
             const BLA::Matrix<N, N> newA = {
-                newe0e0, newe0e1, newe0e2, 0, 0, 0, 0,
-                newe1e0, newe1e1, newe1e2, 0, 0, 0, 0,
-                newe2e0, newe2e1, newe2e2, 0, 0, 0, 0,
-                0, 0, 0, 0, 0, 0, 0,
-                0, 0, 0, 0, 0, 0, 0,
-                0, 0, 0, 0, 0, 0, 0,
-                0, 0, 0, 0, 0, 0, 0
+                newe0e0, newe0e1, newe0e2, 0, 
+                newe1e0, newe1e1, newe1e2, 0, 
+                newe2e0, newe2e1, newe2e2, 0, 
+                0,       0,       0,       0
             };
 
             const BLA::Matrix<N, N> P4 = { 
-                p00_noise, p01_noise, p02_noise, 0, 0, 0, 0,
-                p10_noise, p11_noise, p12_noise, 0, 0, 0, 0,
-                p20_noise, p21_noise, p22_noise, 0, 0, 0, 0,
-                0, 0, 0, 0, 0, 0, 0,
-                0, 0, 0, 0, 0, 0, 0,
-                0, 0, 0, 0, 0, 0, 0,
-                0, 0, 0, 0, 0, 0, 0
+                p00_noise, p01_noise, p02_noise, 0, 
+                p10_noise, p11_noise, p12_noise, 0, 
+                p20_noise, p21_noise, p22_noise, 0, 
+                0,         0,         0,         0 
             };
 
             const auto newAPA = newA * P4 * ~newA;
@@ -374,13 +356,10 @@ class Ekf {
             const auto p22_final = isErrorSufficient ? newAPA(2,2) : p22_noise;
 
             const BLA::Matrix<N, N> P5 = {
-                p00_final, p01_final, p02_final, 0, 0, 0, 0,
-                p10_final, p11_final, p12_final, 0, 0, 0, 0,
-                p20_final, p21_final, p22_final, 0, 0, 0, 0,
-                0, 0, 0, 0, 0, 0, 0,
-                0, 0, 0, 0, 0, 0, 0,
-                0, 0, 0, 0, 0, 0, 0,
-                0, 0, 0, 0, 0, 0, 0
+                p00_final, p01_final, p02_final, 0, 
+                p10_final, p11_final, p12_final, 0, 
+                p20_final, p21_final, p22_final, 0, 
+                0,         0,         0,         0
             };
 
             BLA::Matrix<N, N> P6;
