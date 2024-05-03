@@ -142,7 +142,6 @@ ekfStep = tmpq0 / norm where
 
   norm = sqrt (tmpq0*tmpq0 + tmpq1*tmpq1 + tmpq2*tmpq2 + tmpq3*tmpq3) + eps
 
-
   qw = tmpq0 / norm
   qx = tmpq1 / norm
   qy = tmpq2 / norm
@@ -154,8 +153,3 @@ ekfStep = tmpq0 / norm where
   _qx = [0] ++ qx
   _qy = [0] ++ qy
   _qz = [0] ++ qz
-
-  _didInit = [False] ++ true
-  _nextPredictionMsec = [0] ++ nextPredictionMsec
-  _lastPredictionMsec = [0] ++ lastPredictionMsec
-  _lastUpdateMsec = [0] ++ lastUpdateMsec
