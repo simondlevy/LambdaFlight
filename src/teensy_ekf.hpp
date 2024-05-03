@@ -346,23 +346,46 @@ class Ekf {
 
             const auto error = measuredDistance - predictedDistance; 
 
-            _z     += g(0) * error;
-            _ang_x += g(1) * error;
-            _ang_y += g(2) * error;
-            _ang_z += g(3) * error;
+            _z     += shouldUpdate ? g(0) * error : 0;
+            _ang_x += shouldUpdate ? g(1) * error : 0;
+            _ang_y += shouldUpdate ? g(2) * error : 0;
+            _ang_z += shouldUpdate ? g(3) * error : 0;
 
             BLA::Matrix<N,N> GH;
 
             outer(g, h, GH);
 
+            BLA::Matrix<N,N> I = {
+
+                1, 0, 0, 0,
+                0, 1, 0, 0,
+                0, 0, 1, 0,
+                0, 0, 0, 1
+            };
+
+            GH -= I;
+
+            /*
+            auto P4 = GH * P3 * ~GH;
+
+            for (int i=0; i<N; i++) {
+                for (int j=0; j<N; j++) {
+                    P4(i,j) += j < i ? 0 : r * g(i) * g(j);
+                }
+            }
+
+            BLA::Matrix<N,N> P5;
+
+            updateCovarianceMatrix(P4, P5);
+            */
 
             // Finalize ------------------------------------------------------
 
             // Incorporate the attitude error (Kalman filter state) with the
             // attitude
-            const auto v0 = _e0;
-            const auto v1 = _e1;
-            const auto v2 = _e2;
+            const auto v0 = _ang_x;
+            const auto v1 = _ang_y;
+            const auto v2 = _ang_z;
 
             const auto angle2 = sqrt(v0*v0 + v1*v1 + v2*v2) + EPS;
             const auto newca = cos(angle2 / 2.0f);
@@ -560,6 +583,11 @@ class Ekf {
         static void outer( const BLA::Matrix<N> x, const BLA::Matrix<N> y,
                 BLA::Matrix<N,N> & a) 
         {
+            for (uint8_t i=0; i<N; ++i) {
+                for (uint8_t j=0; j<N; ++j) {
+                    a(i,j) = x(i) * y(j);
+                }
+            }
         }
 
 
