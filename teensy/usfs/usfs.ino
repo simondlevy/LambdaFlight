@@ -72,7 +72,7 @@ float stream_gyro_y;
 float stream_gyro_z;
 float stream_state_phi;
 float stream_state_theta;
-float stream_range_distance;
+float stream_rangefinder_distance;
 
 // Motors set by Haskell
 static int m1_command;
@@ -212,7 +212,7 @@ static void readRangefinder(void)
     static uint32_t msec_prev;
 
     if (msec_curr - msec_prev > (1000 / RANGEFINDER_FREQ)) {
-        stream_range_distance =  vl53l1.readDistance();
+        stream_rangefinder_distance =  vl53l1.readDistance();
         msec_prev = msec_curr;
     }
 
@@ -284,7 +284,7 @@ static void debug(const uint32_t current_time)
 
 void debugRangefinder(void) 
 {
-    Serial.printf("dist: %f\n", stream_range_distance);
+    Serial.printf("dist: %f\n", stream_rangefinder_distance);
 }
 
 

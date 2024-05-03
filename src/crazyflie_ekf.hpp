@@ -508,6 +508,7 @@ static bool ekf_updateWithRange(
     // (\hat{h} -> infty when R[2][2] -> 0)
     const auto shouldUpdate = fabs(rz) > 0.1f && rz > 0 && 
         stream_rangefinder_distance < RANGEFINDER_OUTLIER_LIMIT_MM;
+
     if (shouldUpdate) {
         scalarUpdate(
                 p_in,

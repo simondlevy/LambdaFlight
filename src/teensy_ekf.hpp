@@ -38,11 +38,23 @@ static const float ROLLPITCH_ZERO_REVERSION = 0.001;
 static const uint32_t PREDICTION_RATE = 100;
 static const uint32_t PREDICTION_UPDATE_INTERVAL_MS = 1000 / PREDICTION_RATE;
 
+static const uint16_t RANGEFINDER_OUTLIER_LIMIT_MM = 5000;
+
+// Rangefinder measurement noise model
+static constexpr float RANGEFINDER_EXP_POINT_A = 2.5;
+static constexpr float RANGEFINDER_EXP_STD_A = 0.0025; 
+static constexpr float RANGEFINDER_EXP_POINT_B = 4.0;
+static constexpr float RANGEFINDER_EXP_STD_B = 0.2;   
+
+static constexpr float RANGEFINDER_EXP_COEFF = 
+logf( RANGEFINDER_EXP_STD_B / RANGEFINDER_EXP_STD_A) / 
+(RANGEFINDER_EXP_POINT_B - RANGEFINDER_EXP_POINT_A);
+
 static const uint8_t N = 4;
 
 extern float stream_gyro_x, stream_gyro_y, stream_gyro_z;
 extern float stream_accel_x, stream_accel_y, stream_accel_z;
-extern float stream_range_distance;
+extern float stream_rangefinder_distance;
 extern uint32_t stream_now_msec;
 
 class Ekf { 
@@ -65,8 +77,14 @@ class Ekf {
                 _p20, _p21, _p22, _p23,
                 _p30, _p31, _p32, _p33;
 
-            // Quaternion
+            // Quaternion (angular state components)
             static float _qw, _qx, _qy, _qz;
+
+            // Angular state components
+            static float _ang_x, _ang_y, _ang_z;
+
+            // Linear state components
+            static float _z;
 
             // Third row (Z) of attitude as a rotation matrix (used by
             // prediction, updated by finalization)
@@ -293,6 +311,47 @@ class Ekf {
                 stream_now_msec : 
                 _lastUpdateMsec;
 
+            // Update with range ---------------------------------------------
+
+            const auto angle1 = max(0, 
+                    fabsf(acosf(_r22)) - DEGREES_TO_RADIANS * (15.0f / 2.0f));
+
+            const auto predictedDistance = _z / cosf(angle1);
+
+            // mm => m
+            const auto measuredDistance = stream_rangefinder_distance / 1000; 
+
+            const auto stdMeasNoise =
+                RANGEFINDER_EXP_STD_A * 
+                (1 + expf(RANGEFINDER_EXP_COEFF * 
+                          (measuredDistance - RANGEFINDER_EXP_POINT_A)));
+
+            const BLA::Matrix<N> h = {1 / cosf(angle1), 0, 0, 0};
+
+            const auto ph = P3 * h;
+
+            const auto shouldUpdate = fabs(_r22) > 0.1f && _r22 > 0 && 
+                stream_rangefinder_distance < RANGEFINDER_OUTLIER_LIMIT_MM;
+
+            const auto r = stdMeasNoise * stdMeasNoise;
+
+            const auto hphr = r + dot(h, ph);
+
+            const BLA::Matrix<N> g = {
+                ph(0) / hphr, 
+                ph(1) / hphr, 
+                ph(2) / hphr, 
+                ph(3) / hphr
+            }; 
+
+            const auto error = measuredDistance - predictedDistance; 
+
+            _z     += g(0) * error;
+            _ang_x += g(1) * error;
+            _ang_y += g(2) * error;
+            _ang_z += g(3) * error;
+
+
             // Finalize ------------------------------------------------------
 
             // Incorporate the attitude error (Kalman filter state) with the
@@ -301,14 +360,14 @@ class Ekf {
             const auto v1 = _e1;
             const auto v2 = _e2;
 
-            const auto newangle = sqrt(v0*v0 + v1*v1 + v2*v2) + EPS;
-            const auto newca = cos(newangle / 2.0f);
-            const auto newsa = sin(newangle / 2.0f);
+            const auto angle2 = sqrt(v0*v0 + v1*v1 + v2*v2) + EPS;
+            const auto newca = cos(angle2 / 2.0f);
+            const auto newsa = sin(angle2 / 2.0f);
 
             const auto newdqw = newca;
-            const auto newdqx = newsa * v0 / newangle;
-            const auto newdqy = newsa * v1 / newangle;
-            const auto newdqz = newsa * v2 / newangle;
+            const auto newdqx = newsa * v0 / angle2;
+            const auto newdqy = newsa * v1 / angle2;
+            const auto newdqz = newsa * v2 / angle2;
 
             // Rotate the quad's attitude by the delta quaternion vector
             // computed above
@@ -482,6 +541,17 @@ class Ekf {
         }
 
     private:
+
+        static float dot(const BLA::Matrix<N> x, const BLA::Matrix<N> y) 
+        {
+            float d = 0;
+
+            for (uint8_t i=0; i<N; ++i) {
+                d += x(i) * y(i);
+            }
+
+            return d;
+        }
 
         static void initEntry(float & entry, const bool didInit, const float value=0)
         {
