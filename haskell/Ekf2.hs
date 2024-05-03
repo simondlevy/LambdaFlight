@@ -117,17 +117,11 @@ ekfStep = tmpq0 / norm where
 
   isFlying = true -- XXX
 
-  shouldPredict = stream_now_msec >= _nextPredictionMsec
-
-  dt = getDt stream_now_msec lastPredictionMsec
+  dt = 0.005
 
   gyro_sample_x = stream_gyro_x * degrees_to_radians
   gyro_sample_y = stream_gyro_y * degrees_to_radians
   gyro_sample_z = stream_gyro_z * degrees_to_radians
-
-  e0 = gyro_sample_x * dt / 2
-  e1 = gyro_sample_y * dt / 2
-  e2 = gyro_sample_z * dt / 2
 
   dtwx = dt * gyro_sample_x
   dtwy = dt * gyro_sample_y
@@ -148,86 +142,11 @@ ekfStep = tmpq0 / norm where
 
   norm = sqrt (tmpq0*tmpq0 + tmpq1*tmpq1 + tmpq2*tmpq2 + tmpq3*tmpq3) + eps
 
-  lastPredictionMsec = if _lastPredictionMsec == 0  || shouldPredict
-                        then stream_now_msec 
-                        else _lastPredictionMsec
 
-  nextPredictionMsec = if _nextPredictionMsec == 0 
-                        then stream_now_msec 
-                        else if stream_now_msec >= _nextPredictionMsec
-                        then stream_now_msec + prediction_update_interval_msec
-                        else _nextPredictionMsec
-
-  qw_pred = if shouldPredict then tmpq0 / norm else _qw
-  qx_pred = if shouldPredict then tmpq1 / norm else _qx 
-  qy_pred = if shouldPredict then tmpq2 / norm else _qy 
-  qz_pred = if shouldPredict then tmpq3 / norm else _qz
-
-  dt' = getDt stream_now_msec lastUpdateMsec
-
-  isDtPositive = dt' > 0
-
-  noise = if isDtPositive then (meas_gyro + dt' + proc_att) ** 2 else 0
-
-  lastUpdateMsec = if _lastUpdateMsec == 0 || isDtPositive 
-                   then  stream_now_msec 
-                   else _lastUpdateMsec
-
-  -- Incorporate the attitude error (Kalman filter state) with the attitude
-  v0 = 0 -- e0
-  v1 = 0 -- e1
-  v2 = 0 -- e2
-
-  newangle = sqrt (v0*v0 + v1*v1 + v2*v2) + eps
-  newca = cos(newangle / 2)
-  newsa = sin(newangle / 2)
-
-  newdqw = newca
-  newdqx = newsa * v0 / newangle
-  newdqy = newsa * v1 / newangle
-  newdqz = newsa * v2 / newangle
-            
-  -- Rotate the quad's attitude by the delta quaternion vector computed above
-  newtmpq0 = newdqw * _qw - newdqx * _qx - newdqy * _qy - newdqz * _qz
-  newtmpq1 = newdqx * _qw + newdqw * _qx + newdqz * _qy - newdqy * _qz
-  newtmpq2 = newdqy * _qw - newdqz * _qx + newdqw * _qy + newdqx * _qz
-  newtmpq3 = newdqz * _qw + newdqy * _qx - newdqx * _qy + newdqw * _qz
-
-   -- Normalize and store the result
-  newnorm = sqrt (newtmpq0 * newtmpq0 + newtmpq1 * newtmpq1 + 
-                  newtmpq2 * newtmpq2 + newtmpq3 * newtmpq3) + eps
-
-  -- The attitude error vector (v0,v1,v2) is small,  so we use a first-order
-  -- approximation to e0 = tan(|v0|/2)*v0/|v0|
-  newe0 = v0 / 2 
-  newe1 = v1 / 2 
-  newe2 = v2 / 2
-
-  newe0e0 =  1 - newe1*newe1/2 - newe2*newe2/2
-  newe0e1 =  newe2 + newe0*newe1/2
-  newe0e2 = -newe1 + newe0*newe2/2
-
-  newe1e0 =  -newe2 + newe0*newe1/2
-  newe1e1 = 1 - newe0*newe0/2 - newe2*newe2/2
-  newe1e2 = newe0 + newe1*newe2/2
-
-  newe2e0 = newe1 + newe0*newe2/2
-  newe2e1 = -newe0 + newe1*newe2/2
-  newe2e2 = 1 - newe0*newe0/2 - newe1*newe1/2
-
-  isErrorSufficient  = 
-    (isErrorLarge v0 || isErrorLarge v1 || isErrorLarge v2) &&
-    isErrorInBounds v0 && isErrorInBounds v1 && isErrorInBounds v2
-
-  -- Matrix to rotate the attitude covariances once updated
-  newa = [ [newe0e0, newe0e1, newe0e2],
-           [newe1e0, newe1e1, newe1e2],
-           [newe2e0, newe2e1, newe2e2] ]
-
-  qw = if isErrorSufficient then newtmpq0 / newnorm else qw_pred
-  qx = if isErrorSufficient then newtmpq1 / newnorm else qx_pred
-  qy = if isErrorSufficient then newtmpq2 / newnorm else qy_pred
-  qz = if isErrorSufficient then newtmpq3 / newnorm else qz_pred
+  qw = tmpq0 / norm
+  qx = tmpq1 / norm
+  qy = tmpq2 / norm
+  qz = tmpq3 / norm
 
    -- Internal state, represented as streams ----------------------------------
 
