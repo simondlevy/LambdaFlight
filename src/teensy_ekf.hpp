@@ -351,6 +351,10 @@ class Ekf {
             _ang_y += g(2) * error;
             _ang_z += g(3) * error;
 
+            BLA::Matrix<N,N> GH;
+
+            outer(g, h, GH);
+
 
             // Finalize ------------------------------------------------------
 
@@ -552,6 +556,12 @@ class Ekf {
 
             return d;
         }
+
+        static void outer( const BLA::Matrix<N> x, const BLA::Matrix<N> y,
+                BLA::Matrix<N,N> & a) 
+        {
+        }
+
 
         static void initEntry(float & entry, const bool didInit, const float value=0)
         {
