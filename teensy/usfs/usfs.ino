@@ -8,12 +8,12 @@
 #include <sbus.h>
 
 #include <usfs.hpp>
-#include <vl53l1_arduino.h>
+//#include <vl53l1_arduino.h>
 #include <oneshot125.hpp>
 
 #include <vector>
 
-#include <teensy_ekf.hpp>
+#include <foo_ekf.hpp>
 
 void copilot_step(void);
 
@@ -37,6 +37,8 @@ static const uint8_t BARO_RATE       = 50;
 static const uint8_t INTERRUPT_ENABLE = Usfs::INTERRUPT_RESET_REQUIRED |
 Usfs::INTERRUPT_ERROR |
 Usfs::INTERRUPT_QUAT;
+
+//static const float RADIANS_TO_DEGREES = 180.0f / M_PI;
 
 static const bool VERBOSE = false;
 
@@ -72,6 +74,7 @@ float stream_gyro_y;
 float stream_gyro_z;
 float stream_state_phi;
 float stream_state_theta;
+float stream_state_psi;
 float stream_rangefinder_distance;
 
 // Motors set by Haskell
@@ -80,9 +83,11 @@ static int m2_command;
 static int m3_command;
 static int m4_command;
 
-static float _statePsi;
 
-static vehicleState_t _vehicleState;
+static float _qw;
+static float _qx;
+static float _qy;
+static float _qz;
 
 // ---------------------------------------------------------------------------
 
@@ -90,7 +95,7 @@ static const uint8_t REPORT_HZ = 2;
 
 static Usfs usfs;
 
-static auto vl53l1 = VL53L1_Arduino(&Wire1);
+//static auto vl53l1 = VL53L1_Arduino(&Wire1);
 
 static void powerPin(const uint8_t pin, const bool hilo)
 {
@@ -148,7 +153,7 @@ static void initImu(void)
     Wire1.begin(); 
     delay(100);
 
-    vl53l1.begin();
+    //vl53l1.begin();
 
     usfs.loadFirmware(VERBOSE); 
 
@@ -212,7 +217,7 @@ static void readRangefinder(void)
     static uint32_t msec_prev;
 
     if (msec_curr - msec_prev > (1000 / RANGEFINDER_FREQ)) {
-        stream_rangefinder_distance =  vl53l1.readDistance();
+        stream_rangefinder_distance =  0;//vl53l1.readDistance();
         msec_prev = msec_curr;
     }
 
@@ -256,11 +261,19 @@ static void ekfStep(void)
 {
     stream_now_msec = millis();
 
-    Ekf::step(_vehicleState);
+    Ekf::step();
 
-    stream_state_phi = _vehicleState.phi;
-    stream_state_theta = -_vehicleState.theta; // note negation
-    _statePsi = _vehicleState.psi;
+    stream_state_phi = 
+        RADIANS_TO_DEGREES * atan2((2 * (_qy*_qz + _qw*_qx)),
+                (_qw*_qw - _qx*_qx - _qy*_qy + _qz*_qz));
+
+    // Negate for ENU
+    stream_state_theta = -RADIANS_TO_DEGREES * asin((-2) * 
+            (_qx*_qz - _qw*_qy));
+
+    stream_state_psi = RADIANS_TO_DEGREES * 
+        atan2((2 * (_qx*_qy + _qw*_qz)),
+                (_qw*_qw + _qx*_qx - _qy*_qy - _qz*_qz));
 }
 
 static void debug(const uint32_t current_time)
@@ -274,7 +287,7 @@ static void debug(const uint32_t current_time)
 
         //debugAccel();  
         //debugGyro();  
-        debugState();  
+        //debugState();  
         //debugMotorCommands(); 
         //debugLoopRate();      
         //debugRangefinder();      
@@ -310,7 +323,7 @@ void debugGyro(void)
 void debugState(void) 
 {
     Serial.printf("roll:%2.2f pitch:%2.2f yaw:%2.2f alt:0\n", 
-            stream_state_phi, stream_state_theta, _statePsi);
+            stream_state_phi, stream_state_theta, stream_state_psi);
 }
 
 void debugMotorCommands(void) 
@@ -364,9 +377,9 @@ void loop()
 
     readRangefinder();
 
-    ekfStep();
-
     copilot_step(); 
+
+    ekfStep();
 
     runMotors();
 
@@ -378,9 +391,20 @@ void loop()
 
 // Called by Copilot ---------------------------------------------------------
 
-void debugEkf(const float qw)
+void setVehicleState(
+        const float qw, const float qx, const float qy, const float qz)
 {
-    //Serial.printf("%+3.3f\n", qw);
+    //Serial.printf("%f\n", qw);
+
+    _qw  = qw;
+    _qx  = qx;
+    _qy  = qy;
+    _qz  = qz;
+}
+
+void debugEkf(const float foo)
+{
+    Serial.printf("h: %f\n\n", foo);
 }
 
 void setMotors(const float m1, const float m2, const float m3, const float m4)

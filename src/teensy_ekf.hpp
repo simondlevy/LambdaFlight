@@ -61,7 +61,7 @@ class Ekf {
 
     public:
 
-        static void step(vehicleState_t & vehicleState)
+        static void step(/*vehicleState_t & vehicleState*/)
         {
             // Internal state ------------------------------------------------
 
@@ -202,6 +202,8 @@ class Ekf {
             const auto norm = 
                 sqrt(tmpq0*tmpq0 + tmpq1*tmpq1 + tmpq2*tmpq2 + tmpq3*tmpq3) + 
                 EPS;
+
+            Serial.printf("c: %f\n", tmpq0/norm);
 
             // ====== COVARIANCE UPDATE ======
 
@@ -549,6 +551,7 @@ class Ekf {
 
             // Get the vehicle state -----------------------------------------
 
+            /*
             vehicleState.phi = 
                 RADIANS_TO_DEGREES * atan2((2 * (_qy*_qz + _qw*_qx)),
                         (_qw*_qw - _qx*_qx - _qy*_qy + _qz*_qz));
@@ -565,6 +568,7 @@ class Ekf {
             vehicleState.dphi =    stream_gyro_x;
             vehicleState.dtheta = -stream_gyro_y; // negate for ENU
             vehicleState.dpsi =    stream_gyro_z;
+            */
         }
 
     private:

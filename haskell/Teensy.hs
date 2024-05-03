@@ -26,7 +26,7 @@ import Language.Copilot hiding(atan2)
 import Copilot.Compile.C99
 
 import Demands
-import Ekf
+import Ekf2
 import Mixers
 import Motors
 import State
@@ -212,12 +212,11 @@ spec = do
 
   --let (m1_pwm, m2_pwm, m3_pwm, m4_pwm, c1) = step gyroX gyroY gyroZ
   
-  -- let (qw, qx, qy, qz) = ekfStep
+  let foo = ekfStep
 
-  let val = ekfStep
-  trigger "debugEkf" true [arg val]
+  -- trigger "setVehicleState" true [arg qw, arg qx, arg qy, arg qz]
 
-  --trigger "setVehicleState" true [arg qw, arg qx, arg qy, arg qz]
+  trigger "debugEkf" true [arg foo]
 
   --trigger "setMotors" true [arg m1_pwm, arg m2_pwm, arg m3_pwm, arg m4_pwm] 
 

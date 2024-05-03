@@ -11,7 +11,7 @@ HASKELL = ../../haskell
 build: $(SKETCH).ino copilot.cpp
 	arduino-cli compile  --libraries $(LIBS) --fqbn $(BOARD) $(SKETCH).ino
 
-copilot.cpp : $(HASKELL)/Teensy.hs
+copilot.cpp : $(HASKELL)/Teensy.hs $(HASKELL)/Ekf2.hs
 	runhaskell -i$(HASKELL) $(HASKELL)/Teensy.hs
 	mv copilot.c copilot.cpp
 
@@ -31,4 +31,4 @@ viz:
 	../imuviz.py
 
 clean:
-	rm -f copilot.cpp copilot.h
+	rm -f copilot*
