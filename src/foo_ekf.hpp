@@ -16,6 +16,10 @@ static const float QZ_INIT = 0;
 // the reversion of pitch and roll to zero
 static const float ROLLPITCH_ZERO_REVERSION = 0.001;
 
+// This is slower than the IMU update rate of 1000Hz
+static const uint32_t PREDICTION_RATE = 100;
+static const uint32_t PREDICTION_UPDATE_INTERVAL_MS = 1000 / PREDICTION_RATE;
+
 // Small number epsilon, to prevent dividing by zero
 static const float EPS = 1e-6f;
 
@@ -33,6 +37,8 @@ class Ekf {
             // Internal state ------------------------------------------------
 
             static bool _didInit;
+            static uint32_t _lastPredictionMsec;
+            static uint32_t _nextPredictionMsec;
 
             // Quaternion (angular state components)
             static float _qw, _qx, _qy, _qz;
@@ -48,7 +54,9 @@ class Ekf {
 
             const auto isFlying = true; // XXX
 
-            const float dt = 0.005;
+            const auto shouldPredict = stream_now_msec >= _nextPredictionMsec;
+
+            const float dt = (stream_now_msec - _lastPredictionMsec) / 1000.0f;
 
             const auto gyro_sample_x = stream_gyro_x * DEGREES_TO_RADIANS;
             const auto gyro_sample_y = stream_gyro_y * DEGREES_TO_RADIANS;
@@ -83,6 +91,17 @@ class Ekf {
                 EPS;
 
             Serial.printf("c: %f\n", tmpq0/norm);
+
+            _lastPredictionMsec = 
+                _lastPredictionMsec == 0 || shouldPredict ? 
+                stream_now_msec :
+                _lastPredictionMsec;
+
+            _nextPredictionMsec = _nextPredictionMsec == 0 ? 
+                stream_now_msec : 
+                stream_now_msec >= _nextPredictionMsec ?
+                stream_now_msec + PREDICTION_UPDATE_INTERVAL_MS :
+                _nextPredictionMsec;
 
             _qw = tmpq0/norm;
             _qx = tmpq1/norm; 
