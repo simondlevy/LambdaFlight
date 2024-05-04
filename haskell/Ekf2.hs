@@ -113,13 +113,13 @@ isErrorInBounds v = abs v < 10
 --ekfStep = (qw, qx, qy, qz) where
 
 ekfStep :: SFloat
-ekfStep = qw where
+ekfStep = dt where
 
   isFlying = true -- XXX
 
   shouldPredict = stream_now_msec >= _nextPredictionMsec;
 
-  dt = 0.005 -- getDt stream_now_msec lastPredictionMsec
+  dt = getDt stream_now_msec lastPredictionMsec
 
   gyro_sample_x = stream_gyro_x * degrees_to_radians
   gyro_sample_y = stream_gyro_y * degrees_to_radians

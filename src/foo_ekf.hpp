@@ -56,7 +56,7 @@ class Ekf {
 
             const auto shouldPredict = stream_now_msec >= _nextPredictionMsec;
 
-            const float dt = .005; // (stream_now_msec - _lastPredictionMsec) / 1000.0f;
+            const float dt = (stream_now_msec - _lastPredictionMsec) / 1000.0f;
 
             const auto gyro_sample_x = stream_gyro_x * DEGREES_TO_RADIANS;
             const auto gyro_sample_y = stream_gyro_y * DEGREES_TO_RADIANS;
@@ -106,7 +106,7 @@ class Ekf {
             _qy = tmpq2/norm; 
             _qz = tmpq3/norm;
 
-            Serial.printf("c: %f\n", _qw);
+            Serial.printf("c: %f\n", dt);
 
         }
 
