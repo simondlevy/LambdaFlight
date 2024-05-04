@@ -263,6 +263,8 @@ static void ekfStep(void)
 
     Ekf::step();
 
+    copilot_step(); 
+
     stream_state_phi = 
         RADIANS_TO_DEGREES * atan2((2 * (_qy*_qz + _qw*_qx)),
                 (_qw*_qw - _qx*_qx - _qy*_qy + _qz*_qz));
@@ -376,8 +378,6 @@ void loop()
     readImu();
 
     readRangefinder();
-
-    copilot_step(); 
 
     ekfStep();
 

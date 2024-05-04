@@ -117,7 +117,9 @@ ekfStep = qw where
 
   isFlying = true -- XXX
 
-  dt = 0.005
+  shouldPredict = stream_now_msec >= _nextPredictionMsec;
+
+  dt = 0.005 -- getDt stream_now_msec lastPredictionMsec
 
   gyro_sample_x = stream_gyro_x * degrees_to_radians
   gyro_sample_y = stream_gyro_y * degrees_to_radians
@@ -147,7 +149,20 @@ ekfStep = qw where
   qy = tmpq2 / norm
   qz = tmpq3 / norm
 
+  lastPredictionMsec = if _lastPredictionMsec == 0  || shouldPredict
+                        then stream_now_msec 
+                        else _lastPredictionMsec
+
+  nextPredictionMsec = if _nextPredictionMsec == 0 
+                        then stream_now_msec 
+                        else if stream_now_msec >= _nextPredictionMsec
+                        then stream_now_msec + prediction_update_interval_msec
+                        else _nextPredictionMsec
+
    -- Internal state, represented as streams ----------------------------------
+
+  _nextPredictionMsec = [0] ++ nextPredictionMsec
+  _lastPredictionMsec = [0] ++ lastPredictionMsec
 
   _qw = [1] ++ qw
   _qx = [0] ++ qx
