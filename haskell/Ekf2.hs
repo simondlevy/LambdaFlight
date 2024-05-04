@@ -113,7 +113,7 @@ isErrorInBounds v = abs v < 10
 --ekfStep = (qw, qx, qy, qz) where
 
 ekfStep :: SFloat
-ekfStep = tmpq0 / norm where
+ekfStep = qw where
 
   isFlying = true -- XXX
 
