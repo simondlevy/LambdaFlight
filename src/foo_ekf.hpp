@@ -13,6 +13,9 @@ static const float QX_INIT = 0;
 static const float QY_INIT = 0;
 static const float QZ_INIT = 0;
 
+// the reversion of pitch and roll to zero
+static const float ROLLPITCH_ZERO_REVERSION = 0.001;
+
 // Small number epsilon, to prevent dividing by zero
 static const float EPS = 1e-6f;
 
