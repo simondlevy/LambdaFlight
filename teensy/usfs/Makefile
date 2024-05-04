@@ -11,8 +11,8 @@ HASKELL = ../../haskell
 build: $(SKETCH).ino copilot.cpp
 	arduino-cli compile  --libraries $(LIBS) --fqbn $(BOARD) $(SKETCH).ino
 
-copilot.cpp : $(HASKELL)/Teensy.hs $(HASKELL)/Ekf2.hs
-	runhaskell -i$(HASKELL) $(HASKELL)/Teensy.hs
+copilot.cpp : $(HASKELL)/TeensyUsfs.hs
+	runhaskell -i$(HASKELL) $(HASKELL)/TeensyUsfs.hs
 	mv copilot.c copilot.cpp
 
 flash:

@@ -13,8 +13,6 @@
 
 #include <vector>
 
-#include <foo_ekf.hpp>
-
 void copilot_step(void);
 
 // LED settings -------------------------------------------------------------
@@ -66,16 +64,17 @@ float stream_channel3_raw;
 float stream_channel4_raw;
 float stream_channel5_raw;
 bool stream_radio_failsafe;
-float stream_accel_x;
-float stream_accel_y;
-float stream_accel_z;
+float stream_rangefinder_distance;
+float stream_quat_w;
+float stream_quat_x;
+float stream_quat_y;
+float stream_quat_z;
 float stream_gyro_x;
 float stream_gyro_y;
 float stream_gyro_z;
-float stream_state_phi;
-float stream_state_theta;
-float stream_state_psi;
-float stream_rangefinder_distance;
+float stream_accel_x;
+float stream_accel_y;
+float stream_accel_z;
 
 // Motors set by Haskell
 static int m1_command;
@@ -83,11 +82,9 @@ static int m2_command;
 static int m3_command;
 static int m4_command;
 
-
-static float _qw;
-static float _qx;
-static float _qy;
-static float _qz;
+static float _phi;
+static float _theta;
+static float _psi;
 
 // ---------------------------------------------------------------------------
 
@@ -181,6 +178,11 @@ static void readImu(void)
         Usfs::reportError(eventStatus);
     }
 
+    if (Usfs::eventStatusIsQuaternion(eventStatus)) { 
+        usfs.readQuaternion(
+                stream_quat_w, stream_quat_x, stream_quat_y, stream_quat_z);
+    }
+
     if (Usfs::eventStatusIsAccelerometer(eventStatus)) { 
 
         usfs.readAccelerometerScaled(
@@ -212,7 +214,7 @@ static void readReceiver()
 
 static void readRangefinder(void)
 {
-    
+
     const auto msec_curr = millis();
     static uint32_t msec_prev;
 
@@ -256,28 +258,6 @@ static void maintainLoopRate(const uint32_t current_time)
     }
 }
 
-
-static void ekfStep(void)
-{
-    stream_now_msec = millis();
-
-    Ekf::step();
-
-    copilot_step(); 
-
-    stream_state_phi = 
-        RADIANS_TO_DEGREES * atan2((2 * (_qy*_qz + _qw*_qx)),
-                (_qw*_qw - _qx*_qx - _qy*_qy + _qz*_qz));
-
-    // Negate for ENU
-    stream_state_theta = -RADIANS_TO_DEGREES * asin((-2) * 
-            (_qx*_qz - _qw*_qy));
-
-    stream_state_psi = RADIANS_TO_DEGREES * 
-        atan2((2 * (_qx*_qy + _qw*_qz)),
-                (_qw*_qw + _qx*_qx - _qy*_qy - _qz*_qz));
-}
-
 static void debug(const uint32_t current_time)
 {
 
@@ -289,7 +269,7 @@ static void debug(const uint32_t current_time)
 
         //debugAccel();  
         //debugGyro();  
-        //debugState();  
+        debugState();  
         //debugMotorCommands(); 
         //debugLoopRate();      
         //debugRangefinder();      
@@ -325,7 +305,7 @@ void debugGyro(void)
 void debugState(void) 
 {
     Serial.printf("roll:%2.2f pitch:%2.2f yaw:%2.2f alt:0\n", 
-            stream_state_phi, stream_state_theta, stream_state_psi);
+            _phi, _theta, _psi);
 }
 
 void debugMotorCommands(void) 
@@ -379,7 +359,7 @@ void loop()
 
     readRangefinder();
 
-    ekfStep();
+    copilot_step(); 
 
     runMotors();
 
@@ -391,20 +371,11 @@ void loop()
 
 // Called by Copilot ---------------------------------------------------------
 
-void setVehicleState(
-        const float qw, const float qx, const float qy, const float qz)
+void setVehicleState(const float phi, const float theta, const float psi)
 {
-    //Serial.printf("%f\n", qw);
-
-    _qw  = qw;
-    _qx  = qx;
-    _qy  = qy;
-    _qz  = qz;
-}
-
-void debugEkf(const float foo)
-{
-    Serial.printf("h: %f\n\n", foo);
+    _phi = phi;
+    _theta = theta;
+    _psi = psi;
 }
 
 void setMotors(const float m1, const float m2, const float m3, const float m4)
