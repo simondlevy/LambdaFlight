@@ -8,7 +8,7 @@
 #include <sbus.h>
 
 #include <usfs.hpp>
-//#include <vl53l1_arduino.h>
+#include <vl53l1_arduino.h>
 #include <oneshot125.hpp>
 
 #include <vector>
@@ -92,7 +92,7 @@ static const uint8_t REPORT_HZ = 2;
 
 static Usfs usfs;
 
-//static auto vl53l1 = VL53L1_Arduino(&Wire1);
+static auto vl53l1 = VL53L1_Arduino(&Wire1);
 
 static void powerPin(const uint8_t pin, const bool hilo)
 {
@@ -150,7 +150,7 @@ static void initImu(void)
     Wire1.begin(); 
     delay(100);
 
-    //vl53l1.begin();
+    vl53l1.begin();
 
     usfs.loadFirmware(VERBOSE); 
 
@@ -220,7 +220,7 @@ static void readRangefinder(void)
     static uint32_t msec_prev;
 
     if (msec_curr - msec_prev > (1000 / RANGEFINDER_FREQ)) {
-        stream_rangefinder_distance =  0;//vl53l1.readDistance();
+        stream_rangefinder_distance =  vl53l1.readDistance();
         msec_prev = msec_curr;
     }
 
@@ -271,30 +271,11 @@ static void debug(const uint32_t current_time)
         //debugAccel();  
         //debugGyro();  
         //debugQuat();  
-        debugState();  
+        //debugState();  
         //debugMotorCommands(); 
         //debugLoopRate();      
-        //debugRangefinder();      
+        debugRangefinder();      
     }
-}
-
-void debugQuat(void) 
-{
-    Serial.printf("qw:%+3.3f qx:%+3.3f qy:%+3.3f qz:%+3.3f\n",
-            stream_quat_w, stream_quat_x, stream_quat_y, stream_quat_z);
-}
-
-void debugRangefinder(void) 
-{
-    Serial.printf("dist: %f\n", stream_rangefinder_distance);
-}
-
-
-void debugRadio(void) 
-{
-    Serial.printf("ch1:%4.0f ch2:%4.0f ch3:%4.0f ch4:%4.0f ch5:%4.0f\n",
-            stream_channel1_raw, stream_channel2_raw, stream_channel3_raw, 
-            stream_channel4_raw, stream_channel5_raw);
 }
 
 void debugAccel(void) 
@@ -309,10 +290,9 @@ void debugGyro(void)
             stream_gyro_x, stream_gyro_y, stream_gyro_z);
 }
 
-void debugState(void) 
+void debugLoopRate(void) 
 {
-    Serial.printf("roll:%2.2f pitch:%2.2f yaw:%2.2f alt:0\n", 
-            _phi, _theta, _psi);
+    Serial.printf("dt:%f\n", stream_dt*1e6);
 }
 
 void debugMotorCommands(void) 
@@ -323,9 +303,28 @@ void debugMotorCommands(void)
             m3_command, m4_command);
 }
 
-void debugLoopRate(void) 
+void debugQuat(void) 
 {
-    Serial.printf("dt:%f\n", stream_dt*1e6);
+    Serial.printf("qw:%+3.3f qx:%+3.3f qy:%+3.3f qz:%+3.3f\n",
+            stream_quat_w, stream_quat_x, stream_quat_y, stream_quat_z);
+}
+
+void debugRadio(void) 
+{
+    Serial.printf("ch1:%4.0f ch2:%4.0f ch3:%4.0f ch4:%4.0f ch5:%4.0f\n",
+            stream_channel1_raw, stream_channel2_raw, stream_channel3_raw, 
+            stream_channel4_raw, stream_channel5_raw);
+}
+
+void debugRangefinder(void) 
+{
+    Serial.printf("dist: %f\n", stream_rangefinder_distance);
+}
+
+void debugState(void) 
+{
+    Serial.printf("roll:%2.2f pitch:%2.2f yaw:%2.2f alt:0\n", 
+            _phi, _theta, _psi);
 }
 
 void setup()
