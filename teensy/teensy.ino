@@ -8,7 +8,7 @@
 #include <sbus.h>
 
 #define _MAIN
-#include <streams.h>
+#include <teensy_streams.h>
 
 #include <teensy_ekf.hpp>
 #include <usfs.hpp>

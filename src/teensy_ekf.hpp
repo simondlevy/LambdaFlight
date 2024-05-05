@@ -5,7 +5,7 @@
 #include <math3d.h>
 #include <datatypes.h>
 #include <linalg.h>
-//#include <streams.h>
+#include <teensy_streams.h>
 
 // Quaternion used for initial orientation
 static const float QW_INIT = 1;
