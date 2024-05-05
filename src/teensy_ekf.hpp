@@ -515,6 +515,7 @@ static bool ekf_updateWithRange(
         stream_rangefinder_distance < RANGEFINDER_OUTLIER_LIMIT_MM;
 
     if (shouldUpdate) {
+
         scalarUpdate(
                 p_in,
                 ekfs_in,
@@ -523,7 +524,10 @@ static bool ekf_updateWithRange(
                 stdDev, 
                 p_out,
                 ekfs_out);
+
+        printf("%f\n", ekfs_out.lin.z);
     }
+
     return shouldUpdate;
 }
 
@@ -780,12 +784,6 @@ static void ekf_step(void)
                 quat_predicted,
                 _p,
                 lin_predicted);
-
-        printf("%f %f %f %f\n",
-                quat_predicted.w,
-                quat_predicted.x,
-                quat_predicted.y,
-                quat_predicted.z);
 
     }
 

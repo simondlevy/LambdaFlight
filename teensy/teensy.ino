@@ -12,7 +12,7 @@
 
 #include <teensy_ekf.hpp>
 #include <usfs.hpp>
-//#include <vl53l1_arduino.h>
+#include <vl53l1_arduino.h>
 #include <oneshot125.hpp>
 
 #include <vector>
@@ -73,7 +73,7 @@ static const uint8_t REPORT_HZ = 2;
 
 static Usfs usfs;
 
-//static auto vl53l1 = VL53L1_Arduino(&Wire1);
+static auto vl53l1 = VL53L1_Arduino(&Wire1);
 
 static void powerPin(const uint8_t pin, const bool hilo)
 {
@@ -138,7 +138,7 @@ static void initImu(void)
     Wire1.begin(); 
     delay(100);
 
-    //vl53l1.begin();
+    vl53l1.begin();
 
     usfs.loadFirmware(VERBOSE); 
 
@@ -211,8 +211,9 @@ static void readRangefinder(void)
     static uint32_t msec_prev;
 
     if (msec_curr - msec_prev > (1000 / RANGEFINDER_FREQ)) {
-        stream_rangefinder_distance =  0;//vl53l1.readDistance();
+        stream_rangefinder_distance =  vl53l1.readDistance();
         msec_prev = msec_curr;
+        runEkf(EKF_UPDATE_WITH_RANGE);
     }
 
 }
