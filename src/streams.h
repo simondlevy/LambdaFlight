@@ -15,7 +15,6 @@ EXTERN flowMeasurement_t stream_flow;
 EXTERN axis3_t           stream_gyro;
 EXTERN bool              stream_inFlyingMode;
 EXTERN bool              stream_isFlying;
-EXTERN uint32_t          stream_nextPredictionMsec;
 EXTERN uint32_t          stream_nowMsec;
 EXTERN demands_t         stream_openLoopDemands;
 EXTERN float             stream_rangefinder_distance;

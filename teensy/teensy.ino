@@ -40,9 +40,13 @@ static const uint8_t INTERRUPT_ENABLE = Usfs::INTERRUPT_RESET_REQUIRED |
 Usfs::INTERRUPT_ERROR |
 Usfs::INTERRUPT_QUAT;
 
-//static const float RADIANS_TO_DEGREES = 180.0f / M_PI;
-
 static const bool VERBOSE = false;
+
+// EKF settings --------------------------------------------------------------
+
+// this is slower than the IMU update rate of 1000Hz
+static const uint32_t PREDICT_RATE = Clock::RATE_100_HZ; 
+static const uint32_t PREDICTION_UPDATE_INTERVAL_MS = 1000 / PREDICT_RATE;
 
 // VL53L1 settings -----------------------------------------------------------
 
@@ -209,6 +213,18 @@ static void readRangefinder(void)
 
 }
 
+static uint32_t updateTime(void)
+{
+    static uint32_t _current_time;
+    static uint32_t _prev_time;
+
+    _prev_time = _current_time;      
+    _current_time = micros();      
+    stream_dt = (_current_time - _prev_time)/1e6;
+
+    return _current_time;
+}
+
 static void runMotors() 
 {
     motors.set(0, m1_command);
@@ -324,7 +340,7 @@ void setup()
 
     initLed();
 
-    stream_ekfAction = EKF_INIT;
+    stream_ekf_action = EKF_INIT;
     ekf_step();
 
     delay(5);
@@ -335,17 +351,11 @@ void setup()
 
 void loop()
 {
-    static uint32_t _current_time;
-    static uint32_t _prev_time;
+    auto currentTime = updateTime();
 
-    // Keep track of what time it is and how much time has elapsed since the last loop
-    _prev_time = _current_time;      
-    _current_time = micros();      
-    stream_dt = (_current_time - _prev_time)/1e6;
+    blinkLed(currentTime);
 
-    blinkLed(_current_time);
-
-    debug(_current_time);
+    debug(currentTime);
 
     readImu();
 
@@ -357,7 +367,7 @@ void loop()
 
     readReceiver();
 
-    maintainLoopRate(_current_time); 
+    maintainLoopRate(currentTime); 
 
 }  // loop
 

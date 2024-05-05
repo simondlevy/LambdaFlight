@@ -2,6 +2,7 @@
 
 #include <string.h>
 
+#include <clock.hpp>
 #include <math3d.h>
 #include <datatypes.h>
 #include <linalg.h>
@@ -52,6 +53,10 @@ logf( RANGEFINDER_EXP_STD_B / RANGEFINDER_EXP_STD_A) /
 (RANGEFINDER_EXP_POINT_B - RANGEFINDER_EXP_POINT_A);
 
 static constexpr float FLOW_STD_FIXED = 2.0;
+
+// this is slower than the IMU update rate of 1000Hz
+static const uint32_t PREDICT_RATE = Clock::RATE_100_HZ; 
+static const uint32_t PREDICTION_UPDATE_INTERVAL_MS = 1000 / PREDICT_RATE;
 
 // Indexes to access the state
 enum {
@@ -729,6 +734,8 @@ static void ekf_step(void)
     static float _qy;
     static float _qz;
 
+    static uint32_t _nextPredictionMsec;
+
     const auto ekfs = ekfState_t { {_z, _dx, _dy, _dz}, {_e0, _e1, _e2}};
 
     const auto quat = new_quat_t {_qw, _qx, _qy, _qz };
@@ -739,11 +746,20 @@ static void ekf_step(void)
     matrix_t p_initialized = {};
     ekf_init(p_initialized);
 
+    _nextPredictionMsec = stream_nowMsec > _nextPredictionMsec ?
+        stream_nowMsec + PREDICTION_UPDATE_INTERVAL_MS :
+        _nextPredictionMsec;
+
     // Predict
-    const auto didPredict = stream_ekfAction == EKF_PREDICT && 
-        stream_nowMsec >= stream_nextPredictionMsec;
+    const auto shouldPredict = stream_ekfAction == EKF_PREDICT;
+
+    const auto didPredict =
+        shouldPredict && stream_nowMsec >= _nextPredictionMsec;
+
     ekfLinear_t lin_predicted = {};
+
     new_quat_t quat_predicted = {};
+
     if (didPredict) {
         ekf_predict(
                 _gyroSum_x,

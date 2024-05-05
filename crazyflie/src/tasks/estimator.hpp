@@ -116,10 +116,6 @@ class EstimatorTask : public FreeRTOSTask {
 
         static const uint32_t WARNING_HOLD_BACK_TIME_MS = 2000;
 
-        // this is slower than the IMU update rate of 1000Hz
-        static const uint32_t PREDICT_RATE = Clock::RATE_100_HZ; 
-        static const uint32_t PREDICTION_UPDATE_INTERVAL_MS = 1000 / PREDICT_RATE;
-
         static const size_t QUEUE_LENGTH = 20;
         static const auto QUEUE_ITEM_SIZE = sizeof(measurement_t);
         uint8_t measurementsQueueStorage[QUEUE_LENGTH * QUEUE_ITEM_SIZE];
@@ -171,7 +167,6 @@ class EstimatorTask : public FreeRTOSTask {
 
             stream_ekfAction = EKF_PREDICT;
             stream_nowMsec = nowMsec;
-            stream_nextPredictionMsec = nextPredictionMsec;
             stream_isFlying =_safety->isFlying(); 
             ekf_step();
 

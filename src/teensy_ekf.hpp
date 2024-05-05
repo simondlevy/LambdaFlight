@@ -314,7 +314,7 @@ static void ekf_predict(
     static float _accel_y;
     static float _accel_z;
 
-    const float dt = (stream_nowMsec - lastPredictionMsec) / 1000.0f;
+    const float dt = (stream_now_msec - lastPredictionMsec) / 1000.0f;
     const auto dt2 = dt * dt;
 
     subSamplerTakeMean(gyroSum_x, gyroSum_y, gyroSum_z, gyroCount,
@@ -735,13 +735,13 @@ static void ekf_step(void)
     const auto r = axis3_t {_rx, _ry, _rz};
 
     // Initialize
-    bool didInitialize = stream_ekfAction == EKF_INIT;
+    bool didInitialize = stream_ekf_action == EKF_INIT;
     matrix_t p_initialized = {};
     ekf_init(p_initialized);
 
     // Predict
-    const auto didPredict = stream_ekfAction == EKF_PREDICT && 
-        stream_nowMsec >= stream_nextPredictionMsec;
+    const auto didPredict = stream_ekf_action == EKF_PREDICT && 
+        stream_now_msec >= stream_next_prediction_msec;
     ekfLinear_t lin_predicted = {};
     new_quat_t quat_predicted = {};
     if (didPredict) {
@@ -766,10 +766,10 @@ static void ekf_step(void)
     }
 
     const auto isDtPositive = didPredict && 
-        (stream_nowMsec - _lastProcessNoiseUpdateMsec) / 1000.0f;
+        (stream_now_msec - _lastProcessNoiseUpdateMsec) / 1000.0f;
 
     // Finalize
-    const auto finalizing = stream_ekfAction == EKF_FINALIZE;
+    const auto finalizing = stream_ekf_action == EKF_FINALIZE;
     const auto didFinalize = finalizing && _isUpdated;
     new_quat_t quat_finalized = {};
     if (didFinalize) {
@@ -779,27 +779,27 @@ static void ekf_step(void)
 
     // Update with flow
     ekfState_t ekfs_updatedWithFlow = {};
-    const auto didUpdateWithFlow = stream_ekfAction == EKF_UPDATE_WITH_FLOW &&
+    const auto didUpdateWithFlow = stream_ekf_action == EKF_UPDATE_WITH_FLOW &&
         ekf_updateWithFlow(_p, ekfs, _rz, _gyroLatest, 
                 _p, ekfs_updatedWithFlow);
 
     // Update with range
     ekfState_t ekfs_updatedWithRange = {};
-    const auto didUpdateWithRange = stream_ekfAction == EKF_UPDATE_WITH_RANGE &&
+    const auto didUpdateWithRange = stream_ekf_action == EKF_UPDATE_WITH_RANGE &&
         ekf_updateWithRange(_p, ekfs, _rz, 
                 _p, ekfs_updatedWithRange);
 
     // Update with gyro
-    const auto didUpdateWithGyro = stream_ekfAction == EKF_UPDATE_WITH_GYRO;
+    const auto didUpdateWithGyro = stream_ekf_action == EKF_UPDATE_WITH_GYRO;
 
     // Update with accel
-    const auto didUpdateWithAccel = stream_ekfAction == EKF_UPDATE_WITH_ACCEL;
+    const auto didUpdateWithAccel = stream_ekf_action == EKF_UPDATE_WITH_ACCEL;
 
     // Get vehicle state
     vehicleState_t vehicleState = {};
     ekf_getVehicleState(ekfs, _gyroLatest, quat, r, vehicleState);
 
-    if (stream_ekfAction == EKF_GET_STATE) {
+    if (stream_ekf_action == EKF_GET_STATE) {
         setState(vehicleState);
     }
 
@@ -926,16 +926,16 @@ static void ekf_step(void)
 
     _lastProcessNoiseUpdateMsec = 
         didInitialize || isDtPositive ?  
-        stream_nowMsec : 
+        stream_now_msec : 
         _lastProcessNoiseUpdateMsec;
 
     _lastPredictionMsec = 
-        didInitialize || didPredict ? stream_nowMsec :
+        didInitialize || didPredict ? stream_now_msec :
         _lastPredictionMsec;
 
     _isUpdated = 
         didInitialize || didFinalize ? false :
-        stream_ekfAction == EKF_PREDICT ? true :
+        stream_ekf_action == EKF_PREDICT ? true :
         didUpdateWithFlow || didUpdateWithRange ? true :
         _isUpdated;
 }
