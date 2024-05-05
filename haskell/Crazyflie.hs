@@ -26,11 +26,7 @@ import Language.Copilot
 import Copilot.Compile.C99
 
 import Clock
-import Motors
-
 import Constants
-
-import Clock
 import Demands
 import Mixers
 import Motors

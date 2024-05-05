@@ -20,16 +20,14 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE RebindableSyntax #-}
 
-module Copilot where
+module Teensy where
 
-import Language.Copilot hiding(atan2)
+import Language.Copilot hiding(atan2, (!!))
 import Copilot.Compile.C99
 
 import Demands
-import Ekf2
 import Mixers
 import Motors
-import State
 import Utils
 
 -- Streams from C++ ----------------------------------------------------------
@@ -52,14 +50,30 @@ channel5_raw = extern "stream_channel5_raw" Nothing
 radio_failsafe :: SBool
 radio_failsafe = extern "stream_radio_failsafe" Nothing
 
-statePhi :: SFloat
-statePhi = extern "stream_state_phi" Nothing
-
-stateTheta :: SFloat
-stateTheta = extern "stream_state_theta" Nothing
-
 dt :: SFloat
 dt = extern "stream_dt" Nothing
+
+qw :: SFloat
+qw = extern "stream_quat_w" Nothing
+
+qx :: SFloat
+qx = extern "stream_quat_x" Nothing
+
+qy :: SFloat
+qy = extern "stream_quat_y" Nothing
+
+qz :: SFloat
+qz = extern "stream_quat_z" Nothing
+
+gyro_x :: SFloat
+gyro_x = extern "stream_gyro_x" Nothing
+
+gyro_y :: SFloat
+gyro_y = extern "stream_gyro_y" Nothing
+
+gyro_z :: SFloat
+gyro_z = extern "stream_gyro_z" Nothing
+
 
 -- PID tuning constants -----------------------------------------------------
 
@@ -85,32 +99,19 @@ maxRoll = 30 :: SFloat
 maxPitch = 30 :: SFloat   
 maxYaw = 160 :: SFloat    
 
--- IMU LP filter parameters
-b_gyro = 0.1 :: SFloat
-
 -----------------------------------------------------------------------------
 
-getGyro :: (SFloat, SFloat, SFloat)
+step = (phi, theta, psi, m1, m2, m3, m4) where
 
-getGyro = (gyroX, gyroY, gyroZ) where
+  -- Get state from USFS hardware quaternion
 
-  lpf = \v v' b -> let s = v in (1 - b) * v' + b * s
+  phi = (atan2 (qw*qx + qy*qz) (0.5 - qx*qx - qy*qy)) * 57.29577951
 
-  glpf = \g g' -> lpf g g' b_gyro
+  theta = ((-asin (constrain ((-2.0) * (qx*qz - qw*qy)) (-0.999999) 0.999999)) * 57.29577951)
 
-  gyroX = glpf stream_gyro_x gyroX'
-  gyroY = glpf stream_gyro_y gyroY'
-  gyroZ = glpf stream_gyro_z gyroZ'
+  psi = (-atan2 (qx*qy + qw*qz) (0.5 - qy*qy - qz*qz)) * 57.29577951
 
-  gyroX' = [0] ++ gyroX
-  gyroY' = [0] ++ gyroY
-  gyroZ' = [0] ++ gyroZ
-
------------------------------------------------------------------------------
-
-step gyroX gyroY gyroZ = motors' where
-
-  -- Open-loop demands ----------------------------------------------
+   -- Open-loop demands ----------------------------------------------
 
   scaleup = \c -> sbus_scale * c + sbus_bias
 
@@ -134,7 +135,7 @@ step gyroX gyroY gyroZ = motors' where
 
   -- Roll PID --------------------------------------------------------
 
-  error_roll = demandRoll - statePhi
+  error_roll = demandRoll - phi
 
   -- Don't let integrator build if throttle is too low
   integral_roll = if throttle_is_down then 0 else
@@ -142,7 +143,7 @@ step gyroX gyroY gyroZ = motors' where
     -- Avoid integral windup
     constrain (integral_roll' + error_roll * dt) (-i_limit) i_limit
 
-  derivative_roll = gyroX
+  derivative_roll = gyro_x
 
   -- Scale by .01 to bring within -1 to 1 range
   roll_PID = 0.01 * (kp_cyclic * error_roll + 
@@ -151,7 +152,7 @@ step gyroX gyroY gyroZ = motors' where
 
   -- Pitch PID -------------------------------------------------------
 
-  error_pitch = demandPitch - stateTheta
+  error_pitch = demandPitch - theta
 
   -- Don't let integrator build if throttle is too low
   integral_pitch = if throttle_is_down then 0 else
@@ -159,7 +160,7 @@ step gyroX gyroY gyroZ = motors' where
     -- Avoid integral windwup 
     constrain (integral_pitch' + error_pitch * dt) (-i_limit) i_limit
 
-  derivative_pitch = gyroY
+  derivative_pitch = gyro_y
 
   -- Scale by .01 to bring within -1 to 1 range
   pitch_PID = 0.01 * (kp_cyclic * error_pitch + 
@@ -168,7 +169,7 @@ step gyroX gyroY gyroZ = motors' where
 
   -- Yaw PID : stablize on rate from gyroZ -------------------------------
 
-  error_yaw = demandYaw - gyroZ
+  error_yaw = demandYaw - gyro_z
 
   -- Don't let integrator build if throttle is too low
   integral_yaw = if throttle_is_down then 0 else
@@ -189,12 +190,10 @@ step gyroX gyroY gyroZ = motors' where
 
   safeMotor m = if armed then constrain ((m motors) * 125 + 125) 125 250 else 120
 
-  m1_pwm = safeMotor Motors.qm1 
-  m2_pwm = safeMotor Motors.qm2 
-  m3_pwm = safeMotor Motors.qm3 
-  m4_pwm = safeMotor Motors.qm4 
-
-  motors' = (m1_pwm, m2_pwm, m3_pwm, m4_pwm, c1)
+  m1 = safeMotor Motors.qm1 
+  m2 = safeMotor Motors.qm2 
+  m3 = safeMotor Motors.qm3 
+  m4 = safeMotor Motors.qm4 
 
   -- State variables ---------------------------------------------------------
 
@@ -208,17 +207,11 @@ step gyroX gyroY gyroZ = motors' where
 
 spec = do
 
-  --let (gyroX, gyroY, gyroZ) = getGyro
+  let (phi, theta, psi, m1, m2, m3, m4) = step
 
-  --let (m1_pwm, m2_pwm, m3_pwm, m4_pwm, c1) = step gyroX gyroY gyroZ
-  
-  let foo = ekfStep
+  trigger "setVehicleState" true [ arg phi, arg theta, arg psi ]
 
-  -- trigger "setVehicleState" true [arg qw, arg qx, arg qy, arg qz]
-
-  trigger "debugEkf" true [arg foo]
-
-  --trigger "setMotors" true [arg m1_pwm, arg m2_pwm, arg m3_pwm, arg m4_pwm] 
+  trigger "setMotors" true [arg m1, arg m2, arg m3, arg m4] 
 
 -- Compile the spec
 main = reify spec >>= 
