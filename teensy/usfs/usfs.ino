@@ -49,7 +49,7 @@ static const uint32_t RANGEFINDER_FREQ = 40;
 // Do not exceed 2000Hz, all filter paras tuned to 2000Hz by default
 static const uint32_t LOOP_RATE = 2000;
 
-static const std::vector<uint8_t> MOTOR_PINS = {0, 1, 2, 3};
+static const std::vector<uint8_t> MOTOR_PINS = {2, 3, 0, 1};
 
 static auto motors = OneShot125(MOTOR_PINS);
 
