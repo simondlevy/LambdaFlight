@@ -750,9 +750,10 @@ static void ekf_step(void)
 
     auto didPredict = false;
 
-    if (stream_now_msec - _nextPredictionMsec >= PREDICTION_UPDATE_INTERVAL_MS) {
+    if (shouldPredict && 
+            stream_now_msec - _nextPredictionMsec >= PREDICTION_UPDATE_INTERVAL_MS) {
         _nextPredictionMsec = stream_now_msec;
-        didPredict = shouldPredict;
+        didPredict = true;
     }
 
     ekfLinear_t lin_predicted = {};
@@ -780,7 +781,12 @@ static void ekf_step(void)
                 _p,
                 lin_predicted);
 
-                printf("%f\n", quat_predicted.w);
+        printf("%f %f %f %f\n",
+                quat_predicted.w,
+                quat_predicted.x,
+                quat_predicted.y,
+                quat_predicted.z);
+
     }
 
     const auto isDtPositive = didPredict && 
