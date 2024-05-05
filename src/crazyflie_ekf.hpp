@@ -761,6 +761,7 @@ static void ekf_step(void)
     new_quat_t quat_predicted = {};
 
     if (didPredict) {
+
         ekf_predict(
                 _gyroSum_x,
                 _gyroSum_y,

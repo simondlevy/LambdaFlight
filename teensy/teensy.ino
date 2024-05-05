@@ -12,7 +12,7 @@
 
 #include <teensy_ekf.hpp>
 #include <usfs.hpp>
-#include <vl53l1_arduino.h>
+//#include <vl53l1_arduino.h>
 #include <oneshot125.hpp>
 
 #include <vector>
@@ -41,12 +41,6 @@ Usfs::INTERRUPT_ERROR |
 Usfs::INTERRUPT_QUAT;
 
 static const bool VERBOSE = false;
-
-// EKF settings --------------------------------------------------------------
-
-// this is slower than the IMU update rate of 1000Hz
-static const uint32_t PREDICT_RATE = Clock::RATE_100_HZ; 
-static const uint32_t PREDICTION_UPDATE_INTERVAL_MS = 1000 / PREDICT_RATE;
 
 // VL53L1 settings -----------------------------------------------------------
 
@@ -79,7 +73,7 @@ static const uint8_t REPORT_HZ = 2;
 
 static Usfs usfs;
 
-static auto vl53l1 = VL53L1_Arduino(&Wire1);
+//static auto vl53l1 = VL53L1_Arduino(&Wire1);
 
 static void powerPin(const uint8_t pin, const bool hilo)
 {
@@ -137,7 +131,7 @@ static void initImu(void)
     Wire1.begin(); 
     delay(100);
 
-    vl53l1.begin();
+    //vl53l1.begin();
 
     usfs.loadFirmware(VERBOSE); 
 
@@ -202,12 +196,11 @@ static void readReceiver()
 
 static void readRangefinder(void)
 {
-
     const auto msec_curr = millis();
     static uint32_t msec_prev;
 
     if (msec_curr - msec_prev > (1000 / RANGEFINDER_FREQ)) {
-        stream_rangefinder_distance =  vl53l1.readDistance();
+        stream_rangefinder_distance =  0;//vl53l1.readDistance();
         msec_prev = msec_curr;
     }
 
@@ -258,6 +251,13 @@ static void maintainLoopRate(const uint32_t current_time)
     }
 }
 
+static void runEkf(const ekfAction_e action)
+{
+    stream_ekf_action = action;
+    stream_now_msec = millis();
+    ekf_step();
+}
+
 static void debug(const uint32_t current_time)
 {
 
@@ -273,9 +273,84 @@ static void debug(const uint32_t current_time)
         //debugState();  
         //debugMotorCommands(); 
         //debugLoopRate();      
-        debugRangefinder();      
+        //debugRangefinder();      
     }
 }
+
+void setup()
+{
+    Serial.begin(115200);
+
+    initImu();
+
+    stream_radio_failsafe = false;
+
+    delay(5);
+
+    sbus.Begin();
+
+    initLed();
+
+    runEkf(EKF_INIT);
+
+    delay(5);
+
+    motors.arm();
+
+} // setup
+
+void loop()
+{
+    auto currentTime = updateTime();
+
+    blinkLed(currentTime);
+
+    debug(currentTime);
+
+    readImu();
+
+    readRangefinder();
+
+    runEkf(EKF_PREDICT);
+
+    copilot_step(); 
+
+    runMotors();
+
+    readReceiver();
+
+    maintainLoopRate(currentTime); 
+
+}  // loop
+
+// Called by Copilot ---------------------------------------------------------
+
+void setVehicleState(const float phi, const float theta, const float psi)
+{
+    _phi = phi;
+    _theta = theta;
+    _psi = psi;
+}
+
+void setMotors(const float m1, const float m2, const float m3, const float m4)
+{
+    m1_command = m1;
+    m2_command = m2;
+    m3_command = m3;
+    m4_command = m4;
+}
+
+// Called by EKF ---------------------------------------------------------
+
+void setStateIsInBounds(const bool isInBounds)
+{
+}
+
+void setState(const vehicleState_t & state)
+{
+}
+
+// Debugging -----------------------------------------------------------------
 
 void debugAccel(void) 
 {
@@ -325,77 +400,4 @@ void debugState(void)
     Serial.printf("roll:%2.2f pitch:%2.2f yaw:%2.2f alt:0\n", 
             _phi, _theta, _psi);
 }
-
-void setup()
-{
-    Serial.begin(115200);
-
-    initImu();
-
-    stream_radio_failsafe = false;
-
-    delay(5);
-
-    sbus.Begin();
-
-    initLed();
-
-    stream_ekf_action = EKF_INIT;
-    ekf_step();
-
-    delay(5);
-
-    motors.arm();
-
-} // setup
-
-void loop()
-{
-    auto currentTime = updateTime();
-
-    blinkLed(currentTime);
-
-    debug(currentTime);
-
-    readImu();
-
-    readRangefinder();
-
-    copilot_step(); 
-
-    runMotors();
-
-    readReceiver();
-
-    maintainLoopRate(currentTime); 
-
-}  // loop
-
-// Called by Copilot ---------------------------------------------------------
-
-void setVehicleState(const float phi, const float theta, const float psi)
-{
-    _phi = phi;
-    _theta = theta;
-    _psi = psi;
-}
-
-void setMotors(const float m1, const float m2, const float m3, const float m4)
-{
-    m1_command = m1;
-    m2_command = m2;
-    m3_command = m3;
-    m4_command = m4;
-}
-
-// Called by EKF ---------------------------------------------------------
-
-void setStateIsInBounds(const bool isInBounds)
-{
-}
-
-void setState(const vehicleState_t & state)
-{
-}
-
 
