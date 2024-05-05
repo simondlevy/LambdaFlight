@@ -178,9 +178,10 @@ static void readImu(void)
         Usfs::reportError(eventStatus);
     }
 
+    // We swap quaterion qw/qx, qy/qz to accommodate upside-down USFS mounting
     if (Usfs::eventStatusIsQuaternion(eventStatus)) { 
         usfs.readQuaternion(
-                stream_quat_w, stream_quat_x, stream_quat_y, stream_quat_z);
+                stream_quat_x, stream_quat_w, stream_quat_z, stream_quat_y);
     }
 
     if (Usfs::eventStatusIsAccelerometer(eventStatus)) { 
@@ -269,6 +270,7 @@ static void debug(const uint32_t current_time)
 
         //debugAccel();  
         //debugGyro();  
+        //debugQuat();  
         debugState();  
         //debugMotorCommands(); 
         //debugLoopRate();      
@@ -276,6 +278,11 @@ static void debug(const uint32_t current_time)
     }
 }
 
+void debugQuat(void) 
+{
+    Serial.printf("qw:%+3.3f qx:%+3.3f qy:%+3.3f qz:%+3.3f\n",
+            stream_quat_w, stream_quat_x, stream_quat_y, stream_quat_z);
+}
 
 void debugRangefinder(void) 
 {

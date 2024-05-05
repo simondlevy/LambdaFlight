@@ -103,15 +103,16 @@ maxYaw = 160 :: SFloat
 
 step = (phi, theta, psi, m1, m2, m3, m4) where
 
-  -- Get state from USFS hardware quaternion
+  -- Get state from USFS hardware quaternion -------------------------
 
-  phi = (atan2 (qw*qx + qy*qz) (0.5 - qx*qx - qy*qy)) * 57.29577951
+  phi = (atan2 (qw*qx + qy*qz) (0.5 - qx*qx - qy*qy)) * 180 / pi
 
-  theta = ((-asin (constrain ((-2.0) * (qx*qz - qw*qy)) (-0.999999) 0.999999)) * 57.29577951)
+  theta = ((-asin (constrain ((-2.0) * (qx*qz - qw*qy)) (-0.999999) 0.999999))
+           * 180 / pi)
 
-  psi = (-atan2 (qx*qy + qw*qz) (0.5 - qy*qy - qz*qz)) * 57.29577951
+  psi = (-atan2 (qx*qy + qw*qz) (0.5 - qy*qy - qz*qz)) * 180 / pi
 
-   -- Open-loop demands ----------------------------------------------
+   -- Get open-loop demands --------------------------------------------------
 
   scaleup = \c -> sbus_scale * c + sbus_bias
 
