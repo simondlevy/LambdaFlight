@@ -761,8 +761,6 @@ static void ekf_step(void)
 
     if (didPredict) {
 
-        Serial.printf("predict: %d\n", stream_now_msec);
-
         ekf_predict(
                 _gyroSum_x,
                 _gyroSum_y,
@@ -781,6 +779,8 @@ static void ekf_step(void)
                 quat_predicted,
                 _p,
                 lin_predicted);
+
+                printf("%f\n", quat_predicted.w);
     }
 
     const auto isDtPositive = didPredict && 

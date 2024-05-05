@@ -119,6 +119,13 @@ static void blinkLed(const uint32_t current_time)
     }
 }
 
+static void runEkf(const ekfAction_e action)
+{
+    stream_ekf_action = action;
+    stream_now_msec = millis();
+    ekf_step();
+}
+
 static void initImu(void)
 {
     powerPin(21, HIGH);
@@ -169,12 +176,16 @@ static void readImu(void)
 
         usfs.readAccelerometerScaled(
                 stream_accel_x, stream_accel_y, stream_accel_z);
+
+        runEkf(EKF_UPDATE_WITH_ACCEL);
     }
 
     if (Usfs::eventStatusIsGyrometer(eventStatus)) { 
 
         usfs.readGyrometerScaled(
                 stream_gyro_x, stream_gyro_y, stream_gyro_z);
+
+        runEkf(EKF_UPDATE_WITH_GYRO);
     }
 }
 
@@ -251,12 +262,7 @@ static void maintainLoopRate(const uint32_t current_time)
     }
 }
 
-static void runEkf(const ekfAction_e action)
-{
-    stream_ekf_action = action;
-    stream_now_msec = millis();
-    ekf_step();
-}
+
 
 static void debug(const uint32_t current_time)
 {
