@@ -7,6 +7,10 @@
 
 #include <sbus.h>
 
+#define _MAIN
+#include <streams.h>
+
+#include <teensy_ekf.hpp>
 #include <usfs.hpp>
 #include <vl53l1_arduino.h>
 #include <oneshot125.hpp>
@@ -64,7 +68,6 @@ float stream_channel3_raw;
 float stream_channel4_raw;
 float stream_channel5_raw;
 bool stream_radio_failsafe;
-float stream_rangefinder_distance;
 float stream_quat_w;
 float stream_quat_x;
 float stream_quat_y;
@@ -341,6 +344,9 @@ void setup()
 
     initLed();
 
+    stream_ekfAction = EKF_INIT;
+    ekf_step();
+
     delay(5);
 
     motors.arm();
@@ -391,3 +397,15 @@ void setMotors(const float m1, const float m2, const float m3, const float m4)
     m3_command = m3;
     m4_command = m4;
 }
+
+// Called by EKF ---------------------------------------------------------
+
+void setStateIsInBounds(const bool isInBounds)
+{
+}
+
+void setState(const vehicleState_t & state)
+{
+}
+
+
