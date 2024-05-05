@@ -1,12 +1,12 @@
-SKETCH = usfs
+SKETCH = teensy
 
 PORT = /dev/ttyACM0
 
 BOARD = teensy:avr:teensy40
 
-LIBS = ../../../
+LIBS = ../../
 
-HASKELL = ../../haskell
+HASKELL = ../haskell
 
 build: $(SKETCH).ino copilot.cpp
 	arduino-cli compile  --libraries $(LIBS) --fqbn $(BOARD) $(SKETCH).ino
