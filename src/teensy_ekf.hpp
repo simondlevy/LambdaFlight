@@ -813,27 +813,27 @@ static void ekf_step(void)
 
     //////////////////////////////////////////////////////////////////////////
 
-    _gyroSum_x = didUpdateWithGyro ? _gyroSum_x + stream_gyro.x :
+    _gyroSum_x = didUpdateWithGyro ? _gyroSum_x + stream_gyro_x :
         isDtPositive ? 0 :
         _gyroSum_x;
 
-    _gyroSum_y = didUpdateWithGyro ? _gyroSum_y + stream_gyro.y :
+    _gyroSum_y = didUpdateWithGyro ? _gyroSum_y + stream_gyro_y :
         isDtPositive ? 0 :
         _gyroSum_y;
 
-    _gyroSum_z = didUpdateWithGyro ? _gyroSum_z + stream_gyro.z :
+    _gyroSum_z = didUpdateWithGyro ? _gyroSum_z + stream_gyro_z :
         isDtPositive ? 0 :
         _gyroSum_z;
 
-    _accelSum_x = didUpdateWithAccel ? _accelSum_x + stream_accel.x :
+    _accelSum_x = didUpdateWithAccel ? _accelSum_x + stream_accel_x :
         isDtPositive ? 0 :
         _accelSum_x;
 
-    _accelSum_y = didUpdateWithAccel ? _accelSum_y + stream_accel.y :
+    _accelSum_y = didUpdateWithAccel ? _accelSum_y + stream_accel_y :
         isDtPositive ? 0 :
         _accelSum_y;
 
-    _accelSum_z = didUpdateWithAccel ? _accelSum_z + stream_accel.z :
+    _accelSum_z = didUpdateWithAccel ? _accelSum_z + stream_accel_z :
         isDtPositive ? 0 :
         _accelSum_z;
 
@@ -841,9 +841,9 @@ static void ekf_step(void)
             didInitialize ? &p_initialized :
             &_p, sizeof(_p));
 
-    memcpy(&_gyroLatest, 
-            didUpdateWithGyro ?  &stream_gyro : &_gyroLatest, 
-            sizeof(axis3_t));
+    _gyroLatest.x = didUpdateWithGyro ?  stream_gyro_x : _gyroLatest.x;
+    _gyroLatest.y = didUpdateWithGyro ?  stream_gyro_y : _gyroLatest.y;
+    _gyroLatest.z = didUpdateWithGyro ?  stream_gyro_z : _gyroLatest.z;
 
     _gyroCount = isDtPositive ? 0 : 
         didUpdateWithGyro ? _gyroCount + 1 :

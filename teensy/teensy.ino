@@ -59,26 +59,6 @@ static auto motors = OneShot125(MOTOR_PINS);
 
 bfs::SbusRx sbus(&Serial2);
 
-// Streams read by Haskell
-uint32_t stream_now_msec;
-float stream_dt;
-float stream_channel1_raw;
-float stream_channel2_raw;
-float stream_channel3_raw;
-float stream_channel4_raw;
-float stream_channel5_raw;
-bool stream_radio_failsafe;
-float stream_quat_w;
-float stream_quat_x;
-float stream_quat_y;
-float stream_quat_z;
-float stream_gyro_x;
-float stream_gyro_y;
-float stream_gyro_z;
-float stream_accel_x;
-float stream_accel_y;
-float stream_accel_z;
-
 // Motors set by Haskell
 static int m1_command;
 static int m2_command;
