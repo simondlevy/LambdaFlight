@@ -200,45 +200,6 @@ static bool isErrorInBounds(const float v)
     return fabs(v) < 10;
 }
 
-static void afinalize(
-        const float v0, 
-        const float v1, 
-        const float v2,
-        matrix_t & A)
-{
-    // the attitude error vector (v0,v1,v2) is small,
-    // so we use a first order approximation to e0 = tan(|v0|/2)*v0/|v0|
-    const auto e0 = v0/2; 
-    const auto e1 = v1/2; 
-    const auto e2 = v2/2;
-
-    const auto e0e0 =  1 - e1*e1/2 - e2*e2/2;
-    const auto e0e1 =  e2 + e0*e1/2;
-    const auto e0e2 = -e1 + e0*e2/2;
-
-    const auto e1e0 =  -e2 + e0*e1/2;
-    const auto e1e1 = 1 - e0*e0/2 - e2*e2/2;
-    const auto e1e2 = e0 + e1*e2/2;
-
-    const auto e2e0 = e1 + e0*e2/2;
-    const auto e2e1 = -e0 + e1*e2/2;
-    const auto e2e2 = 1 - e0*e0/2 - e1*e1/2;
-
-    const float a[KC_STATE_DIM][KC_STATE_DIM] = 
-    { 
-        //    Z  DX DY DZ    E0     E1    E2
-        /*Z*/   {0, 0, 0, 0, 0,     0,    0},   
-        /*DX*/  {0, 1, 0, 0, 0,     0,    0},  
-        /*DY*/  {0, 0, 1, 0, 0,     0,    0}, 
-        /*DX*/  {0, 0, 0, 1, 0,     0,    0},  
-        /*E0*/  {0, 0, 0, 0, e0e0, e0e1, e0e2},
-        /*E1*/  {0, 0, 0, 0, e1e0, e1e1, e1e2},
-        /*E2*/  {0, 0, 0, 0, e2e0, e2e1, e2e2}
-    };
-
-    memcpy(&A.dat, a, sizeof(A));
-} 
-
 static void subSamplerTakeMean(
         const float sumx,
         const float sumy,
@@ -485,15 +446,46 @@ static void ekf_finalize(
     const auto v1 = ekfs.ang.y;
     const auto v2 = ekfs.ang.z;
 
+    // the attitude error vector (v0,v1,v2) is small,
+    // so we use a first order approximation to e0 = tan(|v0|/2)*v0/|v0|
+    const auto e0 = v0/2; 
+    const auto e1 = v1/2; 
+    const auto e2 = v2/2;
+
+    const auto e0e0 =  1 - e1*e1/2 - e2*e2/2;
+    const auto e0e1 =  e2 + e0*e1/2;
+    const auto e0e2 = -e1 + e0*e2/2;
+
+    const auto e1e0 =  -e2 + e0*e1/2;
+    const auto e1e1 = 1 - e0*e0/2 - e2*e2/2;
+    const auto e1e2 = e0 + e1*e2/2;
+
+    const auto e2e0 = e1 + e0*e2/2;
+    const auto e2e1 = -e0 + e1*e2/2;
+    const auto e2e2 = 1 - e0*e0/2 - e1*e1/2;
+
     const auto isErrorSufficient  = 
         (isErrorLarge(v0) || isErrorLarge(v1) || isErrorLarge(v2)) &&
         isErrorInBounds(v0) && isErrorInBounds(v1) && isErrorInBounds(v2);
 
+    const float a[KC_STATE_DIM][KC_STATE_DIM] = 
+    { 
+        //    Z  DX DY DZ    E0     E1    E2
+        /*Z*/   {0, 0, 0, 0, 0,     0,    0},   
+        /*DX*/  {0, 1, 0, 0, 0,     0,    0},  
+        /*DY*/  {0, 0, 1, 0, 0,     0,    0}, 
+        /*DX*/  {0, 0, 0, 1, 0,     0,    0},  
+        /*E0*/  {0, 0, 0, 0, e0e0, e0e1, e0e2},
+        /*E1*/  {0, 0, 0, 0, e1e0, e1e1, e1e2},
+        /*E2*/  {0, 0, 0, 0, e2e0, e2e1, e2e2}
+    };
+
     // Move attitude error into attitude if any of the angle errors are
     // large enough
     if (isErrorSufficient) {
+
         matrix_t  A = {};
-        afinalize(v0, v2, v2, A);
+        memcpy(&A.dat, a, sizeof(A));
         matrix_t At = {};
         transpose(A.dat, At.dat);     // A'
         matrix_t AP = {};
@@ -501,6 +493,7 @@ static void ekf_finalize(
         matrix_t APA = {};
         multiply(AP.dat, At.dat, APA.dat); // APA'
         updateCovarianceMatrix(APA, p_out);
+
     }
 } 
 
