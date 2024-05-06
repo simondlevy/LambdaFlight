@@ -74,6 +74,8 @@ gyro_y = extern "stream_gyro_y" Nothing
 gyro_z :: SFloat
 gyro_z = extern "stream_gyro_z" Nothing
 
+rangefinder_distance :: SFloat
+rangefinder_distance = extern "stream_rangefinder_distance" Nothing
 
 -- PID tuning constants -----------------------------------------------------
 

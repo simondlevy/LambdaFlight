@@ -7,10 +7,6 @@
 
 #include <sbus.h>
 
-#define _MAIN
-#include <teensy_streams.h>
-
-#include <teensy_ekf.hpp>
 #include <usfs.hpp>
 #include <VL53L1X.h>
 #include <oneshot125.hpp>
@@ -67,6 +63,29 @@ static float _phi;
 static float _theta;
 static float _psi;
 
+// Streams shared with Haskell ------------------------------------------------
+
+float       stream_accel_x;
+float       stream_accel_y;
+float       stream_accel_z;
+float       stream_dt;
+float       stream_gyro_x;
+float       stream_gyro_y;
+float       stream_gyro_z;
+bool        stream_radio_failsafe;
+float       stream_channel1_raw;
+float       stream_channel2_raw;
+float       stream_channel3_raw;
+float       stream_channel4_raw;
+float       stream_channel5_raw;
+uint32_t    stream_next_prediction_msec;
+uint32_t    stream_now_msec;
+float       stream_quat_w;
+float       stream_quat_x;
+float       stream_quat_y;
+float       stream_quat_z;
+float       stream_rangefinder_distance;
+
 // ---------------------------------------------------------------------------
 
 static const uint8_t REPORT_HZ = 2;
@@ -117,13 +136,6 @@ static void blinkLed(const uint32_t current_time)
             blink_delay = 2000000;
         }
     }
-}
-
-static void runEkf(const ekfAction_e action)
-{
-    stream_ekf_action = action;
-    stream_now_msec = millis();
-    ekf_step();
 }
 
 static void initImu(void)
@@ -187,18 +199,15 @@ static void readImu(void)
         usfs.readAccelerometerScaled(
                 stream_accel_x, stream_accel_y, stream_accel_z);
 
-        runEkf(EKF_UPDATE_WITH_ACCEL);
+        // We negate accel Z to accommodate upside-down USFS mounting
+        stream_accel_z = -stream_accel_z;
     }
 
     if (Usfs::eventStatusIsGyrometer(eventStatus)) { 
 
         usfs.readGyrometerScaled(
                 stream_gyro_x, stream_gyro_y, stream_gyro_z);
-
-        runEkf(EKF_UPDATE_WITH_GYRO);
     }
-
-    runEkf(EKF_FINALIZE);
 }
 
 static void readReceiver() 
@@ -225,7 +234,6 @@ static void readRangefinder(void)
     if (msec_curr - msec_prev > (1000 / RANGEFINDER_FREQ)) {
         stream_rangefinder_distance =  vl53l1x.read();
         msec_prev = msec_curr;
-        runEkf(EKF_UPDATE_WITH_RANGE);
     }
 }
 
@@ -288,7 +296,7 @@ static void debug(const uint32_t current_time)
         //debugAccel();  
         //debugGyro();  
         //debugQuat();  
-        //debugState();  
+        debugState();  
         //debugMotorCommands(); 
         //debugLoopRate();      
         //debugRangefinder();      
@@ -309,8 +317,6 @@ void setup()
 
     initLed();
 
-    runEkf(EKF_INIT);
-
     delay(5);
 
     motors.arm();
@@ -319,7 +325,7 @@ void setup()
 
 void loop()
 {
-    auto currentTime = updateTime();
+    const auto currentTime = updateTime();
 
     blinkLed(currentTime);
 
@@ -328,8 +334,6 @@ void loop()
     readImu();
 
     readRangefinder();
-
-    runEkf(EKF_PREDICT);
 
     copilot_step(); 
 
@@ -356,16 +360,6 @@ void setMotors(const float m1, const float m2, const float m3, const float m4)
     m2_command = m2;
     m3_command = m3;
     m4_command = m4;
-}
-
-// Called by EKF ---------------------------------------------------------
-
-void setStateIsInBounds(const bool isInBounds)
-{
-}
-
-void setState(const vehicleState_t & state)
-{
 }
 
 // Debugging -----------------------------------------------------------------
