@@ -287,8 +287,6 @@ static void maintainLoopRate(const uint32_t current_time)
     }
 }
 
-
-
 static void debug(const uint32_t current_time)
 {
 
@@ -298,10 +296,10 @@ static void debug(const uint32_t current_time)
 
         previous_time = current_time;
 
-        //debugAccel();  
+        debugAccel();  
         //debugGyro();  
         //debugQuat();  
-        debugState();  
+        //debugState();  
         //debugMotorCommands(); 
         //debugLoopRate();      
         //debugRangefinder();      
