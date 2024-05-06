@@ -23,9 +23,6 @@ static const float STDEV_INITIAL_ATTITUDE_YAW = 0.01;
 
 static const float MSS_TO_GS = 9.81;
 
-//We do get the measurements in 10x the motion pixels (experimentally measured)
-static const float FLOW_RESOLUTION = 0.1;
-
 // The bounds on the covariance, these shouldn't be hit, but sometimes are... why?
 static const float MAX_COVARIANCE = 100;
 static const float MIN_COVARIANCE = 1e-6;
@@ -52,8 +49,6 @@ static constexpr float RANGEFINDER_EXP_COEFF =
 logf( RANGEFINDER_EXP_STD_B / RANGEFINDER_EXP_STD_A) / 
 (RANGEFINDER_EXP_POINT_B - RANGEFINDER_EXP_POINT_A);
 
-static constexpr float FLOW_STD_FIXED = 2.0;
-
 // this is slower than the IMU update rate of 1000Hz
 static const uint32_t PREDICT_RATE = Clock::RATE_100_HZ; 
 static const uint32_t PREDICTION_UPDATE_INTERVAL_MS = 1000 / PREDICT_RATE;
@@ -76,16 +71,6 @@ typedef struct {
     float dat[KC_STATE_DIM][KC_STATE_DIM];
 
 } matrix_t;
-
-typedef struct {
-
-    float w;
-    float x;
-    float y;
-    float z;
-
-} new_quat_t;
-
 
 typedef struct {
 
@@ -112,14 +97,6 @@ static const float mymax(const float val, const float maxval)
 static const float square(const float x)
 {
     return x * x;
-}
-
-static float rotateQuat( const float val, const float initVal)
-{
-    const auto keep = 1.0f - ROLLPITCH_ZERO_REVERSION;
-
-    return (val * (stream_isFlying ? 1: keep)) +
-        (stream_isFlying ? 0 : ROLLPITCH_ZERO_REVERSION * initVal);
 }
 
 static void updateCovarianceMatrix(const matrix_t & p_in, matrix_t & p_out) 
@@ -304,10 +281,8 @@ static void ekf_predict(
         const uint32_t accelCount,
         const matrix_t & p_in,
         const ekfLinear_t & linear_in,
-        const new_quat_t & q,
         const axis3_t & r,
         const uint32_t lastPredictionMsec, 
-        new_quat_t & quat_out,
         matrix_t & p_out,
         ekfLinear_t & linear_out) 
 {
@@ -342,33 +317,6 @@ static void ekf_predict(
     const auto accx = stream_isFlying ? 0 : _accel_x;
     const auto accy = stream_isFlying ? 0 : _accel_y;
 
-    // attitude update (rotate by gyroscope), we do this in quaternions
-    // this is the gyroscope angular velocity integrated over the sample period
-    const auto dtwx = dt*_gyro_x;
-    const auto dtwy = dt*_gyro_y;
-    const auto dtwz = dt*_gyro_z;
-
-    // compute the quaternion values in [w,x,y,z] order
-    const auto angle = sqrt(dtwx*dtwx + dtwy*dtwy + dtwz*dtwz) + EPS;
-    const auto ca = cos(angle/2);
-    const auto sa = sin(angle/2);
-    const auto dqw = ca;
-    const auto dqx = sa*dtwx/angle;
-    const auto dqy = sa*dtwy/angle;
-    const auto dqz = sa*dtwz/angle;
-
-    // rotate the quad's attitude by the delta quaternion vector computed above
-
-    const auto tmpq0 = rotateQuat(dqw*q.w - dqx*q.x - dqy*q.y - dqz*q.z, QW_INIT);
-    const auto tmpq1 = rotateQuat(dqx*q.w + dqw*q.x + dqz*q.y - dqy*q.z, QX_INIT);
-    const auto tmpq2 = rotateQuat(dqy*q.w - dqz*q.x + dqw*q.y + dqx*q.z, QY_INIT);
-    const auto tmpq3 = rotateQuat(dqz*q.w + dqy*q.x - dqx*q.y + dqw*q.z, QZ_INIT);
-
-    // normalize and store the result
-    const auto norm = 
-        sqrt(tmpq0*tmpq0 + tmpq1*tmpq1 + tmpq2*tmpq2 + tmpq3*tmpq3) + 
-        EPS;
-
     // Process noise is added after the return from the prediction step
 
     // ====== PREDICTION STEP ======
@@ -390,12 +338,6 @@ static void ekf_predict(
 
     linear_out.dz =  linear_in.dz +
         dt * (_accel_z + _gyro_y * tmpSDX - _gyro_x * tmpSDY - MSS_TO_GS * r.z);
-
-    // predict()
-    quat_out.w = tmpq0/norm;
-    quat_out.x = tmpq1/norm; 
-    quat_out.y = tmpq2/norm; 
-    quat_out.z = tmpq3/norm;
 
     // ====== COVARIANCE UPDATE ======
 
@@ -529,128 +471,23 @@ static bool ekf_updateWithRange(
     return shouldUpdate;
 }
 
-static bool ekf_updateWithFlow(
-        const matrix_t & p_in,
-        const ekfState_t & ekfs_in,
-        const float rz,
-        const axis3_t & gyroLatest,
-        matrix_t & p_out,
-        ekfState_t & ekfs_out) 
-{
-    // Inclusion of flow measurements in the EKF done by two scalar updates
-
-    // ~~~ Camera constants ~~~
-    // The angle of aperture is guessed from the raw data register and
-    // thankfully look to be symmetric
-
-    float Npix = 35.0;                      // [pixels] (same in x and y)
-
-    // 2*sin(42/2); 42degree is the agnle of aperture, here we computed the
-    // corresponding ground length
-    float thetapix = 0.71674f;
-
-    //~~~ Body rates ~~~
-    // TODO check if this is feasible or if some filtering has to be done
-    const auto omegax_b = gyroLatest.x * DEGREES_TO_RADIANS;
-    const auto omegay_b = gyroLatest.y * DEGREES_TO_RADIANS;
-
-    const auto dx_g = ekfs_in.lin.dx;
-    const auto dy_g = ekfs_in.lin.dy;
-
-    // Saturate elevation in prediction and correction to avoid singularities
-    const auto z_g = ekfs_in.lin.z < 0.1f ? 0.1f : ekfs_in.lin.z;
-
-    // ~~~ X velocity prediction and update ~~~
-    // predicts the number of accumulated pixels in the x-direction
-    float hx[KC_STATE_DIM] = {};
-    auto predictedNX = (stream_flow.dt * Npix / thetapix ) * 
-        ((dx_g * rz / z_g) - omegay_b);
-    auto measuredNX = stream_flow.dpixelx*FLOW_RESOLUTION;
-
-    // derive measurement equation with respect to dx (and z?)
-    hx[KC_STATE_Z] = (Npix * stream_flow.dt / thetapix) * 
-        ((rz * dx_g) / (-z_g * z_g));
-    hx[KC_STATE_DX] = (Npix * stream_flow.dt / thetapix) * 
-        (rz / z_g);
-
-    matrix_t p_first = {};
-    ekfState_t ekfs_first = {};
-
-    //First update
-    scalarUpdate(
-            p_in,
-            ekfs_in,
-            hx, 
-            measuredNX-predictedNX, 
-            FLOW_STD_FIXED*FLOW_RESOLUTION, 
-            p_first,
-            ekfs_first);
-
-    // ~~~ Y velocity prediction and update ~~~
-    float hy[KC_STATE_DIM] = {};
-    auto predictedNY = (stream_flow.dt * Npix / thetapix ) * 
-        ((dy_g * rz / z_g) + omegax_b);
-    auto measuredNY = stream_flow.dpixely*FLOW_RESOLUTION;
-
-    // derive measurement equation with respect to dy (and z?)
-    hy[KC_STATE_Z] = (Npix * stream_flow.dt / thetapix) * 
-        ((rz * dy_g) / (-z_g * z_g));
-    hy[KC_STATE_DY] = (Npix * stream_flow.dt / thetapix) * (rz / z_g);
-
-    // Second update
-    scalarUpdate(
-            p_first,
-            ekfs_first,
-            hy, 
-            measuredNY-predictedNY, 
-            FLOW_STD_FIXED*FLOW_RESOLUTION, 
-            p_out,
-            ekfs_out);
-
-    return true;
-}
-
 static void ekf_finalize(
-        const matrix_t & p_in,
-        const ekfState_t & ekfs,
-        const new_quat_t & q,
-        matrix_t & p_out,
-        new_quat_t & q_out)
+        const matrix_t & p_in, 
+        const ekfState_t & ekfs, 
+        const float qw,
+        const float qx,
+        const float qy,
+        const float qz,
+        matrix_t & p_out)
 {
     // Incorporate the attitude error (Kalman filter state) with the attitude
     const auto v0 = ekfs.ang.x;
     const auto v1 = ekfs.ang.y;
     const auto v2 = ekfs.ang.z;
 
-    const auto angle = sqrt(v0*v0 + v1*v1 + v2*v2) + EPS;
-    const auto ca = cos(angle / 2.0f);
-    const auto sa = sin(angle / 2.0f);
-
-    const auto dqw = ca;
-    const auto dqx = sa * v0 / angle;
-    const auto dqy = sa * v1 / angle;
-    const auto dqz = sa * v2 / angle;
-
-    // Rotate the quad's attitude by the delta quaternion vector
-    // computed above
-    const auto tmpq0 = dqw * q.w - dqx * q.x - dqy * q.y - dqz * q.z;
-    const auto tmpq1 = dqx * q.w + dqw * q.x + dqz * q.y - dqy * q.z;
-    const auto tmpq2 = dqy * q.w - dqz * q.x + dqw * q.y + dqx * q.z;
-    const auto tmpq3 = dqz * q.w + dqy * q.x - dqx * q.y + dqw * q.z;
-
-    // normalize and store the result
-    const auto norm = sqrt(tmpq0 * tmpq0 + tmpq1 * tmpq1 + tmpq2 * tmpq2 + 
-            tmpq3 * tmpq3) + EPS;
-
     const auto isErrorSufficient  = 
         (isErrorLarge(v0) || isErrorLarge(v1) || isErrorLarge(v2)) &&
         isErrorInBounds(v0) && isErrorInBounds(v1) && isErrorInBounds(v2);
-
-    // finalize()
-    q_out.w = isErrorSufficient ? tmpq0 / norm : q.w;
-    q_out.x = isErrorSufficient ? tmpq1 / norm : q.x;
-    q_out.y = isErrorSufficient ? tmpq2 / norm : q.y;
-    q_out.z = isErrorSufficient ? tmpq3 / norm : q.z;
 
     // Move attitude error into attitude if any of the angle errors are
     // large enough
@@ -669,7 +506,7 @@ static void ekf_finalize(
 
 // ===========================================================================
 
-static void ekf_step(float & phi, float & theta, float & psi)
+static void ekf_step(void)
 {
     static float _z;
     static float _dx;
@@ -701,17 +538,16 @@ static void ekf_step(float & phi, float & theta, float & psi)
     static float _ry;
     static float _rz;
 
-    static float _qw;
-    static float _qx;
-    static float _qy;
-    static float _qz;
-
     static uint32_t _nextPredictionMsec;
 
     const auto ekfs = ekfState_t { {_z, _dx, _dy, _dz}, {_e0, _e1, _e2}};
 
-    const auto quat = new_quat_t {_qw, _qx, _qy, _qz };
     const auto r = axis3_t {_rx, _ry, _rz};
+
+    const auto qw = stream_quat_w;
+    const auto qx = stream_quat_x;
+    const auto qy = stream_quat_y;
+    const auto qz = stream_quat_z;
 
     // Initialize
     bool didInitialize = stream_ekf_action == EKF_INIT;
@@ -730,8 +566,6 @@ static void ekf_step(float & phi, float & theta, float & psi)
 
     ekfLinear_t lin_predicted = {};
 
-    new_quat_t quat_predicted = {};
-
     if (didPredict) {
 
         ekf_predict(
@@ -745,17 +579,11 @@ static void ekf_step(float & phi, float & theta, float & psi)
                 _accelCount,
                 _p,
                 ekfs.lin,
-                quat,
                 r,
                 _lastPredictionMsec, 
 
-                quat_predicted,
                 _p,
                 lin_predicted);
-
-        Serial.printf("EKF : %+3.3f %+3.3f %+3.3f %+3.3f\n", 
-                quat_predicted.w, quat_predicted.x, quat_predicted.y, quat_predicted.z);
-
     }
 
     const auto isDtPositive = didPredict && 
@@ -764,32 +592,10 @@ static void ekf_step(float & phi, float & theta, float & psi)
     // Finalize
     const auto finalizing = stream_ekf_action == EKF_FINALIZE;
     const auto didFinalize = finalizing && _isUpdated;
-    new_quat_t quat_finalized = {};
     if (didFinalize) {
 
-        ekf_finalize(_p, ekfs, quat, _p, quat_finalized);
-
-        const auto qw = quat_finalized.w;
-        const auto qx = quat_finalized.x;
-        const auto qz = quat_finalized.y;
-        const auto qy = quat_finalized.z;
-
-        phi = RADIANS_TO_DEGREES * atan2((2 * (qy*qz + qw*qx)),
-                (qw*qw - qx*qx - qy*qy + qz*qz));
-
-        // Negate for ENU
-        theta = -RADIANS_TO_DEGREES * asin((-2) * (qx*qz - qw*qy));
-
-        psi = RADIANS_TO_DEGREES * atan2((2 * (qx*qy + qw*qz)),
-                (qw*qw + qx*qx - qy*qy - qz*qz));
-
+        ekf_finalize(_p, ekfs, qw, qx, qy, qz, _p);
     }
-
-    // Update with flow
-    ekfState_t ekfs_updatedWithFlow = {};
-    const auto didUpdateWithFlow = stream_ekf_action == EKF_UPDATE_WITH_FLOW &&
-        ekf_updateWithFlow(_p, ekfs, _rz, _gyroLatest, 
-                _p, ekfs_updatedWithFlow);
 
     // Update with range
     ekfState_t ekfs_updatedWithRange = {};
@@ -853,74 +659,41 @@ static void ekf_step(float & phi, float & theta, float & psi)
         didUpdateWithAccel ? _accelCount + 1 :
         _accelCount;
 
-    _qw = didInitialize ? 1 : 
-        didFinalize ? quat_finalized.w :
-        isDtPositive ? quat_predicted.w :
-        _qw;
+    _rx = didInitialize ? 0 : didFinalize ? 2 * qx * qz - 2 * qw * qy : _rx;
 
-    _qx = didInitialize ? 0 : 
-        didFinalize ? quat_finalized.x :
-        isDtPositive ? quat_predicted.x :
-        _qx;
+    _ry = didInitialize ? 0 : didFinalize ? 2 * qy * qz + 2 * qw * qx : _ry;
 
-    _qy = didInitialize ? 0 : 
-        didFinalize ? quat_finalized.y :
-        isDtPositive ? quat_predicted.y :
-        _qy;
-
-    _qz = didInitialize ? 0 : 
-        didFinalize ? quat_finalized.z :
-        isDtPositive ? quat_predicted.z :
-        _qz;
-
-    _rx = didInitialize ? 0 : 
-        didFinalize ? 2 * _qx * _qz - 2 * _qw * _qy :
-        _rx;
-
-    _ry = didInitialize ? 0 : 
-        didFinalize ? 2 * _qy * _qz + 2 * _qw * _qx :
-        _ry;
-
-    _rz = didInitialize ? 1 : 
-        didFinalize ? _qw*_qw-_qx*_qx-_qy*_qy+_qz*_qz:
-        _rz;
+    _rz = didInitialize ? 1 : didFinalize ? qw*qw-qx*qx-qy*qy+qz*qz : _rz;
 
     _z = didInitialize ? 0 : 
         isDtPositive ? lin_predicted.z :
-        didUpdateWithFlow ? ekfs_updatedWithFlow.lin.z :
         didUpdateWithRange ? ekfs_updatedWithRange.lin.z :
         _z;
 
     _dx = didInitialize ? 0 : 
         isDtPositive ? lin_predicted.dx :
-        didUpdateWithFlow ? ekfs_updatedWithFlow.lin.dx :
         didUpdateWithRange ? ekfs_updatedWithRange.lin.dx :
         _dx;
 
     _dy = didInitialize ? 0 : 
         isDtPositive ? lin_predicted.dy :
-        didUpdateWithFlow ? ekfs_updatedWithFlow.lin.dy :
         didUpdateWithRange ? ekfs_updatedWithRange.lin.dy :
         _dy;
 
     _dz = didInitialize ? 0 : 
         isDtPositive ? lin_predicted.dz :
-        didUpdateWithFlow ? ekfs_updatedWithFlow.lin.dz :
         didUpdateWithRange ? ekfs_updatedWithRange.lin.dz :
         _dz;
 
     _e0 = didInitialize || didFinalize ? 0 : 
-        didUpdateWithFlow ? ekfs_updatedWithFlow.ang.x :
         didUpdateWithRange ? ekfs_updatedWithRange.ang.x :
         _e0;
 
     _e1 = didInitialize || didFinalize ? 0 : 
-        didUpdateWithFlow ? ekfs_updatedWithFlow.ang.y :
         didUpdateWithRange ? ekfs_updatedWithRange.ang.y :
         _e1;
 
     _e2 = didInitialize || didFinalize ? 0 : 
-        didUpdateWithFlow ? ekfs_updatedWithFlow.ang.z :
         didUpdateWithRange ? ekfs_updatedWithRange.ang.z :
         _e2;
 
@@ -936,6 +709,5 @@ static void ekf_step(float & phi, float & theta, float & psi)
     _isUpdated = 
         didInitialize || didFinalize ? false :
         stream_ekf_action == EKF_PREDICT ? true :
-        didUpdateWithFlow || didUpdateWithRange ? true :
         _isUpdated;
 }

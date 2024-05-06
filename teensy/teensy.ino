@@ -123,14 +123,7 @@ static void runEkf(const ekfAction_e action)
 {
     stream_ekf_action = action;
     stream_now_msec = millis();
-    float phi=0, theta=0, psi=0;
-    ekf_step(phi, theta, psi);
-
-    if (action == EKF_FINALIZE) {
-        _phi = phi;
-        _theta = theta;
-        _psi = psi;
-    }
+    ekf_step();
 }
 
 static void initImu(void)
@@ -176,8 +169,7 @@ static void readImu(void)
     // We swap quaterion qw/qx, qy/qz to accommodate upside-down USFS mounting
     if (Usfs::eventStatusIsQuaternion(eventStatus)) { 
         usfs.readQuaternion(
-                //stream_quat_x, stream_quat_w, stream_quat_z, stream_quat_y);
-                stream_quat_w, stream_quat_x, stream_quat_y, stream_quat_z);
+                stream_quat_x, stream_quat_w, stream_quat_z, stream_quat_y);
     }
 
     if (Usfs::eventStatusIsAccelerometer(eventStatus)) { 
@@ -286,8 +278,8 @@ static void debug(const uint32_t current_time)
 
         //debugAccel();  
         //debugGyro();  
-        debugQuat();  
-        //debugState();  
+        //debugQuat();  
+        debugState();  
         //debugMotorCommands(); 
         //debugLoopRate();      
         //debugRangefinder();      
@@ -344,10 +336,9 @@ void loop()
 
 void setVehicleState(const float phi, const float theta, const float psi)
 {
-    /*
     _phi = phi;
     _theta = theta;
-    _psi = psi;*/
+    _psi = psi;
 }
 
 void setMotors(const float m1, const float m2, const float m3, const float m4)
@@ -397,8 +388,7 @@ void debugMotorCommands(void)
 
 void debugQuat(void) 
 {
-    // Serial.printf("qw:%+3.3f qx:%+3.3f qy:%+3.3f qz:%+3.3f\n",
-    Serial.printf("HARD: %+3.3f %+3.3f %+3.3f %+3.3f\n",
+    Serial.printf("%+3.3f %+3.3f %+3.3f %+3.3f\n",
             stream_quat_w, stream_quat_x, stream_quat_y, stream_quat_z);
 }
 
