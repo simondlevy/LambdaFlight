@@ -754,6 +754,8 @@ class Comms:
 
         line = ''
 
+        n = 7
+
         while True:
 
             byte = str(self.port.read(1).decode())
@@ -762,11 +764,11 @@ class Comms:
 
                 toks = line.split()
 
-                if len(toks) == 4:
+                if len(toks) == n:
 
-                    roll, pitch, yaw, alt = [
+                    roll, pitch, yaw, z, dx, dy, dz = [
                             np.radians(float(toks[k].split(':')[1]))
-                            for k in range(4)]
+                            for k in range(n)]
 
                     self.viz.roll_pitch_yaw = roll, pitch, yaw
 

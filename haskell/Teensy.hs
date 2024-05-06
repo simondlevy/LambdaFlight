@@ -103,7 +103,7 @@ maxYaw = 160 :: SFloat
 
 -----------------------------------------------------------------------------
 
-step = (phi, theta, psi, z, m1, m2, m3, m4) where
+step = (phi, theta, psi, z, dx, dy, dz, m1, m2, m3, m4) where
 
   -- Get Euler angles from USFS hardware quaternion --------------------------
 
@@ -118,7 +118,14 @@ step = (phi, theta, psi, z, m1, m2, m3, m4) where
 
   z = rangefinder_distance / 1000 -- mm => m
 
-   -- Get open-loop demands --------------------------------------------------
+  dz = (z - z') / dt
+
+  -- Get X/Y velocity --------------------------------------------------------
+
+  dx = 0 :: SFloat
+  dy = 0 :: SFloat
+
+  -- Get open-loop demands --------------------------------------------------
 
   scaleup = \c -> sbus_scale * c + sbus_bias
 
@@ -209,14 +216,15 @@ step = (phi, theta, psi, z, m1, m2, m3, m4) where
   integral_yaw' = [0] ++ integral_yaw
   error_yaw' = [0] ++ error_yaw
   armed' = [False] ++ armed
+  z' = [0] ++ z
 
 ------------------------------------------------------------------------------
 
 spec = do
 
-  let (phi, theta, psi, z, m1, m2, m3, m4) = step
+  let (phi, theta, psi, z, dx, dy, dz, m1, m2, m3, m4) = step
 
-  trigger "setState" true [ arg phi, arg theta, arg psi, arg z ]
+  trigger "setState" true [arg phi, arg theta, arg psi, arg z, arg dx, arg dy, arg dz]
 
   trigger "setMotors" true [arg m1, arg m2, arg m3, arg m4] 
 
