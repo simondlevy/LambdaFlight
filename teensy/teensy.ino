@@ -12,7 +12,7 @@
 
 #include <teensy_ekf.hpp>
 #include <usfs.hpp>
-#include <vl53l1_arduino.h>
+#include <VL53L1X.h>
 #include <oneshot125.hpp>
 
 #include <vector>
@@ -73,7 +73,7 @@ static const uint8_t REPORT_HZ = 2;
 
 static Usfs usfs;
 
-static auto vl53l1 = VL53L1_Arduino(&Wire1);
+static VL53L1X vl53l1x;
 
 static void powerPin(const uint8_t pin, const bool hilo)
 {
@@ -136,9 +136,20 @@ static void initImu(void)
     delay(100);
 
     Wire1.begin(); 
+    Wire1.setClock(400000);
     delay(100);
 
-    //vl53l1.begin();
+    vl53l1x.setBus(&Wire1);
+
+    vl53l1x.setTimeout(500);
+    while (!vl53l1x.init()) {
+        Serial.println("Failed to detect and initialize VL53L1X!");
+        delay(500);
+    }
+
+    vl53l1x.setDistanceMode(VL53L1X::Long);
+    vl53l1x.setMeasurementTimingBudget(50000);
+    vl53l1x.startContinuous(50);
 
     usfs.loadFirmware(VERBOSE); 
 
@@ -213,7 +224,7 @@ static void readRangefinder(void)
     static uint32_t msec_prev;
 
     if (msec_curr - msec_prev > (1000 / RANGEFINDER_FREQ)) {
-        //stream_rangefinder_distance =  vl53l1.readDistance();
+        stream_rangefinder_distance =  vl53l1x.read();
         msec_prev = msec_curr;
         runEkf(EKF_UPDATE_WITH_RANGE);
     }
@@ -279,10 +290,10 @@ static void debug(const uint32_t current_time)
         //debugAccel();  
         //debugGyro();  
         //debugQuat();  
-        debugState();  
+        //debugState();  
         //debugMotorCommands(); 
         //debugLoopRate();      
-        //debugRangefinder();      
+        debugRangefinder();      
     }
 }
 
