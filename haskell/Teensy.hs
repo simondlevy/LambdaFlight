@@ -74,6 +74,15 @@ gyro_y = extern "stream_gyro_y" Nothing
 gyro_z :: SFloat
 gyro_z = extern "stream_gyro_z" Nothing
 
+accel_x :: SFloat
+accel_x = extern "stream_accel_x" Nothing
+
+accel_y :: SFloat
+accel_y = extern "stream_accel_y" Nothing
+
+accel_z :: SFloat
+accel_z = extern "stream_accel_z" Nothing
+
 rangefinder_distance :: SFloat
 rangefinder_distance = extern "stream_rangefinder_distance" Nothing
 
@@ -105,6 +114,17 @@ max_yaw = 160 :: SFloat
 
 accel_z_bias = 0.952 :: SFloat
 
+compute_dz = (dz_rangefinder, dz_accel) where
+
+  z_rangefinder = rangefinder_distance / 1000 -- mm => m
+
+  dz_rangefinder = (z_rangefinder - z_rangefinder') / dt
+
+  dz_accel = (accel_z - accel_z_bias) * 9.81 * dt + dz_accel'
+
+  z_rangefinder' = [0] ++ z_rangefinder
+  dz_accel' = [0] ++ dz_accel
+
 -----------------------------------------------------------------------------
 
 step = (phi, theta, psi, z, dx, dy, dz, m1, m2, m3, m4) where
@@ -118,20 +138,12 @@ step = (phi, theta, psi, z, dx, dy, dz, m1, m2, m3, m4) where
 
   psi = (-atan2 (qx*qy + qw*qz) (0.5 - qy*qy - qz*qz)) * 180 / pi
 
-  -- Get altitude and its first derivative -----------------------------------
-
-  z_rangefinder = rangefinder_distance / 1000 -- mm => m
-
-  dz_rangefinder = (z_rangefinder - z_rangefinder') / dt
-
-  z = z_rangefinder
-
-  dz = dz_rangefinder
-
   -- Get X/Y velocity --------------------------------------------------------
 
+  z = 0 :: SFloat
   dx = 0 :: SFloat
   dy = 0 :: SFloat
+  dz = 0 :: SFloat
 
   -- Get open-loop demands --------------------------------------------------
 
@@ -224,13 +236,16 @@ step = (phi, theta, psi, z, dx, dy, dz, m1, m2, m3, m4) where
   integral_yaw' = [0] ++ integral_yaw
   error_yaw' = [0] ++ error_yaw
   armed' = [False] ++ armed
-  z_rangefinder' = [0] ++ z_rangefinder
 
 ------------------------------------------------------------------------------
 
 spec = do
 
   let (phi, theta, psi, z, dx, dy, dz, m1, m2, m3, m4) = step
+
+  let (dz_rangefinder, dz_accel) = compute_dz
+
+  trigger "setDz" true [arg dz_rangefinder, arg dz_accel]
 
   trigger "setState" true [arg phi, arg theta, arg psi, arg z, arg dx, arg dy, arg dz]
 

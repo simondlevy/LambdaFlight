@@ -68,6 +68,9 @@ static float _dx;
 static float _dy;
 static float _dz;
 
+static float _dz_rangefinder;
+static float _dz_accel;
+
 // Streams shared with Haskell ------------------------------------------------
 
 float       stream_accel_x;
@@ -296,7 +299,8 @@ static void debug(const uint32_t current_time)
 
         previous_time = current_time;
 
-        debugAccel();  
+        debugDz();
+        //debugAccel();  
         //debugGyro();  
         //debugQuat();  
         //debugState();  
@@ -368,6 +372,12 @@ void setState(
     _dz = dz;
 }
 
+void setDz(const float dz_rangefinder, const float dz_accel)
+{
+    _dz_rangefinder = dz_rangefinder;
+    _dz_accel = dz_accel;
+}
+
 void setMotors(const float m1, const float m2, const float m3, const float m4)
 {
     m1_command = m1;
@@ -426,4 +436,11 @@ void debugState(void)
     Serial.printf("phi:%2.2f theta:%2.2f psi:%2.2f z:%2.2f dx:%2.2d dy:%2.2f dz:%2.2f\n", 
             _phi, _theta, _psi, _z, _dx, _dy, _dz);
 }
+
+void debugDz(void) 
+{
+    Serial.printf("r:%+3.3f a:%+3.3f\n", _dz_rangefinder, _dz_accel);
+}
+
+
 
