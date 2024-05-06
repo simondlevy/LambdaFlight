@@ -772,6 +772,8 @@ class Comms:
 
                     self.viz.roll_pitch_yaw = roll, pitch, yaw
 
+                    print('DZ = %+3.3f' % dz)
+
                 line = ''
 
             else:

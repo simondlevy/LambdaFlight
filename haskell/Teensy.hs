@@ -116,9 +116,13 @@ step = (phi, theta, psi, z, dx, dy, dz, m1, m2, m3, m4) where
 
   -- Get altitude and its first derivative -----------------------------------
 
-  z = rangefinder_distance / 1000 -- mm => m
+  z_rangefinder = rangefinder_distance / 1000 -- mm => m
 
-  dz = (z - z') / dt
+  dz_rangefinder = (z_rangefinder - z_rangefinder') / dt
+
+  z = z_rangefinder
+
+  dz = dz_rangefinder
 
   -- Get X/Y velocity --------------------------------------------------------
 
@@ -216,7 +220,7 @@ step = (phi, theta, psi, z, dx, dy, dz, m1, m2, m3, m4) where
   integral_yaw' = [0] ++ integral_yaw
   error_yaw' = [0] ++ error_yaw
   armed' = [False] ++ armed
-  z' = [0] ++ z
+  z_rangefinder' = [0] ++ z_rangefinder
 
 ------------------------------------------------------------------------------
 
