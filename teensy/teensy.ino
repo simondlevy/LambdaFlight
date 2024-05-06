@@ -59,9 +59,11 @@ static int m2_command;
 static int m3_command;
 static int m4_command;
 
+// Vehicle state set by Haskell
 static float _phi;
 static float _theta;
 static float _psi;
+static float _z;
 
 // Streams shared with Haskell ------------------------------------------------
 
@@ -347,11 +349,12 @@ void loop()
 
 // Called by Copilot ---------------------------------------------------------
 
-void setVehicleState(const float phi, const float theta, const float psi)
+void setState(const float phi, const float theta, const float psi, const float z)
 {
     _phi = phi;
     _theta = theta;
     _psi = psi;
+    _z = z;
 }
 
 void setMotors(const float m1, const float m2, const float m3, const float m4)
@@ -409,7 +412,7 @@ void debugRangefinder(void)
 
 void debugState(void) 
 {
-    Serial.printf("roll:%2.2f pitch:%2.2f yaw:%2.2f alt:0\n", 
-            _phi, _theta, _psi);
+    Serial.printf("roll:%2.2f pitch:%2.2f yaw:%2.2f alt:%2.2f\n", 
+            _phi, _theta, _psi, _z);
 }
 

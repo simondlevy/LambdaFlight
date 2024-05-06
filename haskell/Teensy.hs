@@ -103,9 +103,9 @@ maxYaw = 160 :: SFloat
 
 -----------------------------------------------------------------------------
 
-step = (phi, theta, psi, m1, m2, m3, m4) where
+step = (phi, theta, psi, z, m1, m2, m3, m4) where
 
-  -- Get state from USFS hardware quaternion -------------------------
+  -- Get Euler angles from USFS hardware quaternion --------------------------
 
   phi = (atan2 (qw*qx + qy*qz) (0.5 - qx*qx - qy*qy)) * 180 / pi
 
@@ -113,6 +113,10 @@ step = (phi, theta, psi, m1, m2, m3, m4) where
            * 180 / pi)
 
   psi = (-atan2 (qx*qy + qw*qz) (0.5 - qy*qy - qz*qz)) * 180 / pi
+
+  -- Get altitude and its first derivative -----------------------------------
+
+  z = rangefinder_distance / 1000 -- mm => m
 
    -- Get open-loop demands --------------------------------------------------
 
@@ -210,9 +214,9 @@ step = (phi, theta, psi, m1, m2, m3, m4) where
 
 spec = do
 
-  let (phi, theta, psi, m1, m2, m3, m4) = step
+  let (phi, theta, psi, z, m1, m2, m3, m4) = step
 
-  trigger "setVehicleState" true [ arg phi, arg theta, arg psi ]
+  trigger "setState" true [ arg phi, arg theta, arg psi, arg z ]
 
   trigger "setMotors" true [arg m1, arg m2, arg m3, arg m4] 
 
