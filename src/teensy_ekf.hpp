@@ -524,8 +524,6 @@ static bool ekf_updateWithRange(
                 stdDev, 
                 p_out,
                 ekfs_out);
-
-        printf("%f\n", ekfs_out.lin.z);
     }
 
     return shouldUpdate;
@@ -669,39 +667,9 @@ static void ekf_finalize(
     }
 } 
 
-static void ekf_getVehicleState(
-        const ekfState_t & ekfs, 
-        const axis3_t & gyroLatest,
-        const new_quat_t & q,
-        const axis3_t & r,
-        vehicleState_t & state)
-{
-    state.dx = ekfs.lin.dx;
-
-    state.dy = ekfs.lin.dy;
-
-    state.z = ekfs.lin.z;
-
-    state.dz = r.x * ekfs.lin.dx + r.y * ekfs.lin.dy + r.z * ekfs.lin.dz;
-
-    state.phi = RADIANS_TO_DEGREES * atan2((2 * (q.y*q.z + q.w*q.x)),
-            (q.w*q.w - q.x*q.x - q.y*q.y + q.z*q.z));
-
-    // Negate for ENU
-    state.theta = -RADIANS_TO_DEGREES * asin((-2) * (q.x*q.z - q.w*q.y));
-
-    state.psi = RADIANS_TO_DEGREES * atan2((2 * (q.x*q.y + q.w*q.z)),
-            (q.w*q.w + q.x*q.x - q.y*q.y - q.z*q.z));
-
-    // Get angular velocities directly from gyro
-    state.dphi =    gyroLatest.x;
-    state.dtheta = -gyroLatest.y; // negate for ENU
-    state.dpsi =    gyroLatest.z;
-}
-
 // ===========================================================================
 
-static void ekf_step(void)
+static void ekf_step(float & phi, float & theta, float & psi)
 {
     static float _z;
     static float _dx;
@@ -785,6 +753,9 @@ static void ekf_step(void)
                 _p,
                 lin_predicted);
 
+        Serial.printf("EKF : %+3.3f %+3.3f %+3.3f %+3.3f\n", 
+                quat_predicted.w, quat_predicted.x, quat_predicted.y, quat_predicted.z);
+
     }
 
     const auto isDtPositive = didPredict && 
@@ -795,8 +766,23 @@ static void ekf_step(void)
     const auto didFinalize = finalizing && _isUpdated;
     new_quat_t quat_finalized = {};
     if (didFinalize) {
-        ekf_finalize(_p, ekfs, quat, 
-                _p, quat_finalized);
+
+        ekf_finalize(_p, ekfs, quat, _p, quat_finalized);
+
+        const auto qw = quat_finalized.w;
+        const auto qx = quat_finalized.x;
+        const auto qz = quat_finalized.y;
+        const auto qy = quat_finalized.z;
+
+        phi = RADIANS_TO_DEGREES * atan2((2 * (qy*qz + qw*qx)),
+                (qw*qw - qx*qx - qy*qy + qz*qz));
+
+        // Negate for ENU
+        theta = -RADIANS_TO_DEGREES * asin((-2) * (qx*qz - qw*qy));
+
+        psi = RADIANS_TO_DEGREES * atan2((2 * (qx*qy + qw*qz)),
+                (qw*qw + qx*qx - qy*qy - qz*qz));
+
     }
 
     // Update with flow
@@ -816,14 +802,6 @@ static void ekf_step(void)
 
     // Update with accel
     const auto didUpdateWithAccel = stream_ekf_action == EKF_UPDATE_WITH_ACCEL;
-
-    // Get vehicle state
-    vehicleState_t vehicleState = {};
-    ekf_getVehicleState(ekfs, _gyroLatest, quat, r, vehicleState);
-
-    if (stream_ekf_action == EKF_GET_STATE) {
-        setState(vehicleState);
-    }
 
     if (finalizing) {
         setStateIsInBounds(

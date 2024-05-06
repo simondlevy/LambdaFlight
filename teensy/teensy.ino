@@ -123,7 +123,14 @@ static void runEkf(const ekfAction_e action)
 {
     stream_ekf_action = action;
     stream_now_msec = millis();
-    ekf_step();
+    float phi=0, theta=0, psi=0;
+    ekf_step(phi, theta, psi);
+
+    if (action == EKF_FINALIZE) {
+        _phi = phi;
+        _theta = theta;
+        _psi = psi;
+    }
 }
 
 static void initImu(void)
@@ -138,7 +145,7 @@ static void initImu(void)
     Wire1.begin(); 
     delay(100);
 
-    vl53l1.begin();
+    //vl53l1.begin();
 
     usfs.loadFirmware(VERBOSE); 
 
@@ -169,7 +176,8 @@ static void readImu(void)
     // We swap quaterion qw/qx, qy/qz to accommodate upside-down USFS mounting
     if (Usfs::eventStatusIsQuaternion(eventStatus)) { 
         usfs.readQuaternion(
-                stream_quat_x, stream_quat_w, stream_quat_z, stream_quat_y);
+                //stream_quat_x, stream_quat_w, stream_quat_z, stream_quat_y);
+                stream_quat_w, stream_quat_x, stream_quat_y, stream_quat_z);
     }
 
     if (Usfs::eventStatusIsAccelerometer(eventStatus)) { 
@@ -187,6 +195,8 @@ static void readImu(void)
 
         runEkf(EKF_UPDATE_WITH_GYRO);
     }
+
+    runEkf(EKF_FINALIZE);
 }
 
 static void readReceiver() 
@@ -211,7 +221,7 @@ static void readRangefinder(void)
     static uint32_t msec_prev;
 
     if (msec_curr - msec_prev > (1000 / RANGEFINDER_FREQ)) {
-        stream_rangefinder_distance =  vl53l1.readDistance();
+        //stream_rangefinder_distance =  vl53l1.readDistance();
         msec_prev = msec_curr;
         runEkf(EKF_UPDATE_WITH_RANGE);
     }
@@ -276,7 +286,7 @@ static void debug(const uint32_t current_time)
 
         //debugAccel();  
         //debugGyro();  
-        //debugQuat();  
+        debugQuat();  
         //debugState();  
         //debugMotorCommands(); 
         //debugLoopRate();      
@@ -334,9 +344,10 @@ void loop()
 
 void setVehicleState(const float phi, const float theta, const float psi)
 {
+    /*
     _phi = phi;
     _theta = theta;
-    _psi = psi;
+    _psi = psi;*/
 }
 
 void setMotors(const float m1, const float m2, const float m3, const float m4)
@@ -386,7 +397,8 @@ void debugMotorCommands(void)
 
 void debugQuat(void) 
 {
-    Serial.printf("qw:%+3.3f qx:%+3.3f qy:%+3.3f qz:%+3.3f\n",
+    // Serial.printf("qw:%+3.3f qx:%+3.3f qy:%+3.3f qz:%+3.3f\n",
+    Serial.printf("HARD: %+3.3f %+3.3f %+3.3f %+3.3f\n",
             stream_quat_w, stream_quat_x, stream_quat_y, stream_quat_z);
 }
 

@@ -170,7 +170,7 @@ static void scalarUpdate(
     };
 
     // Perform the state update
-    ekfs_out.lin.z  = ekfs_in.lin.z  + g[0] * error;
+    ekfs_out.lin.z = ekfs_in.lin.z  + g[0] * error;
     ekfs_out.lin.dx = ekfs_in.lin.dx + g[1] * error;
     ekfs_out.lin.dy = ekfs_in.lin.dy + g[2] * error;
     ekfs_out.lin.dz = ekfs_in.lin.dz + g[3] * error;
@@ -676,7 +676,7 @@ static void ekf_getVehicleState(
 
     state.dy = ekfs.lin.dy;
 
-    state.z = ekfs.lin.z;
+    state.z = stream_rangefinder_distance / 1000; //ekfs.lin.z;
 
     state.dz = r.x * ekfs.lin.dx + r.y * ekfs.lin.dy + r.z * ekfs.lin.dz;
 
