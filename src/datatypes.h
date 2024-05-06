@@ -67,6 +67,8 @@ typedef struct {
     float psi;     // positive nose left
     float dpsi;    // positive nose left
 
+    float z_dz;    // combination of Z and DZ for Python client
+
 } vehicleState_t;
 
 typedef union {

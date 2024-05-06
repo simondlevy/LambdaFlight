@@ -109,6 +109,11 @@ static const float max(const float val, const float maxval)
     return val > maxval ? maxval : val;
 }
 
+static const float min(const float val, const float maxval)
+{
+    return val < maxval ? maxval : val;
+}
+
 static const float square(const float x)
 {
     return x * x;
@@ -676,9 +681,16 @@ static void ekf_getVehicleState(
 
     state.dy = ekfs.lin.dy;
 
-    state.z = stream_rangefinder_distance / 1000; //ekfs.lin.z;
+    state.z = stream_rangefinder_distance / 1000; 
+
+    state.z = min(0, state.z);
 
     state.dz = r.x * ekfs.lin.dx + r.y * ekfs.lin.dy + r.z * ekfs.lin.dz;
+
+    // Pack Z and DZ into a single float for transmission to client
+    const int8_t sgn = state.dz < 0 ? -1 : +1;
+    const float s = 1000;
+    state.z_dz = (int)(state.dz * s) + sgn * state.z / s;
 
     state.phi = RADIANS_TO_DEGREES * atan2((2 * (q.y*q.z + q.w*q.x)),
             (q.w*q.w - q.x*q.x - q.y*q.y + q.z*q.z));

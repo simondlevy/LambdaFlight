@@ -1090,9 +1090,6 @@ extern PowerMonitorTask powerMonitorTask;
 extern PowerMonitorTask::syslinkInfo_t pmSyslinkInfo;
 extern crtpStats_t crtpStats;
 
-static float stateX;
-static float stateY;
-
 //////////////////////////////////////////////////////////////////////////////
 
     LOG_GROUP_START(radio)
@@ -1168,13 +1165,11 @@ LOG_GROUP_STOP(stabilizer)
     LOG_ADD(LOG_INT16, ctr_yaw, &unused)
 LOG_GROUP_STOP(controller)
 
+    // NB: We swap in DX, DY for X,Y, packed Z/DZ for Z
     LOG_GROUP_START(stateEstimate)
-    LOG_ADD_CORE(LOG_FLOAT, x, &stateX)
-    LOG_ADD_CORE(LOG_FLOAT, y, &stateY)
-    LOG_ADD_CORE(LOG_FLOAT, z, &stream_vehicleState.z)
-    LOG_ADD_CORE(LOG_FLOAT, vx, &stream_vehicleState.dx)
-    LOG_ADD_CORE(LOG_FLOAT, vy, &stream_vehicleState.dy)
-    LOG_ADD_CORE(LOG_FLOAT, vz, &stream_vehicleState.dz)
+    LOG_ADD_CORE(LOG_FLOAT, x, &stream_vehicleState.dx)
+    LOG_ADD_CORE(LOG_FLOAT, y, &stream_vehicleState.dy)
+    LOG_ADD_CORE(LOG_FLOAT, z, &stream_vehicleState.z_dz)
     LOG_ADD_CORE(LOG_FLOAT, roll, &stream_vehicleState.phi)
     LOG_ADD_CORE(LOG_FLOAT, pitch, &stream_vehicleState.theta)
     LOG_ADD_CORE(LOG_FLOAT, yaw, &stream_vehicleState.psi)
