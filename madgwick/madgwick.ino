@@ -10,14 +10,10 @@
 #define _MAIN
 #include <teensy_streams.h>
 
-#include <teensy_ekf.hpp>
 #include <usfs.hpp>
-#include <VL53L1X.h>
 #include <oneshot125.hpp>
 
 #include <vector>
-
-void copilot_step(void);
 
 // LED settings -------------------------------------------------------------
 
@@ -73,8 +69,6 @@ static const uint8_t REPORT_HZ = 2;
 
 static Usfs usfs;
 
-static VL53L1X vl53l1x;
-
 static void powerPin(const uint8_t pin, const bool hilo)
 {
     pinMode(pin, OUTPUT);
@@ -119,13 +113,6 @@ static void blinkLed(const uint32_t current_time)
     }
 }
 
-static void runEkf(const ekfAction_e action)
-{
-    stream_ekf_action = action;
-    stream_now_msec = millis();
-    ekf_step();
-}
-
 static void initImu(void)
 {
     powerPin(21, HIGH);
@@ -138,17 +125,6 @@ static void initImu(void)
     Wire1.begin(); 
     Wire1.setClock(400000);
     delay(100);
-
-    vl53l1x.setBus(&Wire1);
-
-    while (!vl53l1x.init()) {
-        Serial.println("Failed to detect and initialize VL53L1X!");
-        delay(500);
-    }
-
-    vl53l1x.setDistanceMode(VL53L1X::Long);
-    vl53l1x.setMeasurementTimingBudget(50000);
-    vl53l1x.startContinuous(50);
 
     usfs.loadFirmware(VERBOSE); 
 
@@ -176,29 +152,17 @@ static void readImu(void)
         Usfs::reportError(eventStatus);
     }
 
-    // We swap quaterion qw/qx, qy/qz to accommodate upside-down USFS mounting
-    if (Usfs::eventStatusIsQuaternion(eventStatus)) { 
-        usfs.readQuaternion(
-                stream_quat_x, stream_quat_w, stream_quat_z, stream_quat_y);
-    }
-
     if (Usfs::eventStatusIsAccelerometer(eventStatus)) { 
 
         usfs.readAccelerometerScaled(
                 stream_accel_x, stream_accel_y, stream_accel_z);
-
-        runEkf(EKF_UPDATE_WITH_ACCEL);
     }
 
     if (Usfs::eventStatusIsGyrometer(eventStatus)) { 
 
         usfs.readGyrometerScaled(
                 stream_gyro_x, stream_gyro_y, stream_gyro_z);
-
-        runEkf(EKF_UPDATE_WITH_GYRO);
     }
-
-    runEkf(EKF_FINALIZE);
 }
 
 static void readReceiver() 
@@ -214,18 +178,6 @@ static void readReceiver()
 
     if (sbus.data().failsafe) {
         stream_radio_failsafe = true;
-    }
-}
-
-static void readRangefinder(void)
-{
-    const auto msec_curr = millis();
-    static uint32_t msec_prev;
-
-    if (msec_curr - msec_prev > (1000 / RANGEFINDER_FREQ)) {
-        stream_rangefinder_distance =  vl53l1x.read();
-        msec_prev = msec_curr;
-        runEkf(EKF_UPDATE_WITH_RANGE);
     }
 }
 
@@ -288,11 +240,94 @@ static void debug(const uint32_t current_time)
         //debugAccel();  
         //debugGyro();  
         //debugQuat();  
-        //debugState();  
+        debugState();  
         //debugMotorCommands(); 
         //debugLoopRate();      
         //debugRangefinder();      
     }
+}
+
+static float invSqrt(const float x)
+{
+    return 1 / sqrt(x);
+}
+
+static void runMadgwick(const bool init)
+{
+    static float _q0;
+    static float _q1;
+    static float _q2;
+    static float _q3;
+
+    _q0 = init ? 1 : _q0;
+
+    // Tunable parameter
+    const auto b_madgwick = 0.04f;
+
+    // Convert gyroscope degrees/sec to radians/sec
+    const auto ggx = stream_gyro_x * 0.0174533;
+    const auto ggy = stream_gyro_y * 0.0174533;
+    const auto ggz = stream_gyro_z * 0.0174533;
+    
+    const auto ax = stream_accel_x;
+    const auto ay = stream_accel_y;
+    const auto az = stream_accel_z;
+
+    // Normalize accelerometer measurement
+    const auto recipNorm = invSqrt(ax * ax + ay * ay + az * az);
+    const auto aax = ax * recipNorm;
+    const auto aay = ay * recipNorm;
+    const auto aaz = az * recipNorm;
+
+    // Rate of change of quaternion from gyroscope
+    const auto qDot1 = 0.5 * (-_q1 * ggx - _q2 * ggy - _q3 * ggz);
+    const auto qDot2 = 0.5 * (_q0 * ggx + _q2 * ggz - _q3 * ggy);
+    const auto qDot3 = 0.5 * (_q0 * ggy - _q1 * ggz + _q3 * ggx);
+    const auto qDot4 = 0.5 * (_q0 * ggz + _q1 * ggy - _q2 * ggx);
+
+    //Auxiliary variables to avoid repeated arithmetic
+    const auto _2q0 = 2 * _q0;
+    const auto _2q1 = 2 * _q1;
+    const auto _2q2 = 2 * _q2;
+    const auto _2q3 = 2 * _q3;
+    const auto _4q0 = 4 * _q0;
+    const auto _4q1 = 4 * _q1;
+    const auto _4q2 = 4 * _q2;
+    const auto _8q1 = 8 * _q1;
+    const auto _8q2 = 8 * _q2;
+    const auto q0q0 = _q0 * _q0;
+    const auto q1q1 = _q1 * _q1;
+    const auto q2q2 = _q2 * _q2;
+    const auto q3q3 = _q3 * _q3;
+
+    // Gradient decent algorithm corrective step
+    const auto s0 = _4q0 * q2q2 + _2q2 * aax + _4q0 * q1q1 - _2q1 * aay;
+    const auto s1 = _4q1 * q3q3 - _2q3 * aax + 4 * q0q0 * _q1 - _2q0 * aay - _4q1 +
+        _8q1 * q1q1 + _8q1 * q2q2 + _4q1 * aaz;
+    const auto s2 = 4 * q0q0 * _q2 + _2q0 * aax + _4q2 * q3q3 - _2q3 * aay - 
+        _4q2 + _8q2 * q1q1 + _8q2 * q2q2 + _4q2 * aaz;
+    const auto s3 = 4 * q1q1 * _q3 - _2q1 * aax + 4 * q2q2 * _q3 - _2q2 * aay;
+
+    const auto recipNorm1 = invSqrt(s0 * s0 + s1 * s1 + s2 * s2 + s3 * s3);
+
+    const auto isAccelOkay = !(ax == 0 && ay == 0 && az == 0);
+
+    // Compute feedback only if accelerometer measurement valid (avoids NaN in
+    // accelerometer normalisation)
+    const auto qqDot1 = qDot1 - (isAccelOkay ? b_madgwick * s0 * recipNorm1 : 0);
+    const auto qqDot2 = qDot2 - (isAccelOkay ? b_madgwick * s1 * recipNorm1 : 0);
+    const auto qqDot3 = qDot3 - (isAccelOkay ? b_madgwick * s2 * recipNorm1 : 0);
+    const auto qqDot4 = qDot4 - (isAccelOkay ? b_madgwick * s3 * recipNorm1 : 0);
+
+    _q0 = _q0 + qqDot1 * stream_dt;
+    _q1 = _q1 + qqDot2 * stream_dt;
+    _q2 = _q2 + qqDot3 * stream_dt;
+    _q3 = _q3 + qqDot4 * stream_dt;
+
+    // Compute angles in degrees
+    _phi = atan2(_q0*_q1 + _q2*_q3, (0.5 - _q1*_q1 - _q2*_q2)) * 57.29577951;
+    _theta = -asin(constrain(-2 * (_q1*_q3 - _q0*_q2), -0.999999, 0.999999)) * 57.29577951;
+    _psi = -atan2(_q1*_q2 + _q0*_q3, (0.5 - _q2*_q2 - _q3*_q3)) * 57.29577951;
 }
 
 void setup()
@@ -309,11 +344,11 @@ void setup()
 
     initLed();
 
-    runEkf(EKF_INIT);
-
     delay(5);
 
     motors.arm();
+
+    runMadgwick(true);
 
 } // setup
 
@@ -327,46 +362,15 @@ void loop()
 
     readImu();
 
-    readRangefinder();
-
-    runEkf(EKF_PREDICT);
-
-    copilot_step(); 
-
     runMotors();
+
+    runMadgwick(false);
 
     readReceiver();
 
     maintainLoopRate(currentTime); 
 
 }  // loop
-
-// Called by Copilot ---------------------------------------------------------
-
-void setVehicleState(const float phi, const float theta, const float psi)
-{
-    _phi = phi;
-    _theta = theta;
-    _psi = psi;
-}
-
-void setMotors(const float m1, const float m2, const float m3, const float m4)
-{
-    m1_command = m1;
-    m2_command = m2;
-    m3_command = m3;
-    m4_command = m4;
-}
-
-// Called by EKF ---------------------------------------------------------
-
-void setStateIsInBounds(const bool isInBounds)
-{
-}
-
-void setState(const vehicleState_t & state)
-{
-}
 
 // Debugging -----------------------------------------------------------------
 

@@ -8,12 +8,6 @@
 #include <linalg.h>
 #include <teensy_streams.h>
 
-// Quaternion used for initial orientation
-static const float QW_INIT = 1;
-static const float QX_INIT = 0;
-static const float QY_INIT = 0;
-static const float QZ_INIT = 0;
-
 // Initial variances, uncertain of position, but know we're
 // stationary and roughly flat
 static const float STDEV_INITIAL_POSITION_Z = 1;
@@ -493,7 +487,6 @@ static void ekf_finalize(
         matrix_t APA = {};
         multiply(AP.dat, At.dat, APA.dat); // APA'
         updateCovarianceMatrix(APA, p_out);
-
     }
 } 
 
@@ -635,6 +628,8 @@ static void ekf_step(void)
     _accelSum_z = didUpdateWithAccel ? _accelSum_z + stream_accel_z :
         isDtPositive ? 0 :
         _accelSum_z;
+
+    Serial.printf("%+3.3f\n", stream_accel_z);
 
     memcpy(&_p, 
             didInitialize ? &p_initialized :
