@@ -56,27 +56,6 @@ static void powerPin(const uint8_t pin, const bool hilo)
 }
 
 
-static void readImu(void)
-{
-    const auto eventStatus = Usfs::checkStatus(); 
-
-    if (Usfs::eventStatusIsError(eventStatus)) { 
-
-        Usfs::reportError(eventStatus);
-    }
-
-
-    if (Usfs::eventStatusIsAccelerometer(eventStatus)) { 
-
-        usfs.readAccelerometerScaled(
-                accel_x, accel_y, accel_z);
-
-        // We negate accel Z to accommodate upside-down USFS mounting
-        accel_z = -accel_z;
-    }
-
-}
-
 static uint32_t updateTime(void)
 {
     static uint32_t _current_time;
@@ -137,6 +116,20 @@ void loop()
 
     debug(currentTime);
 
-    readImu();
+    const auto eventStatus = Usfs::checkStatus(); 
+
+    if (Usfs::eventStatusIsError(eventStatus)) { 
+
+        Usfs::reportError(eventStatus);
+    }
+
+    if (Usfs::eventStatusIsAccelerometer(eventStatus)) { 
+
+        usfs.readAccelerometerScaled(
+                accel_x, accel_y, accel_z);
+
+        // We negate accel Z to accommodate upside-down USFS mounting
+        accel_z = -accel_z;
+    }
 
 }
