@@ -729,7 +729,8 @@ static void ekf_step(void)
     const auto quat = new_quat_t {_qw, _qx, _qy, _qz };
     const auto r = axis3_t {_rx, _ry, _rz};
 
-    // Initialize
+    // Initialize ------------------------------------------------------------
+
     bool initializing = stream_ekfAction == EKF_INIT;
     if (initializing) {
         ekf_init(_p, _ekfs);
@@ -742,7 +743,7 @@ static void ekf_step(void)
         stream_nowMsec + PREDICTION_UPDATE_INTERVAL_MS :
         _nextPredictionMsec;
 
-    // Predict
+    // Predict ---------------------------------------------------------------
 
     const auto requestedPredict = stream_ekfAction == EKF_PREDICT;
 
@@ -780,14 +781,19 @@ static void ekf_step(void)
         _lastPredictionMsec = stream_nowMsec;
     }
 
-    const auto isDtPositive = predicting && 
+    const auto updatingProcessNoise = predicting && 
         (stream_nowMsec - _lastProcessNoiseUpdateMsec) / 1000.0f;
     
-    if (isDtPositive) {
+    if (updatingProcessNoise) {
         _lastProcessNoiseUpdateMsec = stream_nowMsec;
+        _ekfs.z = ekfs_predicted.z;
+        _ekfs.dx = ekfs_predicted.dx;
+        _ekfs.dy = ekfs_predicted.dy;
+        _ekfs.dz = ekfs_predicted.dz;
     }
 
-    // Finalize
+    // Finalize --------------------------------------------------------------
+
     const auto requestedFinalize = stream_ekfAction == EKF_FINALIZE;
     const auto finalizing = requestedFinalize && _isUpdated;
     new_quat_t quat_finalized = {};
@@ -839,59 +845,59 @@ static void ekf_step(void)
     //////////////////////////////////////////////////////////////////////////
 
     _gyroSum_x = updatingWithGyro ? _gyroSum_x + stream_gyro.x :
-        isDtPositive ? 0 :
+        updatingProcessNoise ? 0 :
         _gyroSum_x;
 
     _gyroSum_y = updatingWithGyro ? _gyroSum_y + stream_gyro.y :
-        isDtPositive ? 0 :
+        updatingProcessNoise ? 0 :
         _gyroSum_y;
 
     _gyroSum_z = updatingWithGyro ? _gyroSum_z + stream_gyro.z :
-        isDtPositive ? 0 :
+        updatingProcessNoise ? 0 :
         _gyroSum_z;
 
     _accelSum_x = updatingWithAccel ? _accelSum_x + stream_accel.x :
-        isDtPositive ? 0 :
+        updatingProcessNoise ? 0 :
         _accelSum_x;
 
     _accelSum_y = updatingWithAccel ? _accelSum_y + stream_accel.y :
-        isDtPositive ? 0 :
+        updatingProcessNoise ? 0 :
         _accelSum_y;
 
     _accelSum_z = updatingWithAccel ? _accelSum_z + stream_accel.z :
-        isDtPositive ? 0 :
+        updatingProcessNoise ? 0 :
         _accelSum_z;
 
     memcpy(&_gyroLatest, 
             updatingWithGyro ?  &stream_gyro : &_gyroLatest, 
             sizeof(axis3_t));
 
-    _gyroCount = isDtPositive ? 0 : 
+    _gyroCount = updatingProcessNoise ? 0 : 
         updatingWithGyro ? _gyroCount + 1 :
         _gyroCount;
 
-    _accelCount = isDtPositive ? 0 : 
+    _accelCount = updatingProcessNoise ? 0 : 
         updatingWithAccel ? _accelCount + 1 :
         _accelCount;
 
     _qw = initializing ? 1 : 
         finalizing ? quat_finalized.w :
-        isDtPositive ? quat_predicted.w :
+        updatingProcessNoise ? quat_predicted.w :
         _qw;
 
     _qx = initializing ? 0 : 
         finalizing ? quat_finalized.x :
-        isDtPositive ? quat_predicted.x :
+        updatingProcessNoise ? quat_predicted.x :
         _qx;
 
     _qy = initializing ? 0 : 
         finalizing ? quat_finalized.y :
-        isDtPositive ? quat_predicted.y :
+        updatingProcessNoise ? quat_predicted.y :
         _qy;
 
     _qz = initializing ? 0 : 
         finalizing ? quat_finalized.z :
-        isDtPositive ? quat_predicted.z :
+        updatingProcessNoise ? quat_predicted.z :
         _qz;
 
     _rx = initializing ? 0 : 
@@ -907,25 +913,21 @@ static void ekf_step(void)
         _rz;
 
     _ekfs.z = 
-        isDtPositive ? ekfs_predicted.z :
         updatingWithFlow ? ekfs_updatedWithFlow.z :
         updatingWithRange ? ekfs_updatedWithRange.z :
         _ekfs.z;
 
     _ekfs.dx = 
-        isDtPositive ? ekfs_predicted.dx :
         updatingWithFlow ? ekfs_updatedWithFlow.dx :
         updatingWithRange ? ekfs_updatedWithRange.dx :
         _ekfs.dx;
 
     _ekfs.dy = 
-        isDtPositive ? ekfs_predicted.dy :
         updatingWithFlow ? ekfs_updatedWithFlow.dy :
         updatingWithRange ? ekfs_updatedWithRange.dy :
         _ekfs.dy;
 
     _ekfs.dz = 
-        isDtPositive ? ekfs_predicted.dz :
         updatingWithFlow ? ekfs_updatedWithFlow.dz :
         updatingWithRange ? ekfs_updatedWithRange.dz :
         _ekfs.dz;
