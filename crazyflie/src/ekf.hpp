@@ -734,6 +734,7 @@ static void ekf_step(void)
     if (initializing) {
         ekf_init(_p, _ekfs);
         _lastProcessNoiseUpdateMsec = stream_nowMsec;
+        _lastPredictionMsec = stream_nowMsec;
     }
 
     _nextPredictionMsec = stream_nowMsec > _nextPredictionMsec ?
@@ -767,6 +768,8 @@ static void ekf_step(void)
                 quat_predicted,
                 _p,
                 ekfs_predicted);
+
+        _lastPredictionMsec = stream_nowMsec;
     }
 
     const auto isDtPositive = predicting && 
@@ -930,10 +933,6 @@ static void ekf_step(void)
         updatingWithFlow ? ekfs_updatedWithFlow.angz :
         updatingWithRange ? ekfs_updatedWithRange.angz :
         _ekfs.angz;
-
-    _lastPredictionMsec = 
-        initializing || predicting ? stream_nowMsec :
-        _lastPredictionMsec;
 
     _isUpdated = 
         initializing || finalizing ? false :
