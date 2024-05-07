@@ -732,8 +732,6 @@ static void ekf_step(void)
     const auto predicting =
         requestedPredict && stream_nowMsec >= _nextPredictionMsec;
 
-    ekfState_t ekfs_predicted = {};
-
     new_quat_t quat_predicted = {};
 
     if (requestedPredict) {
@@ -743,6 +741,8 @@ static void ekf_step(void)
     auto updatingProcessNoise = false;
 
     if (predicting) {
+
+        ekfState_t ekfs_predicted = {};
 
         ekf_predict(
                 _gyroSum_x,
