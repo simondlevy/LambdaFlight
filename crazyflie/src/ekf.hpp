@@ -709,13 +709,19 @@ static void ekf_step(void)
 
     // Initialize ------------------------------------------------------------
 
-    bool initializing = stream_ekfAction == EKF_INIT;
-    if (initializing) {
+    if (stream_ekfAction == EKF_INIT) {
+
         ekf_init(_p, _ekfs);
+
         _quat.w = 1;
         _quat.x = 0;
         _quat.y = 0;
         _quat.z = 0;
+
+        _rx = 0;
+        _ry = 0;
+        _rz = 0;
+
         _lastProcessNoiseUpdateMsec = stream_nowMsec;
         _lastPredictionMsec = stream_nowMsec;
         _isUpdated = false;
@@ -782,19 +788,7 @@ static void ekf_step(void)
         }
     }
 
-    // Finalize --------------------------------------------------------------
-
-    const auto requestedFinalize = stream_ekfAction == EKF_FINALIZE;
-    const auto finalizing = requestedFinalize && _isUpdated;
-    new_quat_t quat_finalized = {};
-    if (finalizing) {
-        ekf_finalize(_quat, _p, _ekfs, quat_finalized);
-        _quat.w = quat_finalized.w;
-        _quat.x = quat_finalized.x;
-        _quat.y = quat_finalized.y;
-        _quat.z = quat_finalized.z;
-        _isUpdated = false;
-    }
+    // Update ----------------------------------------------------------------
 
     // Update with flow
     if (stream_ekfAction == EKF_UPDATE_WITH_FLOW) {
@@ -816,7 +810,29 @@ static void ekf_step(void)
     // Update with accel
     const auto updatingWithAccel = stream_ekfAction == EKF_UPDATE_WITH_ACCEL;
 
-    // Get vehicle state
+    // Finalize --------------------------------------------------------------
+
+    const auto requestedFinalize = stream_ekfAction == EKF_FINALIZE;
+
+    if (requestedFinalize && _isUpdated) {
+
+        new_quat_t quat_finalized = {};
+
+        ekf_finalize(_quat, _p, _ekfs, quat_finalized);
+
+        _quat.w = quat_finalized.w;
+        _quat.x = quat_finalized.x;
+        _quat.y = quat_finalized.y;
+        _quat.z = quat_finalized.z;
+
+        _rx = 2 * _quat.x * _quat.z - 2 * _quat.w * _quat.y;
+        _ry = 2 * _quat.y * _quat.z + 2 * _quat.w * _quat.x; 
+        _rz = _quat.w*_quat.w-_quat.x*_quat.x-_quat.y*_quat.y+_quat.z*_quat.z;
+
+        _isUpdated = false;
+    }
+
+    // Get vehicle state -----------------------------------------------------
     vehicleState_t vehicleState = {};
     ekf_getVehicleState(_ekfs, _gyroLatest, _quat, r, vehicleState);
 
@@ -870,15 +886,4 @@ static void ekf_step(void)
         updatingWithAccel ? _accelCount + 1 :
         _accelCount;
 
-    _rx = initializing ? 0 : 
-        finalizing ? 2 * _quat.x * _quat.z - 2 * _quat.w * _quat.y :
-        _rx;
-
-    _ry = initializing ? 0 : 
-        finalizing ? 2 * _quat.y * _quat.z + 2 * _quat.w * _quat.x :
-        _ry;
-
-    _rz = initializing ? 1 : 
-        finalizing ? _quat.w*_quat.w-_quat.x*_quat.x-_quat.y*_quat.y+_quat.z*_quat.z:
-        _rz;
 }
