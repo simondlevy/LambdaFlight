@@ -668,13 +668,13 @@ static void ekf_updateWithFlow(
 static void ekf_finalize(
         const new_quat_t & q,
         matrix_t & p,
-        float x[EKF_N],
+        newvec_t & x,
         new_quat_t & q_out)
 {
     // Incorporate the attitude error (Kalman filter state) with the attitude
-    const auto v0 = x[STATE_E0];
-    const auto v1 = x[STATE_E1];
-    const auto v2 = x[STATE_E2];
+    const auto v0 = get(x, STATE_E0);
+    const auto v1 = get(x, STATE_E1);
+    const auto v2 = get(x, STATE_E2);
 
     const auto angle = sqrt(v0*v0 + v1*v1 + v2*v2) + EPS;
     const auto ca = cos(angle / 2.0f);
@@ -719,9 +719,9 @@ static void ekf_finalize(
         updateCovarianceMatrix(p);
     }
 
-    x[STATE_E0] = 0;
-    x[STATE_E1] = 0;
-    x[STATE_E2] = 0;
+    set(x, STATE_E0, 0);
+    set(x, STATE_E1, 0);
+    set(x, STATE_E2, 0);
 } 
 
 static void ekf_getVehicleState(
@@ -836,10 +836,10 @@ static void ekf_step(void)
 
             _lastProcessNoiseUpdateMsec = stream_nowMsec;
 
-            _x.dat[STATE_Z] = x_predicted.dat[STATE_Z];
-            _x.dat[STATE_DX] = x_predicted.dat[STATE_DX];
-            _x.dat[STATE_DY] = x_predicted.dat[STATE_DY];
-            _x.dat[STATE_DZ] = x_predicted.dat[STATE_DZ];
+            set(_x, STATE_Z , get(x_predicted, STATE_Z));
+            set(_x, STATE_DX , get(x_predicted, STATE_DX));
+            set(_x, STATE_DY , get(x_predicted, STATE_DY));
+            set(_x, STATE_DZ , get(x_predicted, STATE_DZ));
 
             _quat.w = quat_predicted.w;
             _quat.x = quat_predicted.x;
@@ -891,7 +891,7 @@ static void ekf_step(void)
 
         new_quat_t quat_finalized = {};
 
-        ekf_finalize(_quat, _p, _x.dat, quat_finalized);
+        ekf_finalize(_quat, _p, _x, quat_finalized);
 
         _quat.w = quat_finalized.w;
         _quat.x = quat_finalized.x;
