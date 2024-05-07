@@ -385,16 +385,17 @@ void setState(
     _phi = phi;
     _theta = theta;
     _psi = psi;
-    _z = z;
-    _dx = dx;
-    _dy = dy;
-    _dz = dz;
+    //_z = z;
+    //_dx = dx;
+    //_dy = dy;
+    //_dz = dz;
 }
 
-void setDz(const float dz_rangefinder, const float dz_accel)
+void setDz(const float dz_rangefinder, const float dz_accel, const float dz)
 {
     _dz_rangefinder = dz_rangefinder;
     _dz_accel = dz_accel;
+    _dz = dz;
 }
 
 void setMotors(const float m1, const float m2, const float m3, const float m4)
@@ -458,5 +459,6 @@ void debugState(void)
 
 void debugDz(void) 
 {
-    Serial.printf("dz_accel:%f\n", _dz_accel);
+    Serial.printf("a:%+3.3f r:%+3.3f c:%+3.3f\n", 
+            _dz_accel, _dz_rangefinder, _dz);
 }

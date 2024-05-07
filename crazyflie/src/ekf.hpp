@@ -3,6 +3,7 @@
 #include <string.h>
 
 #include <clock.hpp>
+#include <console.h>
 #include <math3d.h>
 #include <datatypes.h>
 #include <linalg.h>
@@ -383,6 +384,11 @@ static void ekf_predict(
 
     // altitude update
     linear_out.z = linear_in.z + r.x * dx + r.y * dy + r.z * dz - MSS_TO_GS * dt2 / 2;
+
+    static uint32_t _count;
+    if (!(_count++ % 50)) {
+        consolePrintf("%f\n", (double)linear_in.z);
+    }
 
     // body-velocity update: accelerometers - gyros cross velocity
     // - gravity in body frame

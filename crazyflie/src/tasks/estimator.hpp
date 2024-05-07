@@ -19,7 +19,7 @@
 #include <semphr.h>
 
 #include <crossplatform.h>
-#include <crazyflie_ekf.hpp>
+#include <ekf.hpp>
 #include <rateSupervisor.hpp>
 #include <safety.hpp>
 #include <task.hpp>

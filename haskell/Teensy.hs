@@ -112,15 +112,17 @@ max_yaw = 160 :: SFloat
 
 -- State estimation ---------------------------------------------------------
 
+compute_dz = (dz_rangefinder, dz_accel, dz) where
 
-compute_dz = (dz_rangefinder, dz_accel) where
+  alpha = 0.5
 
   z_rangefinder = rangefinder_distance / 1000 -- mm => m
 
   dz_rangefinder = (z_rangefinder - z_rangefinder') / dt
 
-  -- dz_accel = accel_z * 9.81 * dt + dz_accel'
-  dz_accel = accel_z 
+  dz_accel = (accel_z - 1) * 9.81 * dt + dz_accel'
+
+  dz = alpha * dz_rangefinder + (1 - alpha) * dz_accel
 
   z_rangefinder' = [0] ++ z_rangefinder
   dz_accel' = [0] ++ dz_accel
@@ -243,9 +245,9 @@ spec = do
 
   let (phi, theta, psi, z, dx, dy, dz, m1, m2, m3, m4) = step
 
-  let (dz_rangefinder, dz_accel) = compute_dz
+  let (dz_rangefinder, dz_accel, dz) = compute_dz
 
-  trigger "setDz" true [arg dz_rangefinder, arg dz_accel]
+  trigger "setDz" true [arg dz_rangefinder, arg dz_accel, arg dz]
 
   trigger "setState" true [arg phi, arg theta, arg psi, arg z, arg dx, arg dy, arg dz]
 
