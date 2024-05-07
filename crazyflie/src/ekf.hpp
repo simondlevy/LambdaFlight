@@ -783,7 +783,7 @@ static void ekf_step(void)
 
     const auto updatingProcessNoise = predicting && 
         (stream_nowMsec - _lastProcessNoiseUpdateMsec) / 1000.0f;
-    
+
     if (updatingProcessNoise) {
         _lastProcessNoiseUpdateMsec = stream_nowMsec;
         _ekfs.z = ekfs_predicted.z;
@@ -807,6 +807,7 @@ static void ekf_step(void)
     const auto updatingWithFlow = stream_ekfAction == EKF_UPDATE_WITH_FLOW; 
     if (updatingWithFlow) {
         ekf_updateWithFlow(_ekfs, _rz, _gyroLatest, _p, ekfs_updatedWithFlow);
+        memcpy(&_ekfs, &ekfs_updatedWithFlow, sizeof(_ekfs));
         _isUpdated = true;
     }
 
@@ -817,6 +818,7 @@ static void ekf_step(void)
     ekfState_t ekfs_updatedWithRange = {};
     if (updatingWithRange) {
         ekf_updateWithRange(_ekfs, _rz, _p, ekfs_updatedWithRange);
+        memcpy(&_ekfs, &ekfs_updatedWithRange, sizeof(_ekfs));
         _isUpdated = true;
     }
 
@@ -911,39 +913,4 @@ static void ekf_step(void)
     _rz = initializing ? 1 : 
         finalizing ? _qw*_qw-_qx*_qx-_qy*_qy+_qz*_qz:
         _rz;
-
-    _ekfs.z = 
-        updatingWithFlow ? ekfs_updatedWithFlow.z :
-        updatingWithRange ? ekfs_updatedWithRange.z :
-        _ekfs.z;
-
-    _ekfs.dx = 
-        updatingWithFlow ? ekfs_updatedWithFlow.dx :
-        updatingWithRange ? ekfs_updatedWithRange.dx :
-        _ekfs.dx;
-
-    _ekfs.dy = 
-        updatingWithFlow ? ekfs_updatedWithFlow.dy :
-        updatingWithRange ? ekfs_updatedWithRange.dy :
-        _ekfs.dy;
-
-    _ekfs.dz = 
-        updatingWithFlow ? ekfs_updatedWithFlow.dz :
-        updatingWithRange ? ekfs_updatedWithRange.dz :
-        _ekfs.dz;
-
-    _ekfs.angx = 
-        updatingWithFlow ? ekfs_updatedWithFlow.angx :
-        updatingWithRange ? ekfs_updatedWithRange.angx :
-        _ekfs.angx;
-
-    _ekfs.angy = 
-        updatingWithFlow ? ekfs_updatedWithFlow.angy :
-        updatingWithRange ? ekfs_updatedWithRange.angy :
-        _ekfs.angy;
-
-    _ekfs.angz = 
-        updatingWithFlow ? ekfs_updatedWithFlow.angz :
-        updatingWithRange ? ekfs_updatedWithRange.angz :
-        _ekfs.angz;
 }
