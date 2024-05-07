@@ -316,6 +316,17 @@ static void ekfStep(const ekfAction_e action)
     ekf_step();
 }
 
+static void runEkf(void)
+{
+    ekfStep(EKF_PREDICT);
+    ekfStep(EKF_UPDATE_WITH_RANGE);
+    ekfStep(EKF_UPDATE_WITH_GYRO);
+    ekfStep(EKF_UPDATE_WITH_ACCEL);
+    ekfStep(EKF_FINALIZE);
+
+
+}
+
 void setup()
 {
     Serial.begin(115200);
@@ -349,6 +360,8 @@ void loop()
     debug(currentTime);
 
     readImu();
+
+    runEkf();
 
     readRangefinder();
 
