@@ -32,6 +32,25 @@ class Ekf {
             _isUpdated = false;
         }
 
+        void predict(const uint32_t now_msec)
+        {
+            const auto isDtPositive = 
+                (now_msec - _lastProcessNoiseUpdateMsec) / 1000.0f;
+
+            if (isDtPositive) {
+                _lastProcessNoiseUpdateMsec = now_msec;
+            }
+
+            _lastPredictionMsec = now_msec;
+
+            _isUpdated = true;
+        }
+
+        void finalize(void)
+        {
+            _isUpdated = false;
+        }
+
     private:
 
         float x[EKF_N];
