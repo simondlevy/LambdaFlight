@@ -784,6 +784,16 @@ static void ekf_step(void)
             _quat.y = quat_predicted.y;
             _quat.z = quat_predicted.z;
 
+            _gyroSum_x = 0;
+            _gyroSum_y = 0;
+            _gyroSum_z = 0;
+            _gyroCount = 0;
+
+            _accelSum_x = 0;
+            _accelSum_y = 0;
+            _accelSum_z = 0;
+            _accelCount = 0;
+
             updatingProcessNoise = true;
         }
     }
@@ -805,10 +815,24 @@ static void ekf_step(void)
     }
 
     // Update with gyro
-    const auto updatingWithGyro = stream_ekfAction == EKF_UPDATE_WITH_GYRO;
+    if (stream_ekfAction == EKF_UPDATE_WITH_GYRO) {
+
+        _gyroSum_x += stream_gyro.x;
+        _gyroSum_y += stream_gyro.y;
+        _gyroSum_z += stream_gyro.z;
+        _gyroCount++;
+
+        memcpy(&_gyroLatest, &stream_gyro, sizeof(axis3_t));
+    }
 
     // Update with accel
-    const auto updatingWithAccel = stream_ekfAction == EKF_UPDATE_WITH_ACCEL;
+    if (stream_ekfAction == EKF_UPDATE_WITH_ACCEL) {
+
+        _accelSum_x += stream_accel.x;
+        _accelSum_y += stream_accel.y;
+        _accelSum_z += stream_accel.z;
+        _accelCount++;
+    }
 
     // Finalize --------------------------------------------------------------
 
@@ -847,43 +871,4 @@ static void ekf_step(void)
                 isVelocityWithinBounds(_ekfs.dy) &&
                 isVelocityWithinBounds(_ekfs.dz));
     }
-
-    //////////////////////////////////////////////////////////////////////////
-
-    _gyroSum_x = updatingWithGyro ? _gyroSum_x + stream_gyro.x :
-        updatingProcessNoise ? 0 :
-        _gyroSum_x;
-
-    _gyroSum_y = updatingWithGyro ? _gyroSum_y + stream_gyro.y :
-        updatingProcessNoise ? 0 :
-        _gyroSum_y;
-
-    _gyroSum_z = updatingWithGyro ? _gyroSum_z + stream_gyro.z :
-        updatingProcessNoise ? 0 :
-        _gyroSum_z;
-
-    _accelSum_x = updatingWithAccel ? _accelSum_x + stream_accel.x :
-        updatingProcessNoise ? 0 :
-        _accelSum_x;
-
-    _accelSum_y = updatingWithAccel ? _accelSum_y + stream_accel.y :
-        updatingProcessNoise ? 0 :
-        _accelSum_y;
-
-    _accelSum_z = updatingWithAccel ? _accelSum_z + stream_accel.z :
-        updatingProcessNoise ? 0 :
-        _accelSum_z;
-
-    memcpy(&_gyroLatest, 
-            updatingWithGyro ?  &stream_gyro : &_gyroLatest, 
-            sizeof(axis3_t));
-
-    _gyroCount = updatingProcessNoise ? 0 : 
-        updatingWithGyro ? _gyroCount + 1 :
-        _gyroCount;
-
-    _accelCount = updatingProcessNoise ? 0 : 
-        updatingWithAccel ? _accelCount + 1 :
-        _accelCount;
-
 }
