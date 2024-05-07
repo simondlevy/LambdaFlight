@@ -9,6 +9,59 @@
 #include <linalg.h>
 #include <streams.h>
 
+class Ekf {
+
+    public:
+        
+        void init(const float diag[EKF_N], const uint32_t now_msec)
+        {
+            for (uint8_t i=0; i<EKF_N; ++i) {
+
+                x[i] = 0;
+
+                for (uint8_t j=0; j<EKF_N; ++j) {
+
+                    p[i][j] = i == j ? diag[i] : 0;
+                }
+            }
+
+            _lastProcessNoiseUpdateMsec = now_msec;
+
+            _lastPredictionMsec = now_msec;
+
+            _isUpdated = false;
+        }
+
+        void predict(const uint32_t now_msec)
+        {
+            const auto isDtPositive = 
+                (now_msec - _lastProcessNoiseUpdateMsec) / 1000.0f;
+
+            if (isDtPositive) {
+                _lastProcessNoiseUpdateMsec = now_msec;
+            }
+
+            _lastPredictionMsec = now_msec;
+
+            _isUpdated = true;
+        }
+
+        void finalize(void)
+        {
+            _isUpdated = false;
+        }
+
+    private:
+
+        float x[EKF_N];
+
+        float p[EKF_N][EKF_N];
+
+        uint32_t _lastProcessNoiseUpdateMsec;
+        uint32_t _lastPredictionMsec;
+        bool _isUpdated;
+};
+
 // Quaternion used for initial orientation
 static const float QW_INIT = 1;
 static const float QX_INIT = 0;
@@ -62,19 +115,18 @@ static const uint32_t PREDICTION_UPDATE_INTERVAL_MS = 1000 / PREDICT_RATE;
 // Indexes to access the state
 enum {
 
-    KC_STATE_Z,
-    KC_STATE_DX,
-    KC_STATE_DY,
-    KC_STATE_DZ,
-    KC_STATE_E0,
-    KC_STATE_E1,
-    KC_STATE_E2,
-    KC_STATE_DIM
+    STATE_Z,
+    STATE_DX,
+    STATE_DY,
+    STATE_DZ,
+    STATE_E0,
+    STATE_E1,
+    STATE_E2
 };
 
 typedef struct {
 
-    float dat[KC_STATE_DIM][KC_STATE_DIM];
+    float dat[EKF_N][EKF_N];
 
 } matrix_t;
 
@@ -132,9 +184,9 @@ static void updateCovarianceMatrix(const matrix_t & p_in, matrix_t & p_out)
 {
     // Enforce symmetry of the covariance matrix, and ensure the
     // values stay bounded
-    for (int i=0; i<KC_STATE_DIM; i++) {
+    for (int i=0; i<EKF_N; i++) {
 
-        for (int j=i; j<KC_STATE_DIM; j++) {
+        for (int j=i; j<EKF_N; j++) {
 
             const auto pval = (p_in.dat[i][j] + p_in.dat[j][i]) / 2;
 
@@ -149,7 +201,7 @@ static void updateCovarianceMatrix(const matrix_t & p_in, matrix_t & p_out)
 static void scalarUpdate(
         const matrix_t & p_in,
         const ekfState_t & ekfs_in,
-        const float h[KC_STATE_DIM],
+        const float h[EKF_N],
         const float error, 
         const float stdMeasNoise,
         matrix_t & p_out,
@@ -157,13 +209,13 @@ static void scalarUpdate(
 {
 
     // ====== INNOVATION COVARIANCE ======
-    float ph[KC_STATE_DIM] = {};
+    float ph[EKF_N] = {};
     multiply(p_in.dat, h, ph);
     const auto r = stdMeasNoise * stdMeasNoise;
     const auto hphr = r + dot(h, ph); // HPH' + R
 
     // Compute the Kalman gain as a column vector
-    const float g[KC_STATE_DIM] = {
+    const float g[EKF_N] = {
 
         // kalman gain = (PH' (HPH' + R )^-1)
         ph[0] / hphr, 
@@ -189,7 +241,7 @@ static void scalarUpdate(
     matrix_t GH = {};
     multiply(g, h, GH.dat); // KH
 
-    for (int i=0; i<KC_STATE_DIM; i++) { 
+    for (int i=0; i<EKF_N; i++) { 
         GH.dat[i][i] -= 1;
     } // KH - I
 
@@ -200,8 +252,8 @@ static void scalarUpdate(
     multiply(GHIP.dat, GHt.dat, p_out.dat); // (KH - I)*P*(KH - I)'
 
     // Add the measurement variance 
-    for (int i=0; i<KC_STATE_DIM; i++) {
-        for (int j=0; j<KC_STATE_DIM; j++) {
+    for (int i=0; i<EKF_N; i++) {
+        for (int j=0; j<EKF_N; j++) {
             p_out.dat[i][j] += j < i ? 0 : r * g[i] * g[j];
         }
     }
@@ -253,7 +305,7 @@ static void afinalize(
     const auto e2e1 = -e0 + e1*e2/2;
     const auto e2e2 = 1 - e0*e0/2 - e1*e1/2;
 
-    const float a[KC_STATE_DIM][KC_STATE_DIM] = 
+    const float a[EKF_N][EKF_N] = 
     { 
         //    Z  DX DY DZ    E0     E1    E2
         /*Z*/   {0, 0, 0, 0, 0,     0,    0},   
@@ -290,13 +342,13 @@ static void subSamplerTakeMean(
 static void ekf_init(matrix_t & p_out)
 {
     memset(&p_out, 0, sizeof(p_out));
-    p_out.dat[KC_STATE_Z][KC_STATE_Z] = square(STDEV_INITIAL_POSITION_Z);
-    p_out.dat[KC_STATE_DX][KC_STATE_DX] = square(STDEV_INITIAL_VELOCITY);
-    p_out.dat[KC_STATE_DY][KC_STATE_DY] = square(STDEV_INITIAL_VELOCITY);
-    p_out.dat[KC_STATE_DZ][KC_STATE_DZ] = square(STDEV_INITIAL_VELOCITY);
-    p_out.dat[KC_STATE_E0][KC_STATE_E0] = square(STDEV_INITIAL_ATTITUDE_ROLL_PITCH);
-    p_out.dat[KC_STATE_E1][KC_STATE_E1] = square(STDEV_INITIAL_ATTITUDE_ROLL_PITCH);
-    p_out.dat[KC_STATE_E2][KC_STATE_E2] = square(STDEV_INITIAL_ATTITUDE_YAW);
+    p_out.dat[STATE_Z][STATE_Z] = square(STDEV_INITIAL_POSITION_Z);
+    p_out.dat[STATE_DX][STATE_DX] = square(STDEV_INITIAL_VELOCITY);
+    p_out.dat[STATE_DY][STATE_DY] = square(STDEV_INITIAL_VELOCITY);
+    p_out.dat[STATE_DZ][STATE_DZ] = square(STDEV_INITIAL_VELOCITY);
+    p_out.dat[STATE_E0][STATE_E0] = square(STDEV_INITIAL_ATTITUDE_ROLL_PITCH);
+    p_out.dat[STATE_E1][STATE_E1] = square(STDEV_INITIAL_ATTITUDE_ROLL_PITCH);
+    p_out.dat[STATE_E2][STATE_E2] = square(STDEV_INITIAL_ATTITUDE_YAW);
 }
 
 static void ekf_predict(
@@ -462,7 +514,7 @@ static void ekf_predict(
     const auto dye2  = MSS_TO_GS*r.x*dt;
     const auto dze2  = 0;
 
-    const float A[KC_STATE_DIM][KC_STATE_DIM] = 
+    const float A[EKF_N][EKF_N] = 
     { 
         //        Z  DX    DY    DZ    E0    E1    E2
         /*Z*/    {0, zdx,  zdy,  zdz,  ze0,  ze1,  ze2}, 
@@ -518,7 +570,7 @@ static bool ekf_updateWithRange(
     // alpha = angle between [line made by measured point <---> sensor] 
     // and [the intertial z-axis] 
 
-    const float h[KC_STATE_DIM] = {1 / cosf(angle), 0, 0, 0, 0, 0, 0};
+    const float h[EKF_N] = {1 / cosf(angle), 0, 0, 0, 0, 0, 0};
 
     // Only update the filter if the measurement is reliable 
     // (\hat{h} -> infty when R[2][2] -> 0)
@@ -571,15 +623,15 @@ static bool ekf_updateWithFlow(
 
     // ~~~ X velocity prediction and update ~~~
     // predicts the number of accumulated pixels in the x-direction
-    float hx[KC_STATE_DIM] = {};
+    float hx[EKF_N] = {};
     auto predictedNX = (stream_flow.dt * Npix / thetapix ) * 
         ((dx_g * rz / z_g) - omegay_b);
     auto measuredNX = stream_flow.dpixelx*FLOW_RESOLUTION;
 
     // derive measurement equation with respect to dx (and z?)
-    hx[KC_STATE_Z] = (Npix * stream_flow.dt / thetapix) * 
+    hx[STATE_Z] = (Npix * stream_flow.dt / thetapix) * 
         ((rz * dx_g) / (-z_g * z_g));
-    hx[KC_STATE_DX] = (Npix * stream_flow.dt / thetapix) * 
+    hx[STATE_DX] = (Npix * stream_flow.dt / thetapix) * 
         (rz / z_g);
 
     matrix_t p_first = {};
@@ -596,15 +648,15 @@ static bool ekf_updateWithFlow(
             ekfs_first);
 
     // ~~~ Y velocity prediction and update ~~~
-    float hy[KC_STATE_DIM] = {};
+    float hy[EKF_N] = {};
     auto predictedNY = (stream_flow.dt * Npix / thetapix ) * 
         ((dy_g * rz / z_g) + omegax_b);
     auto measuredNY = stream_flow.dpixely*FLOW_RESOLUTION;
 
     // derive measurement equation with respect to dy (and z?)
-    hy[KC_STATE_Z] = (Npix * stream_flow.dt / thetapix) * 
+    hy[STATE_Z] = (Npix * stream_flow.dt / thetapix) * 
         ((rz * dy_g) / (-z_g * z_g));
-    hy[KC_STATE_DY] = (Npix * stream_flow.dt / thetapix) * (rz / z_g);
+    hy[STATE_DY] = (Npix * stream_flow.dt / thetapix) * (rz / z_g);
 
     // Second update
     scalarUpdate(
@@ -717,8 +769,6 @@ static void ekf_getVehicleState(
 
 static void ekf_step(void)
 {
-    static float _x[EKF_N];
-
     static float _z;
     static float _dx;
     static float _dy;
@@ -808,8 +858,7 @@ static void ekf_step(void)
     const auto finalizing = requestedFinalize && _isUpdated;
     new_quat_t quat_finalized = {};
     if (finalizing) {
-        ekf_finalize(_p, ekfs, quat, 
-                _p, quat_finalized);
+        ekf_finalize(_p, ekfs, quat, _p, quat_finalized);
     }
 
     // Update with flow
