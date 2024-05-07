@@ -697,15 +697,11 @@ static void ekf_step(void)
 
     static axis3_t _gyroLatest;
 
-    static float _rx;
-    static float _ry;
-    static float _rz;
-
     static new_quat_t _quat;
 
     static uint32_t _nextPredictionMsec;
 
-    const auto r = axis3_t {_rx, _ry, _rz};
+    static axis3_t _r;
 
     // Initialize ------------------------------------------------------------
 
@@ -718,9 +714,9 @@ static void ekf_step(void)
         _quat.y = 0;
         _quat.z = 0;
 
-        _rx = 0;
-        _ry = 0;
-        _rz = 0;
+        _r.x = 0;
+        _r.y = 0;
+        _r.z = 0;
 
         _lastProcessNoiseUpdateMsec = stream_nowMsec;
         _lastPredictionMsec = stream_nowMsec;
@@ -761,7 +757,7 @@ static void ekf_step(void)
                 _accelCount,
                 _ekfs,
                 _quat,
-                r,
+                _r,
                 _lastPredictionMsec, 
 
                 quat_predicted,
@@ -802,15 +798,15 @@ static void ekf_step(void)
 
     // Update with flow
     if (stream_ekfAction == EKF_UPDATE_WITH_FLOW) {
-        ekf_updateWithFlow(_rz, _gyroLatest, _p, _ekfs);
+        ekf_updateWithFlow(_r.z, _gyroLatest, _p, _ekfs);
         _isUpdated = true;
     }
 
     // Update with range when the measurement is reliable 
     if (stream_ekfAction == EKF_UPDATE_WITH_RANGE &&
-            fabs(_rz) > 0.1f && _rz > 0 && 
+            fabs(_r.z) > 0.1f && _r.z > 0 && 
             stream_rangefinder_distance < RANGEFINDER_OUTLIER_LIMIT_MM) {
-        ekf_updateWithRange(_rz, _p, _ekfs);
+        ekf_updateWithRange(_r.z, _p, _ekfs);
         _isUpdated = true;
     }
 
@@ -849,16 +845,17 @@ static void ekf_step(void)
         _quat.y = quat_finalized.y;
         _quat.z = quat_finalized.z;
 
-        _rx = 2 * _quat.x * _quat.z - 2 * _quat.w * _quat.y;
-        _ry = 2 * _quat.y * _quat.z + 2 * _quat.w * _quat.x; 
-        _rz = _quat.w*_quat.w-_quat.x*_quat.x-_quat.y*_quat.y+_quat.z*_quat.z;
+        _r.x = 2 * _quat.x * _quat.z - 2 * _quat.w * _quat.y;
+        _r.y = 2 * _quat.y * _quat.z + 2 * _quat.w * _quat.x; 
+        _r.z = _quat.w*_quat.w-_quat.x*_quat.x-_quat.y*_quat.y+_quat.z*_quat.z;
 
         _isUpdated = false;
     }
 
     // Get vehicle state -----------------------------------------------------
+
     vehicleState_t vehicleState = {};
-    ekf_getVehicleState(_ekfs, _gyroLatest, _quat, r, vehicleState);
+    ekf_getVehicleState(_ekfs, _gyroLatest, _quat, _r, vehicleState);
 
     if (stream_ekfAction == EKF_GET_STATE) {
         setState(vehicleState);
