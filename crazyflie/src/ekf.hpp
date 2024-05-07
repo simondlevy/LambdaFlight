@@ -650,9 +650,9 @@ static void ekf_updateWithFlow(
 }
 
 static void ekf_finalize(
-        const ekfState_t & ekfs,
         const new_quat_t & q,
         matrix_t & p,
+        ekfState_t & ekfs,
         new_quat_t & q_out)
 {
     // Incorporate the attitude error (Kalman filter state) with the attitude
@@ -702,6 +702,10 @@ static void ekf_finalize(
         multiply(AP.dat, At.dat, p.dat); // APA'
         updateCovarianceMatrix(p);
     }
+
+    ekfs.angx = 0;
+    ekfs.angy = 0;
+    ekfs.angz = 0;
 } 
 
 static void ekf_getVehicleState(
@@ -825,7 +829,7 @@ static void ekf_step(void)
     const auto finalizing = requestedFinalize && _isUpdated;
     new_quat_t quat_finalized = {};
     if (finalizing) {
-        ekf_finalize(_ekfs, quat, _p, quat_finalized);
+        ekf_finalize(quat, _p, _ekfs, quat_finalized);
     }
 
     // Update with flow
@@ -960,17 +964,17 @@ static void ekf_step(void)
         updatingWithRange ? ekfs_updatedWithRange.dz :
         _ekfs.dz;
 
-    _ekfs.angx = finalizing ? 0 : 
+    _ekfs.angx = 
         updatingWithFlow ? ekfs_updatedWithFlow.angx :
         updatingWithRange ? ekfs_updatedWithRange.angx :
         _ekfs.angx;
 
-    _ekfs.angy = finalizing ? 0 : 
+    _ekfs.angy = 
         updatingWithFlow ? ekfs_updatedWithFlow.angy :
         updatingWithRange ? ekfs_updatedWithRange.angy :
         _ekfs.angy;
 
-    _ekfs.angz = finalizing ? 0 : 
+    _ekfs.angz = 
         updatingWithFlow ? ekfs_updatedWithFlow.angz :
         updatingWithRange ? ekfs_updatedWithRange.angz :
         _ekfs.angz;
