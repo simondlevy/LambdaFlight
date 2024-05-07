@@ -743,12 +743,19 @@ static void ekf_step(void)
         _nextPredictionMsec;
 
     // Predict
+
+    const auto requestedPredict = stream_ekfAction == EKF_PREDICT;
+
     const auto predicting =
-        stream_ekfAction == EKF_PREDICT && stream_nowMsec >= _nextPredictionMsec;
+        requestedPredict && stream_nowMsec >= _nextPredictionMsec;
 
     ekfState_t ekfs_predicted = {};
 
     new_quat_t quat_predicted = {};
+
+    if (requestedPredict) {
+        _isUpdated = true;
+    }
 
     if (predicting) {
 
@@ -937,8 +944,4 @@ static void ekf_step(void)
         updatingWithFlow ? ekfs_updatedWithFlow.angz :
         updatingWithRange ? ekfs_updatedWithRange.angz :
         _ekfs.angz;
-
-    _isUpdated = 
-        stream_ekfAction == EKF_PREDICT ? true :
-        _isUpdated;
 }
