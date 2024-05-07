@@ -735,6 +735,7 @@ static void ekf_step(void)
         ekf_init(_p, _ekfs);
         _lastProcessNoiseUpdateMsec = stream_nowMsec;
         _lastPredictionMsec = stream_nowMsec;
+        _isUpdated = false;
     }
 
     _nextPredictionMsec = stream_nowMsec > _nextPredictionMsec ?
@@ -785,6 +786,7 @@ static void ekf_step(void)
     new_quat_t quat_finalized = {};
     if (finalizing) {
         ekf_finalize(quat, _p, _ekfs, quat_finalized);
+        _isUpdated = false;
     }
 
     // Update with flow
@@ -792,6 +794,7 @@ static void ekf_step(void)
     const auto updatingWithFlow = stream_ekfAction == EKF_UPDATE_WITH_FLOW; 
     if (updatingWithFlow) {
         ekf_updateWithFlow(_ekfs, _rz, _gyroLatest, _p, ekfs_updatedWithFlow);
+        _isUpdated = true;
     }
 
     // Update with range when the measurement is reliable 
@@ -801,6 +804,7 @@ static void ekf_step(void)
     ekfState_t ekfs_updatedWithRange = {};
     if (updatingWithRange) {
         ekf_updateWithRange(_ekfs, _rz, _p, ekfs_updatedWithRange);
+        _isUpdated = true;
     }
 
     // Update with gyro
@@ -935,8 +939,6 @@ static void ekf_step(void)
         _ekfs.angz;
 
     _isUpdated = 
-        initializing || finalizing ? false :
         stream_ekfAction == EKF_PREDICT ? true :
-        updatingWithFlow || updatingWithRange ? true :
         _isUpdated;
 }
