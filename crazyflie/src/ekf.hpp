@@ -114,26 +114,29 @@ static float dot(const float x[EKF_N], const float y[EKF_N])
     return d;
 }
 
-static float dot(const float a[EKF_N][EKF_N], const float b[EKF_N][EKF_N], 
-        const uint8_t i, const uint8_t j)
+static float dot(
+        const matrix_t & a, 
+        const matrix_t & b, 
+        const uint8_t i, 
+        const uint8_t j)
 {
     float d = 0;
 
     for (uint8_t k=0; k<EKF_N; k++) {
-        d += a[i][k] * b[k][j];
+        d += a.dat[i][k] * b.dat[k][j];
     }
 
     return d;
 }
 
 // Matrix * Matrix
-static void multiply(const float a[EKF_N][EKF_N], const float b[EKF_N][EKF_N], float c[EKF_N][EKF_N])
+static void multiply( const matrix_t a, const matrix_t b, matrix_t & c)
 {
     for (uint8_t i=0; i<EKF_N; i++) {
 
         for (uint8_t j=0; j<EKF_N; j++) {
 
-            c[i][j] = dot(a, b, i, j);
+            c.dat[i][j] = dot(a, b, i, j);
         }
     }
 }
@@ -276,8 +279,8 @@ static void scalarUpdate(
     matrix_t GHt = {};
     transpose(GH, GHt);      // (KH - I)'
     matrix_t GHIP = {};
-    multiply(GH.dat, p.dat, GHIP.dat);  // (KH - I)*P
-    multiply(GHIP.dat, GHt.dat, p.dat); // (KH - I)*P*(KH - I)'
+    multiply(GH, p, GHIP);  // (KH - I)*P
+    multiply(GHIP, GHt, p); // (KH - I)*P*(KH - I)'
 
     // Add the measurement variance 
     for (int i=0; i<EKF_N; i++) {
@@ -521,8 +524,8 @@ static void ekf_predict(
     matrix_t  At = {};
     transpose(A, At);     // A'
     matrix_t AP = {};
-    multiply(A.dat, p.dat, AP.dat);  // AP
-    multiply(AP.dat, At.dat, p.dat); // APA'
+    multiply(A, p, AP);  // AP
+    multiply(AP, At, p); // APA'
     updateCovarianceMatrix(p);
 }
 
@@ -688,8 +691,8 @@ static void ekf_finalize(
         matrix_t At = {};
         transpose(A, At);     // A'
         matrix_t AP = {};
-        multiply(A.dat, p.dat, AP.dat);  // AP
-        multiply(AP.dat, At.dat, p.dat); // APA'
+        multiply(A, p, AP);  // AP
+        multiply(AP, At, p); // APA'
         updateCovarianceMatrix(p);
     }
 
