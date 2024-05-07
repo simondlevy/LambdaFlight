@@ -13,19 +13,8 @@
 
 #include <vector>
 
-// Power pin settings -------------------------------------------------------
-
 static const uint8_t PWR_PIN = 21;
 static const uint8_t GND_PIN = 22;
-
-// LED settings -------------------------------------------------------------
-
-static const uint8_t LED_PIN = 13;
-static const uint32_t NUM_BLINKS = 3;
-static const uint32_t BLINK_UPTIME = 160;
-static const uint32_t BLINK_DOWNTIME = 70;
-
-// USFS settings ------------------------------------------------------------
 
 static const uint8_t ACCEL_BANDWIDTH = 3;
 static const uint8_t GYRO_BANDWIDTH  = 3;
@@ -41,13 +30,9 @@ Usfs::INTERRUPT_QUAT;
 
 static const bool VERBOSE = false;
 
-
-// Do not exceed 2000Hz, all filter paras tuned to 2000Hz by default
-static const uint32_t LOOP_RATE = 2000;
+static const uint32_t REPS = 20'000;
 
 static Usfs usfs;
-
-static float accel_x, accel_y, accel_z;
 
 static void powerPin(const uint8_t pin, const bool hilo)
 {
@@ -81,28 +66,41 @@ void setup()
 
     // Clear interrupts
     Usfs::checkStatus();
-
 }
 
 void loop()
 {
-    const auto eventStatus = Usfs::checkStatus(); 
+    static uint32_t _count;
 
-    if (Usfs::eventStatusIsError(eventStatus)) { 
+    static float _ax, _ay, _az;
 
-        Usfs::reportError(eventStatus);
+    if (_count++ < REPS) {
+
+        Serial.printf("%d%%\r", (int)(100 * (float)_count/REPS));
+
+        const auto eventStatus = Usfs::checkStatus(); 
+
+        if (Usfs::eventStatusIsError(eventStatus)) { 
+
+            Usfs::reportError(eventStatus);
+        }
+
+        if (Usfs::eventStatusIsAccelerometer(eventStatus)) { 
+
+            float ax=0, ay=0, az=0;
+
+            usfs.readAccelerometerScaled(ax, ay, az);
+
+            _ax += ax;
+            _ay += ay;
+            _az += az;
+        }
     }
 
-    if (Usfs::eventStatusIsAccelerometer(eventStatus)) { 
+    else {
 
-        usfs.readAccelerometerScaled(
-                accel_x, accel_y, accel_z);
+        Serial.printf("%f %f %f\n", _ax/REPS, _ay/REPS, _az/REPS);
 
-        // We negate accel Z to accommodate upside-down USFS mounting
-        accel_z = -accel_z;
-
-        Serial.printf("accelX:%+3.3f accelY:%+3.3f accelZ:%+3.3f\n", 
-                accel_x, accel_y, accel_z);
+        delay(500);
     }
-
 }
