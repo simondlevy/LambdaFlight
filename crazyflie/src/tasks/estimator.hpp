@@ -116,6 +116,13 @@ class EstimatorTask : public FreeRTOSTask {
 
     private:
 
+        // Initial variances, uncertain of position, but know we're
+        // stationary and roughly flat
+        static constexpr float STDEV_INITIAL_POSITION_Z = 1;
+        static constexpr float STDEV_INITIAL_VELOCITY = 0.01;
+        static constexpr float STDEV_INITIAL_ATTITUDE_ROLL_PITCH = 0.01;
+        static constexpr float STDEV_INITIAL_ATTITUDE_YAW = 0.01;
+
         static const uint32_t WARNING_HOLD_BACK_TIME_MS = 2000;
 
         static const size_t QUEUE_LENGTH = 20;
@@ -140,7 +147,7 @@ class EstimatorTask : public FreeRTOSTask {
 
         Safety * _safety;
 
-        // Ekf _ekf;
+        Ekf _ekf;
 
         // Data used to enable the task and stabilizer loop to run with minimal locking
         // The estimator state produced by the task, copied to the stabilizer when needed.
@@ -156,7 +163,20 @@ class EstimatorTask : public FreeRTOSTask {
             stream_ekfAction = EKF_INIT;
             stream_nowMsec = nowMsec;
             ekf_step();
-        }
+
+            const float diag[7] = {
+
+                square(STDEV_INITIAL_POSITION_Z),
+                square(STDEV_INITIAL_VELOCITY),
+                square(STDEV_INITIAL_VELOCITY),
+                square(STDEV_INITIAL_VELOCITY),
+                square(STDEV_INITIAL_ATTITUDE_ROLL_PITCH),
+                square(STDEV_INITIAL_ATTITUDE_ROLL_PITCH),
+                square(STDEV_INITIAL_ATTITUDE_YAW)
+            };
+
+            _ekf.init(diag);
+        }        
 
         uint32_t step(const uint32_t nowMsec, uint32_t nextPredictionMsec) 
         {
@@ -207,21 +227,21 @@ class EstimatorTask : public FreeRTOSTask {
                         memcpy(&stream_flow, &measurement.data.flow, 
                                 sizeof(stream_flow));
                         ekf_step();
-                         break;
+                        break;
 
                     case MeasurementTypeGyroscope:
-                         stream_ekfAction =EKF_UPDATE_WITH_GYRO;
-                         memcpy(&stream_gyro, &measurement.data.gyroscope.gyro,
-                                 sizeof(stream_gyro));
-                         ekf_step();
-                         break;
+                        stream_ekfAction =EKF_UPDATE_WITH_GYRO;
+                        memcpy(&stream_gyro, &measurement.data.gyroscope.gyro,
+                                sizeof(stream_gyro));
+                        ekf_step();
+                        break;
 
                     case MeasurementTypeAcceleration:
-                         stream_ekfAction = EKF_UPDATE_WITH_ACCEL;
-                         memcpy(&stream_accel, &measurement.data.acceleration.acc,
-                                 sizeof(stream_accel));
-                         ekf_step();
-                         break;
+                        stream_ekfAction = EKF_UPDATE_WITH_ACCEL;
+                        memcpy(&stream_accel, &measurement.data.acceleration.acc,
+                                sizeof(stream_accel));
+                        ekf_step();
+                        break;
 
                     default:
                         break;
