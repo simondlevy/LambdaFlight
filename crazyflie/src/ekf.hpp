@@ -774,7 +774,7 @@ static void ekf_step(void)
     }
 
     const auto updatingProcessNoise = predicting && 
-        (stream_nowMsec - _lastProcessNoiseUpdateMsec) / 1000.0f;
+        (stream_nowMsec - _lastProcessNoiseUpdateMsec) > 0;
 
     if (updatingProcessNoise) {
         _lastProcessNoiseUpdateMsec = stream_nowMsec;
