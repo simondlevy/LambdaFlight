@@ -743,15 +743,12 @@ static void ekf_getVehicleState(
 
 static void ekf_step(void)
 {
-    static float _z;
-    static float _dx;
-    static float _dy;
-    static float _dz;
-    static float _e0;
-    static float _e1;
-    static float _e2;
-
     static matrix_t _p;
+    static ekfState_t _ekfs;
+
+    static bool _isUpdated;
+    static uint32_t _lastPredictionMsec;
+    static uint32_t _lastProcessNoiseUpdateMsec;
 
     static float _gyroSum_x;
     static float _gyroSum_y;
@@ -765,10 +762,6 @@ static void ekf_step(void)
 
     static axis3_t _gyroLatest;
 
-    static bool _isUpdated;
-    static uint32_t _lastPredictionMsec;
-    static uint32_t _lastProcessNoiseUpdateMsec;
-
     static float _rx;
     static float _ry;
     static float _rz;
@@ -779,8 +772,6 @@ static void ekf_step(void)
     static float _qz;
 
     static uint32_t _nextPredictionMsec;
-
-    const auto ekfs = ekfState_t {_z, _dx, _dy, _dz, _e0, _e1, _e2};
 
     const auto quat = new_quat_t {_qw, _qx, _qy, _qz };
     const auto r = axis3_t {_rx, _ry, _rz};
@@ -814,7 +805,7 @@ static void ekf_step(void)
                 _accelSum_y,
                 _accelSum_z,
                 _accelCount,
-                ekfs,
+                _ekfs,
                 quat,
                 r,
                 _lastPredictionMsec, 
@@ -832,14 +823,14 @@ static void ekf_step(void)
     const auto finalizing = requestedFinalize && _isUpdated;
     new_quat_t quat_finalized = {};
     if (finalizing) {
-        ekf_finalize(ekfs, quat, _p, quat_finalized);
+        ekf_finalize(_ekfs, quat, _p, quat_finalized);
     }
 
     // Update with flow
     ekfState_t ekfs_updatedWithFlow = {};
     const auto updatingWithFlow = stream_ekfAction == EKF_UPDATE_WITH_FLOW; 
     if (updatingWithFlow) {
-        ekf_updateWithFlow(ekfs, _rz, _gyroLatest, _p, ekfs_updatedWithFlow);
+        ekf_updateWithFlow(_ekfs, _rz, _gyroLatest, _p, ekfs_updatedWithFlow);
     }
 
     // Update with range when the measurement is reliable 
@@ -848,7 +839,7 @@ static void ekf_step(void)
         stream_rangefinder_distance < RANGEFINDER_OUTLIER_LIMIT_MM;
     ekfState_t ekfs_updatedWithRange = {};
     if (updatingWithRange) {
-        ekf_updateWithRange(ekfs, _rz, _p, ekfs_updatedWithRange);
+        ekf_updateWithRange(_ekfs, _rz, _p, ekfs_updatedWithRange);
     }
 
     // Update with gyro
@@ -859,7 +850,7 @@ static void ekf_step(void)
 
     // Get vehicle state
     vehicleState_t vehicleState = {};
-    ekf_getVehicleState(ekfs, _gyroLatest, quat, r, vehicleState);
+    ekf_getVehicleState(_ekfs, _gyroLatest, quat, r, vehicleState);
 
     if (stream_ekfAction == EKF_GET_STATE) {
         setState(vehicleState);
@@ -867,10 +858,10 @@ static void ekf_step(void)
 
     if (requestedFinalize) {
         setStateIsInBounds(
-                isPositionWithinBounds(ekfs.z) &&
-                isVelocityWithinBounds(ekfs.dx) &&
-                isVelocityWithinBounds(ekfs.dy) &&
-                isVelocityWithinBounds(ekfs.dz));
+                isPositionWithinBounds(_ekfs.z) &&
+                isVelocityWithinBounds(_ekfs.dx) &&
+                isVelocityWithinBounds(_ekfs.dy) &&
+                isVelocityWithinBounds(_ekfs.dz));
     }
 
     //////////////////////////////////////////////////////////////////////////
@@ -943,44 +934,44 @@ static void ekf_step(void)
         finalizing ? _qw*_qw-_qx*_qx-_qy*_qy+_qz*_qz:
         _rz;
 
-    _z = initializing ? 0 : 
+    _ekfs.z = initializing ? 0 : 
         isDtPositive ? ekfs_predicted.z :
         updatingWithFlow ? ekfs_updatedWithFlow.z :
         updatingWithRange ? ekfs_updatedWithRange.z :
-        _z;
+        _ekfs.z;
 
-    _dx = initializing ? 0 : 
+    _ekfs.dx = initializing ? 0 : 
         isDtPositive ? ekfs_predicted.dx :
         updatingWithFlow ? ekfs_updatedWithFlow.dx :
         updatingWithRange ? ekfs_updatedWithRange.dx :
-        _dx;
+        _ekfs.dx;
 
-    _dy = initializing ? 0 : 
+    _ekfs.dy = initializing ? 0 : 
         isDtPositive ? ekfs_predicted.dy :
         updatingWithFlow ? ekfs_updatedWithFlow.dy :
         updatingWithRange ? ekfs_updatedWithRange.dy :
-        _dy;
+        _ekfs.dy;
 
-    _dz = initializing ? 0 : 
+    _ekfs.dz = initializing ? 0 : 
         isDtPositive ? ekfs_predicted.dz :
         updatingWithFlow ? ekfs_updatedWithFlow.dz :
         updatingWithRange ? ekfs_updatedWithRange.dz :
-        _dz;
+        _ekfs.dz;
 
-    _e0 = initializing || finalizing ? 0 : 
+    _ekfs.angx = initializing || finalizing ? 0 : 
         updatingWithFlow ? ekfs_updatedWithFlow.angx :
         updatingWithRange ? ekfs_updatedWithRange.angx :
-        _e0;
+        _ekfs.angx;
 
-    _e1 = initializing || finalizing ? 0 : 
+    _ekfs.angy = initializing || finalizing ? 0 : 
         updatingWithFlow ? ekfs_updatedWithFlow.angy :
         updatingWithRange ? ekfs_updatedWithRange.angy :
-        _e1;
+        _ekfs.angy;
 
-    _e2 = initializing || finalizing ? 0 : 
+    _ekfs.angz = initializing || finalizing ? 0 : 
         updatingWithFlow ? ekfs_updatedWithFlow.angz :
         updatingWithRange ? ekfs_updatedWithRange.angz :
-        _e2;
+        _ekfs.angz;
 
     _lastProcessNoiseUpdateMsec = 
         initializing || isDtPositive ?  
