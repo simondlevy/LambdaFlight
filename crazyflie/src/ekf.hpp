@@ -701,14 +701,9 @@ static void ekf_step(void)
     static float _ry;
     static float _rz;
 
-    static float _qw;
-    static float _qx;
-    static float _qy;
-    static float _qz;
+    static new_quat_t _quat;
 
     static uint32_t _nextPredictionMsec;
-
-    const auto quat = new_quat_t {_qw, _qx, _qy, _qz };
 
     const auto r = axis3_t {_rx, _ry, _rz};
 
@@ -717,10 +712,10 @@ static void ekf_step(void)
     bool initializing = stream_ekfAction == EKF_INIT;
     if (initializing) {
         ekf_init(_p, _ekfs);
-        _qw = 1;
-        _qx = 0;
-        _qy = 0;
-        _qz = 0;
+        _quat.w = 1;
+        _quat.x = 0;
+        _quat.y = 0;
+        _quat.z = 0;
         _lastProcessNoiseUpdateMsec = stream_nowMsec;
         _lastPredictionMsec = stream_nowMsec;
         _isUpdated = false;
@@ -737,8 +732,6 @@ static void ekf_step(void)
     const auto predicting =
         requestedPredict && stream_nowMsec >= _nextPredictionMsec;
 
-    new_quat_t quat_predicted = {};
-
     if (requestedPredict) {
         _isUpdated = true;
     }
@@ -748,6 +741,8 @@ static void ekf_step(void)
     if (predicting) {
 
         ekfState_t ekfs_predicted = {};
+
+        new_quat_t quat_predicted = {};
 
         ekf_predict(
                 _gyroSum_x,
@@ -759,7 +754,7 @@ static void ekf_step(void)
                 _accelSum_z,
                 _accelCount,
                 _ekfs,
-                quat,
+                _quat,
                 r,
                 _lastPredictionMsec, 
 
@@ -778,10 +773,10 @@ static void ekf_step(void)
             _ekfs.dy = ekfs_predicted.dy;
             _ekfs.dz = ekfs_predicted.dz;
 
-            _qw = quat_predicted.w;
-            _qx = quat_predicted.x;
-            _qy = quat_predicted.y;
-            _qz = quat_predicted.z;
+            _quat.w = quat_predicted.w;
+            _quat.x = quat_predicted.x;
+            _quat.y = quat_predicted.y;
+            _quat.z = quat_predicted.z;
 
             updatingProcessNoise = true;
         }
@@ -793,11 +788,11 @@ static void ekf_step(void)
     const auto finalizing = requestedFinalize && _isUpdated;
     new_quat_t quat_finalized = {};
     if (finalizing) {
-        ekf_finalize(quat, _p, _ekfs, quat_finalized);
-        _qw = quat_finalized.w;
-        _qx = quat_finalized.x;
-        _qy = quat_finalized.y;
-        _qz = quat_finalized.z;
+        ekf_finalize(_quat, _p, _ekfs, quat_finalized);
+        _quat.w = quat_finalized.w;
+        _quat.x = quat_finalized.x;
+        _quat.y = quat_finalized.y;
+        _quat.z = quat_finalized.z;
         _isUpdated = false;
     }
 
@@ -823,7 +818,7 @@ static void ekf_step(void)
 
     // Get vehicle state
     vehicleState_t vehicleState = {};
-    ekf_getVehicleState(_ekfs, _gyroLatest, quat, r, vehicleState);
+    ekf_getVehicleState(_ekfs, _gyroLatest, _quat, r, vehicleState);
 
     if (stream_ekfAction == EKF_GET_STATE) {
         setState(vehicleState);
@@ -876,14 +871,14 @@ static void ekf_step(void)
         _accelCount;
 
     _rx = initializing ? 0 : 
-        finalizing ? 2 * _qx * _qz - 2 * _qw * _qy :
+        finalizing ? 2 * _quat.x * _quat.z - 2 * _quat.w * _quat.y :
         _rx;
 
     _ry = initializing ? 0 : 
-        finalizing ? 2 * _qy * _qz + 2 * _qw * _qx :
+        finalizing ? 2 * _quat.y * _quat.z + 2 * _quat.w * _quat.x :
         _ry;
 
     _rz = initializing ? 1 : 
-        finalizing ? _qw*_qw-_qx*_qx-_qy*_qy+_qz*_qz:
+        finalizing ? _quat.w*_quat.w-_quat.x*_quat.x-_quat.y*_quat.y+_quat.z*_quat.z:
         _rz;
 }
