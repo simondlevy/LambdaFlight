@@ -114,6 +114,28 @@ static float dot(const float x[EKF_N], const float y[EKF_N])
     return d;
 }
 
+/*
+static float dot(const newvec_t & x, const newvec_t & y) 
+{
+    float d = 0;
+
+    for (uint8_t k=0; k<EKF_N; k++) {
+        d += x.dat[k] * y.dat[k];
+    }
+
+    return d;
+}*/
+
+static float get(const newvec_t & x, const uint8_t i)
+{
+    return x.dat[i];
+}
+
+static void set(newvec_t & x, const uint8_t i, const float val)
+{
+    x.dat[i] = val;
+}
+
 static float dot(
         const matrix_t & a, 
         const matrix_t & b, 
@@ -354,7 +376,7 @@ static void afinalize(
 
 // ===========================================================================
 
-static void ekf_init(matrix_t & p, float x[EKF_N])
+static void ekf_init(matrix_t & p, newvec_t & x)
 {
     memset(&p, 0, sizeof(p));
     p.dat[STATE_Z][STATE_Z] = square(STDEV_INITIAL_POSITION_Z);
@@ -365,19 +387,19 @@ static void ekf_init(matrix_t & p, float x[EKF_N])
     p.dat[STATE_E1][STATE_E1] = square(STDEV_INITIAL_ATTITUDE_ROLL_PITCH);
     p.dat[STATE_E2][STATE_E2] = square(STDEV_INITIAL_ATTITUDE_YAW);
 
-    memset(x, 0, EKF_N * sizeof(float));
+    memset(&x, 0, sizeof(x));
 }
 
 static void ekf_predict(
         const imu_t & gyro,
         const imu_t & accel,
-        const float x_in[EKF_N],
+        const newvec_t & x_in,
         const new_quat_t & q,
         const axis3_t & r,
         const uint32_t lastPredictionMsec, 
         new_quat_t & quat_out,
         matrix_t & p,
-        float x_out[EKF_N])
+        newvec_t &x_out)
 {
     static axis3_t _gyro;
     static axis3_t _accel;
@@ -390,9 +412,9 @@ static void ekf_predict(
 
     // Position updates in the body frame (will be rotated to inertial frame);
     // thrust can only be produced in the body's Z direction
-    const auto dx = x_in[STATE_DX] * dt + stream_isFlying ? 0 : _accel.x * dt2 / 2;
-    const auto dy = x_in[STATE_DY] * dt + stream_isFlying ? 0 : _accel.y * dt2 / 2;
-    const auto dz = x_in[STATE_DZ] * dt + _accel.z * dt2 / 2; 
+    const auto dx = get(x_in, STATE_DX) * dt + stream_isFlying ? 0 : _accel.x * dt2 / 2;
+    const auto dy = get(x_in, STATE_DY) * dt + stream_isFlying ? 0 : _accel.y * dt2 / 2;
+    const auto dz = get(x_in, STATE_DZ) * dt + _accel.z * dt2 / 2; 
 
     const auto accx = stream_isFlying ? 0 : _accel.x;
     const auto accy = stream_isFlying ? 0 : _accel.y;
@@ -431,20 +453,24 @@ static void ekf_predict(
     // When flying, the accelerometer directly measures thrust (hence is useless
     // to estimate body angle while flying)
 
-    const auto tmpSDX = x_in[STATE_DX];
-    const auto tmpSDY = x_in[STATE_DY];
-    const auto tmpSDZ = x_in[STATE_DZ];
+    const auto tmpSDX = get(x_in, STATE_DX);
+    const auto tmpSDY = get(x_in, STATE_DY);
+    const auto tmpSDZ = get(x_in, STATE_DZ);
 
-    x_out[STATE_Z] = x_in[STATE_Z] + r.x * dx + r.y * dy + r.z * dz - MSS_TO_GS * dt2 / 2;
+    set(x_out, STATE_Z, 
+            get(x_in, STATE_Z) + r.x * dx + r.y * dy + r.z * dz - MSS_TO_GS * dt2 / 2);
 
-    x_out[STATE_DX] = x_in[STATE_DX] +
-        dt * (accx + _gyro.z * tmpSDY - _gyro.y * tmpSDZ - MSS_TO_GS * r.x);
+    set(x_out, STATE_DX,
+        get(x_in, STATE_DX) +
+            dt * (accx + _gyro.z * tmpSDY - _gyro.y * tmpSDZ - MSS_TO_GS * r.x));
 
-    x_out[STATE_DY] = x_in[STATE_DY] +
-        dt * (accy - _gyro.z * tmpSDX + _gyro.x * tmpSDZ - MSS_TO_GS * r.y); 
+    set(x_out, STATE_DY,
+        get(x_in, STATE_DY) +
+            dt * (accy - _gyro.z * tmpSDX + _gyro.x * tmpSDZ - MSS_TO_GS * r.y)); 
 
-    x_out[STATE_DZ] =  x_in[STATE_DZ] +
-        dt * (_accel.z + _gyro.y * tmpSDX - _gyro.x * tmpSDY - MSS_TO_GS * r.z);
+    set(x_out, STATE_DZ,
+        get(x_in, STATE_DZ) +
+            dt * (_accel.z + _gyro.y * tmpSDX - _gyro.x * tmpSDY - MSS_TO_GS * r.z));
 
     // predict()
     quat_out.w = tmpq0/norm;
@@ -476,9 +502,9 @@ static void ekf_predict(
     const auto zdz  = r.z*dt;
 
     // altitude from attitude error
-    const auto ze0  = (x_out[STATE_DY]*r.z - x_out[STATE_DZ]*r.y)*dt;
-    const auto ze1  = (- x_out[STATE_DX]*r.z + x_out[STATE_DZ]*r.x)*dt;
-    const auto ze2  = (x_out[STATE_DX]*r.y - x_out[STATE_DY]*r.x)*dt;
+    const auto ze0  = (get(x_out, STATE_DY)*r.z - get(x_out, STATE_DZ)*r.y)*dt;
+    const auto ze1  = (- get(x_out, STATE_DX)*r.z + get(x_out, STATE_DZ)*r.x)*dt;
+    const auto ze2  = (get(x_out, STATE_DX)*r.y - get(x_out, STATE_DY)*r.x)*dt;
 
     // body-frame velocity from body-frame velocity
     const auto dxdx  = 1; //drag negligible
@@ -529,10 +555,7 @@ static void ekf_predict(
     updateCovarianceMatrix(p);
 }
 
-static void ekf_updateWithRange(
-        const float rz,
-        matrix_t & p,
-        float x[EKF_N])
+static void ekf_updateWithRange(const float rz, matrix_t & p, float x[EKF_N])
 {
     const auto angle = max(0, 
             fabsf(acosf(rz)) - 
@@ -743,7 +766,7 @@ static void ekf_getVehicleState(
 static void ekf_step(void)
 {
     static matrix_t _p;
-    static float _x[EKF_N];
+    static newvec_t _x;
 
     static bool _isUpdated;
     static uint32_t _lastPredictionMsec;
@@ -800,7 +823,7 @@ static void ekf_step(void)
 
     if (predicting) {
 
-        float x_predicted[EKF_N] = {};
+        newvec_t x_predicted = {};
 
         new_quat_t quat_predicted = {};
 
@@ -813,10 +836,10 @@ static void ekf_step(void)
 
             _lastProcessNoiseUpdateMsec = stream_nowMsec;
 
-            _x[STATE_Z] = x_predicted[STATE_Z];
-            _x[STATE_DX] = x_predicted[STATE_DX];
-            _x[STATE_DY] = x_predicted[STATE_DY];
-            _x[STATE_DZ] = x_predicted[STATE_DZ];
+            _x.dat[STATE_Z] = x_predicted.dat[STATE_Z];
+            _x.dat[STATE_DX] = x_predicted.dat[STATE_DX];
+            _x.dat[STATE_DY] = x_predicted.dat[STATE_DY];
+            _x.dat[STATE_DZ] = x_predicted.dat[STATE_DZ];
 
             _quat.w = quat_predicted.w;
             _quat.x = quat_predicted.x;
@@ -834,7 +857,7 @@ static void ekf_step(void)
 
     // Update with flow
     if (stream_ekfAction == EKF_UPDATE_WITH_FLOW) {
-        ekf_updateWithFlow(_r.z, _gyroLatest, _p, _x);
+        ekf_updateWithFlow(_r.z, _gyroLatest, _p, _x.dat);
         _isUpdated = true;
     }
 
@@ -842,7 +865,7 @@ static void ekf_step(void)
     if (stream_ekfAction == EKF_UPDATE_WITH_RANGE &&
             fabs(_r.z) > 0.1f && _r.z > 0 && 
             stream_rangefinder_distance < RANGEFINDER_OUTLIER_LIMIT_MM) {
-        ekf_updateWithRange(_r.z, _p, _x);
+        ekf_updateWithRange(_r.z, _p, _x.dat);
         _isUpdated = true;
     }
 
@@ -868,7 +891,7 @@ static void ekf_step(void)
 
         new_quat_t quat_finalized = {};
 
-        ekf_finalize(_quat, _p, _x, quat_finalized);
+        ekf_finalize(_quat, _p, _x.dat, quat_finalized);
 
         _quat.w = quat_finalized.w;
         _quat.x = quat_finalized.x;
@@ -885,7 +908,7 @@ static void ekf_step(void)
     // Get vehicle state -----------------------------------------------------
 
     vehicleState_t vehicleState = {};
-    ekf_getVehicleState(_x, _gyroLatest, _quat, _r, vehicleState);
+    ekf_getVehicleState(_x.dat, _gyroLatest, _quat, _r, vehicleState);
 
     if (stream_ekfAction == EKF_GET_STATE) {
         setState(vehicleState);
@@ -893,9 +916,9 @@ static void ekf_step(void)
 
     if (requestedFinalize) {
         setStateIsInBounds(
-                isPositionWithinBounds(_x[STATE_Z]) &&
-                isVelocityWithinBounds(_x[STATE_DX]) &&
-                isVelocityWithinBounds(_x[STATE_DY]) &&
-                isVelocityWithinBounds(_x[STATE_DZ]));
+                isPositionWithinBounds(_x.dat[STATE_Z]) &&
+                isVelocityWithinBounds(_x.dat[STATE_DX]) &&
+                isVelocityWithinBounds(_x.dat[STATE_DY]) &&
+                isVelocityWithinBounds(_x.dat[STATE_DZ]));
     }
 }
