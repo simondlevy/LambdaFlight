@@ -49,6 +49,11 @@ static const uint32_t RANGEFINDER_FREQ = 40;
 
 // ---------------------------------------------------------------------------
 
+// Empirically determined
+static const float ACCEL_X_OFFSET = 0.000;
+static const float ACCEL_Y_OFFSET = 0.014;
+static const float ACCEL_Z_OFFSET = 0.047;
+
 // Do not exceed 2000Hz, all filter paras tuned to 2000Hz by default
 static const uint32_t LOOP_RATE = 2000;
 
@@ -212,11 +217,15 @@ static void readImu(void)
 
     if (Usfs::eventStatusIsAccelerometer(eventStatus)) { 
 
-        usfs.readAccelerometerScaled(
-                stream_accel_x, stream_accel_y, stream_accel_z);
+        float ax=0, ay=0, az=0;
 
-        // We negate accel Z to accommodate upside-down USFS mounting
-        stream_accel_z = -stream_accel_z;
+        usfs.readAccelerometerScaled(ax, ay, az);
+
+        // Remove offsets obtained from calibration, negating Z to 
+        // acommodate upside-down mounting
+        stream_accel_x = ax - ACCEL_X_OFFSET;
+        stream_accel_y = ay - ACCEL_Y_OFFSET;
+        stream_accel_z = -(az - ACCEL_Z_OFFSET);
     }
 
     if (Usfs::eventStatusIsGyrometer(eventStatus)) { 
@@ -308,10 +317,10 @@ static void debug(const uint32_t current_time)
         previous_time = current_time;
 
         //debugDz();
-        //debugAccel();  
+        debugAccel();  
         //debugGyro();  
         //debugQuat();  
-        debugState();  
+        //debugState();  
         //debugMotorCommands(); 
         //debugLoopRate();      
         //debugRangefinder();      

@@ -30,7 +30,7 @@ Usfs::INTERRUPT_QUAT;
 
 static const bool VERBOSE = false;
 
-static const uint32_t REPS = 20'000;
+static const uint32_t REPS = 1000;
 
 static Usfs usfs;
 
@@ -72,8 +72,7 @@ void loop()
 {
     static uint32_t _count;
 
-    static float _ax, _ay, _az;
-
+    static int32_t _ax, _ay, _az;
 
     if (_count < REPS) {
 
@@ -86,23 +85,24 @@ void loop()
 
         if (Usfs::eventStatusIsAccelerometer(eventStatus)) { 
 
-            float ax=0, ay=0, az=0;
+            int16_t raw[3] = {};
 
-            usfs.readAccelerometerScaled(ax, ay, az);
+            usfs.readAccelerometerRaw(raw);
 
-            _ax += ax;
-            _ay += ay;
-            _az += az;
+            _count++;
+
+            _ax += raw[0];
+            _ay += raw[1];
+            _az += (2048 + raw[2]);
         }
     }
 
     else if (_count == REPS) {
 
-        Serial.printf("static const float ACCEL_X_OFFSET = %f;\n", _ax/REPS);
-        Serial.printf("static const float ACCEL_Y_OFFSET = %f;\n", _ay/REPS);
-        Serial.printf("static const float ACCEL_Z_OFFSET = %f;\n", _az/REPS);
+        Serial.printf("static const int16_t ACCEL_X_OFFSET = %d;\n", _ax/REPS);
+        Serial.printf("static const int16_t ACCEL_Y_OFFSET = %d;\n", _ay/REPS);
+        Serial.printf("static const int16_t ACCEL_Z_OFFSET = %d;\n", _az/REPS);
+
+        _count++;
     }
-
-    _count++;
-
 }
