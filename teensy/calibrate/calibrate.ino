@@ -55,32 +55,6 @@ static void powerPin(const uint8_t pin, const bool hilo)
     digitalWrite(pin, hilo);
 }
 
-
-static uint32_t updateTime(void)
-{
-    static uint32_t _current_time;
-    static uint32_t _prev_time;
-
-    _prev_time = _current_time;      
-    _current_time = micros();      
-    return _current_time;
-}
-
-
-static void debug(const uint32_t current_time)
-{
-
-    static uint32_t previous_time;
-
-    if (current_time - previous_time > 10000) {
-
-        previous_time = current_time;
-
-    Serial.printf("accelX:%+3.3f accelY:%+3.3f accelZ:%+3.3f\n", 
-            accel_x, accel_y, accel_z);
-    }
-}
-
 void setup()
 {
     Serial.begin(115200);
@@ -112,10 +86,6 @@ void setup()
 
 void loop()
 {
-    const auto currentTime = updateTime();
-
-    debug(currentTime);
-
     const auto eventStatus = Usfs::checkStatus(); 
 
     if (Usfs::eventStatusIsError(eventStatus)) { 
@@ -130,6 +100,9 @@ void loop()
 
         // We negate accel Z to accommodate upside-down USFS mounting
         accel_z = -accel_z;
+
+        Serial.printf("accelX:%+3.3f accelY:%+3.3f accelZ:%+3.3f\n", 
+                accel_x, accel_y, accel_z);
     }
 
 }
