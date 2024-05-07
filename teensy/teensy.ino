@@ -78,6 +78,7 @@ static int m4_command;
 static float _phi;
 static float _theta;
 static float _psi;
+
 static float _z;
 static float _dx;
 static float _dy;
@@ -363,22 +364,11 @@ void loop()
 
 // Called by Copilot ---------------------------------------------------------
 
-void setState(
-        const float phi, 
-        const float theta, 
-        const float psi, 
-        const float z,
-        const float dx,
-        const float dy,
-        const float dz)
+void setState( const float phi, const float theta, const float psi) 
 {
     _phi = phi;
     _theta = theta;
     _psi = psi;
-    //_z = z;
-    //_dx = dx;
-    //_dy = dy;
-    //_dz = dz;
 }
 
 void setDz(const float dz_rangefinder, const float dz_accel, const float dz)
@@ -445,10 +435,4 @@ void debugState(void)
 {
     Serial.printf("phi:%2.2f theta:%2.2f psi:%2.2f z:%2.2f dx:%2.2d dy:%2.2f dz:%2.2f\n", 
             _phi, _theta, _psi, _z, _dx, _dy, _dz);
-}
-
-void debugDz(void) 
-{
-    Serial.printf("a:%+3.3f r:%+3.3f c:%+3.3f\n", 
-            _dz_accel, _dz_rangefinder, _dz);
 }

@@ -74,18 +74,6 @@ gyro_y = extern "stream_gyro_y" Nothing
 gyro_z :: SFloat
 gyro_z = extern "stream_gyro_z" Nothing
 
-accel_x :: SFloat
-accel_x = extern "stream_accel_x" Nothing
-
-accel_y :: SFloat
-accel_y = extern "stream_accel_y" Nothing
-
-accel_z :: SFloat
-accel_z = extern "stream_accel_z" Nothing
-
-rangefinder_distance :: SFloat
-rangefinder_distance = extern "stream_rangefinder_distance" Nothing
-
 -- PID tuning constants -----------------------------------------------------
 
 i_limit = 25 :: SFloat
@@ -110,26 +98,9 @@ max_roll = 30 :: SFloat
 max_pitch = 30 :: SFloat   
 max_yaw = 160 :: SFloat    
 
--- State estimation ---------------------------------------------------------
-
-compute_dz = (dz_rangefinder, dz_accel, dz) where
-
-  alpha = 0.5
-
-  z_rangefinder = rangefinder_distance / 1000 -- mm => m
-
-  dz_rangefinder = (z_rangefinder - z_rangefinder') / dt
-
-  dz_accel = (accel_z - 1) * 9.81 * dt + dz_accel'
-
-  dz = alpha * dz_rangefinder + (1 - alpha) * dz_accel
-
-  z_rangefinder' = [0] ++ z_rangefinder
-  dz_accel' = [0] ++ dz_accel
-
 -----------------------------------------------------------------------------
 
-step = (phi, theta, psi, z, dx, dy, dz, m1, m2, m3, m4) where
+step = (phi, theta, psi, m1, m2, m3, m4) where
 
   -- Get Euler angles from USFS hardware quaternion --------------------------
 
@@ -139,13 +110,6 @@ step = (phi, theta, psi, z, dx, dy, dz, m1, m2, m3, m4) where
            * 180 / pi)
 
   psi = (-atan2 (qx*qy + qw*qz) (0.5 - qy*qy - qz*qz)) * 180 / pi
-
-  -- Get X/Y velocity --------------------------------------------------------
-
-  z = 0 :: SFloat
-  dx = 0 :: SFloat
-  dy = 0 :: SFloat
-  dz = 0 :: SFloat
 
   -- Get open-loop demands --------------------------------------------------
 
@@ -243,13 +207,9 @@ step = (phi, theta, psi, z, dx, dy, dz, m1, m2, m3, m4) where
 
 spec = do
 
-  let (phi, theta, psi, z, dx, dy, dz, m1, m2, m3, m4) = step
+  let (phi, theta, psi, m1, m2, m3, m4) = step
 
-  let (dz_rangefinder, dz_accel, dz) = compute_dz
-
-  trigger "setDz" true [arg dz_rangefinder, arg dz_accel, arg dz]
-
-  trigger "setState" true [arg phi, arg theta, arg psi, arg z, arg dx, arg dy, arg dz]
+  trigger "setState" true [arg phi, arg theta, arg psi]
 
   trigger "setMotors" true [arg m1, arg m2, arg m3, arg m4] 
 
