@@ -55,31 +55,6 @@ static void powerPin(const uint8_t pin, const bool hilo)
     digitalWrite(pin, hilo);
 }
 
-static void initImu(void)
-{
-    powerPin(PWR_PIN, HIGH);
-    powerPin(GND_PIN, LOW);
-
-    Wire.begin(); 
-    Wire.setClock(400000);
-    delay(100);
-
-    usfs.loadFirmware(VERBOSE); 
-
-    usfs.begin(
-            ACCEL_BANDWIDTH,
-            GYRO_BANDWIDTH,
-            QUAT_DIVISOR,
-            MAG_RATE,
-            ACCEL_RATE,
-            GYRO_RATE,
-            BARO_RATE,
-            INTERRUPT_ENABLE,
-            VERBOSE); 
-
-    // Clear interrupts
-    Usfs::checkStatus();
-}
 
 static void readImu(void)
 {
@@ -122,7 +97,8 @@ static void debug(const uint32_t current_time)
 
         previous_time = current_time;
 
-        debugAccel();  
+    Serial.printf("accelX:%+3.3f accelY:%+3.3f accelZ:%+3.3f\n", 
+            accel_x, accel_y, accel_z);
     }
 }
 
@@ -130,9 +106,30 @@ void setup()
 {
     Serial.begin(115200);
 
-    initImu();
+    powerPin(PWR_PIN, HIGH);
+    powerPin(GND_PIN, LOW);
 
-} // setup
+    Wire.begin(); 
+    Wire.setClock(400000);
+    delay(100);
+
+    usfs.loadFirmware(VERBOSE); 
+
+    usfs.begin(
+            ACCEL_BANDWIDTH,
+            GYRO_BANDWIDTH,
+            QUAT_DIVISOR,
+            MAG_RATE,
+            ACCEL_RATE,
+            GYRO_RATE,
+            BARO_RATE,
+            INTERRUPT_ENABLE,
+            VERBOSE); 
+
+    // Clear interrupts
+    Usfs::checkStatus();
+
+}
 
 void loop()
 {
@@ -142,11 +139,4 @@ void loop()
 
     readImu();
 
-}  // loop
-
-
-void debugAccel(void) 
-{
-    Serial.printf("accelX:%+3.3f accelY:%+3.3f accelZ:%+3.3f\n", 
-            accel_x, accel_y, accel_z);
 }
