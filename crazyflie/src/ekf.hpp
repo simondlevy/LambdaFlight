@@ -333,7 +333,7 @@ static void subSamplerTakeMean(
 
 // ===========================================================================
 
-static void ekf_init(matrix_t & p)
+static void ekf_init(matrix_t & p, ekfState_t & ekfs)
 {
     memset(&p, 0, sizeof(p));
     p.dat[STATE_Z][STATE_Z] = square(STDEV_INITIAL_POSITION_Z);
@@ -343,6 +343,8 @@ static void ekf_init(matrix_t & p)
     p.dat[STATE_E0][STATE_E0] = square(STDEV_INITIAL_ATTITUDE_ROLL_PITCH);
     p.dat[STATE_E1][STATE_E1] = square(STDEV_INITIAL_ATTITUDE_ROLL_PITCH);
     p.dat[STATE_E2][STATE_E2] = square(STDEV_INITIAL_ATTITUDE_YAW);
+
+    memset(&ekfs, 0, sizeof(ekfs));
 }
 
 static void ekf_predict(
@@ -779,7 +781,7 @@ static void ekf_step(void)
     // Initialize
     bool initializing = stream_ekfAction == EKF_INIT;
     if (initializing) {
-        ekf_init(_p);
+        ekf_init(_p, _ekfs);
     }
 
     _nextPredictionMsec = stream_nowMsec > _nextPredictionMsec ?
@@ -934,41 +936,41 @@ static void ekf_step(void)
         finalizing ? _qw*_qw-_qx*_qx-_qy*_qy+_qz*_qz:
         _rz;
 
-    _ekfs.z = initializing ? 0 : 
+    _ekfs.z = 
         isDtPositive ? ekfs_predicted.z :
         updatingWithFlow ? ekfs_updatedWithFlow.z :
         updatingWithRange ? ekfs_updatedWithRange.z :
         _ekfs.z;
 
-    _ekfs.dx = initializing ? 0 : 
+    _ekfs.dx = 
         isDtPositive ? ekfs_predicted.dx :
         updatingWithFlow ? ekfs_updatedWithFlow.dx :
         updatingWithRange ? ekfs_updatedWithRange.dx :
         _ekfs.dx;
 
-    _ekfs.dy = initializing ? 0 : 
+    _ekfs.dy = 
         isDtPositive ? ekfs_predicted.dy :
         updatingWithFlow ? ekfs_updatedWithFlow.dy :
         updatingWithRange ? ekfs_updatedWithRange.dy :
         _ekfs.dy;
 
-    _ekfs.dz = initializing ? 0 : 
+    _ekfs.dz = 
         isDtPositive ? ekfs_predicted.dz :
         updatingWithFlow ? ekfs_updatedWithFlow.dz :
         updatingWithRange ? ekfs_updatedWithRange.dz :
         _ekfs.dz;
 
-    _ekfs.angx = initializing || finalizing ? 0 : 
+    _ekfs.angx = finalizing ? 0 : 
         updatingWithFlow ? ekfs_updatedWithFlow.angx :
         updatingWithRange ? ekfs_updatedWithRange.angx :
         _ekfs.angx;
 
-    _ekfs.angy = initializing || finalizing ? 0 : 
+    _ekfs.angy = finalizing ? 0 : 
         updatingWithFlow ? ekfs_updatedWithFlow.angy :
         updatingWithRange ? ekfs_updatedWithRange.angy :
         _ekfs.angy;
 
-    _ekfs.angz = initializing || finalizing ? 0 : 
+    _ekfs.angz = finalizing ? 0 : 
         updatingWithFlow ? ekfs_updatedWithFlow.angz :
         updatingWithRange ? ekfs_updatedWithRange.angz :
         _ekfs.angz;
