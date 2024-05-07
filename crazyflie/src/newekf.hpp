@@ -13,7 +13,7 @@ class Ekf {
 
     public:
         
-        void init(const float diag[EKF_N])
+        void init(const float diag[EKF_N], const uint32_t now_msec)
         {
             for (uint8_t i=0; i<EKF_N; ++i) {
 
@@ -24,6 +24,8 @@ class Ekf {
                     p[i][j] = i == j ? diag[i] : 0;
                 }
             }
+
+            _lastProcessNoiseUpdateMsec = now_msec;
         }
 
     private:
@@ -32,6 +34,7 @@ class Ekf {
 
         float p[EKF_N][EKF_N];
 
+        uint32_t _lastProcessNoiseUpdateMsec;
 };
 
 // Quaternion used for initial orientation
@@ -793,16 +796,14 @@ static void ekf_step(void)
         _nextPredictionMsec;
 
     // Predict
-    const auto shouldPredict = stream_ekfAction == EKF_PREDICT;
-
-    const auto didPredict =
-        shouldPredict && stream_nowMsec >= _nextPredictionMsec;
+    const auto predicting =
+        stream_ekfAction == EKF_PREDICT && stream_nowMsec >= _nextPredictionMsec;
 
     ekfLinear_t lin_predicted = {};
 
     new_quat_t quat_predicted = {};
 
-    if (didPredict) {
+    if (predicting) {
 
         ekf_predict(
                 _gyroSum_x,
@@ -824,7 +825,7 @@ static void ekf_step(void)
                 lin_predicted);
     }
 
-    const auto isDtPositive = didPredict && 
+    const auto isDtPositive = predicting && 
         (stream_nowMsec - _lastProcessNoiseUpdateMsec) / 1000.0f;
 
     // Finalize
@@ -988,7 +989,7 @@ static void ekf_step(void)
         _lastProcessNoiseUpdateMsec;
 
     _lastPredictionMsec = 
-        initializing || didPredict ? stream_nowMsec :
+        initializing || predicting ? stream_nowMsec :
         _lastPredictionMsec;
 
     _isUpdated = 

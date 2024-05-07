@@ -175,7 +175,7 @@ class EstimatorTask : public FreeRTOSTask {
                 square(STDEV_INITIAL_ATTITUDE_YAW)
             };
 
-            _ekf.init(diag);
+            _ekf.init(diag, nowMsec);
         }        
 
         uint32_t step(const uint32_t nowMsec, uint32_t nextPredictionMsec) 
