@@ -3,6 +3,9 @@
  */
 
 
+#define _MAIN
+#include "streams.h"
+
 #include <Wire.h> 
 
 #include <sbus.h>
@@ -12,6 +15,8 @@
 #include <oneshot125.hpp>
 
 #include <vector>
+
+#include "ekf.hpp"
 
 void copilot_step(void);
 
@@ -80,29 +85,6 @@ static float _dz;
 
 static float _dz_rangefinder;
 static float _dz_accel;
-
-// Streams shared with Haskell ------------------------------------------------
-
-float       stream_accel_x;
-float       stream_accel_y;
-float       stream_accel_z;
-float       stream_dt;
-float       stream_gyro_x;
-float       stream_gyro_y;
-float       stream_gyro_z;
-bool        stream_radio_failsafe;
-float       stream_channel1_raw;
-float       stream_channel2_raw;
-float       stream_channel3_raw;
-float       stream_channel4_raw;
-float       stream_channel5_raw;
-uint32_t    stream_next_prediction_msec;
-uint32_t    stream_now_msec;
-float       stream_quat_w;
-float       stream_quat_x;
-float       stream_quat_y;
-float       stream_quat_z;
-float       stream_rangefinder_distance;
 
 // ---------------------------------------------------------------------------
 
@@ -316,20 +298,28 @@ static void debug(const uint32_t current_time)
 
         previous_time = current_time;
 
-        debugDz();
+        //debugDz();
         //debugAccel();  
         //debugGyro();  
         //debugQuat();  
-        //debugState();  
+        debugState();  
         //debugMotorCommands(); 
         //debugLoopRate();      
         //debugRangefinder();      
     }
 }
 
+static void ekfStep(const ekfAction_e action)
+{
+    stream_ekf_action = action;
+    ekf_step();
+}
+
 void setup()
 {
     Serial.begin(115200);
+
+    ekfStep(EKF_INIT);
 
     initImu();
 
