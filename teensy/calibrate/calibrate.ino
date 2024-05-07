@@ -74,9 +74,8 @@ void loop()
 
     static float _ax, _ay, _az;
 
-    if (_count++ < REPS) {
 
-        Serial.printf("%d%%\r", (int)(100 * (float)_count/REPS));
+    if (_count < REPS) {
 
         const auto eventStatus = Usfs::checkStatus(); 
 
@@ -97,12 +96,13 @@ void loop()
         }
     }
 
-    else {
+    else if (_count == REPS) {
 
         Serial.printf("static const float ACCEL_X_OFFSET = %f;\n", _ax/REPS);
         Serial.printf("static const float ACCEL_Y_OFFSET = %f;\n", _ay/REPS);
         Serial.printf("static const float ACCEL_Z_OFFSET = %f;\n", _az/REPS);
-
-        delay(500);
     }
+
+    _count++;
+
 }
