@@ -19,12 +19,14 @@
 #include <semphr.h>
 
 #include <crossplatform.h>
-#include <newekf.hpp>
 #include <rateSupervisor.hpp>
 #include <safety.hpp>
 #include <task.hpp>
 
 #include <streams.h>
+
+#define EKF_N 7
+#include <newekf.hpp>
 
 class EstimatorTask : public FreeRTOSTask {
 
