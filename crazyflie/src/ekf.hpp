@@ -269,7 +269,7 @@ static void scalarUpdate(
         const float error, 
         const float stdMeasNoise,
         matrix_t & p,
-        float x[EKF_N])
+        newvec_t & x)
 {
 
     // ====== INNOVATION COVARIANCE ======
@@ -286,7 +286,7 @@ static void scalarUpdate(
 
     // Perform the state update
     for (uint8_t i=0; i<EKF_N; ++i) {
-        x[i] += g[i] * error;
+        x.dat[i] += g[i] * error;
     }
 
     // ====== COVARIANCE UPDATE ======
@@ -555,13 +555,13 @@ static void ekf_predict(
     updateCovarianceMatrix(p);
 }
 
-static void ekf_updateWithRange(const float rz, matrix_t & p, float x[EKF_N])
+static void ekf_updateWithRange(const float rz, matrix_t & p, newvec_t & x)
 {
     const auto angle = max(0, 
             fabsf(acosf(rz)) - 
             DEGREES_TO_RADIANS * (15.0f / 2.0f));
 
-    const auto predictedDistance = x[STATE_Z] / cosf(angle);
+    const auto predictedDistance = get(x, STATE_Z) / cosf(angle);
 
     const auto measuredDistance = stream_rangefinder_distance / 1000; // mm => m
 
@@ -599,7 +599,7 @@ static void ekf_updateWithFlow(
         const float rz,
         const axis3_t & gyroLatest,
         matrix_t & p,
-        float x[EKF_N])
+        newvec_t & x)
 {
     // Inclusion of flow measurements in the EKF done by two scalar updates
 
@@ -618,11 +618,11 @@ static void ekf_updateWithFlow(
     const auto omegax_b = gyroLatest.x * DEGREES_TO_RADIANS;
     const auto omegay_b = gyroLatest.y * DEGREES_TO_RADIANS;
 
-    const auto dx_g = x[STATE_DX];
-    const auto dy_g = x[STATE_DY];
+    const auto dx_g = get(x, STATE_DX);
+    const auto dy_g = get(x, STATE_DY);
 
     // Saturate elevation in prediction and correction to avoid singularities
-    const auto z_g = x[STATE_Z] < 0.1f ? 0.1f : x[STATE_Z];
+    const auto z_g = get(x, STATE_Z) < 0.1f ? 0.1f : get(x, STATE_Z);
 
     // ~~~ X velocity prediction and update ~~~
     // predicts the number of accumulated pixels in the x-direction
@@ -857,7 +857,7 @@ static void ekf_step(void)
 
     // Update with flow
     if (stream_ekfAction == EKF_UPDATE_WITH_FLOW) {
-        ekf_updateWithFlow(_r.z, _gyroLatest, _p, _x.dat);
+        ekf_updateWithFlow(_r.z, _gyroLatest, _p, _x);
         _isUpdated = true;
     }
 
@@ -865,7 +865,7 @@ static void ekf_step(void)
     if (stream_ekfAction == EKF_UPDATE_WITH_RANGE &&
             fabs(_r.z) > 0.1f && _r.z > 0 && 
             stream_rangefinder_distance < RANGEFINDER_OUTLIER_LIMIT_MM) {
-        ekf_updateWithRange(_r.z, _p, _x.dat);
+        ekf_updateWithRange(_r.z, _p, _x);
         _isUpdated = true;
     }
 
