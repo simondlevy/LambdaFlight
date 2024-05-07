@@ -180,7 +180,7 @@ static float rotateQuat( const float val, const float initVal)
         (stream_isFlying ? 0 : ROLLPITCH_ZERO_REVERSION * initVal);
 }
 
-static void updateCovarianceMatrix(const matrix_t & p_in, matrix_t & p_out) 
+static void updateCovarianceMatrix(matrix_t & p) 
 {
     // Enforce symmetry of the covariance matrix, and ensure the
     // values stay bounded
@@ -188,9 +188,9 @@ static void updateCovarianceMatrix(const matrix_t & p_in, matrix_t & p_out)
 
         for (int j=i; j<EKF_N; j++) {
 
-            const auto pval = (p_in.dat[i][j] + p_in.dat[j][i]) / 2;
+            const auto pval = (p.dat[i][j] + p.dat[j][i]) / 2;
 
-            p_out.dat[i][j] = p_out.dat[j][i] = 
+            p.dat[i][j] = p.dat[j][i] = 
                 pval > MAX_COVARIANCE ?  MAX_COVARIANCE :
                 (i==j && pval < MIN_COVARIANCE) ?  MIN_COVARIANCE :
                 pval;
@@ -199,18 +199,17 @@ static void updateCovarianceMatrix(const matrix_t & p_in, matrix_t & p_out)
 }
 
 static void scalarUpdate(
-        const matrix_t & p_in,
         const ekfState_t & ekfs_in,
         const float h[EKF_N],
         const float error, 
         const float stdMeasNoise,
-        matrix_t & p_out,
+        matrix_t & p,
         ekfState_t & ekfs_out)
 {
 
     // ====== INNOVATION COVARIANCE ======
     float ph[EKF_N] = {};
-    multiply(p_in.dat, h, ph);
+    multiply(p.dat, h, ph);
     const auto r = stdMeasNoise * stdMeasNoise;
     const auto hphr = r + dot(h, ph); // HPH' + R
 
@@ -248,17 +247,17 @@ static void scalarUpdate(
     matrix_t GHt = {};
     transpose(GH.dat, GHt.dat);      // (KH - I)'
     matrix_t GHIP = {};
-    multiply(GH.dat, p_in.dat, GHIP.dat);  // (KH - I)*P
-    multiply(GHIP.dat, GHt.dat, p_out.dat); // (KH - I)*P*(KH - I)'
+    multiply(GH.dat, p.dat, GHIP.dat);  // (KH - I)*P
+    multiply(GHIP.dat, GHt.dat, p.dat); // (KH - I)*P*(KH - I)'
 
     // Add the measurement variance 
     for (int i=0; i<EKF_N; i++) {
         for (int j=0; j<EKF_N; j++) {
-            p_out.dat[i][j] += j < i ? 0 : r * g[i] * g[j];
+            p.dat[i][j] += j < i ? 0 : r * g[i] * g[j];
         }
     }
 
-    updateCovarianceMatrix(p_out, p_out);
+    updateCovarianceMatrix(p);
 }
 
 static bool isPositionWithinBounds(const float pos)
@@ -339,16 +338,16 @@ static void subSamplerTakeMean(
 
 // ===========================================================================
 
-static void ekf_init(matrix_t & p_out)
+static void ekf_init(matrix_t & p)
 {
-    memset(&p_out, 0, sizeof(p_out));
-    p_out.dat[STATE_Z][STATE_Z] = square(STDEV_INITIAL_POSITION_Z);
-    p_out.dat[STATE_DX][STATE_DX] = square(STDEV_INITIAL_VELOCITY);
-    p_out.dat[STATE_DY][STATE_DY] = square(STDEV_INITIAL_VELOCITY);
-    p_out.dat[STATE_DZ][STATE_DZ] = square(STDEV_INITIAL_VELOCITY);
-    p_out.dat[STATE_E0][STATE_E0] = square(STDEV_INITIAL_ATTITUDE_ROLL_PITCH);
-    p_out.dat[STATE_E1][STATE_E1] = square(STDEV_INITIAL_ATTITUDE_ROLL_PITCH);
-    p_out.dat[STATE_E2][STATE_E2] = square(STDEV_INITIAL_ATTITUDE_YAW);
+    memset(&p, 0, sizeof(p));
+    p.dat[STATE_Z][STATE_Z] = square(STDEV_INITIAL_POSITION_Z);
+    p.dat[STATE_DX][STATE_DX] = square(STDEV_INITIAL_VELOCITY);
+    p.dat[STATE_DY][STATE_DY] = square(STDEV_INITIAL_VELOCITY);
+    p.dat[STATE_DZ][STATE_DZ] = square(STDEV_INITIAL_VELOCITY);
+    p.dat[STATE_E0][STATE_E0] = square(STDEV_INITIAL_ATTITUDE_ROLL_PITCH);
+    p.dat[STATE_E1][STATE_E1] = square(STDEV_INITIAL_ATTITUDE_ROLL_PITCH);
+    p.dat[STATE_E2][STATE_E2] = square(STDEV_INITIAL_ATTITUDE_YAW);
 }
 
 static void ekf_predict(
@@ -360,13 +359,12 @@ static void ekf_predict(
         const float accelSum_y,
         const float accelSum_z,
         const uint32_t accelCount,
-        const matrix_t & p_in,
         const ekfLinear_t & linear_in,
         const new_quat_t & q,
         const axis3_t & r,
         const uint32_t lastPredictionMsec, 
         new_quat_t & quat_out,
-        matrix_t & p_out,
+        matrix_t & p,
         ekfLinear_t & linear_out) 
 {
     static float _gyro_x;
@@ -529,17 +527,15 @@ static void ekf_predict(
     matrix_t  At = {};
     transpose(A, At.dat);     // A'
     matrix_t AP = {};
-    multiply(A, p_in.dat, AP.dat);  // AP
-    matrix_t APA = {};
-    multiply(AP.dat, At.dat, APA.dat); // APA'
-    updateCovarianceMatrix(APA, p_out);
+    multiply(A, p.dat, AP.dat);  // AP
+    multiply(AP.dat, At.dat, p.dat); // APA'
+    updateCovarianceMatrix(p);
 }
 
 static void ekf_updateWithRange(
-        const matrix_t & p_in,
         const ekfState_t & ekfs_in,
         const float rz,
-        matrix_t & p_out,
+        matrix_t & p,
         ekfState_t & ekfs_out)
 {
     const auto angle = max(0, 
@@ -573,21 +569,19 @@ static void ekf_updateWithRange(
     const float h[EKF_N] = {1 / cosf(angle), 0, 0, 0, 0, 0, 0};
 
     scalarUpdate(
-            p_in,
             ekfs_in,
             h , 
             measuredDistance-predictedDistance, 
             stdDev, 
-            p_out,
+            p,
             ekfs_out);
 }
 
 static void ekf_updateWithFlow(
-        const matrix_t & p_in,
         const ekfState_t & ekfs_in,
         const float rz,
         const axis3_t & gyroLatest,
-        matrix_t & p_out,
+        matrix_t & p,
         ekfState_t & ekfs_out) 
 {
     // Inclusion of flow measurements in the EKF done by two scalar updates
@@ -626,17 +620,15 @@ static void ekf_updateWithFlow(
     hx[STATE_DX] = (Npix * stream_flow.dt / thetapix) * 
         (rz / z_g);
 
-    matrix_t p_first = {};
     ekfState_t ekfs_first = {};
 
     //First update
     scalarUpdate(
-            p_in,
             ekfs_in,
             hx, 
             measuredNX-predictedNX, 
             FLOW_STD_FIXED*FLOW_RESOLUTION, 
-            p_first,
+            p,
             ekfs_first);
 
     // ~~~ Y velocity prediction and update ~~~
@@ -652,20 +644,18 @@ static void ekf_updateWithFlow(
 
     // Second update
     scalarUpdate(
-            p_first,
             ekfs_first,
             hy, 
             measuredNY-predictedNY, 
             FLOW_STD_FIXED*FLOW_RESOLUTION, 
-            p_out,
+            p,
             ekfs_out);
 }
 
 static void ekf_finalize(
-        const matrix_t & p_in,
         const ekfState_t & ekfs,
         const new_quat_t & q,
-        matrix_t & p_out,
+        matrix_t & p,
         new_quat_t & q_out)
 {
     // Incorporate the attitude error (Kalman filter state) with the attitude
@@ -711,10 +701,9 @@ static void ekf_finalize(
         matrix_t At = {};
         transpose(A.dat, At.dat);     // A'
         matrix_t AP = {};
-        multiply(A.dat, p_in.dat, AP.dat);  // AP
-        matrix_t APA = {};
-        multiply(AP.dat, At.dat, APA.dat); // APA'
-        updateCovarianceMatrix(APA, p_out);
+        multiply(A.dat, p.dat, AP.dat);  // AP
+        multiply(AP.dat, At.dat, p.dat); // APA'
+        updateCovarianceMatrix(p);
     }
 } 
 
@@ -803,8 +792,9 @@ static void ekf_step(void)
 
     // Initialize
     bool initializing = stream_ekfAction == EKF_INIT;
-    matrix_t p_initialized = {};
-    ekf_init(p_initialized);
+    if (initializing) {
+        ekf_init(_p);
+    }
 
     _nextPredictionMsec = stream_nowMsec > _nextPredictionMsec ?
         stream_nowMsec + PREDICTION_UPDATE_INTERVAL_MS :
@@ -829,7 +819,6 @@ static void ekf_step(void)
                 _accelSum_y,
                 _accelSum_z,
                 _accelCount,
-                _p,
                 ekfs.lin,
                 quat,
                 r,
@@ -848,14 +837,14 @@ static void ekf_step(void)
     const auto finalizing = requestedFinalize && _isUpdated;
     new_quat_t quat_finalized = {};
     if (finalizing) {
-        ekf_finalize(_p, ekfs, quat, _p, quat_finalized);
+        ekf_finalize(ekfs, quat, _p, quat_finalized);
     }
 
     // Update with flow
     ekfState_t ekfs_updatedWithFlow = {};
     const auto updatingWithFlow = stream_ekfAction == EKF_UPDATE_WITH_FLOW; 
     if (updatingWithFlow) {
-        ekf_updateWithFlow(_p, ekfs, _rz, _gyroLatest, _p, ekfs_updatedWithFlow);
+        ekf_updateWithFlow(ekfs, _rz, _gyroLatest, _p, ekfs_updatedWithFlow);
     }
 
     // Update with range when the measurement is reliable 
@@ -864,7 +853,7 @@ static void ekf_step(void)
         stream_rangefinder_distance < RANGEFINDER_OUTLIER_LIMIT_MM;
     ekfState_t ekfs_updatedWithRange = {};
     if (updatingWithRange) {
-        ekf_updateWithRange(_p, ekfs, _rz, _p, ekfs_updatedWithRange);
+        ekf_updateWithRange(ekfs, _rz, _p, ekfs_updatedWithRange);
     }
 
     // Update with gyro
@@ -914,10 +903,6 @@ static void ekf_step(void)
     _accelSum_z = updatingWithAccel ? _accelSum_z + stream_accel.z :
         isDtPositive ? 0 :
         _accelSum_z;
-
-    memcpy(&_p, 
-            initializing ? &p_initialized :
-            &_p, sizeof(_p));
 
     memcpy(&_gyroLatest, 
             updatingWithGyro ?  &stream_gyro : &_gyroLatest, 
