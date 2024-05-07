@@ -99,7 +99,9 @@ void loop()
 
     else {
 
-        Serial.printf("%f %f %f\n", _ax/REPS, _ay/REPS, _az/REPS);
+        Serial.printf("static const float ACCEL_X_OFFSET = %f;\n", _ax/REPS);
+        Serial.printf("static const float ACCEL_Y_OFFSET = %f;\n", _ay/REPS);
+        Serial.printf("static const float ACCEL_Z_OFFSET = %f;\n", _az/REPS);
 
         delay(500);
     }
