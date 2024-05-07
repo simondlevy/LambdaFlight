@@ -26,6 +26,10 @@ class Ekf {
             }
 
             _lastProcessNoiseUpdateMsec = now_msec;
+
+            _lastPredictionMsec = now_msec;
+
+            _isUpdated = false;
         }
 
     private:
@@ -35,6 +39,8 @@ class Ekf {
         float p[EKF_N][EKF_N];
 
         uint32_t _lastProcessNoiseUpdateMsec;
+        uint32_t _lastPredictionMsec;
+        bool _isUpdated;
 };
 
 // Quaternion used for initial orientation
