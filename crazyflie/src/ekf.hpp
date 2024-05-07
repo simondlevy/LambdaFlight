@@ -70,13 +70,35 @@ enum {
     STATE_E2
 };
 
-static void transpose(const float a[EKF_N][EKF_N], float at[EKF_N][EKF_N])
+typedef struct {
+
+    float dat[EKF_N];
+
+} newvec_t;
+
+typedef struct {
+
+    float dat[EKF_N][EKF_N];
+
+} matrix_t;
+
+static void makemat(const float dat[EKF_N][EKF_N], matrix_t & a)
 {
     for (uint8_t i=0; i<EKF_N; ++i) {
         for (uint8_t j=0; j<EKF_N; ++j) {
-            auto tmp = a[i][j];
-            at[i][j] = a[j][i];
-            at[j][i] = tmp;
+            a.dat[i][j] = dat[i][j];
+        }
+    }
+
+}
+
+static void transpose(const matrix_t & a, matrix_t & at)
+{
+    for (uint8_t i=0; i<EKF_N; ++i) {
+        for (uint8_t j=0; j<EKF_N; ++j) {
+            auto tmp = a.dat[i][j];
+            at.dat[i][j] = a.dat[j][i];
+            at.dat[j][i] = tmp;
         }
     }
 }
@@ -137,12 +159,6 @@ static void multiply(const float x[EKF_N], const float y[EKF_N], float a[EKF_N][
     }
 }
 
-
-typedef struct {
-
-    float dat[EKF_N][EKF_N];
-
-} matrix_t;
 
 typedef struct {
 
@@ -258,7 +274,7 @@ static void scalarUpdate(
     } // KH - I
 
     matrix_t GHt = {};
-    transpose(GH.dat, GHt.dat);      // (KH - I)'
+    transpose(GH, GHt);      // (KH - I)'
     matrix_t GHIP = {};
     multiply(GH.dat, p.dat, GHIP.dat);  // (KH - I)*P
     multiply(GHIP.dat, GHt.dat, p.dat); // (KH - I)*P*(KH - I)'
@@ -487,7 +503,7 @@ static void ekf_predict(
     const auto dye2  = MSS_TO_GS*r.x*dt;
     const auto dze2  = 0;
 
-    const float A[EKF_N][EKF_N] = 
+    const float Adat[EKF_N][EKF_N] = 
     { 
         //        Z  DX    DY    DZ    E0    E1    E2
         /*Z*/    {0, zdx,  zdy,  zdz,  ze0,  ze1,  ze2}, 
@@ -499,10 +515,13 @@ static void ekf_predict(
         /*E2*/   {0, 0,    0,    0,    e2e0, e2e1, e2e2}  
     };
 
+    matrix_t A = {};
+    makemat(Adat, A);
+
     matrix_t  At = {};
-    transpose(A, At.dat);     // A'
+    transpose(A, At);     // A'
     matrix_t AP = {};
-    multiply(A, p.dat, AP.dat);  // AP
+    multiply(A.dat, p.dat, AP.dat);  // AP
     multiply(AP.dat, At.dat, p.dat); // APA'
     updateCovarianceMatrix(p);
 }
@@ -667,7 +686,7 @@ static void ekf_finalize(
         matrix_t  A = {};
         afinalize(v0, v2, v2, A);
         matrix_t At = {};
-        transpose(A.dat, At.dat);     // A'
+        transpose(A, At);     // A'
         matrix_t AP = {};
         multiply(A.dat, p.dat, AP.dat);  // AP
         multiply(AP.dat, At.dat, p.dat); // APA'
