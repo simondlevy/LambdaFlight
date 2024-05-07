@@ -316,8 +316,8 @@ static void debug(const uint32_t current_time)
 
         previous_time = current_time;
 
-        //debugDz();
-        debugAccel();  
+        debugDz();
+        //debugAccel();  
         //debugGyro();  
         //debugQuat();  
         //debugState();  
@@ -456,19 +456,7 @@ void debugState(void)
             _phi, _theta, _psi, _z, _dx, _dy, _dz);
 }
 
-static float deg2rad(const float deg)
-{
-    return deg / 180 * M_PI;
-}
-
 void debugDz(void) 
 {
-    const auto phi = deg2rad(_phi);
-    const auto theta = deg2rad(_theta);
-
-    Serial.printf("phi:%+3.3f theta:%+3.3f az:%+3.3f\n", 
-            phi, theta, stream_accel_z);
+    Serial.printf("dz_accel:%f\n", _dz_accel);
 }
-
-
-
