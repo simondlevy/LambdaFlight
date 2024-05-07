@@ -333,11 +333,6 @@ static void ekf_predict(
     const auto dy = ekfs_in.dy * dt + stream_isFlying ? 0 : _accel_y * dt2 / 2;
     const auto dz = ekfs_in.dz * dt + _accel_z * dt2 / 2; 
 
-    // keep previous time step's state for the update
-    const auto tmpSDX = ekfs_in.dx;
-    const auto tmpSDY = ekfs_in.dy;
-    const auto tmpSDZ = ekfs_in.dz;
-
     const auto accx = stream_isFlying ? 0 : _accel_x;
     const auto accy = stream_isFlying ? 0 : _accel_y;
 
@@ -375,16 +370,11 @@ static void ekf_predict(
     // When flying, the accelerometer directly measures thrust (hence is useless
     // to estimate body angle while flying)
 
-    // altitude update
+    const auto tmpSDX = ekfs_in.dx;
+    const auto tmpSDY = ekfs_in.dy;
+    const auto tmpSDZ = ekfs_in.dz;
+
     ekfs_out.z = ekfs_in.z + r.x * dx + r.y * dy + r.z * dz - MSS_TO_GS * dt2 / 2;
-
-    static uint32_t _count;
-    if (!(_count++ % 50)) {
-        consolePrintf("%f\n", (double)ekfs_in.z);
-    }
-
-    // body-velocity update: accelerometers - gyros cross velocity
-    // - gravity in body frame
 
     ekfs_out.dx = ekfs_in.dx +
         dt * (accx + _gyro_z * tmpSDY - _gyro_y * tmpSDZ - MSS_TO_GS * r.x);
@@ -750,6 +740,8 @@ static void ekf_step(void)
         _isUpdated = true;
     }
 
+    auto updatingProcessNoise = false;
+
     if (predicting) {
 
         ekf_predict(
@@ -771,17 +763,17 @@ static void ekf_step(void)
                 ekfs_predicted);
 
         _lastPredictionMsec = stream_nowMsec;
-    }
 
-    const auto updatingProcessNoise = predicting && 
-        (stream_nowMsec - _lastProcessNoiseUpdateMsec) > 0;
+        if (stream_nowMsec - _lastProcessNoiseUpdateMsec > 0) {
 
-    if (updatingProcessNoise) {
-        _lastProcessNoiseUpdateMsec = stream_nowMsec;
-        _ekfs.z = ekfs_predicted.z;
-        _ekfs.dx = ekfs_predicted.dx;
-        _ekfs.dy = ekfs_predicted.dy;
-        _ekfs.dz = ekfs_predicted.dz;
+            _lastProcessNoiseUpdateMsec = stream_nowMsec;
+            _ekfs.z = ekfs_predicted.z;
+            _ekfs.dx = ekfs_predicted.dx;
+            _ekfs.dy = ekfs_predicted.dy;
+            _ekfs.dz = ekfs_predicted.dz;
+
+            updatingProcessNoise = true;
+        }
     }
 
     // Finalize --------------------------------------------------------------
