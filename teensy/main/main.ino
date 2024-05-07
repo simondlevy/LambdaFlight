@@ -157,23 +157,8 @@ static void initImu(void)
     powerPin(GND_PIN, LOW);
 
     Wire.begin(); 
-    Wire.setClock(400000); 
+    Wire.setClock(400000);
     delay(100);
-
-    Wire1.begin(); 
-    Wire1.setClock(400000);
-    delay(100);
-
-    vl53l1x.setBus(&Wire1);
-
-    while (!vl53l1x.init()) {
-        Serial.println("Failed to detect and initialize VL53L1X!");
-        delay(500);
-    }
-
-    vl53l1x.setDistanceMode(VL53L1X::Long);
-    vl53l1x.setMeasurementTimingBudget(50000);
-    vl53l1x.startContinuous(50);
 
     usfs.loadFirmware(VERBOSE); 
 
@@ -190,6 +175,24 @@ static void initImu(void)
 
     // Clear interrupts
     Usfs::checkStatus();
+}
+
+static void initRangefinder(void)
+{
+    Wire1.begin(); 
+    Wire1.setClock(400000); 
+    delay(100);
+
+    vl53l1x.setBus(&Wire1);
+
+    while (!vl53l1x.init()) {
+        Serial.println("Failed to detect and initialize VL53L1X!");
+        delay(500);
+    }
+
+    vl53l1x.setDistanceMode(VL53L1X::Long);
+    vl53l1x.setMeasurementTimingBudget(50000);
+    vl53l1x.startContinuous(50);
 }
 
 static void readImu(void)
@@ -320,6 +323,8 @@ void setup()
     Serial.begin(115200);
 
     initImu();
+
+    initRangefinder();
 
     stream_radio_failsafe = false;
 

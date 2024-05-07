@@ -1,19 +1,13 @@
-SKETCH = teensy
+SKETCH = calibrate
 
 PORT = /dev/ttyACM0
 
 BOARD = teensy:avr:teensy40
 
-LIBS = ../../
+LIBS = ../../..
 
-HASKELL = ../haskell
-
-build: $(SKETCH).ino copilot.cpp
+build: $(SKETCH).ino 
 	arduino-cli compile  --libraries $(LIBS) --fqbn $(BOARD) $(SKETCH).ino
-
-copilot.cpp : $(HASKELL)/Teensy.hs
-	runhaskell -i$(HASKELL) $(HASKELL)/Teensy.hs
-	mv copilot.c copilot.cpp
 
 flash:
 	arduino-cli upload -p $(PORT) --fqbn $(BOARD) .
@@ -26,9 +20,6 @@ edit:
 
 listen:
 	miniterm $(PORT) 115200
-
-viz:
-	./imuviz.py
 
 clean:
 	rm -f copilot*
