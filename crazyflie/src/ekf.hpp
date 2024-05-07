@@ -725,21 +725,21 @@ static void ekf_finalize(
 } 
 
 static void ekf_getVehicleState(
-        const float x[EKF_N],
+        const newvec_t & x,
         const axis3_t & gyroLatest,
         const new_quat_t & q,
         const axis3_t & r,
         vehicleState_t & state)
 {
-    state.dx = x[STATE_DX];
+    state.dx = get(x, STATE_DX);
 
-    state.dy = x[STATE_DY];
+    state.dy = get(x, STATE_DY);
 
     state.z = stream_rangefinder_distance / 1000; 
 
     state.z = min(0, state.z);
 
-    state.dz = r.x * x[STATE_DX] + r.y * x[STATE_DY] + r.z * x[STATE_DZ];
+    state.dz = r.x * get(x, STATE_DX) + r.y * get(x, STATE_DY) + r.z * get(x, STATE_DZ);
 
     // Pack Z and DZ into a single float for transmission to client
     const int8_t sgn = state.dz < 0 ? -1 : +1;
@@ -908,7 +908,7 @@ static void ekf_step(void)
     // Get vehicle state -----------------------------------------------------
 
     vehicleState_t vehicleState = {};
-    ekf_getVehicleState(_x.dat, _gyroLatest, _quat, _r, vehicleState);
+    ekf_getVehicleState(_x, _gyroLatest, _quat, _r, vehicleState);
 
     if (stream_ekfAction == EKF_GET_STATE) {
         setState(vehicleState);
@@ -916,9 +916,9 @@ static void ekf_step(void)
 
     if (requestedFinalize) {
         setStateIsInBounds(
-                isPositionWithinBounds(_x.dat[STATE_Z]) &&
-                isVelocityWithinBounds(_x.dat[STATE_DX]) &&
-                isVelocityWithinBounds(_x.dat[STATE_DY]) &&
-                isVelocityWithinBounds(_x.dat[STATE_DZ]));
+                isPositionWithinBounds(get(_x, STATE_Z)) &&
+                isVelocityWithinBounds(get(_x, STATE_DX)) &&
+                isVelocityWithinBounds(get(_x, STATE_DY)) &&
+                isVelocityWithinBounds(get(_x, STATE_DZ)));
     }
 }
