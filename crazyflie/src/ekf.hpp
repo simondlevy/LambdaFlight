@@ -6,7 +6,6 @@
 #include <console.h>
 #include <math3d.h>
 #include <datatypes.h>
-#include <linalg.h>
 #include <streams.h>
 
 // Quaternion used for initial orientation
@@ -70,6 +69,74 @@ enum {
     STATE_E1,
     STATE_E2
 };
+
+static void transpose(const float a[EKF_N][EKF_N], float at[EKF_N][EKF_N])
+{
+    for (uint8_t i=0; i<EKF_N; ++i) {
+        for (uint8_t j=0; j<EKF_N; ++j) {
+            auto tmp = a[i][j];
+            at[i][j] = a[j][i];
+            at[j][i] = tmp;
+        }
+    }
+}
+
+static float dot(const float x[EKF_N], const float y[EKF_N]) 
+{
+    float d = 0;
+
+    for (uint8_t k=0; k<EKF_N; k++) {
+        d += x[k] * y[k];
+    }
+
+    return d;
+}
+
+static float dot(const float a[EKF_N][EKF_N], const float b[EKF_N][EKF_N], 
+        const uint8_t i, const uint8_t j)
+{
+    float d = 0;
+
+    for (uint8_t k=0; k<EKF_N; k++) {
+        d += a[i][k] * b[k][j];
+    }
+
+    return d;
+}
+
+// Matrix * Matrix
+static void multiply(const float a[EKF_N][EKF_N], const float b[EKF_N][EKF_N], float c[EKF_N][EKF_N])
+{
+    for (uint8_t i=0; i<EKF_N; i++) {
+
+        for (uint8_t j=0; j<EKF_N; j++) {
+
+            c[i][j] = dot(a, b, i, j);
+        }
+    }
+}
+
+// Matrix * Vector
+static void multiply(const float a[EKF_N][EKF_N], const float x[EKF_N], float y[EKF_N])
+{
+    for (uint8_t i=0; i<EKF_N; i++) {
+        y[i] = 0;
+        for (uint8_t j=0; j<EKF_N; j++) {
+            y[i] += a[i][j] * x[j];
+        }
+    }
+}
+
+// Outer product
+static void multiply(const float x[EKF_N], const float y[EKF_N], float a[EKF_N][EKF_N])
+{
+    for (uint8_t i=0; i<EKF_N; i++) {
+        for (uint8_t j=0; j<EKF_N; j++) {
+            a[i][j] = x[i] * y[j];
+        }
+    }
+}
+
 
 typedef struct {
 
@@ -138,7 +205,7 @@ static float rotateQuat( const float val, const float initVal)
         (stream_isFlying ? 0 : ROLLPITCH_ZERO_REVERSION * initVal);
 }
 
-static void updateCovarianceMatrix(float p[EKF_N][EKF_N])
+static void updateCovarianceMatrix(matrix_t & p)
 {
     // Enforce symmetry of the covariance matrix, and ensure the
     // values stay bounded
@@ -146,9 +213,9 @@ static void updateCovarianceMatrix(float p[EKF_N][EKF_N])
 
         for (int j=i; j<EKF_N; j++) {
 
-            const auto pval = (p[i][j] + p[j][i]) / 2;
+            const auto pval = (p.dat[i][j] + p.dat[j][i]) / 2;
 
-            p[i][j] = p[j][i] = 
+            p.dat[i][j] = p.dat[j][i] = 
                 pval > MAX_COVARIANCE ?  MAX_COVARIANCE :
                 (i==j && pval < MIN_COVARIANCE) ?  MIN_COVARIANCE :
                 pval;
@@ -203,7 +270,7 @@ static void scalarUpdate(
         }
     }
 
-    updateCovarianceMatrix(p.dat);
+    updateCovarianceMatrix(p);
 }
 
 static bool isPositionWithinBounds(const float pos)
@@ -437,7 +504,7 @@ static void ekf_predict(
     matrix_t AP = {};
     multiply(A, p.dat, AP.dat);  // AP
     multiply(AP.dat, At.dat, p.dat); // APA'
-    updateCovarianceMatrix(p.dat);
+    updateCovarianceMatrix(p);
 }
 
 static void ekf_updateWithRange(
@@ -604,7 +671,7 @@ static void ekf_finalize(
         matrix_t AP = {};
         multiply(A.dat, p.dat, AP.dat);  // AP
         multiply(AP.dat, At.dat, p.dat); // APA'
-        updateCovarianceMatrix(p.dat);
+        updateCovarianceMatrix(p);
     }
 
     x[STATE_E0] = 0;
