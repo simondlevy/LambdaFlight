@@ -112,9 +112,10 @@ max_yaw = 160 :: SFloat
 
 -- State estimation ---------------------------------------------------------
 
-accel_z_bias = 0.952 :: SFloat
 
 compute_dz = (dz_rangefinder, dz_accel) where
+
+  accel_z_bias = 0.9375 --0.953
 
   z_rangefinder = rangefinder_distance / 1000 -- mm => m
 

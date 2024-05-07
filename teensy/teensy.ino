@@ -15,6 +15,11 @@
 
 void copilot_step(void);
 
+// Power pin settings -------------------------------------------------------
+
+static const uint8_t PWR_PIN = 21;
+static const uint8_t GND_PIN = 22;
+
 // LED settings -------------------------------------------------------------
 
 static const uint8_t LED_PIN = 13;
@@ -148,8 +153,8 @@ static void blinkLed(const uint32_t current_time)
 
 static void initImu(void)
 {
-    powerPin(21, HIGH);
-    powerPin(22, LOW);
+    powerPin(PWR_PIN, HIGH);
+    powerPin(GND_PIN, LOW);
 
     Wire.begin(); 
     Wire.setClock(400000); 
@@ -299,11 +304,11 @@ static void debug(const uint32_t current_time)
 
         previous_time = current_time;
 
-        debugDz();
+        //debugDz();
         //debugAccel();  
         //debugGyro();  
         //debugQuat();  
-        //debugState();  
+        debugState();  
         //debugMotorCommands(); 
         //debugLoopRate();      
         //debugRangefinder();      
@@ -437,9 +442,18 @@ void debugState(void)
             _phi, _theta, _psi, _z, _dx, _dy, _dz);
 }
 
+static float deg2rad(const float deg)
+{
+    return deg / 180 * M_PI;
+}
+
 void debugDz(void) 
 {
-    Serial.printf("r:%+3.3f a:%+3.3f\n", _dz_rangefinder, _dz_accel);
+    const auto phi = deg2rad(_phi);
+    const auto theta = deg2rad(_theta);
+
+    Serial.printf("phi:%+3.3f theta:%+3.3f az:%+3.3f\n", 
+            phi, theta, stream_accel_z);
 }
 
 
