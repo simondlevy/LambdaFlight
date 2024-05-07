@@ -138,7 +138,7 @@ static float rotateQuat( const float val, const float initVal)
         (stream_isFlying ? 0 : ROLLPITCH_ZERO_REVERSION * initVal);
 }
 
-static void updateCovarianceMatrix(matrix_t & p) 
+static void updateCovarianceMatrix(float p[EKF_N][EKF_N])
 {
     // Enforce symmetry of the covariance matrix, and ensure the
     // values stay bounded
@@ -146,9 +146,9 @@ static void updateCovarianceMatrix(matrix_t & p)
 
         for (int j=i; j<EKF_N; j++) {
 
-            const auto pval = (p.dat[i][j] + p.dat[j][i]) / 2;
+            const auto pval = (p[i][j] + p[j][i]) / 2;
 
-            p.dat[i][j] = p.dat[j][i] = 
+            p[i][j] = p[j][i] = 
                 pval > MAX_COVARIANCE ?  MAX_COVARIANCE :
                 (i==j && pval < MIN_COVARIANCE) ?  MIN_COVARIANCE :
                 pval;
@@ -203,7 +203,7 @@ static void scalarUpdate(
         }
     }
 
-    updateCovarianceMatrix(p);
+    updateCovarianceMatrix(p.dat);
 }
 
 static bool isPositionWithinBounds(const float pos)
@@ -437,7 +437,7 @@ static void ekf_predict(
     matrix_t AP = {};
     multiply(A, p.dat, AP.dat);  // AP
     multiply(AP.dat, At.dat, p.dat); // APA'
-    updateCovarianceMatrix(p);
+    updateCovarianceMatrix(p.dat);
 }
 
 static void ekf_updateWithRange(
@@ -604,7 +604,7 @@ static void ekf_finalize(
         matrix_t AP = {};
         multiply(A.dat, p.dat, AP.dat);  // AP
         multiply(AP.dat, At.dat, p.dat); // APA'
-        updateCovarianceMatrix(p);
+        updateCovarianceMatrix(p.dat);
     }
 
     x[STATE_E0] = 0;
