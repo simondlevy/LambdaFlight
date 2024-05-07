@@ -99,6 +99,35 @@ typedef struct {
 
 } ekfState_t;
 
+typedef struct {
+
+    axis3_t sum;
+    uint32_t count;
+
+} imu_t;
+
+static void imuAccum(const axis3_t vals, imu_t & imu)
+{
+    imu.sum.x += vals.x;
+    imu.sum.y += vals.y;
+    imu.sum.z += vals.z;
+    imu.count++;
+}
+
+static void imuTakeMean(
+        const imu_t & imu, 
+        const float conversionFactor, 
+        axis3_t & mean)
+{
+    const auto count = imu.count;
+
+    const auto isCountNonzero = count > 0;
+
+    mean.x = isCountNonzero ? imu.sum.x * conversionFactor / count : mean.x;
+    mean.y = isCountNonzero ? imu.sum.y * conversionFactor / count : mean.y;
+    mean.z = isCountNonzero ? imu.sum.z * conversionFactor / count : mean.z;
+}
+
 static const float max(const float val, const float maxval)
 {
     return val > maxval ? maxval : val;
@@ -260,22 +289,6 @@ static void afinalize(
     memcpy(&A.dat, a, sizeof(A));
 } 
 
-static void subSamplerTakeMean(
-        const float sumx,
-        const float sumy,
-        const float sumz,
-        const uint32_t count,
-        const float conversionFactor,
-        float & avgx,
-        float & avgy,
-        float & avgz)
-{
-    const auto isCountNonzero = count > 0;
-
-    avgx = isCountNonzero ? sumx * conversionFactor / count : avgx;
-    avgy = isCountNonzero ? sumy * conversionFactor / count : avgy;
-    avgz = isCountNonzero ? sumz * conversionFactor / count : avgz;
-}
 
 // ===========================================================================
 
@@ -294,14 +307,8 @@ static void ekf_init(matrix_t & p, ekfState_t & ekfs)
 }
 
 static void ekf_predict(
-        const float gyroSum_x,
-        const float gyroSum_y,
-        const float gyroSum_z,
-        const uint32_t gyroCount,
-        const float accelSum_x,
-        const float accelSum_y,
-        const float accelSum_z,
-        const uint32_t accelCount,
+        const imu_t & gyro,
+        const imu_t & accel,
         const ekfState_t & ekfs_in,
         const new_quat_t & q,
         const axis3_t & r,
@@ -310,37 +317,29 @@ static void ekf_predict(
         matrix_t & p,
         ekfState_t & ekfs_out) 
 {
-    static float _gyro_x;
-    static float _gyro_y;
-    static float _gyro_z;
-
-    static float _accel_x;
-    static float _accel_y;
-    static float _accel_z;
+    static axis3_t _gyro;
+    static axis3_t _accel;
 
     const float dt = (stream_nowMsec - lastPredictionMsec) / 1000.0f;
     const auto dt2 = dt * dt;
 
-    subSamplerTakeMean(gyroSum_x, gyroSum_y, gyroSum_z, gyroCount,
-            DEGREES_TO_RADIANS,_gyro_x, _gyro_y, _gyro_z);
-
-    subSamplerTakeMean(accelSum_x, accelSum_y, accelSum_z, accelCount, 
-            MSS_TO_GS, _accel_x, _accel_y, _accel_z);
+    imuTakeMean(gyro, DEGREES_TO_RADIANS, _gyro);
+    imuTakeMean(accel, MSS_TO_GS, _accel);
 
     // Position updates in the body frame (will be rotated to inertial frame);
     // thrust can only be produced in the body's Z direction
-    const auto dx = ekfs_in.dx * dt + stream_isFlying ? 0 : _accel_x * dt2 / 2;
-    const auto dy = ekfs_in.dy * dt + stream_isFlying ? 0 : _accel_y * dt2 / 2;
-    const auto dz = ekfs_in.dz * dt + _accel_z * dt2 / 2; 
+    const auto dx = ekfs_in.dx * dt + stream_isFlying ? 0 : _accel.x * dt2 / 2;
+    const auto dy = ekfs_in.dy * dt + stream_isFlying ? 0 : _accel.y * dt2 / 2;
+    const auto dz = ekfs_in.dz * dt + _accel.z * dt2 / 2; 
 
-    const auto accx = stream_isFlying ? 0 : _accel_x;
-    const auto accy = stream_isFlying ? 0 : _accel_y;
+    const auto accx = stream_isFlying ? 0 : _accel.x;
+    const auto accy = stream_isFlying ? 0 : _accel.y;
 
     // attitude update (rotate by gyroscope), we do this in quaternions
     // this is the gyroscope angular velocity integrated over the sample period
-    const auto dtwx = dt*_gyro_x;
-    const auto dtwy = dt*_gyro_y;
-    const auto dtwz = dt*_gyro_z;
+    const auto dtwx = dt*_gyro.x;
+    const auto dtwy = dt*_gyro.y;
+    const auto dtwz = dt*_gyro.z;
 
     // compute the quaternion values in [w,x,y,z] order
     const auto angle = sqrt(dtwx*dtwx + dtwy*dtwy + dtwz*dtwz) + EPS;
@@ -377,13 +376,13 @@ static void ekf_predict(
     ekfs_out.z = ekfs_in.z + r.x * dx + r.y * dy + r.z * dz - MSS_TO_GS * dt2 / 2;
 
     ekfs_out.dx = ekfs_in.dx +
-        dt * (accx + _gyro_z * tmpSDY - _gyro_y * tmpSDZ - MSS_TO_GS * r.x);
+        dt * (accx + _gyro.z * tmpSDY - _gyro.y * tmpSDZ - MSS_TO_GS * r.x);
 
     ekfs_out.dy = ekfs_in.dy +
-        dt * (accy - _gyro_z * tmpSDX + _gyro_x * tmpSDZ - MSS_TO_GS * r.y); 
+        dt * (accy - _gyro.z * tmpSDX + _gyro.x * tmpSDZ - MSS_TO_GS * r.y); 
 
     ekfs_out.dz =  ekfs_in.dz +
-        dt * (_accel_z + _gyro_y * tmpSDX - _gyro_x * tmpSDY - MSS_TO_GS * r.z);
+        dt * (_accel.z + _gyro.y * tmpSDX - _gyro.x * tmpSDY - MSS_TO_GS * r.z);
 
     // predict()
     quat_out.w = tmpq0/norm;
@@ -393,9 +392,9 @@ static void ekf_predict(
 
     // ====== COVARIANCE UPDATE ======
 
-    const auto e0 = _gyro_x*dt/2;
-    const auto e1 = _gyro_y*dt/2;
-    const auto e2 = _gyro_z*dt/2;
+    const auto e0 = _gyro.x*dt/2;
+    const auto e1 = _gyro.y*dt/2;
+    const auto e2 = _gyro.z*dt/2;
 
     const auto e0e0 =  1 - e1*e1/2 - e2*e2/2;
     const auto e0e1 =  e2 + e0*e1/2;
@@ -421,15 +420,15 @@ static void ekf_predict(
 
     // body-frame velocity from body-frame velocity
     const auto dxdx  = 1; //drag negligible
-    const auto dydx =  -_gyro_z*dt;
-    const auto dzdx  = _gyro_y*dt;
+    const auto dydx =  -_gyro.z*dt;
+    const auto dzdx  = _gyro.y*dt;
 
-    const auto dxdy  = _gyro_z*dt;
+    const auto dxdy  = _gyro.z*dt;
     const auto dydy  = 1; //drag negligible
-    const auto dzdy  = _gyro_x*dt;
+    const auto dzdy  = _gyro.x*dt;
 
-    const auto dxdz =  _gyro_y*dt;
-    const auto dydz  = _gyro_x*dt;
+    const auto dxdz =  _gyro.y*dt;
+    const auto dydz  = _gyro.x*dt;
     const auto dzdz  = 1; //drag negligible
 
     // body-frame velocity from attitude error
@@ -685,16 +684,6 @@ static void ekf_step(void)
     static uint32_t _lastPredictionMsec;
     static uint32_t _lastProcessNoiseUpdateMsec;
 
-    static float _gyroSum_x;
-    static float _gyroSum_y;
-    static float _gyroSum_z;
-    static uint32_t _gyroCount;
-
-    static float _accelSum_x;
-    static float _accelSum_y;
-    static float _accelSum_z;
-    static uint32_t _accelCount;
-
     static axis3_t _gyroLatest;
 
     static new_quat_t _quat;
@@ -702,6 +691,10 @@ static void ekf_step(void)
     static uint32_t _nextPredictionMsec;
 
     static axis3_t _r;
+
+    static imu_t _gyro;
+    static imu_t _accel;
+
 
     // Initialize ------------------------------------------------------------
 
@@ -746,23 +739,8 @@ static void ekf_step(void)
 
         new_quat_t quat_predicted = {};
 
-        ekf_predict(
-                _gyroSum_x,
-                _gyroSum_y,
-                _gyroSum_z,
-                _gyroCount,
-                _accelSum_x,
-                _accelSum_y,
-                _accelSum_z,
-                _accelCount,
-                _ekfs,
-                _quat,
-                _r,
-                _lastPredictionMsec, 
-
-                quat_predicted,
-                _p,
-                ekfs_predicted);
+        ekf_predict( _gyro, _accel, _ekfs, _quat, _r, _lastPredictionMsec, 
+                quat_predicted, _p, ekfs_predicted);
 
         _lastPredictionMsec = stream_nowMsec;
 
@@ -780,15 +758,8 @@ static void ekf_step(void)
             _quat.y = quat_predicted.y;
             _quat.z = quat_predicted.z;
 
-            _gyroSum_x = 0;
-            _gyroSum_y = 0;
-            _gyroSum_z = 0;
-            _gyroCount = 0;
-
-            _accelSum_x = 0;
-            _accelSum_y = 0;
-            _accelSum_z = 0;
-            _accelCount = 0;
+            memset(&_gyro, 0, sizeof(_gyro));
+            memset(&_accel, 0, sizeof(_gyro));
 
             updatingProcessNoise = true;
         }
@@ -813,10 +784,7 @@ static void ekf_step(void)
     // Update with gyro
     if (stream_ekfAction == EKF_UPDATE_WITH_GYRO) {
 
-        _gyroSum_x += stream_gyro.x;
-        _gyroSum_y += stream_gyro.y;
-        _gyroSum_z += stream_gyro.z;
-        _gyroCount++;
+        imuAccum(stream_gyro, _gyro);
 
         memcpy(&_gyroLatest, &stream_gyro, sizeof(axis3_t));
     }
@@ -824,10 +792,7 @@ static void ekf_step(void)
     // Update with accel
     if (stream_ekfAction == EKF_UPDATE_WITH_ACCEL) {
 
-        _accelSum_x += stream_accel.x;
-        _accelSum_y += stream_accel.y;
-        _accelSum_z += stream_accel.z;
-        _accelCount++;
+        imuAccum(stream_accel, _accel);
     }
 
     // Finalize --------------------------------------------------------------
