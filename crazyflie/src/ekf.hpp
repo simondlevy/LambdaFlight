@@ -709,6 +709,7 @@ static void ekf_step(void)
     static uint32_t _nextPredictionMsec;
 
     const auto quat = new_quat_t {_qw, _qx, _qy, _qz };
+
     const auto r = axis3_t {_rx, _ry, _rz};
 
     // Initialize ------------------------------------------------------------
@@ -716,6 +717,10 @@ static void ekf_step(void)
     bool initializing = stream_ekfAction == EKF_INIT;
     if (initializing) {
         ekf_init(_p, _ekfs);
+        _qw = 1;
+        _qx = 0;
+        _qy = 0;
+        _qz = 0;
         _lastProcessNoiseUpdateMsec = stream_nowMsec;
         _lastPredictionMsec = stream_nowMsec;
         _isUpdated = false;
@@ -767,10 +772,16 @@ static void ekf_step(void)
         if (stream_nowMsec - _lastProcessNoiseUpdateMsec > 0) {
 
             _lastProcessNoiseUpdateMsec = stream_nowMsec;
+
             _ekfs.z = ekfs_predicted.z;
             _ekfs.dx = ekfs_predicted.dx;
             _ekfs.dy = ekfs_predicted.dy;
             _ekfs.dz = ekfs_predicted.dz;
+
+            _qw = quat_predicted.w;
+            _qx = quat_predicted.x;
+            _qy = quat_predicted.y;
+            _qz = quat_predicted.z;
 
             updatingProcessNoise = true;
         }
@@ -783,6 +794,10 @@ static void ekf_step(void)
     new_quat_t quat_finalized = {};
     if (finalizing) {
         ekf_finalize(quat, _p, _ekfs, quat_finalized);
+        _qw = quat_finalized.w;
+        _qx = quat_finalized.x;
+        _qy = quat_finalized.y;
+        _qz = quat_finalized.z;
         _isUpdated = false;
     }
 
@@ -859,26 +874,6 @@ static void ekf_step(void)
     _accelCount = updatingProcessNoise ? 0 : 
         updatingWithAccel ? _accelCount + 1 :
         _accelCount;
-
-    _qw = initializing ? 1 : 
-        finalizing ? quat_finalized.w :
-        updatingProcessNoise ? quat_predicted.w :
-        _qw;
-
-    _qx = initializing ? 0 : 
-        finalizing ? quat_finalized.x :
-        updatingProcessNoise ? quat_predicted.x :
-        _qx;
-
-    _qy = initializing ? 0 : 
-        finalizing ? quat_finalized.y :
-        updatingProcessNoise ? quat_predicted.y :
-        _qy;
-
-    _qz = initializing ? 0 : 
-        finalizing ? quat_finalized.z :
-        updatingProcessNoise ? quat_predicted.z :
-        _qz;
 
     _rx = initializing ? 0 : 
         finalizing ? 2 * _qx * _qz - 2 * _qw * _qy :
