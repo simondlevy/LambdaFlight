@@ -265,18 +265,15 @@ static void updateCovarianceMatrix(matrix_t & p)
 }
 
 static void scalarUpdate(
-        const float h[EKF_N],
-        const float error, 
-        const float stdMeasNoise,
-        matrix_t & p,
-        newvec_t & x)
+        const newvec_t & h, const float error, const float stdMeasNoise,
+        matrix_t & p, newvec_t & x)
 {
 
     // ====== INNOVATION COVARIANCE ======
     float ph[EKF_N] = {};
-    multiply(p.dat, h, ph);
+    multiply(p.dat, h.dat, ph);
     const auto r = stdMeasNoise * stdMeasNoise;
-    const auto hphr = r + dot(h, ph); // HPH' + R
+    const auto hphr = r + dot(h.dat, ph); // HPH' + R
 
     // Compute the Kalman gain as a column vector
     float g[EKF_N] = {};
@@ -286,13 +283,13 @@ static void scalarUpdate(
 
     // Perform the state update
     for (uint8_t i=0; i<EKF_N; ++i) {
-        x.dat[i] += g[i] * error;
+        set(x, i, get(x, i) + g[i] * error);
     }
 
     // ====== COVARIANCE UPDATE ======
 
     matrix_t GH = {};
-    multiply(g, h, GH.dat); // KH
+    multiply(g, h.dat, GH.dat); // KH
 
     for (int i=0; i<EKF_N; i++) { 
         GH.dat[i][i] -= 1;
@@ -585,14 +582,11 @@ static void ekf_updateWithRange(const float rz, matrix_t & p, newvec_t & x)
     // alpha = angle between [line made by measured point <---> sensor] 
     // and [the intertial z-axis] 
 
-    const float h[EKF_N] = {1 / cosf(angle), 0, 0, 0, 0, 0, 0};
+    newvec_t h = {};
+    set(h, STATE_Z, 1 / cosf(angle));
 
-    scalarUpdate(
-            h , 
-            measuredDistance-predictedDistance, 
-            stdDev, 
-            p,
-            x);
+    scalarUpdate(h, measuredDistance-predictedDistance, stdDev, 
+            p, x);
 }
 
 static void ekf_updateWithFlow(
@@ -626,43 +620,35 @@ static void ekf_updateWithFlow(
 
     // ~~~ X velocity prediction and update ~~~
     // predicts the number of accumulated pixels in the x-direction
-    float hx[EKF_N] = {};
     auto predictedNX = (stream_flow.dt * Npix / thetapix ) * 
         ((dx_g * rz / z_g) - omegay_b);
     auto measuredNX = stream_flow.dpixelx*FLOW_RESOLUTION;
 
     // derive measurement equation with respect to dx (and z?)
-    hx[STATE_Z] = (Npix * stream_flow.dt / thetapix) * 
-        ((rz * dx_g) / (-z_g * z_g));
-    hx[STATE_DX] = (Npix * stream_flow.dt / thetapix) * 
-        (rz / z_g);
+    newvec_t hx = {};
+    set(hx, STATE_Z, 
+            (Npix * stream_flow.dt / thetapix) * ((rz * dx_g) / (-z_g * z_g)));
+    set(hx, STATE_DX, 
+            (Npix * stream_flow.dt / thetapix) * (rz / z_g));
 
     //First update
-    scalarUpdate(
-            hx, 
-            measuredNX-predictedNX, 
-            FLOW_STD_FIXED*FLOW_RESOLUTION, 
-            p,
-            x);
+    scalarUpdate(hx, measuredNX-predictedNX, FLOW_STD_FIXED*FLOW_RESOLUTION,
+            p, x);
 
     // ~~~ Y velocity prediction and update ~~~
-    float hy[EKF_N] = {};
     auto predictedNY = (stream_flow.dt * Npix / thetapix ) * 
         ((dy_g * rz / z_g) + omegax_b);
     auto measuredNY = stream_flow.dpixely*FLOW_RESOLUTION;
 
     // derive measurement equation with respect to dy (and z?)
-    hy[STATE_Z] = (Npix * stream_flow.dt / thetapix) * 
-        ((rz * dy_g) / (-z_g * z_g));
-    hy[STATE_DY] = (Npix * stream_flow.dt / thetapix) * (rz / z_g);
+    newvec_t hy = {};
+    set(hy, STATE_Z, (Npix * stream_flow.dt / thetapix) * 
+        ((rz * dy_g) / (-z_g * z_g)));
+    set(hy, STATE_DY, (Npix * stream_flow.dt / thetapix) * (rz / z_g));
 
     // Second update
-    scalarUpdate(
-            hy, 
-            measuredNY-predictedNY, 
-            FLOW_STD_FIXED*FLOW_RESOLUTION, 
-            p,
-            x);
+    scalarUpdate(hy, measuredNY-predictedNY, FLOW_STD_FIXED*FLOW_RESOLUTION, 
+            p, x);
 }
 
 static void ekf_finalize(
