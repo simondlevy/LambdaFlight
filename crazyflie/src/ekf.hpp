@@ -535,7 +535,7 @@ static void ekf_predict(
     updateCovarianceMatrix(APA, p_out);
 }
 
-static bool ekf_updateWithRange(
+static void ekf_updateWithRange(
         const matrix_t & p_in,
         const ekfState_t & ekfs_in,
         const float rz,
@@ -572,25 +572,17 @@ static bool ekf_updateWithRange(
 
     const float h[EKF_N] = {1 / cosf(angle), 0, 0, 0, 0, 0, 0};
 
-    // Only update the filter if the measurement is reliable 
-    // (\hat{h} -> infty when R[2][2] -> 0)
-    const auto shouldUpdate = fabs(rz) > 0.1f && rz > 0 && 
-        stream_rangefinder_distance < RANGEFINDER_OUTLIER_LIMIT_MM;
-
-    if (shouldUpdate) {
-        scalarUpdate(
-                p_in,
-                ekfs_in,
-                h , 
-                measuredDistance-predictedDistance, 
-                stdDev, 
-                p_out,
-                ekfs_out);
-    }
-    return shouldUpdate;
+    scalarUpdate(
+            p_in,
+            ekfs_in,
+            h , 
+            measuredDistance-predictedDistance, 
+            stdDev, 
+            p_out,
+            ekfs_out);
 }
 
-static bool ekf_updateWithFlow(
+static void ekf_updateWithFlow(
         const matrix_t & p_in,
         const ekfState_t & ekfs_in,
         const float rz,
@@ -667,8 +659,6 @@ static bool ekf_updateWithFlow(
             FLOW_STD_FIXED*FLOW_RESOLUTION, 
             p_out,
             ekfs_out);
-
-    return true;
 }
 
 static void ekf_finalize(
@@ -863,15 +853,19 @@ static void ekf_step(void)
 
     // Update with flow
     ekfState_t ekfs_updatedWithFlow = {};
-    const auto updatingWithFlow = stream_ekfAction == EKF_UPDATE_WITH_FLOW &&
-        ekf_updateWithFlow(_p, ekfs, _rz, _gyroLatest, 
-                _p, ekfs_updatedWithFlow);
+    const auto updatingWithFlow = stream_ekfAction == EKF_UPDATE_WITH_FLOW; 
+    if (updatingWithFlow) {
+        ekf_updateWithFlow(_p, ekfs, _rz, _gyroLatest, _p, ekfs_updatedWithFlow);
+    }
 
-    // Update with range
-    ekfState_t ekfs_updatedWithRange = {};
+    // Update with range when the measurement is reliable 
     const auto updatingWithRange = stream_ekfAction == EKF_UPDATE_WITH_RANGE &&
-        ekf_updateWithRange(_p, ekfs, _rz, 
-                _p, ekfs_updatedWithRange);
+        fabs(_rz) > 0.1f && _rz > 0 && 
+        stream_rangefinder_distance < RANGEFINDER_OUTLIER_LIMIT_MM;
+    ekfState_t ekfs_updatedWithRange = {};
+    if (updatingWithRange) {
+        ekf_updateWithRange(_p, ekfs, _rz, _p, ekfs_updatedWithRange);
+    }
 
     // Update with gyro
     const auto updatingWithGyro = stream_ekfAction == EKF_UPDATE_WITH_GYRO;
