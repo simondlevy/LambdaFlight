@@ -784,7 +784,7 @@ static void ekf_step(void)
     const auto r = axis3_t {_rx, _ry, _rz};
 
     // Initialize
-    bool didInitialize = stream_ekfAction == EKF_INIT;
+    bool initializing = stream_ekfAction == EKF_INIT;
     matrix_t p_initialized = {};
     ekf_init(p_initialized);
 
@@ -828,31 +828,30 @@ static void ekf_step(void)
         (stream_nowMsec - _lastProcessNoiseUpdateMsec) / 1000.0f;
 
     // Finalize
-    const auto finalizing = stream_ekfAction == EKF_FINALIZE;
-    const auto didFinalize = finalizing && _isUpdated;
+    const auto requestedFinalize = stream_ekfAction == EKF_FINALIZE;
+    const auto finalizing = requestedFinalize && _isUpdated;
     new_quat_t quat_finalized = {};
-    if (didFinalize) {
-        ekf_finalize(_p, ekfs, quat, 
-                _p, quat_finalized);
+    if (finalizing) {
+        ekf_finalize(_p, ekfs, quat, _p, quat_finalized);
     }
 
     // Update with flow
     ekfState_t ekfs_updatedWithFlow = {};
-    const auto didUpdateWithFlow = stream_ekfAction == EKF_UPDATE_WITH_FLOW &&
+    const auto updatingWithFlow = stream_ekfAction == EKF_UPDATE_WITH_FLOW &&
         ekf_updateWithFlow(_p, ekfs, _rz, _gyroLatest, 
                 _p, ekfs_updatedWithFlow);
 
     // Update with range
     ekfState_t ekfs_updatedWithRange = {};
-    const auto didUpdateWithRange = stream_ekfAction == EKF_UPDATE_WITH_RANGE &&
+    const auto updatingWithRange = stream_ekfAction == EKF_UPDATE_WITH_RANGE &&
         ekf_updateWithRange(_p, ekfs, _rz, 
                 _p, ekfs_updatedWithRange);
 
     // Update with gyro
-    const auto didUpdateWithGyro = stream_ekfAction == EKF_UPDATE_WITH_GYRO;
+    const auto updatingWithGyro = stream_ekfAction == EKF_UPDATE_WITH_GYRO;
 
     // Update with accel
-    const auto didUpdateWithAccel = stream_ekfAction == EKF_UPDATE_WITH_ACCEL;
+    const auto updatingWithAccel = stream_ekfAction == EKF_UPDATE_WITH_ACCEL;
 
     // Get vehicle state
     vehicleState_t vehicleState = {};
@@ -862,7 +861,7 @@ static void ekf_step(void)
         setState(vehicleState);
     }
 
-    if (finalizing) {
+    if (requestedFinalize) {
         setStateIsInBounds(
                 isPositionWithinBounds(ekfs.lin.z) &&
                 isVelocityWithinBounds(ekfs.lin.dx) &&
@@ -872,129 +871,129 @@ static void ekf_step(void)
 
     //////////////////////////////////////////////////////////////////////////
 
-    _gyroSum_x = didUpdateWithGyro ? _gyroSum_x + stream_gyro.x :
+    _gyroSum_x = updatingWithGyro ? _gyroSum_x + stream_gyro.x :
         isDtPositive ? 0 :
         _gyroSum_x;
 
-    _gyroSum_y = didUpdateWithGyro ? _gyroSum_y + stream_gyro.y :
+    _gyroSum_y = updatingWithGyro ? _gyroSum_y + stream_gyro.y :
         isDtPositive ? 0 :
         _gyroSum_y;
 
-    _gyroSum_z = didUpdateWithGyro ? _gyroSum_z + stream_gyro.z :
+    _gyroSum_z = updatingWithGyro ? _gyroSum_z + stream_gyro.z :
         isDtPositive ? 0 :
         _gyroSum_z;
 
-    _accelSum_x = didUpdateWithAccel ? _accelSum_x + stream_accel.x :
+    _accelSum_x = updatingWithAccel ? _accelSum_x + stream_accel.x :
         isDtPositive ? 0 :
         _accelSum_x;
 
-    _accelSum_y = didUpdateWithAccel ? _accelSum_y + stream_accel.y :
+    _accelSum_y = updatingWithAccel ? _accelSum_y + stream_accel.y :
         isDtPositive ? 0 :
         _accelSum_y;
 
-    _accelSum_z = didUpdateWithAccel ? _accelSum_z + stream_accel.z :
+    _accelSum_z = updatingWithAccel ? _accelSum_z + stream_accel.z :
         isDtPositive ? 0 :
         _accelSum_z;
 
     memcpy(&_p, 
-            didInitialize ? &p_initialized :
+            initializing ? &p_initialized :
             &_p, sizeof(_p));
 
     memcpy(&_gyroLatest, 
-            didUpdateWithGyro ?  &stream_gyro : &_gyroLatest, 
+            updatingWithGyro ?  &stream_gyro : &_gyroLatest, 
             sizeof(axis3_t));
 
     _gyroCount = isDtPositive ? 0 : 
-        didUpdateWithGyro ? _gyroCount + 1 :
+        updatingWithGyro ? _gyroCount + 1 :
         _gyroCount;
 
     _accelCount = isDtPositive ? 0 : 
-        didUpdateWithAccel ? _accelCount + 1 :
+        updatingWithAccel ? _accelCount + 1 :
         _accelCount;
 
-    _qw = didInitialize ? 1 : 
-        didFinalize ? quat_finalized.w :
+    _qw = initializing ? 1 : 
+        finalizing ? quat_finalized.w :
         isDtPositive ? quat_predicted.w :
         _qw;
 
-    _qx = didInitialize ? 0 : 
-        didFinalize ? quat_finalized.x :
+    _qx = initializing ? 0 : 
+        finalizing ? quat_finalized.x :
         isDtPositive ? quat_predicted.x :
         _qx;
 
-    _qy = didInitialize ? 0 : 
-        didFinalize ? quat_finalized.y :
+    _qy = initializing ? 0 : 
+        finalizing ? quat_finalized.y :
         isDtPositive ? quat_predicted.y :
         _qy;
 
-    _qz = didInitialize ? 0 : 
-        didFinalize ? quat_finalized.z :
+    _qz = initializing ? 0 : 
+        finalizing ? quat_finalized.z :
         isDtPositive ? quat_predicted.z :
         _qz;
 
-    _rx = didInitialize ? 0 : 
-        didFinalize ? 2 * _qx * _qz - 2 * _qw * _qy :
+    _rx = initializing ? 0 : 
+        finalizing ? 2 * _qx * _qz - 2 * _qw * _qy :
         _rx;
 
-    _ry = didInitialize ? 0 : 
-        didFinalize ? 2 * _qy * _qz + 2 * _qw * _qx :
+    _ry = initializing ? 0 : 
+        finalizing ? 2 * _qy * _qz + 2 * _qw * _qx :
         _ry;
 
-    _rz = didInitialize ? 1 : 
-        didFinalize ? _qw*_qw-_qx*_qx-_qy*_qy+_qz*_qz:
+    _rz = initializing ? 1 : 
+        finalizing ? _qw*_qw-_qx*_qx-_qy*_qy+_qz*_qz:
         _rz;
 
-    _z = didInitialize ? 0 : 
+    _z = initializing ? 0 : 
         isDtPositive ? lin_predicted.z :
-        didUpdateWithFlow ? ekfs_updatedWithFlow.lin.z :
-        didUpdateWithRange ? ekfs_updatedWithRange.lin.z :
+        updatingWithFlow ? ekfs_updatedWithFlow.lin.z :
+        updatingWithRange ? ekfs_updatedWithRange.lin.z :
         _z;
 
-    _dx = didInitialize ? 0 : 
+    _dx = initializing ? 0 : 
         isDtPositive ? lin_predicted.dx :
-        didUpdateWithFlow ? ekfs_updatedWithFlow.lin.dx :
-        didUpdateWithRange ? ekfs_updatedWithRange.lin.dx :
+        updatingWithFlow ? ekfs_updatedWithFlow.lin.dx :
+        updatingWithRange ? ekfs_updatedWithRange.lin.dx :
         _dx;
 
-    _dy = didInitialize ? 0 : 
+    _dy = initializing ? 0 : 
         isDtPositive ? lin_predicted.dy :
-        didUpdateWithFlow ? ekfs_updatedWithFlow.lin.dy :
-        didUpdateWithRange ? ekfs_updatedWithRange.lin.dy :
+        updatingWithFlow ? ekfs_updatedWithFlow.lin.dy :
+        updatingWithRange ? ekfs_updatedWithRange.lin.dy :
         _dy;
 
-    _dz = didInitialize ? 0 : 
+    _dz = initializing ? 0 : 
         isDtPositive ? lin_predicted.dz :
-        didUpdateWithFlow ? ekfs_updatedWithFlow.lin.dz :
-        didUpdateWithRange ? ekfs_updatedWithRange.lin.dz :
+        updatingWithFlow ? ekfs_updatedWithFlow.lin.dz :
+        updatingWithRange ? ekfs_updatedWithRange.lin.dz :
         _dz;
 
-    _e0 = didInitialize || didFinalize ? 0 : 
-        didUpdateWithFlow ? ekfs_updatedWithFlow.ang.x :
-        didUpdateWithRange ? ekfs_updatedWithRange.ang.x :
+    _e0 = initializing || finalizing ? 0 : 
+        updatingWithFlow ? ekfs_updatedWithFlow.ang.x :
+        updatingWithRange ? ekfs_updatedWithRange.ang.x :
         _e0;
 
-    _e1 = didInitialize || didFinalize ? 0 : 
-        didUpdateWithFlow ? ekfs_updatedWithFlow.ang.y :
-        didUpdateWithRange ? ekfs_updatedWithRange.ang.y :
+    _e1 = initializing || finalizing ? 0 : 
+        updatingWithFlow ? ekfs_updatedWithFlow.ang.y :
+        updatingWithRange ? ekfs_updatedWithRange.ang.y :
         _e1;
 
-    _e2 = didInitialize || didFinalize ? 0 : 
-        didUpdateWithFlow ? ekfs_updatedWithFlow.ang.z :
-        didUpdateWithRange ? ekfs_updatedWithRange.ang.z :
+    _e2 = initializing || finalizing ? 0 : 
+        updatingWithFlow ? ekfs_updatedWithFlow.ang.z :
+        updatingWithRange ? ekfs_updatedWithRange.ang.z :
         _e2;
 
     _lastProcessNoiseUpdateMsec = 
-        didInitialize || isDtPositive ?  
+        initializing || isDtPositive ?  
         stream_nowMsec : 
         _lastProcessNoiseUpdateMsec;
 
     _lastPredictionMsec = 
-        didInitialize || didPredict ? stream_nowMsec :
+        initializing || didPredict ? stream_nowMsec :
         _lastPredictionMsec;
 
     _isUpdated = 
-        didInitialize || didFinalize ? false :
+        initializing || finalizing ? false :
         stream_ekfAction == EKF_PREDICT ? true :
-        didUpdateWithFlow || didUpdateWithRange ? true :
+        updatingWithFlow || updatingWithRange ? true :
         _isUpdated;
 }
