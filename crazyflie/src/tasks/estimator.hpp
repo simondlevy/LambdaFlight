@@ -209,9 +209,12 @@ class EstimatorTask : public FreeRTOSTask {
                         break;
 
                     case MeasurementTypeAcceleration:
-                        memcpy(&stream_accel, &measurement.data.acceleration.acc,
-                                sizeof(stream_accel));
-                        _ekf.step(EKF_UPDATE_WITH_ACCEL, nowMsec, _safety->isFlying());
+                        {
+                            axis3_t accel = {};
+                            memcpy(&accel, &measurement.data.acceleration.acc, 
+                                    sizeof(accel));
+                            _ekf.updateWithAccel(nowMsec, accel);
+                        }
                         break;
 
                     default:

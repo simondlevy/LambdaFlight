@@ -140,12 +140,6 @@ class Ekf {
                 memcpy(&_gyroLatest, &stream_gyro, sizeof(axis3_t));
             }
 
-            // Update with accel
-            if (ekfAction == EKF_UPDATE_WITH_ACCEL) {
-
-                imuAccum(stream_accel, _accel);
-            }
-
             // Finalize --------------------------------------------------------------
 
             const auto requestedFinalize = ekfAction == EKF_FINALIZE;
@@ -202,6 +196,15 @@ class Ekf {
                     _x);
 
             _isUpdated = true;
+        }
+
+        void updateWithAccel(const uint32_t nowMsec, const axis3_t & accel) 
+        {
+            _nextPredictionMsec = nowMsec > _nextPredictionMsec ?
+                nowMsec + _predictionIntervalMsec :
+                _nextPredictionMsec;
+
+            imuAccum(accel, _accel);
         }
 
         void getState(vehicleState_t & state)
