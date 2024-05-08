@@ -133,12 +133,6 @@ class Ekf {
 
             // Update ----------------------------------------------------------------
 
-            // Update with flow
-            if (ekfAction == EKF_UPDATE_WITH_FLOW) {
-                ekf_updateWithFlow(_r.z, _gyroLatest, _p, _x);
-                _isUpdated = true;
-            }
-
             // Update with gyro
             if (ekfAction == EKF_UPDATE_WITH_GYRO) {
 
@@ -186,6 +180,28 @@ class Ekf {
                 ekf_updateWithRange(distance, _r.z, _p, _x);
                 _isUpdated = true;
             }
+        }
+
+        void updateWithFlow(
+                const uint32_t nowMsec, 
+                const float flow_dt,
+                const float flow_dpixelx,
+                const float flow_dpixely)
+        {
+            _nextPredictionMsec = nowMsec > _nextPredictionMsec ?
+                nowMsec + _predictionIntervalMsec :
+                _nextPredictionMsec;
+
+            ekf_updateWithFlow(
+                    flow_dt,
+                    flow_dpixelx,
+                    flow_dpixely,
+                    _r.z, 
+                    _gyroLatest, 
+                    _p, 
+                    _x);
+
+            _isUpdated = true;
         }
 
         void getState(vehicleState_t & state)
@@ -654,6 +670,9 @@ class Ekf {
         }
 
         static void ekf_updateWithFlow(
+                const float flow_dt,
+                const float flow_dpixelx,
+                const float flow_dpixely,
                 const float rz,
                 const axis3_t & gyroLatest,
                 matrix_t & p,
@@ -684,31 +703,31 @@ class Ekf {
 
             // ~~~ X velocity prediction and update ~~~
             // predicts the number of accumulated pixels in the x-direction
-            auto predictedNX = (stream_flow.dt * Npix / thetapix ) * 
+            auto predictedNX = (flow_dt * Npix / thetapix ) * 
                 ((dx_g * rz / z_g) - omegay_b);
-            auto measuredNX = stream_flow.dpixelx*FLOW_RESOLUTION;
+            auto measuredNX = flow_dpixelx*FLOW_RESOLUTION;
 
             // derive measurement equation with respect to dx (and z?)
             myvector_t hx = {};
             set(hx, STATE_Z, 
-                    (Npix * stream_flow.dt / thetapix) * ((rz * dx_g) / (-z_g * z_g)));
+                    (Npix * flow_dt / thetapix) * ((rz * dx_g) / (-z_g * z_g)));
             set(hx, STATE_DX, 
-                    (Npix * stream_flow.dt / thetapix) * (rz / z_g));
+                    (Npix * flow_dt / thetapix) * (rz / z_g));
 
             //First update
             scalarUpdate(hx, measuredNX-predictedNX, FLOW_STD_FIXED*FLOW_RESOLUTION,
                     p, x);
 
             // ~~~ Y velocity prediction and update ~~~
-            auto predictedNY = (stream_flow.dt * Npix / thetapix ) * 
+            auto predictedNY = (flow_dt * Npix / thetapix ) * 
                 ((dy_g * rz / z_g) + omegax_b);
-            auto measuredNY = stream_flow.dpixely*FLOW_RESOLUTION;
+            auto measuredNY = flow_dpixely*FLOW_RESOLUTION;
 
             // derive measurement equation with respect to dy (and z?)
             myvector_t hy = {};
-            set(hy, STATE_Z, (Npix * stream_flow.dt / thetapix) * 
+            set(hy, STATE_Z, (Npix * flow_dt / thetapix) * 
                     ((rz * dy_g) / (-z_g * z_g)));
-            set(hy, STATE_DY, (Npix * stream_flow.dt / thetapix) * (rz / z_g));
+            set(hy, STATE_DY, (Npix * flow_dt / thetapix) * (rz / z_g));
 
             // Second update
             scalarUpdate(hy, measuredNY-predictedNY, FLOW_STD_FIXED*FLOW_RESOLUTION, 

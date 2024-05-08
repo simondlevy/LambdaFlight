@@ -195,9 +195,11 @@ class EstimatorTask : public FreeRTOSTask {
                         break;
 
                     case MeasurementTypeFlow:
-                        memcpy(&stream_flow, &measurement.data.flow, 
-                                sizeof(stream_flow));
-                        _ekf.step(EKF_UPDATE_WITH_FLOW, nowMsec, _safety->isFlying());
+                        _ekf.updateWithFlow(
+                                nowMsec,
+                                measurement.data.flow.dt, 
+                                measurement.data.flow.dpixelx, 
+                                measurement.data.flow.dpixely);
                         break;
 
                     case MeasurementTypeGyroscope:

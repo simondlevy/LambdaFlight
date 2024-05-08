@@ -10,7 +10,6 @@
 #endif
 
 EXTERN axis3_t           stream_accel;
-EXTERN flowMeasurement_t stream_flow; 
 EXTERN axis3_t           stream_gyro;
 EXTERN bool              stream_inFlyingMode;
 EXTERN demands_t         stream_openLoopDemands;

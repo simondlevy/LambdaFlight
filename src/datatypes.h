@@ -23,8 +23,7 @@ typedef enum {
     EKF_PREDICT,
     EKF_FINALIZE,
     EKF_UPDATE_WITH_GYRO,
-    EKF_UPDATE_WITH_ACCEL,
-    EKF_UPDATE_WITH_FLOW
+    EKF_UPDATE_WITH_ACCEL
 
 } ekfAction_e;
 
