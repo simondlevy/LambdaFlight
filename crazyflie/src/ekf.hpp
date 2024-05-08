@@ -776,7 +776,7 @@ class Ekf {
 
             state.dy = get(x, STATE_DY);
 
-            state.z = stream_rangefinder_distance / 1000; 
+            state.z = get(x, STATE_Z);//stream_rangefinder_distance / 1000; 
 
             state.z = min(0, state.z);
 
