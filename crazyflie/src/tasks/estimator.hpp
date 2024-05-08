@@ -164,8 +164,7 @@ class EstimatorTask : public FreeRTOSTask {
                 didResetEstimation = false;
             }
 
-            stream_isFlying =_safety->isFlying(); 
-            _ekf.step(EKF_PREDICT, nowMsec);
+            _ekf.step(EKF_PREDICT, nowMsec, _safety->isFlying());
 
             // Run the system dynamics to predict the state forward.
             if (nowMsec >= nextPredictionMsec) {
@@ -193,25 +192,25 @@ class EstimatorTask : public FreeRTOSTask {
                     case MeasurementTypeRange:
                         stream_rangefinder_distance = 
                             measurement.data.rangefinder_distance;
-                        _ekf.step(EKF_UPDATE_WITH_RANGE, nowMsec);
+                        _ekf.step(EKF_UPDATE_WITH_RANGE, nowMsec, _safety->isFlying());
                         break;
 
                     case MeasurementTypeFlow:
                         memcpy(&stream_flow, &measurement.data.flow, 
                                 sizeof(stream_flow));
-                        _ekf.step(EKF_UPDATE_WITH_FLOW, nowMsec);
+                        _ekf.step(EKF_UPDATE_WITH_FLOW, nowMsec, _safety->isFlying());
                         break;
 
                     case MeasurementTypeGyroscope:
                         memcpy(&stream_gyro, &measurement.data.gyroscope.gyro,
                                 sizeof(stream_gyro));
-                        _ekf.step(EKF_UPDATE_WITH_GYRO, nowMsec);
+                        _ekf.step(EKF_UPDATE_WITH_GYRO, nowMsec, _safety->isFlying());
                         break;
 
                     case MeasurementTypeAcceleration:
                         memcpy(&stream_accel, &measurement.data.acceleration.acc,
                                 sizeof(stream_accel));
-                        _ekf.step(EKF_UPDATE_WITH_ACCEL, nowMsec);
+                        _ekf.step(EKF_UPDATE_WITH_ACCEL, nowMsec, _safety->isFlying());
                         break;
 
                     default:
@@ -220,7 +219,7 @@ class EstimatorTask : public FreeRTOSTask {
             }
 
 
-            _ekf.step(EKF_FINALIZE, nowMsec); 
+            _ekf.step(EKF_FINALIZE, nowMsec, _safety->isFlying()); 
 
             if (!_ekf.isStateWithinBounds()) { 
 

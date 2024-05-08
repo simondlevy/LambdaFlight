@@ -70,7 +70,10 @@ class Ekf {
 
         }
 
-        void step(const ekfAction_e ekfAction, const uint32_t nowMsec)
+        void step(
+                const ekfAction_e ekfAction, 
+                const uint32_t nowMsec,
+                const bool isFlying)
         {
 
             _nextPredictionMsec = nowMsec > _nextPredictionMsec ?
@@ -96,6 +99,7 @@ class Ekf {
 
                 ekf_predict(
                         nowMsec,
+                        isFlying,
                         _gyro, 
                         _accel, 
                         _x, 
@@ -291,12 +295,13 @@ class Ekf {
             return x * x;
         }
 
-        static float rotateQuat( const float val, const float initVal)
+        static float rotateQuat(
+                const bool isFlying, const float val, const float initVal)
         {
             const auto keep = 1.0f - ROLLPITCH_ZERO_REVERSION;
 
-            return (val * (stream_isFlying ? 1: keep)) +
-                (stream_isFlying ? 0 : ROLLPITCH_ZERO_REVERSION * initVal);
+            return (val * (isFlying ? 1: keep)) +
+                (isFlying ? 0 : ROLLPITCH_ZERO_REVERSION * initVal);
         }
 
         static void updateCovarianceMatrix(matrix_t & p)
@@ -446,6 +451,7 @@ class Ekf {
 
         static void ekf_predict(
                 const uint32_t nowMsec,
+                const bool isFlying,
                 const imu_t & gyro,
                 const imu_t & accel,
                 const myvector_t & x_in,
@@ -468,13 +474,13 @@ class Ekf {
             // Position updates in the body frame (will be rotated to inertial frame);
             // thrust can only be produced in the body's Z direction
             const auto dx = get(x_in, STATE_DX) * dt + 
-                stream_isFlying ? 0 : _accel.x * dt2 / 2;
+                isFlying ? 0 : _accel.x * dt2 / 2;
             const auto dy = get(x_in, STATE_DY) * dt + 
-                stream_isFlying ? 0 : _accel.y * dt2 / 2;
+                isFlying ? 0 : _accel.y * dt2 / 2;
             const auto dz = get(x_in, STATE_DZ) * dt + _accel.z * dt2 / 2; 
 
-            const auto accx = stream_isFlying ? 0 : _accel.x;
-            const auto accy = stream_isFlying ? 0 : _accel.y;
+            const auto accx = isFlying ? 0 : _accel.x;
+            const auto accy = isFlying ? 0 : _accel.y;
 
             // attitude update (rotate by gyroscope), we do this in quaternions
             // this is the gyroscope angular velocity integrated over the sample period
@@ -493,10 +499,14 @@ class Ekf {
 
             // rotate the quad's attitude by the delta quaternion vector computed above
 
-            const auto tmpq0 = rotateQuat(dqw*q.w - dqx*q.x - dqy*q.y - dqz*q.z, QW_INIT);
-            const auto tmpq1 = rotateQuat(dqx*q.w + dqw*q.x + dqz*q.y - dqy*q.z, QX_INIT);
-            const auto tmpq2 = rotateQuat(dqy*q.w - dqz*q.x + dqw*q.y + dqx*q.z, QY_INIT);
-            const auto tmpq3 = rotateQuat(dqz*q.w + dqy*q.x - dqx*q.y + dqw*q.z, QZ_INIT);
+            const auto tmpq0 = rotateQuat(isFlying,
+                    dqw*q.w - dqx*q.x - dqy*q.y - dqz*q.z, QW_INIT);
+            const auto tmpq1 = rotateQuat(isFlying,
+                    dqx*q.w + dqw*q.x + dqz*q.y - dqy*q.z, QX_INIT);
+            const auto tmpq2 = rotateQuat(isFlying,
+                    dqy*q.w - dqz*q.x + dqw*q.y + dqx*q.z, QY_INIT);
+            const auto tmpq3 = rotateQuat(isFlying,
+                    dqz*q.w + dqy*q.x - dqx*q.y + dqw*q.z, QZ_INIT);
 
             // normalize and store the result
             const auto norm = 
