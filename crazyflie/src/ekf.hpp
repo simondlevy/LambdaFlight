@@ -174,29 +174,20 @@ class Ekf {
 
                 _isUpdated = false;
             }
-
-            // Get vehicle state -----------------------------------------------------
-
-            /*
-            vehicleState_t vehicleState = {};
-            ekf_getVehicleState(_x, _gyroLatest, _quat, _r, vehicleState);
-
-            if (ekfAction == EKF_GET_STATE) {
-                setState(vehicleState);
-            }*/
-
-            if (requestedFinalize) {
-                setStateIsInBounds(
-                        isPositionWithinBounds(get(_x, STATE_Z)) &&
-                        isVelocityWithinBounds(get(_x, STATE_DX)) &&
-                        isVelocityWithinBounds(get(_x, STATE_DY)) &&
-                        isVelocityWithinBounds(get(_x, STATE_DZ)));
-            }
         }
 
         void getState(vehicleState_t & state)
         {
             ekf_getVehicleState(_x, _gyroLatest, _quat, _r, state);
+        }
+
+        bool isStateWithinBounds(void)
+        {
+            return
+                isPositionWithinBounds(get(_x, STATE_Z)) &&
+                isVelocityWithinBounds(get(_x, STATE_DX)) &&
+                isVelocityWithinBounds(get(_x, STATE_DY)) &&
+                isVelocityWithinBounds(get(_x, STATE_DZ));
         }
 
     private:

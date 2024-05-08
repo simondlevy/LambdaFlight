@@ -104,16 +104,6 @@ class EstimatorTask : public FreeRTOSTask {
             enqueue(&m, isInInterrupt);
         }
 
-        void setStateIsInBounds(const bool inBounds)
-        {
-            _isStateInBounds = inBounds;
-        }
-
-        void setState(const vehicleState_t & state)
-        {
-            memcpy(&_state, &state, sizeof(_state));
-        }
-
     private:
 
         // this is slower than the IMU update rate of 1000Hz
@@ -138,8 +128,6 @@ class EstimatorTask : public FreeRTOSTask {
         RateSupervisor _rateSupervisor;
 
         Ekf _ekf;
-
-        bool _isStateInBounds; // set by callback from EKF
 
         // Mutex to protect data that is shared between the task and
         // functions called by the stabilizer loop
@@ -232,9 +220,9 @@ class EstimatorTask : public FreeRTOSTask {
             }
 
 
-            _ekf.step(EKF_FINALIZE, nowMsec, PREDICTION_UPDATE_INTERVAL_MSEC); // sets _isStateInBounds
+            _ekf.step(EKF_FINALIZE, nowMsec, PREDICTION_UPDATE_INTERVAL_MSEC); 
 
-            if (!_isStateInBounds) { 
+            if (!_ekf.isStateWithinBounds()) { 
 
                 didResetEstimation = true;
 
