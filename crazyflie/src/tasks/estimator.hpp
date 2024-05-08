@@ -27,6 +27,7 @@
 
 #define EKF_N 7
 #include <ekf.hpp>
+#include <newekf.hpp>
 
 class EstimatorTask : public FreeRTOSTask {
 
