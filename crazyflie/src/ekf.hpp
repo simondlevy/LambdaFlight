@@ -173,11 +173,11 @@ static void multiply(const matrix_t & a, const newvec_t & x, newvec_t & y)
 }
 
 // Outer product
-static void multiply(const float x[EKF_N], const float y[EKF_N], float a[EKF_N][EKF_N])
+static void multiply(const newvec_t & x, const newvec_t & y, matrix_t & a)
 {
     for (uint8_t i=0; i<EKF_N; i++) {
         for (uint8_t j=0; j<EKF_N; j++) {
-            a[i][j] = x[i] * y[j];
+            a.dat[i][j] = x.dat[i] * y.dat[j];
         }
     }
 }
@@ -287,10 +287,10 @@ static void scalarUpdate(
     // ====== COVARIANCE UPDATE ======
 
     matrix_t GH = {};
-    multiply(g.dat, h.dat, GH.dat); // KH
+    multiply(g, h, GH); // KH
 
     for (int i=0; i<EKF_N; i++) { 
-        GH.dat[i][i] -= 1;
+        set(GH, i, i, get(GH, i, i) - 1);
     } // KH - I
 
     matrix_t GHt = {};
