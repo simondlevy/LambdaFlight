@@ -27,7 +27,6 @@
 
 #define EKF_N 7
 #include <ekf.hpp>
-#include <newekf.hpp>
 
 class EstimatorTask : public FreeRTOSTask {
 
@@ -161,21 +160,7 @@ class EstimatorTask : public FreeRTOSTask {
         {
             stream_ekfAction = EKF_INIT;
             stream_nowMsec = nowMsec;
-            ekf_step();
-
-            const float diag[7] = {
-
-                square(STDEV_INITIAL_POSITION_Z),
-                square(STDEV_INITIAL_VELOCITY),
-                square(STDEV_INITIAL_VELOCITY),
-                square(STDEV_INITIAL_VELOCITY),
-                square(STDEV_INITIAL_ATTITUDE_ROLL_PITCH),
-                square(STDEV_INITIAL_ATTITUDE_ROLL_PITCH),
-                square(STDEV_INITIAL_ATTITUDE_YAW)
-            };
-
-            (void)diag;
-            //_ekf.init(diag, nowMsec);
+            Ekf::step();
         }        
 
         uint32_t step(const uint32_t nowMsec, uint32_t nextPredictionMsec) 
@@ -190,12 +175,12 @@ class EstimatorTask : public FreeRTOSTask {
             stream_ekfAction = EKF_PREDICT;
             stream_nowMsec = nowMsec;
             stream_isFlying =_safety->isFlying(); 
-            ekf_step();
+            Ekf::step();
 
             // Run the system dynamics to predict the state forward.
             if (nowMsec >= nextPredictionMsec) {
 
-                nextPredictionMsec = nowMsec + PREDICTION_UPDATE_INTERVAL_MS;
+                nextPredictionMsec = nowMsec + Ekf::PREDICTION_UPDATE_INTERVAL_MS;
 
                 if (!_rateSupervisor.validate(nowMsec)) {
                     consolePrintf(
@@ -219,28 +204,28 @@ class EstimatorTask : public FreeRTOSTask {
                         stream_ekfAction = EKF_UPDATE_WITH_RANGE;
                         stream_rangefinder_distance = 
                             measurement.data.rangefinder_distance;
-                        ekf_step();
+                        Ekf::step();
                         break;
 
                     case MeasurementTypeFlow:
                         stream_ekfAction = EKF_UPDATE_WITH_FLOW;
                         memcpy(&stream_flow, &measurement.data.flow, 
                                 sizeof(stream_flow));
-                        ekf_step();
+                        Ekf::step();
                         break;
 
                     case MeasurementTypeGyroscope:
                         stream_ekfAction =EKF_UPDATE_WITH_GYRO;
                         memcpy(&stream_gyro, &measurement.data.gyroscope.gyro,
                                 sizeof(stream_gyro));
-                        ekf_step();
+                        Ekf::step();
                         break;
 
                     case MeasurementTypeAcceleration:
                         stream_ekfAction = EKF_UPDATE_WITH_ACCEL;
                         memcpy(&stream_accel, &measurement.data.acceleration.acc,
                                 sizeof(stream_accel));
-                        ekf_step();
+                        Ekf::step();
                         break;
 
                     default:
@@ -250,7 +235,7 @@ class EstimatorTask : public FreeRTOSTask {
 
             stream_ekfAction = EKF_FINALIZE;
 
-            ekf_step(); // sets _isStateInBounds
+            Ekf::step(); // sets _isStateInBounds
 
             if (!_isStateInBounds) { 
 
@@ -264,7 +249,7 @@ class EstimatorTask : public FreeRTOSTask {
 
             xSemaphoreTake(_dataMutex, portMAX_DELAY);
             stream_ekfAction = EKF_GET_STATE;
-            ekf_step();
+            Ekf::step();
             xSemaphoreGive(_dataMutex);
 
             return nextPredictionMsec;
@@ -286,8 +271,8 @@ class EstimatorTask : public FreeRTOSTask {
             _rateSupervisor.init(
                     nextPredictionMsec, 
                     1000, 
-                    PREDICT_RATE - 1, 
-                    PREDICT_RATE + 1, 
+                    Ekf::PREDICT_RATE - 1, 
+                    Ekf::PREDICT_RATE + 1, 
                     1); 
 
             while (true) {
