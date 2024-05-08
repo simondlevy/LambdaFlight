@@ -43,10 +43,14 @@ class Ekf {
 
     public:
 
-        void step(
-                const ekfAction_e ekfAction, 
+        void init(
                 const uint32_t nowMsec,
-                const uint32_t predictionUpdateIntervalMsec)
+                const uint32_t predictionIntervalMsec)
+        {
+            _predictionIntervalMsec = predictionIntervalMsec;
+        }
+
+        void step(const ekfAction_e ekfAction, const uint32_t nowMsec)
         {
 
             // Initialize ------------------------------------------------------------
@@ -70,7 +74,7 @@ class Ekf {
             }
 
             _nextPredictionMsec = nowMsec > _nextPredictionMsec ?
-                nowMsec + predictionUpdateIntervalMsec :
+                nowMsec + _predictionIntervalMsec :
                 _nextPredictionMsec;
 
             // Predict ---------------------------------------------------------------
@@ -143,7 +147,6 @@ class Ekf {
             if (ekfAction == EKF_UPDATE_WITH_GYRO) {
 
                 imuAccum(stream_gyro, _gyro);
-
                 memcpy(&_gyroLatest, &stream_gyro, sizeof(axis3_t));
             }
 
@@ -897,6 +900,7 @@ class Ekf {
         bool _isUpdated;
         uint32_t _lastPredictionMsec;
         uint32_t _lastProcessNoiseUpdateMsec;
+        uint32_t _predictionIntervalMsec;
 
         axis3_t _gyroLatest;
 

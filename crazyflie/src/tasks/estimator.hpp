@@ -108,7 +108,7 @@ class EstimatorTask : public FreeRTOSTask {
 
         // this is slower than the IMU update rate of 1000Hz
         static const uint32_t PREDICT_RATE = Clock::RATE_100_HZ; 
-        static const uint32_t PREDICTION_UPDATE_INTERVAL_MSEC = 1000 / PREDICT_RATE;
+        static const uint32_t PREDICTION_INTERVAL_MSEC = 1000 / PREDICT_RATE;
 
         // Initial variances, uncertain of position, but know we're
         // stationary and roughly flat
@@ -152,7 +152,8 @@ class EstimatorTask : public FreeRTOSTask {
 
         void initEkf(const uint32_t nowMsec)
         {
-            _ekf.step(EKF_INIT, nowMsec, PREDICTION_UPDATE_INTERVAL_MSEC);
+            _ekf.init(nowMsec, PREDICTION_INTERVAL_MSEC);
+            _ekf.step(EKF_INIT, nowMsec);
         }        
 
         uint32_t step(const uint32_t nowMsec, uint32_t nextPredictionMsec) 
@@ -165,12 +166,12 @@ class EstimatorTask : public FreeRTOSTask {
             }
 
             stream_isFlying =_safety->isFlying(); 
-            _ekf.step(EKF_PREDICT, nowMsec, PREDICTION_UPDATE_INTERVAL_MSEC);
+            _ekf.step(EKF_PREDICT, nowMsec);
 
             // Run the system dynamics to predict the state forward.
             if (nowMsec >= nextPredictionMsec) {
 
-                nextPredictionMsec = nowMsec + PREDICTION_UPDATE_INTERVAL_MSEC;
+                nextPredictionMsec = nowMsec + PREDICTION_INTERVAL_MSEC;
 
                 if (!_rateSupervisor.validate(nowMsec)) {
                     consolePrintf(
@@ -193,25 +194,25 @@ class EstimatorTask : public FreeRTOSTask {
                     case MeasurementTypeRange:
                         stream_rangefinder_distance = 
                             measurement.data.rangefinder_distance;
-                        _ekf.step(EKF_UPDATE_WITH_RANGE, nowMsec, PREDICTION_UPDATE_INTERVAL_MSEC);
+                        _ekf.step(EKF_UPDATE_WITH_RANGE, nowMsec);
                         break;
 
                     case MeasurementTypeFlow:
                         memcpy(&stream_flow, &measurement.data.flow, 
                                 sizeof(stream_flow));
-                        _ekf.step(EKF_UPDATE_WITH_FLOW, nowMsec, PREDICTION_UPDATE_INTERVAL_MSEC);
+                        _ekf.step(EKF_UPDATE_WITH_FLOW, nowMsec);
                         break;
 
                     case MeasurementTypeGyroscope:
                         memcpy(&stream_gyro, &measurement.data.gyroscope.gyro,
                                 sizeof(stream_gyro));
-                        _ekf.step(EKF_UPDATE_WITH_GYRO, nowMsec, PREDICTION_UPDATE_INTERVAL_MSEC);
+                        _ekf.step(EKF_UPDATE_WITH_GYRO, nowMsec);
                         break;
 
                     case MeasurementTypeAcceleration:
                         memcpy(&stream_accel, &measurement.data.acceleration.acc,
                                 sizeof(stream_accel));
-                        _ekf.step(EKF_UPDATE_WITH_ACCEL, nowMsec, PREDICTION_UPDATE_INTERVAL_MSEC);
+                        _ekf.step(EKF_UPDATE_WITH_ACCEL, nowMsec);
                         break;
 
                     default:
@@ -220,7 +221,7 @@ class EstimatorTask : public FreeRTOSTask {
             }
 
 
-            _ekf.step(EKF_FINALIZE, nowMsec, PREDICTION_UPDATE_INTERVAL_MSEC); 
+            _ekf.step(EKF_FINALIZE, nowMsec); 
 
             if (!_ekf.isStateWithinBounds()) { 
 
@@ -233,8 +234,6 @@ class EstimatorTask : public FreeRTOSTask {
             }
 
             xSemaphoreTake(_dataMutex, portMAX_DELAY);
-
-            //_ekf.step(EKF_GET_STATE, nowMsec, PREDICTION_UPDATE_INTERVAL_MSEC);
 
             _ekf.getState(_state);
 
