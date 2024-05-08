@@ -85,6 +85,38 @@ class Ekf {
             }
         }
 
+        void updateWithFlow(void)
+        {
+            _isUpdated = true;
+        }
+
+        void updateWithRange(const float rangefinderDistance)
+        {
+            const auto angle = max(0, 
+                    fabsf(acosf(_r.z)) - 
+                    DEGREES_TO_RADIANS * (15.0f / 2.0f));
+
+            const auto predictedDistance = get(_x, STATE_Z) / cosf(angle);
+
+            const auto measuredDistance = rangefinderDistance / 1000; // mm => m
+
+            const auto stdDev =
+                RANGEFINDER_EXP_STD_A * 
+                (1 + expf(RANGEFINDER_EXP_COEFF * 
+                          (measuredDistance - RANGEFINDER_EXP_POINT_A)));
+
+            myvector_t h = {};
+            set(h, STATE_Z, 1 / cosf(angle));
+
+            if (fabs(_r.z) > 0.1f && _r.z > 0 && 
+                    rangefinderDistance < RANGEFINDER_OUTLIER_LIMIT_MM) {
+
+                _scalarUpdate(h, measuredDistance-predictedDistance, stdDev, _p, _x);
+
+                _isUpdated = true;
+            }
+        }
+
         void finalize(void)
         {
         }
@@ -447,4 +479,50 @@ class Ekf {
             updateCovarianceMatrix(p);
         }
 
-};
+        static void _scalarUpdate(
+                const myvector_t & h, const float error, const float stdMeasNoise,
+                mymatrix_t & p, myvector_t & x)
+        {
+
+            // ====== INNOVATION COVARIANCE ======
+            myvector_t ph = {};
+            multiply(p, h, ph);
+            const auto r = stdMeasNoise * stdMeasNoise;
+            const auto hphr = r + dot(h, ph); // HPH' + R
+
+            // Compute the Kalman gain as a column vector
+            myvector_t g = {};
+            for (uint8_t i=0; i<EKF_N; ++i) {
+                set(g, i, get(ph, i) / hphr);
+            }
+
+            // Perform the state update
+            for (uint8_t i=0; i<EKF_N; ++i) {
+                set(x, i, get(x, i) + get(g, i) * error);
+            }
+
+            // ====== COVARIANCE UPDATE ======
+
+            mymatrix_t GH = {};
+            multiply(g, h, GH); // KH
+
+            for (int i=0; i<EKF_N; i++) { 
+                set(GH, i, i, get(GH, i, i) - 1);
+            } // KH - I
+
+            mymatrix_t GHt = {};
+            transpose(GH, GHt);      // (KH - I)'
+            mymatrix_t GHIP = {};
+            multiply(GH, p, GHIP);  // (KH - I)*P
+            multiply(GHIP, GHt, p); // (KH - I)*P*(KH - I)'
+
+            // Add the measurement variance 
+            for (int i=0; i<EKF_N; i++) {
+                for (int j=0; j<EKF_N; j++) {
+                    p.dat[i][j] += j < i ? 0 : r * get(g, i) * get(g, j);
+                    set(p, i, j, get(p, i, j));
+                }
+            }
+
+            updateCovarianceMatrix(p);
+        }};
