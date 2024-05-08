@@ -12,6 +12,217 @@ class Ekf {
 
     public:
 
+        // this is slower than the IMU update rate of 1000Hz
+        static const uint32_t PREDICT_RATE = Clock::RATE_100_HZ; 
+        static const uint32_t PREDICTION_UPDATE_INTERVAL_MS = 1000 / PREDICT_RATE;
+
+        typedef struct {
+
+            float dat[EKF_N];
+
+        } myvector_t;
+
+        typedef struct {
+
+            float dat[EKF_N][EKF_N];
+
+        } matrix_t;
+
+
+        typedef struct {
+
+            float w;
+            float x;
+            float y;
+            float z;
+
+        } new_quat_t;
+
+        typedef struct {
+
+            axis3_t sum;
+            uint32_t count;
+
+        } imu_t;
+
+        static void step(void)
+        {
+            static matrix_t _p;
+            static myvector_t _x;
+
+            static bool _isUpdated;
+            static uint32_t _lastPredictionMsec;
+            static uint32_t _lastProcessNoiseUpdateMsec;
+
+            static axis3_t _gyroLatest;
+
+            static new_quat_t _quat;
+
+            static uint32_t _nextPredictionMsec;
+
+            static axis3_t _r;
+
+            static imu_t _gyro;
+            static imu_t _accel;
+
+
+            // Initialize ------------------------------------------------------------
+
+            if (stream_ekfAction == EKF_INIT) {
+
+                ekf_init(_p, _x);
+
+                _quat.w = 1;
+                _quat.x = 0;
+                _quat.y = 0;
+                _quat.z = 0;
+
+                _r.x = 0;
+                _r.y = 0;
+                _r.z = 0;
+
+                _lastProcessNoiseUpdateMsec = stream_nowMsec;
+                _lastPredictionMsec = stream_nowMsec;
+                _isUpdated = false;
+            }
+
+            _nextPredictionMsec = stream_nowMsec > _nextPredictionMsec ?
+                stream_nowMsec + PREDICTION_UPDATE_INTERVAL_MS :
+                _nextPredictionMsec;
+
+            // Predict ---------------------------------------------------------------
+
+            const auto requestedPredict = stream_ekfAction == EKF_PREDICT;
+
+            const auto predicting =
+                requestedPredict && stream_nowMsec >= _nextPredictionMsec;
+
+            if (requestedPredict) {
+                _isUpdated = true;
+            }
+
+            if (predicting) {
+
+                myvector_t x_predicted = {};
+
+                new_quat_t quat_predicted = {};
+
+                ekf_predict(
+                        _gyro, 
+                        _accel, 
+                        _x, 
+                        _quat, 
+                        _r, 
+                        _lastPredictionMsec, 
+                        quat_predicted, 
+                        _p, 
+                        x_predicted);
+
+                _lastPredictionMsec = stream_nowMsec;
+
+                if (stream_nowMsec - _lastProcessNoiseUpdateMsec > 0) {
+
+                    _lastProcessNoiseUpdateMsec = stream_nowMsec;
+
+                    set(_x, STATE_Z , get(x_predicted, STATE_Z));
+                    set(_x, STATE_DX , get(x_predicted, STATE_DX));
+                    set(_x, STATE_DY , get(x_predicted, STATE_DY));
+                    set(_x, STATE_DZ , get(x_predicted, STATE_DZ));
+
+                    _quat.w = quat_predicted.w;
+                    _quat.x = quat_predicted.x;
+                    _quat.y = quat_predicted.y;
+                    _quat.z = quat_predicted.z;
+
+                    memset(&_gyro, 0, sizeof(_gyro));
+                    memset(&_accel, 0, sizeof(_gyro));
+                }
+            }
+
+            // Update ----------------------------------------------------------------
+
+            // Update with flow
+            if (stream_ekfAction == EKF_UPDATE_WITH_FLOW) {
+                ekf_updateWithFlow(_r.z, _gyroLatest, _p, _x);
+                _isUpdated = true;
+            }
+
+            // Update with range when the measurement is reliable 
+            if (stream_ekfAction == EKF_UPDATE_WITH_RANGE &&
+                    fabs(_r.z) > 0.1f && _r.z > 0 && 
+                    stream_rangefinder_distance < RANGEFINDER_OUTLIER_LIMIT_MM) {
+                ekf_updateWithRange(_r.z, _p, _x);
+                _isUpdated = true;
+            }
+
+            // Update with gyro
+            if (stream_ekfAction == EKF_UPDATE_WITH_GYRO) {
+
+                imuAccum(stream_gyro, _gyro);
+
+                memcpy(&_gyroLatest, &stream_gyro, sizeof(axis3_t));
+            }
+
+            // Update with accel
+            if (stream_ekfAction == EKF_UPDATE_WITH_ACCEL) {
+
+                imuAccum(stream_accel, _accel);
+            }
+
+            // Finalize --------------------------------------------------------------
+
+            const auto requestedFinalize = stream_ekfAction == EKF_FINALIZE;
+
+            if (requestedFinalize && _isUpdated) {
+
+                new_quat_t quat_finalized = {};
+
+                ekf_finalize(_quat, _p, _x, quat_finalized);
+
+                _quat.w = quat_finalized.w;
+                _quat.x = quat_finalized.x;
+                _quat.y = quat_finalized.y;
+                _quat.z = quat_finalized.z;
+
+                _r.x = 2 * _quat.x * _quat.z - 2 * _quat.w * _quat.y;
+                _r.y = 2 * _quat.y * _quat.z + 2 * _quat.w * _quat.x; 
+                _r.z = _quat.w*_quat.w-_quat.x*_quat.x-_quat.y*_quat.y+_quat.z*_quat.z;
+
+                _isUpdated = false;
+            }
+
+            // Get vehicle state -----------------------------------------------------
+
+            vehicleState_t vehicleState = {};
+            ekf_getVehicleState(_x, _gyroLatest, _quat, _r, vehicleState);
+
+            if (stream_ekfAction == EKF_GET_STATE) {
+                setState(vehicleState);
+            }
+
+            if (requestedFinalize) {
+                setStateIsInBounds(
+                        isPositionWithinBounds(get(_x, STATE_Z)) &&
+                        isVelocityWithinBounds(get(_x, STATE_DX)) &&
+                        isVelocityWithinBounds(get(_x, STATE_DY)) &&
+                        isVelocityWithinBounds(get(_x, STATE_DZ)));
+            }
+        }
+
+    private:
+
+        // Indexes to access the state
+        enum {
+
+            STATE_Z,
+            STATE_DX,
+            STATE_DY,
+            STATE_DZ,
+            STATE_E0,
+            STATE_E1,
+            STATE_E2
+        };
+
         // Quaternion used for initial orientation
         static constexpr float QW_INIT = 1;
         static constexpr float QX_INIT = 0;
@@ -58,150 +269,6 @@ class Ekf {
 
         static constexpr float FLOW_STD_FIXED = 2.0;
 
-        // this is slower than the IMU update rate of 1000Hz
-        static const uint32_t PREDICT_RATE = Clock::RATE_100_HZ; 
-        static const uint32_t PREDICTION_UPDATE_INTERVAL_MS = 1000 / PREDICT_RATE;
-
-        // Indexes to access the state
-        enum {
-
-            STATE_Z,
-            STATE_DX,
-            STATE_DY,
-            STATE_DZ,
-            STATE_E0,
-            STATE_E1,
-            STATE_E2
-        };
-
-        typedef struct {
-
-            float dat[EKF_N];
-
-        } myvector_t;
-
-        typedef struct {
-
-            float dat[EKF_N][EKF_N];
-
-        } matrix_t;
-
-        static void makemat(const float dat[EKF_N][EKF_N], matrix_t & a)
-        {
-            for (uint8_t i=0; i<EKF_N; ++i) {
-                for (uint8_t j=0; j<EKF_N; ++j) {
-                    a.dat[i][j] = dat[i][j];
-                }
-            }
-
-        }
-
-        static void transpose(const matrix_t & a, matrix_t & at)
-        {
-            for (uint8_t i=0; i<EKF_N; ++i) {
-                for (uint8_t j=0; j<EKF_N; ++j) {
-                    auto tmp = a.dat[i][j];
-                    at.dat[i][j] = a.dat[j][i];
-                    at.dat[j][i] = tmp;
-                }
-            }
-        }
-
-        static float dot(const myvector_t & x, const myvector_t & y) 
-        {
-            float d = 0;
-
-            for (uint8_t k=0; k<EKF_N; k++) {
-                d += x.dat[k] * y.dat[k];
-            }
-
-            return d;
-        }
-
-        static float get(const matrix_t & a, const uint8_t i, const uint8_t j)
-        {
-            return a.dat[i][j];
-        }
-
-        static float get(const myvector_t & x, const uint8_t i)
-        {
-            return x.dat[i];
-        }
-
-        static void set(myvector_t & x, const uint8_t i, const float val)
-        {
-            x.dat[i] = val;
-        }
-
-        static void set(matrix_t & a, const uint8_t i, const uint8_t j, const float val)
-        {
-            a.dat[i][j] = val;
-        }
-
-        static float dot(
-                const matrix_t & a, 
-                const matrix_t & b, 
-                const uint8_t i, 
-                const uint8_t j)
-        {
-            float d = 0;
-
-            for (uint8_t k=0; k<EKF_N; k++) {
-                d += a.dat[i][k] * b.dat[k][j];
-            }
-
-            return d;
-        }
-
-        // Matrix * Matrix
-        static void multiply( const matrix_t a, const matrix_t b, matrix_t & c)
-        {
-            for (uint8_t i=0; i<EKF_N; i++) {
-
-                for (uint8_t j=0; j<EKF_N; j++) {
-
-                    c.dat[i][j] = dot(a, b, i, j);
-                }
-            }
-        }
-
-        // Matrix * Vector
-        static void multiply(const matrix_t & a, const myvector_t & x, myvector_t & y)
-        {
-            for (uint8_t i=0; i<EKF_N; i++) {
-                y.dat[i] = 0;
-                for (uint8_t j=0; j<EKF_N; j++) {
-                    y.dat[i] += a.dat[i][j] * x.dat[j];
-                }
-            }
-        }
-
-        // Outer product
-        static void multiply(const myvector_t & x, const myvector_t & y, matrix_t & a)
-        {
-            for (uint8_t i=0; i<EKF_N; i++) {
-                for (uint8_t j=0; j<EKF_N; j++) {
-                    a.dat[i][j] = x.dat[i] * y.dat[j];
-                }
-            }
-        }
-
-
-        typedef struct {
-
-            float w;
-            float x;
-            float y;
-            float z;
-
-        } new_quat_t;
-
-        typedef struct {
-
-            axis3_t sum;
-            uint32_t count;
-
-        } imu_t;
 
         static void imuAccum(const axis3_t vals, imu_t & imu)
         {
@@ -739,169 +806,104 @@ class Ekf {
             state.dpsi =    gyroLatest.z;
         }
 
-        // ===========================================================================
 
-        static void step(void)
+        static void makemat(const float dat[EKF_N][EKF_N], matrix_t & a)
         {
-            static matrix_t _p;
-            static myvector_t _x;
-
-            static bool _isUpdated;
-            static uint32_t _lastPredictionMsec;
-            static uint32_t _lastProcessNoiseUpdateMsec;
-
-            static axis3_t _gyroLatest;
-
-            static new_quat_t _quat;
-
-            static uint32_t _nextPredictionMsec;
-
-            static axis3_t _r;
-
-            static imu_t _gyro;
-            static imu_t _accel;
-
-
-            // Initialize ------------------------------------------------------------
-
-            if (stream_ekfAction == EKF_INIT) {
-
-                ekf_init(_p, _x);
-
-                _quat.w = 1;
-                _quat.x = 0;
-                _quat.y = 0;
-                _quat.z = 0;
-
-                _r.x = 0;
-                _r.y = 0;
-                _r.z = 0;
-
-                _lastProcessNoiseUpdateMsec = stream_nowMsec;
-                _lastPredictionMsec = stream_nowMsec;
-                _isUpdated = false;
-            }
-
-            _nextPredictionMsec = stream_nowMsec > _nextPredictionMsec ?
-                stream_nowMsec + PREDICTION_UPDATE_INTERVAL_MS :
-                _nextPredictionMsec;
-
-            // Predict ---------------------------------------------------------------
-
-            const auto requestedPredict = stream_ekfAction == EKF_PREDICT;
-
-            const auto predicting =
-                requestedPredict && stream_nowMsec >= _nextPredictionMsec;
-
-            if (requestedPredict) {
-                _isUpdated = true;
-            }
-
-            if (predicting) {
-
-                myvector_t x_predicted = {};
-
-                new_quat_t quat_predicted = {};
-
-                ekf_predict(
-                        _gyro, 
-                        _accel, 
-                        _x, 
-                        _quat, 
-                        _r, 
-                        _lastPredictionMsec, 
-                        quat_predicted, 
-                        _p, 
-                        x_predicted);
-
-                _lastPredictionMsec = stream_nowMsec;
-
-                if (stream_nowMsec - _lastProcessNoiseUpdateMsec > 0) {
-
-                    _lastProcessNoiseUpdateMsec = stream_nowMsec;
-
-                    set(_x, STATE_Z , get(x_predicted, STATE_Z));
-                    set(_x, STATE_DX , get(x_predicted, STATE_DX));
-                    set(_x, STATE_DY , get(x_predicted, STATE_DY));
-                    set(_x, STATE_DZ , get(x_predicted, STATE_DZ));
-
-                    _quat.w = quat_predicted.w;
-                    _quat.x = quat_predicted.x;
-                    _quat.y = quat_predicted.y;
-                    _quat.z = quat_predicted.z;
-
-                    memset(&_gyro, 0, sizeof(_gyro));
-                    memset(&_accel, 0, sizeof(_gyro));
+            for (uint8_t i=0; i<EKF_N; ++i) {
+                for (uint8_t j=0; j<EKF_N; ++j) {
+                    a.dat[i][j] = dat[i][j];
                 }
             }
 
-            // Update ----------------------------------------------------------------
+        }
 
-            // Update with flow
-            if (stream_ekfAction == EKF_UPDATE_WITH_FLOW) {
-                ekf_updateWithFlow(_r.z, _gyroLatest, _p, _x);
-                _isUpdated = true;
+        static void transpose(const matrix_t & a, matrix_t & at)
+        {
+            for (uint8_t i=0; i<EKF_N; ++i) {
+                for (uint8_t j=0; j<EKF_N; ++j) {
+                    auto tmp = a.dat[i][j];
+                    at.dat[i][j] = a.dat[j][i];
+                    at.dat[j][i] = tmp;
+                }
+            }
+        }
+
+        static float dot(const myvector_t & x, const myvector_t & y) 
+        {
+            float d = 0;
+
+            for (uint8_t k=0; k<EKF_N; k++) {
+                d += x.dat[k] * y.dat[k];
             }
 
-            // Update with range when the measurement is reliable 
-            if (stream_ekfAction == EKF_UPDATE_WITH_RANGE &&
-                    fabs(_r.z) > 0.1f && _r.z > 0 && 
-                    stream_rangefinder_distance < RANGEFINDER_OUTLIER_LIMIT_MM) {
-                ekf_updateWithRange(_r.z, _p, _x);
-                _isUpdated = true;
+            return d;
+        }
+
+        static float get(const matrix_t & a, const uint8_t i, const uint8_t j)
+        {
+            return a.dat[i][j];
+        }
+
+        static float get(const myvector_t & x, const uint8_t i)
+        {
+            return x.dat[i];
+        }
+
+        static void set(myvector_t & x, const uint8_t i, const float val)
+        {
+            x.dat[i] = val;
+        }
+
+        static void set(matrix_t & a, const uint8_t i, const uint8_t j, const float val)
+        {
+            a.dat[i][j] = val;
+        }
+
+        static float dot(
+                const matrix_t & a, 
+                const matrix_t & b, 
+                const uint8_t i, 
+                const uint8_t j)
+        {
+            float d = 0;
+
+            for (uint8_t k=0; k<EKF_N; k++) {
+                d += a.dat[i][k] * b.dat[k][j];
             }
 
-            // Update with gyro
-            if (stream_ekfAction == EKF_UPDATE_WITH_GYRO) {
+            return d;
+        }
 
-                imuAccum(stream_gyro, _gyro);
+        // Matrix * Matrix
+        static void multiply( const matrix_t a, const matrix_t b, matrix_t & c)
+        {
+            for (uint8_t i=0; i<EKF_N; i++) {
 
-                memcpy(&_gyroLatest, &stream_gyro, sizeof(axis3_t));
+                for (uint8_t j=0; j<EKF_N; j++) {
+
+                    c.dat[i][j] = dot(a, b, i, j);
+                }
             }
+        }
 
-            // Update with accel
-            if (stream_ekfAction == EKF_UPDATE_WITH_ACCEL) {
-
-                imuAccum(stream_accel, _accel);
+        // Matrix * Vector
+        static void multiply(const matrix_t & a, const myvector_t & x, myvector_t & y)
+        {
+            for (uint8_t i=0; i<EKF_N; i++) {
+                y.dat[i] = 0;
+                for (uint8_t j=0; j<EKF_N; j++) {
+                    y.dat[i] += a.dat[i][j] * x.dat[j];
+                }
             }
+        }
 
-            // Finalize --------------------------------------------------------------
-
-            const auto requestedFinalize = stream_ekfAction == EKF_FINALIZE;
-
-            if (requestedFinalize && _isUpdated) {
-
-                new_quat_t quat_finalized = {};
-
-                ekf_finalize(_quat, _p, _x, quat_finalized);
-
-                _quat.w = quat_finalized.w;
-                _quat.x = quat_finalized.x;
-                _quat.y = quat_finalized.y;
-                _quat.z = quat_finalized.z;
-
-                _r.x = 2 * _quat.x * _quat.z - 2 * _quat.w * _quat.y;
-                _r.y = 2 * _quat.y * _quat.z + 2 * _quat.w * _quat.x; 
-                _r.z = _quat.w*_quat.w-_quat.x*_quat.x-_quat.y*_quat.y+_quat.z*_quat.z;
-
-                _isUpdated = false;
-            }
-
-            // Get vehicle state -----------------------------------------------------
-
-            vehicleState_t vehicleState = {};
-            ekf_getVehicleState(_x, _gyroLatest, _quat, _r, vehicleState);
-
-            if (stream_ekfAction == EKF_GET_STATE) {
-                setState(vehicleState);
-            }
-
-            if (requestedFinalize) {
-                setStateIsInBounds(
-                        isPositionWithinBounds(get(_x, STATE_Z)) &&
-                        isVelocityWithinBounds(get(_x, STATE_DX)) &&
-                        isVelocityWithinBounds(get(_x, STATE_DY)) &&
-                        isVelocityWithinBounds(get(_x, STATE_DZ)));
+        // Outer product
+        static void multiply(const myvector_t & x, const myvector_t & y, matrix_t & a)
+        {
+            for (uint8_t i=0; i<EKF_N; i++) {
+                for (uint8_t j=0; j<EKF_N; j++) {
+                    a.dat[i][j] = x.dat[i] * y.dat[j];
+                }
             }
         }
 
