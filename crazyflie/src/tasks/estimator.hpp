@@ -245,7 +245,11 @@ class EstimatorTask : public FreeRTOSTask {
             }
 
             xSemaphoreTake(_dataMutex, portMAX_DELAY);
-            _ekf.step(EKF_GET_STATE, nowMsec, PREDICTION_UPDATE_INTERVAL_MSEC);
+
+            //_ekf.step(EKF_GET_STATE, nowMsec, PREDICTION_UPDATE_INTERVAL_MSEC);
+
+            _ekf.getState(_state);
+
             xSemaphoreGive(_dataMutex);
 
             return nextPredictionMsec;
