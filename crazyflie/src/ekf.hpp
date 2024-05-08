@@ -45,7 +45,7 @@ class Ekf {
 
         } imu_t;
 
-        static void step(void)
+        static void step(const uint32_t nowMsec)
         {
             static matrix_t _p;
             static myvector_t _x;
@@ -81,13 +81,13 @@ class Ekf {
                 _r.y = 0;
                 _r.z = 0;
 
-                _lastProcessNoiseUpdateMsec = stream_nowMsec;
-                _lastPredictionMsec = stream_nowMsec;
+                _lastProcessNoiseUpdateMsec = nowMsec;
+                _lastPredictionMsec = nowMsec;
                 _isUpdated = false;
             }
 
-            _nextPredictionMsec = stream_nowMsec > _nextPredictionMsec ?
-                stream_nowMsec + PREDICTION_UPDATE_INTERVAL_MS :
+            _nextPredictionMsec = nowMsec > _nextPredictionMsec ?
+                nowMsec + PREDICTION_UPDATE_INTERVAL_MS :
                 _nextPredictionMsec;
 
             // Predict ---------------------------------------------------------------
@@ -95,7 +95,7 @@ class Ekf {
             const auto requestedPredict = stream_ekfAction == EKF_PREDICT;
 
             const auto predicting =
-                requestedPredict && stream_nowMsec >= _nextPredictionMsec;
+                requestedPredict && nowMsec >= _nextPredictionMsec;
 
             if (requestedPredict) {
                 _isUpdated = true;
@@ -108,6 +108,7 @@ class Ekf {
                 new_quat_t quat_predicted = {};
 
                 ekf_predict(
+                        nowMsec,
                         _gyro, 
                         _accel, 
                         _x, 
@@ -118,11 +119,11 @@ class Ekf {
                         _p, 
                         x_predicted);
 
-                _lastPredictionMsec = stream_nowMsec;
+                _lastPredictionMsec = nowMsec;
 
-                if (stream_nowMsec - _lastProcessNoiseUpdateMsec > 0) {
+                if (nowMsec - _lastProcessNoiseUpdateMsec > 0) {
 
-                    _lastProcessNoiseUpdateMsec = stream_nowMsec;
+                    _lastProcessNoiseUpdateMsec = nowMsec;
 
                     set(_x, STATE_Z , get(x_predicted, STATE_Z));
                     set(_x, STATE_DX , get(x_predicted, STATE_DX));
@@ -461,6 +462,7 @@ class Ekf {
         }
 
         static void ekf_predict(
+                const uint32_t nowMsec,
                 const imu_t & gyro,
                 const imu_t & accel,
                 const myvector_t & x_in,
@@ -474,7 +476,7 @@ class Ekf {
             static axis3_t _gyro;
             static axis3_t _accel;
 
-            const float dt = (stream_nowMsec - lastPredictionMsec) / 1000.0f;
+            const float dt = (nowMsec - lastPredictionMsec) / 1000.0f;
             const auto dt2 = dt * dt;
 
             imuTakeMean(gyro, DEGREES_TO_RADIANS, _gyro);
