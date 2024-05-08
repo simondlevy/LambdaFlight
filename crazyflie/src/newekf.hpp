@@ -202,6 +202,43 @@ class Ekf {
             }
         }
 
+        void getVehicleState(vehicleState_t & state)
+        {
+            state.z = get(_x, STATE_Z);
+            state.z = min(0, state.z);
+
+            state.dx = get(_x, STATE_DX);
+
+            state.dy = get(_x, STATE_DY);
+
+            state.dz = _r.x * get(_x, STATE_DX) + _r.y * get(_x, STATE_DY) 
+                + _r.z * get(_x, STATE_DZ);
+
+            const auto qw = _quat.w;
+            const auto qx = _quat.x;
+            const auto qy = _quat.y;
+            const auto qz = _quat.z;
+
+            // Pack Z and DZ into a single float for transmission to client
+            const int8_t sgn = state.dz < 0 ? -1 : +1;
+            const float s = 1000;
+            state.z_dz = (int)(state.dz * s) + sgn * state.z / s;
+
+            state.phi = RADIANS_TO_DEGREES * atan2((2 * (qy*qz + qw*qx)),
+                    (qw*qw - qx*qx - qy*qy + qz*qz));
+
+            // Negate for ENU
+            state.theta = -RADIANS_TO_DEGREES * asin((-2) * (qx*qz - qw*qy));
+
+            state.psi = RADIANS_TO_DEGREES * atan2((2 * (qx*qy + qw*qz)),
+                    (qw*qw + qx*qx - qy*qy - qz*qz));
+
+            // Get angular velocities directly from gyro
+            state.dphi =    _gyroLatest.x;
+            state.dtheta = -_gyroLatest.y; // negate for ENU
+            state.dpsi =    _gyroLatest.z;
+        }
+
     private:
 
         // Quaternion used for initial orientation
