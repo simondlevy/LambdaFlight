@@ -182,6 +182,24 @@ class Ekf {
 
         void finalize(void)
         {
+            if (_isUpdated) {
+
+                new_quat_t quat_finalized = {};
+
+                _finalize(_quat, _p, _x, quat_finalized);
+
+                _quat.w = quat_finalized.w;
+                _quat.x = quat_finalized.x;
+                _quat.y = quat_finalized.y;
+                _quat.z = quat_finalized.z;
+
+                _r.x = 2 * _quat.x * _quat.z - 2 * _quat.w * _quat.y;
+                _r.y = 2 * _quat.y * _quat.z + 2 * _quat.w * _quat.x; 
+                _r.z = _quat.w*_quat.w-_quat.x*_quat.x-_quat.y*_quat.y+_quat.z*_quat.z;
+
+                _isUpdated = false;
+
+            }
         }
 
     private:
@@ -591,4 +609,106 @@ class Ekf {
             }
 
             updateCovarianceMatrix(p);
-        }};
+        }
+
+        static void _finalize(
+                const new_quat_t & q,
+                mymatrix_t & p,
+                myvector_t & x,
+                new_quat_t & q_out)
+        {
+            // Incorporate the attitude error (Kalman filter state) with the attitude
+            const auto v0 = get(x, STATE_E0);
+            const auto v1 = get(x, STATE_E1);
+            const auto v2 = get(x, STATE_E2);
+
+            const auto angle = sqrt(v0*v0 + v1*v1 + v2*v2) + EPS;
+            const auto ca = cos(angle / 2.0f);
+            const auto sa = sin(angle / 2.0f);
+
+            const auto dqw = ca;
+            const auto dqx = sa * v0 / angle;
+            const auto dqy = sa * v1 / angle;
+            const auto dqz = sa * v2 / angle;
+
+            // Rotate the quad's attitude by the delta quaternion vector
+            // computed above
+            const auto tmpq0 = dqw * q.w - dqx * q.x - dqy * q.y - dqz * q.z;
+            const auto tmpq1 = dqx * q.w + dqw * q.x + dqz * q.y - dqy * q.z;
+            const auto tmpq2 = dqy * q.w - dqz * q.x + dqw * q.y + dqx * q.z;
+            const auto tmpq3 = dqz * q.w + dqy * q.x - dqx * q.y + dqw * q.z;
+
+            // normalize and store the result
+            const auto norm = sqrt(tmpq0 * tmpq0 + tmpq1 * tmpq1 + tmpq2 * tmpq2 + 
+                    tmpq3 * tmpq3) + EPS;
+
+            const auto isErrorSufficient  = 
+                (isErrorLarge(v0) || isErrorLarge(v1) || isErrorLarge(v2)) &&
+                isErrorInBounds(v0) && isErrorInBounds(v1) && isErrorInBounds(v2);
+
+            // finalize()
+            q_out.w = isErrorSufficient ? tmpq0 / norm : q.w;
+            q_out.x = isErrorSufficient ? tmpq1 / norm : q.x;
+            q_out.y = isErrorSufficient ? tmpq2 / norm : q.y;
+            q_out.z = isErrorSufficient ? tmpq3 / norm : q.z;
+
+            // Move attitude error into attitude if any of the angle errors are
+            // large enough
+            if (isErrorSufficient) {
+                mymatrix_t  A = {};
+                afinalize(v0, v2, v2, A);
+                mymatrix_t At = {};
+                transpose(A, At);     // A'
+                mymatrix_t AP = {};
+                multiply(A, p, AP);  // AP
+                multiply(AP, At, p); // APA'
+                updateCovarianceMatrix(p);
+            }
+
+            set(x, STATE_E0, 0);
+            set(x, STATE_E1, 0);
+            set(x, STATE_E2, 0);
+        } 
+
+        static void afinalize(
+                const float v0, 
+                const float v1, 
+                const float v2,
+                mymatrix_t & A)
+        {
+            // the attitude error vector (v0,v1,v2) is small,
+            // so we use a first order approximation to e0 = tan(|v0|/2)*v0/|v0|
+            const auto e0 = v0/2; 
+            const auto e1 = v1/2; 
+            const auto e2 = v2/2;
+
+            const auto e0e0 =  1 - e1*e1/2 - e2*e2/2;
+            const auto e0e1 =  e2 + e0*e1/2;
+            const auto e0e2 = -e1 + e0*e2/2;
+
+            const auto e1e0 =  -e2 + e0*e1/2;
+            const auto e1e1 = 1 - e0*e0/2 - e2*e2/2;
+            const auto e1e2 = e0 + e1*e2/2;
+
+            const auto e2e0 = e1 + e0*e2/2;
+            const auto e2e1 = -e0 + e1*e2/2;
+            const auto e2e2 = 1 - e0*e0/2 - e1*e1/2;
+
+            const float a[EKF_N][EKF_N] = 
+            { 
+                //    Z  DX DY DZ    E0     E1    E2
+                /*Z*/   {0, 0, 0, 0, 0,     0,    0},   
+                /*DX*/  {0, 1, 0, 0, 0,     0,    0},  
+                /*DY*/  {0, 0, 1, 0, 0,     0,    0}, 
+                /*DX*/  {0, 0, 0, 1, 0,     0,    0},  
+                /*E0*/  {0, 0, 0, 0, e0e0, e0e1, e0e2},
+                /*E1*/  {0, 0, 0, 0, e1e0, e1e1, e1e2},
+                /*E2*/  {0, 0, 0, 0, e2e0, e2e1, e2e2}
+            };
+
+            memcpy(&A.dat, a, sizeof(A));
+        } 
+
+
+
+};
