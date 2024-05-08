@@ -10,11 +10,7 @@
 
 class Ekf {
 
-    public:
-
-        // this is slower than the IMU update rate of 1000Hz
-        static const uint32_t PREDICT_RATE = Clock::RATE_100_HZ; 
-        static const uint32_t PREDICTION_UPDATE_INTERVAL_MS = 1000 / PREDICT_RATE;
+    private:
 
         typedef struct {
 
@@ -45,7 +41,12 @@ class Ekf {
 
         } imu_t;
 
-        static void step(const ekfAction_e ekfAction, const uint32_t nowMsec)
+    public:
+
+        static void step(
+                const ekfAction_e ekfAction, 
+                const uint32_t nowMsec,
+                const uint32_t predictionUpdateIntervalMsec)
         {
             static matrix_t _p;
             static myvector_t _x;
@@ -87,7 +88,7 @@ class Ekf {
             }
 
             _nextPredictionMsec = nowMsec > _nextPredictionMsec ?
-                nowMsec + PREDICTION_UPDATE_INTERVAL_MS :
+                nowMsec + predictionUpdateIntervalMsec :
                 _nextPredictionMsec;
 
             // Predict ---------------------------------------------------------------
@@ -484,8 +485,10 @@ class Ekf {
 
             // Position updates in the body frame (will be rotated to inertial frame);
             // thrust can only be produced in the body's Z direction
-            const auto dx = get(x_in, STATE_DX) * dt + stream_isFlying ? 0 : _accel.x * dt2 / 2;
-            const auto dy = get(x_in, STATE_DY) * dt + stream_isFlying ? 0 : _accel.y * dt2 / 2;
+            const auto dx = get(x_in, STATE_DX) * dt + 
+                stream_isFlying ? 0 : _accel.x * dt2 / 2;
+            const auto dy = get(x_in, STATE_DY) * dt + 
+                stream_isFlying ? 0 : _accel.y * dt2 / 2;
             const auto dz = get(x_in, STATE_DZ) * dt + _accel.z * dt2 / 2; 
 
             const auto accx = stream_isFlying ? 0 : _accel.x;
@@ -639,9 +642,8 @@ class Ekf {
 
             const auto stdDev =
                 RANGEFINDER_EXP_STD_A * 
-                (1 + expf(RANGEFINDER_EXP_COEFF * (measuredDistance - RANGEFINDER_EXP_POINT_A)));
-
-
+                (1 + expf(RANGEFINDER_EXP_COEFF * 
+                          (measuredDistance - RANGEFINDER_EXP_POINT_A)));
 
             myvector_t h = {};
             set(h, STATE_Z, 1 / cosf(angle));
@@ -786,7 +788,8 @@ class Ekf {
 
             state.z = min(0, state.z);
 
-            state.dz = r.x * get(x, STATE_DX) + r.y * get(x, STATE_DY) + r.z * get(x, STATE_DZ);
+            state.dz = r.x * get(x, STATE_DX) + r.y * get(x, STATE_DY) + 
+                r.z * get(x, STATE_DZ);
 
             // Pack Z and DZ into a single float for transmission to client
             const int8_t sgn = state.dz < 0 ? -1 : +1;

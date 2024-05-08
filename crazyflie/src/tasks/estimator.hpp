@@ -116,6 +116,10 @@ class EstimatorTask : public FreeRTOSTask {
 
     private:
 
+        // this is slower than the IMU update rate of 1000Hz
+        static const uint32_t PREDICT_RATE = Clock::RATE_100_HZ; 
+        static const uint32_t PREDICTION_UPDATE_INTERVAL_MSEC = 1000 / PREDICT_RATE;
+
         // Initial variances, uncertain of position, but know we're
         // stationary and roughly flat
         static constexpr float STDEV_INITIAL_POSITION_Z = 1;
@@ -160,8 +164,7 @@ class EstimatorTask : public FreeRTOSTask {
 
         void initEkf(const uint32_t nowMsec)
         {
-            stream_nowMsec = nowMsec;
-            _ekf.step(EKF_INIT, nowMsec);
+            _ekf.step(EKF_INIT, nowMsec, PREDICTION_UPDATE_INTERVAL_MSEC);
         }        
 
         uint32_t step(const uint32_t nowMsec, uint32_t nextPredictionMsec) 
@@ -173,14 +176,13 @@ class EstimatorTask : public FreeRTOSTask {
                 didResetEstimation = false;
             }
 
-            stream_nowMsec = nowMsec;
             stream_isFlying =_safety->isFlying(); 
-            _ekf.step(EKF_PREDICT, nowMsec);
+            _ekf.step(EKF_PREDICT, nowMsec, PREDICTION_UPDATE_INTERVAL_MSEC);
 
             // Run the system dynamics to predict the state forward.
             if (nowMsec >= nextPredictionMsec) {
 
-                nextPredictionMsec = nowMsec + Ekf::PREDICTION_UPDATE_INTERVAL_MS;
+                nextPredictionMsec = nowMsec + PREDICTION_UPDATE_INTERVAL_MSEC;
 
                 if (!_rateSupervisor.validate(nowMsec)) {
                     consolePrintf(
@@ -203,25 +205,25 @@ class EstimatorTask : public FreeRTOSTask {
                     case MeasurementTypeRange:
                         stream_rangefinder_distance = 
                             measurement.data.rangefinder_distance;
-                        _ekf.step(EKF_UPDATE_WITH_RANGE, nowMsec);
+                        _ekf.step(EKF_UPDATE_WITH_RANGE, nowMsec, PREDICTION_UPDATE_INTERVAL_MSEC);
                         break;
 
                     case MeasurementTypeFlow:
                         memcpy(&stream_flow, &measurement.data.flow, 
                                 sizeof(stream_flow));
-                        _ekf.step(EKF_UPDATE_WITH_FLOW, nowMsec);
+                        _ekf.step(EKF_UPDATE_WITH_FLOW, nowMsec, PREDICTION_UPDATE_INTERVAL_MSEC);
                         break;
 
                     case MeasurementTypeGyroscope:
                         memcpy(&stream_gyro, &measurement.data.gyroscope.gyro,
                                 sizeof(stream_gyro));
-                        _ekf.step(EKF_UPDATE_WITH_GYRO, nowMsec);
+                        _ekf.step(EKF_UPDATE_WITH_GYRO, nowMsec, PREDICTION_UPDATE_INTERVAL_MSEC);
                         break;
 
                     case MeasurementTypeAcceleration:
                         memcpy(&stream_accel, &measurement.data.acceleration.acc,
                                 sizeof(stream_accel));
-                        _ekf.step(EKF_UPDATE_WITH_ACCEL, nowMsec);
+                        _ekf.step(EKF_UPDATE_WITH_ACCEL, nowMsec, PREDICTION_UPDATE_INTERVAL_MSEC);
                         break;
 
                     default:
@@ -230,7 +232,7 @@ class EstimatorTask : public FreeRTOSTask {
             }
 
 
-            _ekf.step(EKF_FINALIZE, nowMsec); // sets _isStateInBounds
+            _ekf.step(EKF_FINALIZE, nowMsec, PREDICTION_UPDATE_INTERVAL_MSEC); // sets _isStateInBounds
 
             if (!_isStateInBounds) { 
 
@@ -243,7 +245,7 @@ class EstimatorTask : public FreeRTOSTask {
             }
 
             xSemaphoreTake(_dataMutex, portMAX_DELAY);
-            _ekf.step(EKF_GET_STATE, nowMsec);
+            _ekf.step(EKF_GET_STATE, nowMsec, PREDICTION_UPDATE_INTERVAL_MSEC);
             xSemaphoreGive(_dataMutex);
 
             return nextPredictionMsec;
@@ -265,8 +267,8 @@ class EstimatorTask : public FreeRTOSTask {
             _rateSupervisor.init(
                     nextPredictionMsec, 
                     1000, 
-                    Ekf::PREDICT_RATE - 1, 
-                    Ekf::PREDICT_RATE + 1, 
+                    PREDICT_RATE - 1, 
+                    PREDICT_RATE + 1, 
                     1); 
 
             while (true) {
