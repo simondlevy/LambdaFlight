@@ -804,16 +804,22 @@ static void ekf_step(void)
         _isUpdated = true;
     }
 
-    auto updatingProcessNoise = false;
-
     if (predicting) {
 
         newvec_t x_predicted = {};
 
         new_quat_t quat_predicted = {};
 
-        ekf_predict( _gyro, _accel, _x, _quat, _r, _lastPredictionMsec, 
-                quat_predicted, _p, x_predicted);
+        ekf_predict(
+                _gyro, 
+                _accel, 
+                _x, 
+                _quat, 
+                _r, 
+                _lastPredictionMsec, 
+                quat_predicted, 
+                _p, 
+                x_predicted);
 
         _lastPredictionMsec = stream_nowMsec;
 
@@ -833,8 +839,6 @@ static void ekf_step(void)
 
             memset(&_gyro, 0, sizeof(_gyro));
             memset(&_accel, 0, sizeof(_gyro));
-
-            updatingProcessNoise = true;
         }
     }
 

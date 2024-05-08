@@ -31,171 +31,58 @@ class Ekf {
             _p.dat[STATE_E2][STATE_E2] = square(STDEV_INITIAL_ATTITUDE_YAW);
 
             memset(&_x, 0, sizeof(_x));
+
+            _quat.w = 1;
+            _quat.x = 0;
+            _quat.y = 0;
+            _quat.z = 0;
+
+            _r.x = 0;
+            _r.y = 0;
+            _r.z = 0;
+
+            _lastProcessNoiseUpdateMsec = stream_nowMsec;
+            _lastPredictionMsec = stream_nowMsec;
+            _isUpdated = false;
         }
 
-        void predict(
-                const bool isFlying,
-                const imu_t & gyro,
-                const imu_t & accel,
-                const myvector_t & x_in,
-                const new_quat_t & q,
-                const axis3_t & r,
-                const uint32_t lastPredictionMsec, 
-                new_quat_t & quat_out,
-                myvector_t &x_out)
+        void predict(const bool isFlying) 
         {
-            static axis3_t _gyro;
-            static axis3_t _accel;
+            myvector_t x_predicted = {};
 
-            const float dt = (stream_nowMsec - lastPredictionMsec) / 1000.0f;
-            const auto dt2 = dt * dt;
+            new_quat_t quat_predicted = {};
 
-            imuTakeMean(gyro, DEGREES_TO_RADIANS, _gyro);
-            imuTakeMean(accel, MSS_TO_GS, _accel);
+            _predict(
+                    isFlying, 
+                    _gyro, 
+                    _accel, 
+                    _x, 
+                    _quat, 
+                    _r, 
+                    _lastPredictionMsec, 
+                    _p, 
+                    quat_predicted, 
+                    x_predicted);
 
-            // Position updates in the body frame (will be rotated to inertial frame);
-            // thrust can only be produced in the body's Z direction
-            const auto dx = get(x_in, STATE_DX) * dt + isFlying ? 0 : _accel.x * dt2 / 2;
-            const auto dy = get(x_in, STATE_DY) * dt + isFlying ? 0 : _accel.y * dt2 / 2;
-            const auto dz = get(x_in, STATE_DZ) * dt + _accel.z * dt2 / 2; 
+            _lastPredictionMsec = stream_nowMsec;
 
-            const auto accx = isFlying ? 0 : _accel.x;
-            const auto accy = isFlying ? 0 : _accel.y;
+            if (stream_nowMsec - _lastProcessNoiseUpdateMsec > 0) {
 
-            // attitude update (rotate by gyroscope), we do this in quaternions
-            // this is the gyroscope angular velocity integrated over the sample period
-            const auto dtwx = dt*_gyro.x;
-            const auto dtwy = dt*_gyro.y;
-            const auto dtwz = dt*_gyro.z;
+                _lastProcessNoiseUpdateMsec = stream_nowMsec;
 
-            // compute the quaternion values in [w,x,y,z] order
-            const auto angle = sqrt(dtwx*dtwx + dtwy*dtwy + dtwz*dtwz) + EPS;
-            const auto ca = cos(angle/2);
-            const auto sa = sin(angle/2);
-            const auto dqw = ca;
-            const auto dqx = sa*dtwx/angle;
-            const auto dqy = sa*dtwy/angle;
-            const auto dqz = sa*dtwz/angle;
+                set(_x, STATE_Z , get(x_predicted, STATE_Z));
+                set(_x, STATE_DX , get(x_predicted, STATE_DX));
+                set(_x, STATE_DY , get(x_predicted, STATE_DY));
+                set(_x, STATE_DZ , get(x_predicted, STATE_DZ));
 
-            // rotate the quad's attitude by the delta quaternion vector computed above
+                _quat.w = quat_predicted.w;
+                _quat.x = quat_predicted.x;
+                _quat.y = quat_predicted.y;
+                _quat.z = quat_predicted.z;
 
-            const auto tmpq0 = rotateQuat(dqw*q.w - dqx*q.x - dqy*q.y - dqz*q.z, QW_INIT);
-            const auto tmpq1 = rotateQuat(dqx*q.w + dqw*q.x + dqz*q.y - dqy*q.z, QX_INIT);
-            const auto tmpq2 = rotateQuat(dqy*q.w - dqz*q.x + dqw*q.y + dqx*q.z, QY_INIT);
-            const auto tmpq3 = rotateQuat(dqz*q.w + dqy*q.x - dqx*q.y + dqw*q.z, QZ_INIT);
-
-            // normalize and store the result
-            const auto norm = 
-                sqrt(tmpq0*tmpq0 + tmpq1*tmpq1 + tmpq2*tmpq2 + tmpq3*tmpq3) + 
-                EPS;
-
-            // Process noise is added after the return from the prediction step
-
-            // ====== PREDICTION STEP ======
-            // The prediction depends on whether we're on the ground, or in flight.
-            // When flying, the accelerometer directly measures thrust (hence is useless
-            // to estimate body angle while flying)
-
-            const auto tmpSDX = get(x_in, STATE_DX);
-            const auto tmpSDY = get(x_in, STATE_DY);
-            const auto tmpSDZ = get(x_in, STATE_DZ);
-
-            set(x_out, STATE_Z, 
-                    get(x_in, STATE_Z) + r.x * dx + r.y * dy + r.z * dz - MSS_TO_GS * dt2 / 2);
-
-            set(x_out, STATE_DX,
-                    get(x_in, STATE_DX) +
-                    dt * (accx + _gyro.z * tmpSDY - _gyro.y * tmpSDZ - MSS_TO_GS * r.x));
-
-            set(x_out, STATE_DY,
-                    get(x_in, STATE_DY) +
-                    dt * (accy - _gyro.z * tmpSDX + _gyro.x * tmpSDZ - MSS_TO_GS * r.y)); 
-
-            set(x_out, STATE_DZ,
-                    get(x_in, STATE_DZ) +
-                    dt * (_accel.z + _gyro.y * tmpSDX - _gyro.x * tmpSDY - MSS_TO_GS * r.z));
-
-            // predict()
-            quat_out.w = tmpq0/norm;
-            quat_out.x = tmpq1/norm; 
-            quat_out.y = tmpq2/norm; 
-            quat_out.z = tmpq3/norm;
-
-            // ====== COVARIANCE UPDATE ======
-
-            const auto e0 = _gyro.x*dt/2;
-            const auto e1 = _gyro.y*dt/2;
-            const auto e2 = _gyro.z*dt/2;
-
-            const auto e0e0 =  1 - e1*e1/2 - e2*e2/2;
-            const auto e0e1 =  e2 + e0*e1/2;
-            const auto e0e2 = -e1 + e0*e2/2;
-
-            const auto e1e0 =  -e2 + e0*e1/2;
-            const auto e1e1 = 1 - e0*e0/2 - e2*e2/2;
-            const auto e1e2 = e0 + e1*e2/2;
-
-            const auto e2e0 = e1 + e0*e2/2;
-            const auto e2e1 = -e0 + e1*e2/2;
-            const auto e2e2 = 1 - e0*e0/2 - e1*e1/2;
-
-            // altitude from body-frame velocity
-            const auto zdx  = r.x*dt;
-            const auto zdy  = r.y*dt;
-            const auto zdz  = r.z*dt;
-
-            // altitude from attitude error
-            const auto ze0  = (get(x_out, STATE_DY)*r.z - get(x_out, STATE_DZ)*r.y)*dt;
-            const auto ze1  = (- get(x_out, STATE_DX)*r.z + get(x_out, STATE_DZ)*r.x)*dt;
-            const auto ze2  = (get(x_out, STATE_DX)*r.y - get(x_out, STATE_DY)*r.x)*dt;
-
-            // body-frame velocity from body-frame velocity
-            const auto dxdx  = 1; //drag negligible
-            const auto dydx =  -_gyro.z*dt;
-            const auto dzdx  = _gyro.y*dt;
-
-            const auto dxdy  = _gyro.z*dt;
-            const auto dydy  = 1; //drag negligible
-            const auto dzdy  = _gyro.x*dt;
-
-            const auto dxdz =  _gyro.y*dt;
-            const auto dydz  = _gyro.x*dt;
-            const auto dzdz  = 1; //drag negligible
-
-            // body-frame velocity from attitude error
-            const auto dxe0  = 0;
-            const auto dye0  = -MSS_TO_GS*r.z*dt;
-            const auto dze0  = MSS_TO_GS*r.y*dt;
-
-            const auto dxe1  = MSS_TO_GS*r.z*dt;
-            const auto dye1  = 0;
-            const auto dze1  = -MSS_TO_GS*r.x*dt;
-
-            const auto dxe2  = -MSS_TO_GS*r.y*dt;
-            const auto dye2  = MSS_TO_GS*r.x*dt;
-            const auto dze2  = 0;
-
-            const float Adat[EKF_N][EKF_N] = 
-            { 
-                //        Z  DX    DY    DZ    E0    E1    E2
-                /*Z*/    {0, zdx,  zdy,  zdz,  ze0,  ze1,  ze2}, 
-                /*DX*/   {0, dxdx, dxdy, dxdz, dxe0, dxe1, dxe2}, 
-                /*DY*/   {0, dydx, dydy, dydz, dye0, dye1, dye2},
-                /*DZ*/   {0, dzdx, dzdy, dzdz, dze0, dze1, dze2},
-                /*E0*/   {0, 0,    0,    0,    e0e0, e0e1, e0e2}, 
-                /*E1*/   {0, 0,    0,    0,    e1e0, e1e1, e1e2}, 
-                /*E2*/   {0, 0,    0,    0,    e2e0, e2e1, e2e2}  
-            };
-
-            mymatrix_t A = {};
-            makemat(Adat, A);
-
-            mymatrix_t  At = {};
-            transpose(A, At);     // A'
-            mymatrix_t AP = {};
-            multiply(A, _p, AP);  // AP
-            multiply(AP, At, _p); // APA'
-            updateCovarianceMatrix();
+                memset(&_gyro, 0, sizeof(_gyro));
+                memset(&_accel, 0, sizeof(_gyro));
+            }
         }
 
         void finalize(void)
@@ -376,7 +263,7 @@ class Ekf {
             }
         }
 
-        void updateCovarianceMatrix(void)
+        static void updateCovarianceMatrix(mymatrix_t & p)
         {
             // Enforce symmetry of the covariance matrix, and ensure the
             // values stay bounded
@@ -384,14 +271,180 @@ class Ekf {
 
                 for (int j=i; j<EKF_N; j++) {
 
-                    const auto pval = (_p.dat[i][j] + _p.dat[j][i]) / 2;
+                    const auto pval = (p.dat[i][j] + p.dat[j][i]) / 2;
 
-                    _p.dat[i][j] = _p.dat[j][i] = 
+                    p.dat[i][j] = p.dat[j][i] = 
                         pval > MAX_COVARIANCE ?  MAX_COVARIANCE :
                         (i==j && pval < MIN_COVARIANCE) ?  MIN_COVARIANCE :
                         pval;
                 }
             }
+        }
+
+        static void _predict(
+                const bool isFlying,
+                const imu_t & gyro,
+                const imu_t & accel,
+                const myvector_t & x_in,
+                const new_quat_t & q,
+                const axis3_t & r,
+                const uint32_t lastPredictionMsec, 
+                mymatrix_t & p,
+                new_quat_t & quat_out,
+                myvector_t &x_out)
+        {
+            static axis3_t _gyro;
+            static axis3_t _accel;
+
+            const float dt = (stream_nowMsec - lastPredictionMsec) / 1000.0f;
+            const auto dt2 = dt * dt;
+
+            imuTakeMean(gyro, DEGREES_TO_RADIANS, _gyro);
+            imuTakeMean(accel, MSS_TO_GS, _accel);
+
+            // Position updates in the body frame (will be rotated to inertial frame);
+            // thrust can only be produced in the body's Z direction
+            const auto dx = get(x_in, STATE_DX) * dt + isFlying ? 0 : _accel.x * dt2 / 2;
+            const auto dy = get(x_in, STATE_DY) * dt + isFlying ? 0 : _accel.y * dt2 / 2;
+            const auto dz = get(x_in, STATE_DZ) * dt + _accel.z * dt2 / 2; 
+
+            const auto accx = isFlying ? 0 : _accel.x;
+            const auto accy = isFlying ? 0 : _accel.y;
+
+            // attitude update (rotate by gyroscope), we do this in quaternions
+            // this is the gyroscope angular velocity integrated over the sample period
+            const auto dtwx = dt*_gyro.x;
+            const auto dtwy = dt*_gyro.y;
+            const auto dtwz = dt*_gyro.z;
+
+            // compute the quaternion values in [w,x,y,z] order
+            const auto angle = sqrt(dtwx*dtwx + dtwy*dtwy + dtwz*dtwz) + EPS;
+            const auto ca = cos(angle/2);
+            const auto sa = sin(angle/2);
+            const auto dqw = ca;
+            const auto dqx = sa*dtwx/angle;
+            const auto dqy = sa*dtwy/angle;
+            const auto dqz = sa*dtwz/angle;
+
+            // rotate the quad's attitude by the delta quaternion vector computed above
+
+            const auto tmpq0 = rotateQuat(dqw*q.w - dqx*q.x - dqy*q.y - dqz*q.z, QW_INIT);
+            const auto tmpq1 = rotateQuat(dqx*q.w + dqw*q.x + dqz*q.y - dqy*q.z, QX_INIT);
+            const auto tmpq2 = rotateQuat(dqy*q.w - dqz*q.x + dqw*q.y + dqx*q.z, QY_INIT);
+            const auto tmpq3 = rotateQuat(dqz*q.w + dqy*q.x - dqx*q.y + dqw*q.z, QZ_INIT);
+
+            // normalize and store the result
+            const auto norm = 
+                sqrt(tmpq0*tmpq0 + tmpq1*tmpq1 + tmpq2*tmpq2 + tmpq3*tmpq3) + 
+                EPS;
+
+            // Process noise is added after the return from the prediction step
+
+            // ====== PREDICTION STEP ======
+            // The prediction depends on whether we're on the ground, or in flight.
+            // When flying, the accelerometer directly measures thrust (hence is useless
+            // to estimate body angle while flying)
+
+            const auto tmpSDX = get(x_in, STATE_DX);
+            const auto tmpSDY = get(x_in, STATE_DY);
+            const auto tmpSDZ = get(x_in, STATE_DZ);
+
+            set(x_out, STATE_Z, 
+                    get(x_in, STATE_Z) + r.x * dx + r.y * dy + r.z * dz - MSS_TO_GS * dt2 / 2);
+
+            set(x_out, STATE_DX,
+                    get(x_in, STATE_DX) +
+                    dt * (accx + _gyro.z * tmpSDY - _gyro.y * tmpSDZ - MSS_TO_GS * r.x));
+
+            set(x_out, STATE_DY,
+                    get(x_in, STATE_DY) +
+                    dt * (accy - _gyro.z * tmpSDX + _gyro.x * tmpSDZ - MSS_TO_GS * r.y)); 
+
+            set(x_out, STATE_DZ,
+                    get(x_in, STATE_DZ) +
+                    dt * (_accel.z + _gyro.y * tmpSDX - _gyro.x * tmpSDY - MSS_TO_GS * r.z));
+
+            // predict()
+            quat_out.w = tmpq0/norm;
+            quat_out.x = tmpq1/norm; 
+            quat_out.y = tmpq2/norm; 
+            quat_out.z = tmpq3/norm;
+
+            // ====== COVARIANCE UPDATE ======
+
+            const auto e0 = _gyro.x*dt/2;
+            const auto e1 = _gyro.y*dt/2;
+            const auto e2 = _gyro.z*dt/2;
+
+            const auto e0e0 =  1 - e1*e1/2 - e2*e2/2;
+            const auto e0e1 =  e2 + e0*e1/2;
+            const auto e0e2 = -e1 + e0*e2/2;
+
+            const auto e1e0 =  -e2 + e0*e1/2;
+            const auto e1e1 = 1 - e0*e0/2 - e2*e2/2;
+            const auto e1e2 = e0 + e1*e2/2;
+
+            const auto e2e0 = e1 + e0*e2/2;
+            const auto e2e1 = -e0 + e1*e2/2;
+            const auto e2e2 = 1 - e0*e0/2 - e1*e1/2;
+
+            // altitude from body-frame velocity
+            const auto zdx  = r.x*dt;
+            const auto zdy  = r.y*dt;
+            const auto zdz  = r.z*dt;
+
+            // altitude from attitude error
+            const auto ze0  = (get(x_out, STATE_DY)*r.z - get(x_out, STATE_DZ)*r.y)*dt;
+            const auto ze1  = (- get(x_out, STATE_DX)*r.z + get(x_out, STATE_DZ)*r.x)*dt;
+            const auto ze2  = (get(x_out, STATE_DX)*r.y - get(x_out, STATE_DY)*r.x)*dt;
+
+            // body-frame velocity from body-frame velocity
+            const auto dxdx  = 1; //drag negligible
+            const auto dydx =  -_gyro.z*dt;
+            const auto dzdx  = _gyro.y*dt;
+
+            const auto dxdy  = _gyro.z*dt;
+            const auto dydy  = 1; //drag negligible
+            const auto dzdy  = _gyro.x*dt;
+
+            const auto dxdz =  _gyro.y*dt;
+            const auto dydz  = _gyro.x*dt;
+            const auto dzdz  = 1; //drag negligible
+
+            // body-frame velocity from attitude error
+            const auto dxe0  = 0;
+            const auto dye0  = -MSS_TO_GS*r.z*dt;
+            const auto dze0  = MSS_TO_GS*r.y*dt;
+
+            const auto dxe1  = MSS_TO_GS*r.z*dt;
+            const auto dye1  = 0;
+            const auto dze1  = -MSS_TO_GS*r.x*dt;
+
+            const auto dxe2  = -MSS_TO_GS*r.y*dt;
+            const auto dye2  = MSS_TO_GS*r.x*dt;
+            const auto dze2  = 0;
+
+            const float Adat[EKF_N][EKF_N] = 
+            { 
+                //        Z  DX    DY    DZ    E0    E1    E2
+                /*Z*/    {0, zdx,  zdy,  zdz,  ze0,  ze1,  ze2}, 
+                /*DX*/   {0, dxdx, dxdy, dxdz, dxe0, dxe1, dxe2}, 
+                /*DY*/   {0, dydx, dydy, dydz, dye0, dye1, dye2},
+                /*DZ*/   {0, dzdx, dzdy, dzdz, dze0, dze1, dze2},
+                /*E0*/   {0, 0,    0,    0,    e0e0, e0e1, e0e2}, 
+                /*E1*/   {0, 0,    0,    0,    e1e0, e1e1, e1e2}, 
+                /*E2*/   {0, 0,    0,    0,    e2e0, e2e1, e2e2}  
+            };
+
+            mymatrix_t A = {};
+            makemat(Adat, A);
+
+            mymatrix_t  At = {};
+            transpose(A, At);     // A'
+            mymatrix_t AP = {};
+            multiply(A, p, AP);  // AP
+            multiply(AP, At, p); // APA'
+            updateCovarianceMatrix(p);
         }
 
 };
