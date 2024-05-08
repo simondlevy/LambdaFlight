@@ -10,7 +10,6 @@
 #endif
 
 EXTERN axis3_t           stream_accel;
-EXTERN ekfAction_e       stream_ekfAction;
 EXTERN flowMeasurement_t stream_flow; 
 EXTERN axis3_t           stream_gyro;
 EXTERN bool              stream_inFlyingMode;

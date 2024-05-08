@@ -45,7 +45,7 @@ class Ekf {
 
         } imu_t;
 
-        static void step(const uint32_t nowMsec)
+        static void step(const ekfAction_e ekfAction, const uint32_t nowMsec)
         {
             static matrix_t _p;
             static myvector_t _x;
@@ -68,7 +68,7 @@ class Ekf {
 
             // Initialize ------------------------------------------------------------
 
-            if (stream_ekfAction == EKF_INIT) {
+            if (ekfAction == EKF_INIT) {
 
                 ekf_init(_p, _x);
 
@@ -92,7 +92,7 @@ class Ekf {
 
             // Predict ---------------------------------------------------------------
 
-            const auto requestedPredict = stream_ekfAction == EKF_PREDICT;
+            const auto requestedPredict = ekfAction == EKF_PREDICT;
 
             const auto predicting =
                 requestedPredict && nowMsec >= _nextPredictionMsec;
@@ -143,13 +143,13 @@ class Ekf {
             // Update ----------------------------------------------------------------
 
             // Update with flow
-            if (stream_ekfAction == EKF_UPDATE_WITH_FLOW) {
+            if (ekfAction == EKF_UPDATE_WITH_FLOW) {
                 ekf_updateWithFlow(_r.z, _gyroLatest, _p, _x);
                 _isUpdated = true;
             }
 
             // Update with range when the measurement is reliable 
-            if (stream_ekfAction == EKF_UPDATE_WITH_RANGE &&
+            if (ekfAction == EKF_UPDATE_WITH_RANGE &&
                     fabs(_r.z) > 0.1f && _r.z > 0 && 
                     stream_rangefinder_distance < RANGEFINDER_OUTLIER_LIMIT_MM) {
                 ekf_updateWithRange(_r.z, _p, _x);
@@ -157,7 +157,7 @@ class Ekf {
             }
 
             // Update with gyro
-            if (stream_ekfAction == EKF_UPDATE_WITH_GYRO) {
+            if (ekfAction == EKF_UPDATE_WITH_GYRO) {
 
                 imuAccum(stream_gyro, _gyro);
 
@@ -165,14 +165,14 @@ class Ekf {
             }
 
             // Update with accel
-            if (stream_ekfAction == EKF_UPDATE_WITH_ACCEL) {
+            if (ekfAction == EKF_UPDATE_WITH_ACCEL) {
 
                 imuAccum(stream_accel, _accel);
             }
 
             // Finalize --------------------------------------------------------------
 
-            const auto requestedFinalize = stream_ekfAction == EKF_FINALIZE;
+            const auto requestedFinalize = ekfAction == EKF_FINALIZE;
 
             if (requestedFinalize && _isUpdated) {
 
@@ -197,7 +197,7 @@ class Ekf {
             vehicleState_t vehicleState = {};
             ekf_getVehicleState(_x, _gyroLatest, _quat, _r, vehicleState);
 
-            if (stream_ekfAction == EKF_GET_STATE) {
+            if (ekfAction == EKF_GET_STATE) {
                 setState(vehicleState);
             }
 
