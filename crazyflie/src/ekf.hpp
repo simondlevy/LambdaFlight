@@ -139,14 +139,6 @@ class Ekf {
                 _isUpdated = true;
             }
 
-            // Update with range when the measurement is reliable 
-            if (ekfAction == EKF_UPDATE_WITH_RANGE &&
-                    fabs(_r.z) > 0.1f && _r.z > 0 && 
-                    stream_rangefinder_distance < RANGEFINDER_OUTLIER_LIMIT_MM) {
-                ekf_updateWithRange(_r.z, _p, _x);
-                _isUpdated = true;
-            }
-
             // Update with gyro
             if (ekfAction == EKF_UPDATE_WITH_GYRO) {
 
@@ -180,6 +172,19 @@ class Ekf {
                 _r.z = _quat.w*_quat.w-_quat.x*_quat.x-_quat.y*_quat.y+_quat.z*_quat.z;
 
                 _isUpdated = false;
+            }
+        }
+
+        void updateWithRange(const uint32_t nowMsec, const uint32_t distance)
+        {
+            _nextPredictionMsec = nowMsec > _nextPredictionMsec ?
+                nowMsec + _predictionIntervalMsec :
+                _nextPredictionMsec;
+
+            if (fabs(_r.z) > 0.1f && _r.z > 0 && 
+                    distance < RANGEFINDER_OUTLIER_LIMIT_MM) {
+                ekf_updateWithRange(distance, _r.z, _p, _x);
+                _isUpdated = true;
             }
         }
 
@@ -622,7 +627,11 @@ class Ekf {
             updateCovarianceMatrix(p);
         }
 
-        static void ekf_updateWithRange(const float rz, matrix_t & p, myvector_t & x)
+        static void ekf_updateWithRange(
+                const float distance,
+                const float rz, 
+                matrix_t & p, 
+                myvector_t & x)
         {
             const auto angle = max(0, 
                     fabsf(acosf(rz)) - 
@@ -630,7 +639,7 @@ class Ekf {
 
             const auto predictedDistance = get(x, STATE_Z) / cosf(angle);
 
-            const auto measuredDistance = stream_rangefinder_distance / 1000; // mm => m
+            const auto measuredDistance = distance / 1000; // mm => m
 
             const auto stdDev =
                 RANGEFINDER_EXP_STD_A * 
@@ -776,7 +785,7 @@ class Ekf {
 
             state.dy = get(x, STATE_DY);
 
-            state.z = get(x, STATE_Z);//stream_rangefinder_distance / 1000; 
+            state.z = get(x, STATE_Z);
 
             state.z = min(0, state.z);
 

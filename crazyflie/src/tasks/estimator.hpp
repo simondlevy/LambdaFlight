@@ -190,9 +190,8 @@ class EstimatorTask : public FreeRTOSTask {
                 switch (measurement.type) {
 
                     case MeasurementTypeRange:
-                        stream_rangefinder_distance = 
-                            measurement.data.rangefinder_distance;
-                        _ekf.step(EKF_UPDATE_WITH_RANGE, nowMsec, _safety->isFlying());
+                        _ekf.updateWithRange(
+                                nowMsec, measurement.data.rangefinder_distance);
                         break;
 
                     case MeasurementTypeFlow:
