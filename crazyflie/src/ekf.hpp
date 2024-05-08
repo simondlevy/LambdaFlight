@@ -103,18 +103,6 @@ static void transpose(const matrix_t & a, matrix_t & at)
     }
 }
 
-static float dot(const float x[EKF_N], const float y[EKF_N]) 
-{
-    float d = 0;
-
-    for (uint8_t k=0; k<EKF_N; k++) {
-        d += x[k] * y[k];
-    }
-
-    return d;
-}
-
-/*
 static float dot(const newvec_t & x, const newvec_t & y) 
 {
     float d = 0;
@@ -124,7 +112,7 @@ static float dot(const newvec_t & x, const newvec_t & y)
     }
 
     return d;
-}*/
+}
 
 static float get(const newvec_t & x, const uint8_t i)
 {
@@ -164,12 +152,12 @@ static void multiply( const matrix_t a, const matrix_t b, matrix_t & c)
 }
 
 // Matrix * Vector
-static void multiply(const float a[EKF_N][EKF_N], const float x[EKF_N], float y[EKF_N])
+static void multiply(const matrix_t & a, const newvec_t & x, newvec_t & y)
 {
     for (uint8_t i=0; i<EKF_N; i++) {
-        y[i] = 0;
+        y.dat[i] = 0;
         for (uint8_t j=0; j<EKF_N; j++) {
-            y[i] += a[i][j] * x[j];
+            y.dat[i] += a.dat[i][j] * x.dat[j];
         }
     }
 }
@@ -270,15 +258,15 @@ static void scalarUpdate(
 {
 
     // ====== INNOVATION COVARIANCE ======
-    float ph[EKF_N] = {};
-    multiply(p.dat, h.dat, ph);
+    newvec_t ph = {};
+    multiply(p, h, ph);
     const auto r = stdMeasNoise * stdMeasNoise;
-    const auto hphr = r + dot(h.dat, ph); // HPH' + R
+    const auto hphr = r + dot(h, ph); // HPH' + R
 
     // Compute the Kalman gain as a column vector
     float g[EKF_N] = {};
     for (uint8_t i=0; i<EKF_N; ++i) {
-       g[i] = ph[i] / hphr;
+       g[i] = get(ph, i) / hphr;
     }
 
     // Perform the state update
