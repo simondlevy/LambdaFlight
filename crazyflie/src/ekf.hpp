@@ -114,6 +114,11 @@ static float dot(const newvec_t & x, const newvec_t & y)
     return d;
 }
 
+static float get(const matrix_t & a, const uint8_t i, const uint8_t j)
+{
+    return a.dat[i][j];
+}
+
 static float get(const newvec_t & x, const uint8_t i)
 {
     return x.dat[i];
@@ -122,6 +127,11 @@ static float get(const newvec_t & x, const uint8_t i)
 static void set(newvec_t & x, const uint8_t i, const float val)
 {
     x.dat[i] = val;
+}
+
+static void set(matrix_t & a, const uint8_t i, const uint8_t j, const float val)
+{
+    a.dat[i][j] = val;
 }
 
 static float dot(
@@ -264,20 +274,20 @@ static void scalarUpdate(
     const auto hphr = r + dot(h, ph); // HPH' + R
 
     // Compute the Kalman gain as a column vector
-    float g[EKF_N] = {};
+    newvec_t g = {};
     for (uint8_t i=0; i<EKF_N; ++i) {
-       g[i] = get(ph, i) / hphr;
+       set(g, i, get(ph, i) / hphr);
     }
 
     // Perform the state update
     for (uint8_t i=0; i<EKF_N; ++i) {
-        set(x, i, get(x, i) + g[i] * error);
+        set(x, i, get(x, i) + get(g, i) * error);
     }
 
     // ====== COVARIANCE UPDATE ======
 
     matrix_t GH = {};
-    multiply(g, h.dat, GH.dat); // KH
+    multiply(g.dat, h.dat, GH.dat); // KH
 
     for (int i=0; i<EKF_N; i++) { 
         GH.dat[i][i] -= 1;
@@ -292,7 +302,8 @@ static void scalarUpdate(
     // Add the measurement variance 
     for (int i=0; i<EKF_N; i++) {
         for (int j=0; j<EKF_N; j++) {
-            p.dat[i][j] += j < i ? 0 : r * g[i] * g[j];
+            p.dat[i][j] += j < i ? 0 : r * get(g, i) * get(g, j);
+            set(p, i, j, get(p, i, j));
         }
     }
 
