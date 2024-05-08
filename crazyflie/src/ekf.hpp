@@ -43,29 +43,11 @@ class Ekf {
 
     public:
 
-        static void step(
+        void step(
                 const ekfAction_e ekfAction, 
                 const uint32_t nowMsec,
                 const uint32_t predictionUpdateIntervalMsec)
         {
-            static matrix_t _p;
-            static myvector_t _x;
-
-            static bool _isUpdated;
-            static uint32_t _lastPredictionMsec;
-            static uint32_t _lastProcessNoiseUpdateMsec;
-
-            static axis3_t _gyroLatest;
-
-            static new_quat_t _quat;
-
-            static uint32_t _nextPredictionMsec;
-
-            static axis3_t _r;
-
-            static imu_t _gyro;
-            static imu_t _accel;
-
 
             // Initialize ------------------------------------------------------------
 
@@ -911,5 +893,23 @@ class Ekf {
                 }
             }
         }
+
+        matrix_t _p;
+        myvector_t _x;
+
+        bool _isUpdated;
+        uint32_t _lastPredictionMsec;
+        uint32_t _lastProcessNoiseUpdateMsec;
+
+        axis3_t _gyroLatest;
+
+        new_quat_t _quat;
+
+        uint32_t _nextPredictionMsec;
+
+        axis3_t _r;
+
+        imu_t _gyro;
+        imu_t _accel;
 
 };
