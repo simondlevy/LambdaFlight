@@ -74,7 +74,7 @@ typedef struct {
 
     float dat[EKF_N];
 
-} newvec_t;
+} myvector_t;
 
 typedef struct {
 
@@ -103,7 +103,7 @@ static void transpose(const matrix_t & a, matrix_t & at)
     }
 }
 
-static float dot(const newvec_t & x, const newvec_t & y) 
+static float dot(const myvector_t & x, const myvector_t & y) 
 {
     float d = 0;
 
@@ -119,12 +119,12 @@ static float get(const matrix_t & a, const uint8_t i, const uint8_t j)
     return a.dat[i][j];
 }
 
-static float get(const newvec_t & x, const uint8_t i)
+static float get(const myvector_t & x, const uint8_t i)
 {
     return x.dat[i];
 }
 
-static void set(newvec_t & x, const uint8_t i, const float val)
+static void set(myvector_t & x, const uint8_t i, const float val)
 {
     x.dat[i] = val;
 }
@@ -162,7 +162,7 @@ static void multiply( const matrix_t a, const matrix_t b, matrix_t & c)
 }
 
 // Matrix * Vector
-static void multiply(const matrix_t & a, const newvec_t & x, newvec_t & y)
+static void multiply(const matrix_t & a, const myvector_t & x, myvector_t & y)
 {
     for (uint8_t i=0; i<EKF_N; i++) {
         y.dat[i] = 0;
@@ -173,7 +173,7 @@ static void multiply(const matrix_t & a, const newvec_t & x, newvec_t & y)
 }
 
 // Outer product
-static void multiply(const newvec_t & x, const newvec_t & y, matrix_t & a)
+static void multiply(const myvector_t & x, const myvector_t & y, matrix_t & a)
 {
     for (uint8_t i=0; i<EKF_N; i++) {
         for (uint8_t j=0; j<EKF_N; j++) {
@@ -263,18 +263,21 @@ static void updateCovarianceMatrix(matrix_t & p)
 }
 
 static void scalarUpdate(
-        const newvec_t & h, const float error, const float stdMeasNoise,
-        matrix_t & p, newvec_t & x)
+        const myvector_t & h, 
+        const float error, 
+        const float stdMeasNoise,
+        matrix_t & p, 
+        myvector_t & x)
 {
 
     // ====== INNOVATION COVARIANCE ======
-    newvec_t ph = {};
+    myvector_t ph = {};
     multiply(p, h, ph);
     const auto r = stdMeasNoise * stdMeasNoise;
     const auto hphr = r + dot(h, ph); // HPH' + R
 
     // Compute the Kalman gain as a column vector
-    newvec_t g = {};
+    myvector_t g = {};
     for (uint8_t i=0; i<EKF_N; ++i) {
        set(g, i, get(ph, i) / hphr);
     }
@@ -372,7 +375,7 @@ static void afinalize(
 
 // ===========================================================================
 
-static void ekf_init(matrix_t & p, newvec_t & x)
+static void ekf_init(matrix_t & p, myvector_t & x)
 {
     memset(&p, 0, sizeof(p));
     p.dat[STATE_Z][STATE_Z] = square(STDEV_INITIAL_POSITION_Z);
@@ -389,13 +392,13 @@ static void ekf_init(matrix_t & p, newvec_t & x)
 static void ekf_predict(
         const imu_t & gyro,
         const imu_t & accel,
-        const newvec_t & x_in,
+        const myvector_t & x_in,
         const new_quat_t & q,
         const axis3_t & r,
         const uint32_t lastPredictionMsec, 
         new_quat_t & quat_out,
         matrix_t & p,
-        newvec_t &x_out)
+        myvector_t &x_out)
 {
     static axis3_t _gyro;
     static axis3_t _accel;
@@ -551,7 +554,7 @@ static void ekf_predict(
     updateCovarianceMatrix(p);
 }
 
-static void ekf_updateWithRange(const float rz, matrix_t & p, newvec_t & x)
+static void ekf_updateWithRange(const float rz, matrix_t & p, myvector_t & x)
 {
     const auto angle = max(0, 
             fabsf(acosf(rz)) - 
@@ -581,7 +584,7 @@ static void ekf_updateWithRange(const float rz, matrix_t & p, newvec_t & x)
     // alpha = angle between [line made by measured point <---> sensor] 
     // and [the intertial z-axis] 
 
-    newvec_t h = {};
+    myvector_t h = {};
     set(h, STATE_Z, 1 / cosf(angle));
 
     scalarUpdate(h, measuredDistance-predictedDistance, stdDev, 
@@ -592,7 +595,7 @@ static void ekf_updateWithFlow(
         const float rz,
         const axis3_t & gyroLatest,
         matrix_t & p,
-        newvec_t & x)
+        myvector_t & x)
 {
     // Inclusion of flow measurements in the EKF done by two scalar updates
 
@@ -624,7 +627,7 @@ static void ekf_updateWithFlow(
     auto measuredNX = stream_flow.dpixelx*FLOW_RESOLUTION;
 
     // derive measurement equation with respect to dx (and z?)
-    newvec_t hx = {};
+    myvector_t hx = {};
     set(hx, STATE_Z, 
             (Npix * stream_flow.dt / thetapix) * ((rz * dx_g) / (-z_g * z_g)));
     set(hx, STATE_DX, 
@@ -640,7 +643,7 @@ static void ekf_updateWithFlow(
     auto measuredNY = stream_flow.dpixely*FLOW_RESOLUTION;
 
     // derive measurement equation with respect to dy (and z?)
-    newvec_t hy = {};
+    myvector_t hy = {};
     set(hy, STATE_Z, (Npix * stream_flow.dt / thetapix) * 
         ((rz * dy_g) / (-z_g * z_g)));
     set(hy, STATE_DY, (Npix * stream_flow.dt / thetapix) * (rz / z_g));
@@ -653,7 +656,7 @@ static void ekf_updateWithFlow(
 static void ekf_finalize(
         const new_quat_t & q,
         matrix_t & p,
-        newvec_t & x,
+        myvector_t & x,
         new_quat_t & q_out)
 {
     // Incorporate the attitude error (Kalman filter state) with the attitude
@@ -710,7 +713,7 @@ static void ekf_finalize(
 } 
 
 static void ekf_getVehicleState(
-        const newvec_t & x,
+        const myvector_t & x,
         const axis3_t & gyroLatest,
         const new_quat_t & q,
         const axis3_t & r,
@@ -751,7 +754,7 @@ static void ekf_getVehicleState(
 static void ekf_step(void)
 {
     static matrix_t _p;
-    static newvec_t _x;
+    static myvector_t _x;
 
     static bool _isUpdated;
     static uint32_t _lastPredictionMsec;
@@ -806,7 +809,7 @@ static void ekf_step(void)
 
     if (predicting) {
 
-        newvec_t x_predicted = {};
+        myvector_t x_predicted = {};
 
         new_quat_t quat_predicted = {};
 

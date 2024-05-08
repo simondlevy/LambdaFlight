@@ -87,6 +87,69 @@ class Ekf {
 
         void updateWithFlow(void)
         {
+            // Inclusion of flow measurements in the EKF done by two scalar updates
+
+            // ~~~ Camera constants ~~~
+            // The angle of aperture is guessed from the raw data register and
+            // thankfully look to be symmetric
+
+            const float Npix = 35.0;                      // [pixels] (same in x and y)
+
+            // 2*sin(42/2); 42degree is the agnle of aperture, here we computed the
+            // corresponding ground length
+            const float thetapix = 0.71674f;
+
+            //~~~ Body rates ~~~
+            // TODO check if this is feasible or if some filtering has to be done
+            const auto omegax_b = _gyroLatest.x * DEGREES_TO_RADIANS;
+            const auto omegay_b = _gyroLatest.y * DEGREES_TO_RADIANS;
+
+            const auto dx_g = get(_x, STATE_DX);
+            const auto dy_g = get(_x, STATE_DY);
+
+            // Saturate elevation in prediction and correction to avoid singularities
+            const auto z_g = get(_x, STATE_Z) < 0.1f ? 0.1f : get(_x, STATE_Z);
+
+            // ~~~ X velocity prediction and update ~~~
+            // predicts the number of accumulated pixels in the x-direction
+            auto predictedNX = (stream_flow.dt * Npix / thetapix ) * 
+                ((dx_g * _r.z / z_g) - omegay_b);
+            auto measuredNX = stream_flow.dpixelx*FLOW_RESOLUTION;
+
+            // Derive measurement equation with respect to dx (and z?)
+            myvector_t hx = {};
+            set(hx, STATE_Z, 
+                    (Npix * stream_flow.dt / thetapix) * ((_r.z * dx_g) / (-z_g * z_g)));
+            set(hx, STATE_DX, 
+                    (Npix * stream_flow.dt / thetapix) * (_r.z / z_g));
+
+            // First update
+            _scalarUpdate(
+                    hx, 
+                    measuredNX-predictedNX, 
+                    FLOW_STD_FIXED*FLOW_RESOLUTION,
+                    _p, 
+                    _x);
+
+            // ~~~ Y velocity prediction and update ~~~
+            const auto predictedNY = (stream_flow.dt * Npix / thetapix ) * 
+                ((dy_g * _r.z / z_g) + omegax_b);
+            const auto measuredNY = stream_flow.dpixely*FLOW_RESOLUTION;
+
+            // derive measurement equation with respect to dy (and z?)
+            myvector_t hy = {};
+            set(hy, STATE_Z, (Npix * stream_flow.dt / thetapix) * 
+                    ((_r.z * dy_g) / (-z_g * z_g)));
+            set(hy, STATE_DY, (Npix * stream_flow.dt / thetapix) * (_r.z / z_g));
+
+            // Second update
+            _scalarUpdate(
+                    hy, 
+                    measuredNY-predictedNY, 
+                    FLOW_STD_FIXED*FLOW_RESOLUTION, 
+                    _p, 
+                    _x);            
+            
             _isUpdated = true;
         }
 
@@ -480,8 +543,11 @@ class Ekf {
         }
 
         static void _scalarUpdate(
-                const myvector_t & h, const float error, const float stdMeasNoise,
-                mymatrix_t & p, myvector_t & x)
+                const myvector_t & h, 
+                const float error, 
+                const float stdMeasNoise,
+                mymatrix_t & p, 
+                myvector_t & x)
         {
 
             // ====== INNOVATION COVARIANCE ======
