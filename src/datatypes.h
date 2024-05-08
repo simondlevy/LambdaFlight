@@ -20,7 +20,6 @@
 
 typedef enum {
 
-    EKF_INIT,
     EKF_PREDICT,
     EKF_FINALIZE,
     EKF_GET_STATE,

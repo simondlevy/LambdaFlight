@@ -48,30 +48,30 @@ class Ekf {
                 const uint32_t predictionIntervalMsec)
         {
             _predictionIntervalMsec = predictionIntervalMsec;
+
+            ekf_init(_p, _x);
+
+            _quat.w = 1;
+            _quat.x = 0;
+            _quat.y = 0;
+            _quat.z = 0;
+
+            _r.x = 0;
+            _r.y = 0;
+            _r.z = 0;
+
+            _lastProcessNoiseUpdateMsec = nowMsec;
+            _lastPredictionMsec = nowMsec;
+            _isUpdated = false;
+
+            _nextPredictionMsec = nowMsec > _nextPredictionMsec ?
+                nowMsec + _predictionIntervalMsec :
+                _nextPredictionMsec;
+
         }
 
         void step(const ekfAction_e ekfAction, const uint32_t nowMsec)
         {
-
-            // Initialize ------------------------------------------------------------
-
-            if (ekfAction == EKF_INIT) {
-
-                ekf_init(_p, _x);
-
-                _quat.w = 1;
-                _quat.x = 0;
-                _quat.y = 0;
-                _quat.z = 0;
-
-                _r.x = 0;
-                _r.y = 0;
-                _r.z = 0;
-
-                _lastProcessNoiseUpdateMsec = nowMsec;
-                _lastPredictionMsec = nowMsec;
-                _isUpdated = false;
-            }
 
             _nextPredictionMsec = nowMsec > _nextPredictionMsec ?
                 nowMsec + _predictionIntervalMsec :
