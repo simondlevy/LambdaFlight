@@ -49,7 +49,16 @@ class Ekf {
         {
             _predictionIntervalMsec = predictionIntervalMsec;
 
-            ekf_init(_p, _x);
+            memset(&_p, 0, sizeof(_p));
+            _p.dat[STATE_Z][STATE_Z] = square(STDEV_INITIAL_POSITION_Z);
+            _p.dat[STATE_DX][STATE_DX] = square(STDEV_INITIAL_VELOCITY);
+            _p.dat[STATE_DY][STATE_DY] = square(STDEV_INITIAL_VELOCITY);
+            _p.dat[STATE_DZ][STATE_DZ] = square(STDEV_INITIAL_VELOCITY);
+            _p.dat[STATE_E0][STATE_E0] = square(STDEV_INITIAL_ATTITUDE_ROLL_PITCH);
+            _p.dat[STATE_E1][STATE_E1] = square(STDEV_INITIAL_ATTITUDE_ROLL_PITCH);
+            _p.dat[STATE_E2][STATE_E2] = square(STDEV_INITIAL_ATTITUDE_YAW);
+
+            memset(&_x, 0, sizeof(_x));
 
             _quat.w = 1;
             _quat.x = 0;
@@ -120,9 +129,62 @@ class Ekf {
         {
             if (_isUpdated) {
 
-                new_quat_t quat_finalized = {};
+                // Incorporate the attitude error (Kalman filter state) with the attitude
+                const auto v0 = get(_x, STATE_E0);
+                const auto v1 = get(_x, STATE_E1);
+                const auto v2 = get(_x, STATE_E2);
 
-                ekf_finalize(_quat, _p, _x, quat_finalized);
+                const auto angle = sqrt(v0*v0 + v1*v1 + v2*v2) + EPS;
+                const auto ca = cos(angle / 2.0f);
+                const auto sa = sin(angle / 2.0f);
+
+                const auto dqw = ca;
+                const auto dqx = sa * v0 / angle;
+                const auto dqy = sa * v1 / angle;
+                const auto dqz = sa * v2 / angle;
+
+                const auto qw = _quat.w;
+                const auto qx = _quat.x;
+                const auto qy = _quat.y;
+                const auto qz = _quat.z;
+
+                // Rotate the quad's attitude by the delta quaternion vector
+                // computed above
+                const auto tmpq0 = dqw * qw - dqx * qx - dqy * qy - dqz * qz;
+                const auto tmpq1 = dqx * qw + dqw * qx + dqz * qy - dqy * qz;
+                const auto tmpq2 = dqy * qw - dqz * qx + dqw * qy + dqx * qz;
+                const auto tmpq3 = dqz * qw + dqy * qx - dqx * qy + dqw * qz;
+
+                // normalize and store the result
+                const auto norm = sqrt(tmpq0 * tmpq0 + tmpq1 * tmpq1 + tmpq2 * tmpq2 + 
+                        tmpq3 * tmpq3) + EPS;
+
+                const auto isErrorSufficient  = 
+                    (isErrorLarge(v0) || isErrorLarge(v1) || isErrorLarge(v2)) &&
+                    isErrorInBounds(v0) && isErrorInBounds(v1) && isErrorInBounds(v2);
+
+                new_quat_t quat_finalized = {};
+                quat_finalized.w = isErrorSufficient ? tmpq0 / norm : _quat.w;
+                quat_finalized.x = isErrorSufficient ? tmpq1 / norm : _quat.x;
+                quat_finalized.y = isErrorSufficient ? tmpq2 / norm : _quat.y;
+                quat_finalized.z = isErrorSufficient ? tmpq3 / norm : _quat.z;
+
+                // Move attitude error into attitude if any of the angle errors are
+                // large enough
+                if (isErrorSufficient) {
+                    matrix_t  A = {};
+                    afinalize(v0, v2, v2, A);
+                    matrix_t At = {};
+                    transpose(A, At);     // A'
+                    matrix_t AP = {};
+                    multiply(A, _p, AP);  // AP
+                    multiply(AP, At, _p); // APA'
+                    updateCovarianceMatrix(_p);
+                }
+
+                set(_x, STATE_E0, 0);
+                set(_x, STATE_E1, 0);
+                set(_x, STATE_E2, 0);
 
                 _quat.w = quat_finalized.w;
                 _quat.x = quat_finalized.x;
@@ -428,20 +490,6 @@ class Ekf {
 
         // ===========================================================================
 
-        static void ekf_init(matrix_t & p, myvector_t & x)
-        {
-            memset(&p, 0, sizeof(p));
-            p.dat[STATE_Z][STATE_Z] = square(STDEV_INITIAL_POSITION_Z);
-            p.dat[STATE_DX][STATE_DX] = square(STDEV_INITIAL_VELOCITY);
-            p.dat[STATE_DY][STATE_DY] = square(STDEV_INITIAL_VELOCITY);
-            p.dat[STATE_DZ][STATE_DZ] = square(STDEV_INITIAL_VELOCITY);
-            p.dat[STATE_E0][STATE_E0] = square(STDEV_INITIAL_ATTITUDE_ROLL_PITCH);
-            p.dat[STATE_E1][STATE_E1] = square(STDEV_INITIAL_ATTITUDE_ROLL_PITCH);
-            p.dat[STATE_E2][STATE_E2] = square(STDEV_INITIAL_ATTITUDE_YAW);
-
-            memset(&x, 0, sizeof(x));
-        }
-
         static void ekf_predict(
                 const uint32_t nowMsec,
                 const bool isFlying,
@@ -518,7 +566,8 @@ class Ekf {
             const auto tmpSDZ = get(x_in, STATE_DZ);
 
             set(x_out, STATE_Z, 
-                    get(x_in, STATE_Z) + r.x * dx + r.y * dy + r.z * dz - MSS_TO_GS * dt2 / 2);
+                    get(x_in, STATE_Z) + 
+                    r.x * dx + r.y * dy + r.z * dz - MSS_TO_GS * dt2 / 2);
 
             set(x_out, STATE_DX,
                     get(x_in, STATE_DX) +
@@ -705,65 +754,6 @@ class Ekf {
             scalarUpdate(hy, measuredNY-predictedNY, FLOW_STD_FIXED*FLOW_RESOLUTION, 
                     p, x);
         }
-
-        static void ekf_finalize(
-                const new_quat_t & q,
-                matrix_t & p,
-                myvector_t & x,
-                new_quat_t & q_out)
-        {
-            // Incorporate the attitude error (Kalman filter state) with the attitude
-            const auto v0 = get(x, STATE_E0);
-            const auto v1 = get(x, STATE_E1);
-            const auto v2 = get(x, STATE_E2);
-
-            const auto angle = sqrt(v0*v0 + v1*v1 + v2*v2) + EPS;
-            const auto ca = cos(angle / 2.0f);
-            const auto sa = sin(angle / 2.0f);
-
-            const auto dqw = ca;
-            const auto dqx = sa * v0 / angle;
-            const auto dqy = sa * v1 / angle;
-            const auto dqz = sa * v2 / angle;
-
-            // Rotate the quad's attitude by the delta quaternion vector
-            // computed above
-            const auto tmpq0 = dqw * q.w - dqx * q.x - dqy * q.y - dqz * q.z;
-            const auto tmpq1 = dqx * q.w + dqw * q.x + dqz * q.y - dqy * q.z;
-            const auto tmpq2 = dqy * q.w - dqz * q.x + dqw * q.y + dqx * q.z;
-            const auto tmpq3 = dqz * q.w + dqy * q.x - dqx * q.y + dqw * q.z;
-
-            // normalize and store the result
-            const auto norm = sqrt(tmpq0 * tmpq0 + tmpq1 * tmpq1 + tmpq2 * tmpq2 + 
-                    tmpq3 * tmpq3) + EPS;
-
-            const auto isErrorSufficient  = 
-                (isErrorLarge(v0) || isErrorLarge(v1) || isErrorLarge(v2)) &&
-                isErrorInBounds(v0) && isErrorInBounds(v1) && isErrorInBounds(v2);
-
-            // finalize()
-            q_out.w = isErrorSufficient ? tmpq0 / norm : q.w;
-            q_out.x = isErrorSufficient ? tmpq1 / norm : q.x;
-            q_out.y = isErrorSufficient ? tmpq2 / norm : q.y;
-            q_out.z = isErrorSufficient ? tmpq3 / norm : q.z;
-
-            // Move attitude error into attitude if any of the angle errors are
-            // large enough
-            if (isErrorSufficient) {
-                matrix_t  A = {};
-                afinalize(v0, v2, v2, A);
-                matrix_t At = {};
-                transpose(A, At);     // A'
-                matrix_t AP = {};
-                multiply(A, p, AP);  // AP
-                multiply(AP, At, p); // APA'
-                updateCovarianceMatrix(p);
-            }
-
-            set(x, STATE_E0, 0);
-            set(x, STATE_E1, 0);
-            set(x, STATE_E2, 0);
-        } 
 
         static void ekf_getVehicleState(
                 const myvector_t & x,
