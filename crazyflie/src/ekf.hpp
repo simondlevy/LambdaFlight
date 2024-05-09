@@ -200,38 +200,18 @@ class Ekf {
 
             const auto measuredDistance = distance / 1000.f; // mm => m
 
-            if (fabs(_r.z) > 0.1f && _r.z > 0 && 
-                    distance < RANGEFINDER_OUTLIER_LIMIT_MM) {
-
-                ekf_updateWithRange(
-                        measuredDistance, 
-                        predictedDistance, 
-                        angle, 
-                        _r.z, 
-                        h,
-                        _p, 
-                        _x);
-
-                _isUpdated = true;
-            }
-        }
-
-        static void ekf_updateWithRange(
-                const float measuredDistance,
-                const float predictedDistance,
-                const float angle,
-                const float rz, 
-                const vector_t & h,
-                matrix_t & p, 
-                vector_t & x)
-        {
             const auto stdDev =
                 RANGEFINDER_EXP_STD_A * 
                 (1 + expf(RANGEFINDER_EXP_COEFF * 
                           (measuredDistance - RANGEFINDER_EXP_POINT_A)));
 
-            scalarUpdate(h, measuredDistance-predictedDistance, stdDev, 
-                    p, x);
+            if (fabs(_r.z) > 0.1f && _r.z > 0 && 
+                    distance < RANGEFINDER_OUTLIER_LIMIT_MM) {
+
+                scalarUpdate(h, measuredDistance-predictedDistance, stdDev, _p, _x);
+
+                _isUpdated = true;
+            }
         }
 
         void updateWithFlow(
