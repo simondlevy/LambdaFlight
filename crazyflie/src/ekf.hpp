@@ -189,17 +189,17 @@ class Ekf {
 
         void updateWithRange(const uint32_t nowMsec, const uint32_t distance)
         {
+            const auto angle = max(0, 
+                    fabsf(acosf(_r.z)) - 
+                    DEGREES_TO_RADIANS * (15.0f / 2.0f));
+
+            const auto predictedDistance = get(_x, STATE_Z) / cosf(angle);
+
+            vector_t h = {};
+            set(h, STATE_Z, 1 / cosf(angle));
+
             if (fabs(_r.z) > 0.1f && _r.z > 0 && 
                     distance < RANGEFINDER_OUTLIER_LIMIT_MM) {
-
-                const auto angle = max(0, 
-                        fabsf(acosf(_r.z)) - 
-                        DEGREES_TO_RADIANS * (15.0f / 2.0f));
-
-                const auto predictedDistance = get(_x, STATE_Z) / cosf(angle);
-
-                vector_t h = {};
-                set(h, STATE_Z, 1 / cosf(angle));
 
                 ekf_updateWithRange(
                         distance, 
