@@ -159,7 +159,7 @@ class CrazyflieEkf {
 
     public:
 
-        void init(
+        void initialize(
                 const uint32_t nowMsec,
                 const uint32_t predictionIntervalMsec,
                 const float min_covariance, 

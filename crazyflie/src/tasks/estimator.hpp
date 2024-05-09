@@ -144,7 +144,7 @@ class EstimatorTask : public FreeRTOSTask {
 
         void initEkf(const uint32_t nowMsec)
         {
-            _ekf.init(
+            _ekf.initialize(
                     nowMsec, 
                     CrazyflieEkf::PREDICTION_INTERVAL_MSEC,
                     CrazyflieEkf::MIN_COVARIANCE,
