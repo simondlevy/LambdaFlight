@@ -105,17 +105,6 @@ class EstimatorTask : public FreeRTOSTask {
 
     private:
 
-        // this is slower than the IMU update rate of 1000Hz
-        static const uint32_t PREDICT_RATE = Clock::RATE_100_HZ; 
-        static const uint32_t PREDICTION_INTERVAL_MSEC = 1000 / PREDICT_RATE;
-
-        // Initial variances, uncertain of position, but know we're
-        // stationary and roughly flat
-        static constexpr float STDEV_INITIAL_POSITION_Z = 1;
-        static constexpr float STDEV_INITIAL_VELOCITY = 0.01;
-        static constexpr float STDEV_INITIAL_ATTITUDE_ROLL_PITCH = 0.01;
-        static constexpr float STDEV_INITIAL_ATTITUDE_YAW = 0.01;
-
         static const uint32_t WARNING_HOLD_BACK_TIME_MS = 2000;
 
         static const size_t QUEUE_LENGTH = 20;
@@ -151,7 +140,7 @@ class EstimatorTask : public FreeRTOSTask {
 
         void initEkf(const uint32_t nowMsec)
         {
-            _ekf.init(nowMsec, PREDICTION_INTERVAL_MSEC);
+            _ekf.init(nowMsec, CrazyflieEkf::PREDICTION_INTERVAL_MSEC);
         }        
 
         uint32_t step(const uint32_t nowMsec, uint32_t nextPredictionMsec) 
@@ -170,7 +159,7 @@ class EstimatorTask : public FreeRTOSTask {
             // Run the system dynamics to predict the state forward.
             if (nowMsec >= nextPredictionMsec) {
 
-                nextPredictionMsec = nowMsec + PREDICTION_INTERVAL_MSEC;
+                nextPredictionMsec = nowMsec + CrazyflieEkf::PREDICTION_INTERVAL_MSEC;
 
                 if (!_rateSupervisor.validate(nowMsec)) {
                     consolePrintf(
@@ -261,8 +250,8 @@ class EstimatorTask : public FreeRTOSTask {
             _rateSupervisor.init(
                     nextPredictionMsec, 
                     1000, 
-                    PREDICT_RATE - 1, 
-                    PREDICT_RATE + 1, 
+                    CrazyflieEkf::PREDICT_RATE - 1, 
+                    CrazyflieEkf::PREDICT_RATE + 1, 
                     1); 
 
             while (true) {

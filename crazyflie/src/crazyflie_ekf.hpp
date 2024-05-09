@@ -5,6 +5,8 @@
 #define EKF_N 7
 #include "ekf.hpp"
 
+#include <clock.hpp>
+
 class CrazyflieEkf : public Ekf {
 
     private:
@@ -35,8 +37,14 @@ class CrazyflieEkf : public Ekf {
 
         imu_t _gyroSum;
         imu_t _accelSum;
+
     public:
-    
+
+           // this is slower than the IMU update rate of 1000Hz
+        static const uint32_t PREDICT_RATE = Clock::RATE_100_HZ; 
+        static const uint32_t PREDICTION_INTERVAL_MSEC = 1000 / PREDICT_RATE;
+ 
+        // Set by Estimator
         bool isFlying;
 
         void init(
