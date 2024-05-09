@@ -192,10 +192,9 @@ static void readImu(void)
         Usfs::reportError(eventStatus);
     }
 
-    // We swap quaterion qw/qx, qy/qz to accommodate upside-down USFS mounting
     if (Usfs::eventStatusIsQuaternion(eventStatus)) { 
         usfs.readQuaternion(
-                stream_quat_x, stream_quat_w, stream_quat_z, stream_quat_y);
+                stream_quat_w, stream_quat_x, stream_quat_y, stream_quat_z);
     }
 
     if (Usfs::eventStatusIsAccelerometer(eventStatus)) { 
@@ -299,14 +298,15 @@ static void debug(const uint32_t current_time)
 
         previous_time = current_time;
 
-        //debugDz();
         //debugAccel();  
+        //debugDz();
         //debugGyro();  
-        //debugQuat();  
-        debugState();  
-        //debugMotorCommands(); 
         //debugLoopRate();      
+        //debugMotorCommands(); 
+        //debugQuat();  
+        //debugRadio();
         //debugRangefinder();      
+        //debugState();  
     }
 }
 
@@ -358,6 +358,7 @@ void loop()
 
 void setState( const float phi, const float theta, const float psi) 
 {
+    // We swap phi, theta to accommodate sideways USFS mounting
     _phi = phi;
     _theta = theta;
     _psi = psi;

@@ -102,14 +102,15 @@ max_yaw = 160 :: SFloat
 
 step = (phi, theta, psi, m1, m2, m3, m4) where
 
-  -- Get Euler angles from USFS hardware quaternion --------------------------
+  -- Get Euler angles from USFS hardware quaternion. We depart from the
+  -- usual formula to accommdate the upside-down / sidewase IMU orientation.
 
-  phi = (atan2 (qw*qx + qy*qz) (0.5 - qx*qx - qy*qy)) * 180 / pi
+  theta = (atan2 (qx*qw + qz*qy) (0.5 - qw*qw - qz*qz)) * 180 / pi
 
-  theta = ((-asin (constrain ((-2.0) * (qx*qz - qw*qy)) (-0.999999) 0.999999))
+  phi = ((-asin (constrain ((-2.0) * (qw*qy - qx*qz)) (-0.999999) 0.999999))
            * 180 / pi)
 
-  psi = (-atan2 (qx*qy + qw*qz) (0.5 - qy*qy - qz*qz)) * 180 / pi
+  psi = (-atan2 (qw*qz + qx*qy) (0.5 - qz*qz - qy*qy)) * 180 / pi
 
   -- Get open-loop demands --------------------------------------------------
 
