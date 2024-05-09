@@ -18,7 +18,6 @@ class Ekf {
 
         } matrix_t;
 
-
         typedef struct {
 
             float w;
@@ -292,7 +291,40 @@ class Ekf {
 
         void getState(vehicleState_t & state)
         {
-            ekf_getVehicleState(_x, _gyroLatest, _quat, _r, state);
+            state.dx = get(_x, STATE_DX);
+
+            state.dy = get(_x, STATE_DY);
+
+            state.z = get(_x, STATE_Z);
+
+            state.z = min(0, state.z);
+
+            state.dz = _r.x * get(_x, STATE_DX) + _r.y * get(_x, STATE_DY) + 
+                _r.z * get(_x, STATE_DZ);
+
+            // Pack Z and DZ into a single float for transmission to client
+            const int8_t sgn = state.dz < 0 ? -1 : +1;
+            const float s = 1000;
+            state.z_dz = (int)(state.dz * s) + sgn * state.z / s;
+
+            const auto qw = _quat.w;
+            const auto qx = _quat.x;
+            const auto qy = _quat.y;
+            const auto qz = _quat.z;
+
+            state.phi = RADIANS_TO_DEGREES * atan2((2 * (qy*qz + qw*qx)),
+                    (qw*qw - qx*qx - qy*qy + qz*qz));
+
+            // Negate for ENU
+            state.theta = -RADIANS_TO_DEGREES * asin((-2) * (qx*qz - qw*qy));
+
+            state.psi = RADIANS_TO_DEGREES * atan2((2 * (qx*qy + qw*qz)),
+                    (qw*qw + qx*qx - qy*qy - qz*qz));
+
+            // Get angular velocities directly from gyro
+            state.dphi =    _gyroLatest.x;
+            state.dtheta = -_gyroLatest.y; // negate for ENU
+            state.dpsi =    _gyroLatest.z;
         }
 
         bool isStateWithinBounds(void)
@@ -715,45 +747,6 @@ class Ekf {
             multiply(AP, At, p); // APA'
             updateCovarianceMatrix(p);
         }
-
-        static void ekf_getVehicleState(
-                const vector_t & x,
-                const axis3_t & gyroLatest,
-                const new_quat_t & q,
-                const axis3_t & r,
-                vehicleState_t & state)
-        {
-            state.dx = get(x, STATE_DX);
-
-            state.dy = get(x, STATE_DY);
-
-            state.z = get(x, STATE_Z);
-
-            state.z = min(0, state.z);
-
-            state.dz = r.x * get(x, STATE_DX) + r.y * get(x, STATE_DY) + 
-                r.z * get(x, STATE_DZ);
-
-            // Pack Z and DZ into a single float for transmission to client
-            const int8_t sgn = state.dz < 0 ? -1 : +1;
-            const float s = 1000;
-            state.z_dz = (int)(state.dz * s) + sgn * state.z / s;
-
-            state.phi = RADIANS_TO_DEGREES * atan2((2 * (q.y*q.z + q.w*q.x)),
-                    (q.w*q.w - q.x*q.x - q.y*q.y + q.z*q.z));
-
-            // Negate for ENU
-            state.theta = -RADIANS_TO_DEGREES * asin((-2) * (q.x*q.z - q.w*q.y));
-
-            state.psi = RADIANS_TO_DEGREES * atan2((2 * (q.x*q.y + q.w*q.z)),
-                    (q.w*q.w + q.x*q.x - q.y*q.y - q.z*q.z));
-
-            // Get angular velocities directly from gyro
-            state.dphi =    gyroLatest.x;
-            state.dtheta = -gyroLatest.y; // negate for ENU
-            state.dpsi =    gyroLatest.z;
-        }
-
 
         static void makemat(const float dat[EKF_N][EKF_N], matrix_t & a)
         {
