@@ -30,6 +30,8 @@ class CrazyflieEkf : public Ekf {
                 const uint32_t nowMsec,
                 const uint32_t predictionIntervalMsec)
         {
+            Ekf::init(MIN_COVARIANCE, MAX_COVARIANCE);
+
             _predictionIntervalMsec = predictionIntervalMsec;
 
             memset(&_p, 0, sizeof(_p));
@@ -243,7 +245,7 @@ class CrazyflieEkf : public Ekf {
                 matrix_t AP = {};
                 multiply(A, _p, AP);  // AP
                 multiply(AP, At, _p); // APA'
-                updateCovarianceMatrix(_p);
+                updateCovarianceMatrix();
 
                 _lastPredictionMsec = nowMsec;
 
@@ -320,7 +322,7 @@ class CrazyflieEkf : public Ekf {
                     matrix_t AP = {};
                     multiply(A, _p, AP);  // AP
                     multiply(AP, At, _p); // APA'
-                    updateCovarianceMatrix(_p);
+                    updateCovarianceMatrix();
                 }
 
                 set(_x, STATE_E0, 0);
@@ -590,24 +592,6 @@ class CrazyflieEkf : public Ekf {
                 (isFlying ? 0 : ROLLPITCH_ZERO_REVERSION * initVal);
         }
 
-        static void updateCovarianceMatrix(matrix_t & p)
-        {
-            // Enforce symmetry of the covariance matrix, and ensure the
-            // values stay bounded
-            for (int i=0; i<EKF_N; i++) {
-
-                for (int j=i; j<EKF_N; j++) {
-
-                    const auto pval = (p.dat[i][j] + p.dat[j][i]) / 2;
-
-                    p.dat[i][j] = p.dat[j][i] = 
-                        pval > MAX_COVARIANCE ?  MAX_COVARIANCE :
-                        (i==j && pval < MIN_COVARIANCE) ?  MIN_COVARIANCE :
-                        pval;
-                }
-            }
-        }
-
         void scalarUpdate(
                 const vector_t & h, 
                 const float error, 
@@ -654,7 +638,7 @@ class CrazyflieEkf : public Ekf {
                 }
             }
 
-            updateCovarianceMatrix(_p);
+            updateCovarianceMatrix();
         }
 
         static bool isPositionWithinBounds(const float pos)

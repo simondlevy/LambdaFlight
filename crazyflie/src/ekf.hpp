@@ -6,6 +6,12 @@ class Ekf {
 
     protected:
 
+        void init(const float min_covariance, const float max_covariance)
+        {
+            _min_covariance = min_covariance;
+            _max_covariance = max_covariance;
+        }
+
         typedef struct {
 
             float dat[EKF_N];
@@ -29,6 +35,24 @@ class Ekf {
         uint32_t _lastProcessNoiseUpdateMsec;
 
         uint32_t _predictionIntervalMsec;
+
+        void updateCovarianceMatrix(void)
+        {
+            // Enforce symmetry of the covariance matrix, and ensure the
+            // values stay bounded
+            for (int i=0; i<EKF_N; i++) {
+
+                for (int j=i; j<EKF_N; j++) {
+
+                    const auto pval = (_p.dat[i][j] + _p.dat[j][i]) / 2;
+
+                    _p.dat[i][j] = _p.dat[j][i] = 
+                        pval > _max_covariance ?  _max_covariance :
+                        (i==j && pval < _min_covariance) ?  _min_covariance :
+                        pval;
+                }
+            }
+        }
 
         static void makemat(const float dat[EKF_N][EKF_N], matrix_t & a)
         {
@@ -129,5 +153,9 @@ class Ekf {
             }
         }
 
+    private:
+
+        float _min_covariance;
+        float _max_covariance;
 
 };
