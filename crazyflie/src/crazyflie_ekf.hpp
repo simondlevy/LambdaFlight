@@ -30,11 +30,14 @@ class CrazyflieEkf : public Ekf {
                 const uint32_t nowMsec,
                 const uint32_t predictionIntervalMsec)
         {
-            Ekf::init(MIN_COVARIANCE, MAX_COVARIANCE);
-
-            _predictionIntervalMsec = predictionIntervalMsec;
+            Ekf::init(
+                    nowMsec, 
+                    predictionIntervalMsec, 
+                    MIN_COVARIANCE, 
+                    MAX_COVARIANCE);
 
             memset(&_p, 0, sizeof(_p));
+
             _p.dat[STATE_Z][STATE_Z] = square(STDEV_INITIAL_POSITION_Z);
             _p.dat[STATE_DX][STATE_DX] = square(STDEV_INITIAL_VELOCITY);
             _p.dat[STATE_DY][STATE_DY] = square(STDEV_INITIAL_VELOCITY);
@@ -53,10 +56,6 @@ class CrazyflieEkf : public Ekf {
             _r.x = 0;
             _r.y = 0;
             _r.z = 0;
-
-            _lastProcessNoiseUpdateMsec = nowMsec;
-            _lastPredictionMsec = nowMsec;
-            _isUpdated = false;
         }
 
         void predict(const uint32_t nowMsec, const bool isFlying)

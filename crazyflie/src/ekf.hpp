@@ -6,8 +6,19 @@ class Ekf {
 
     protected:
 
-        void init(const float min_covariance, const float max_covariance)
+        void init(
+                const uint32_t nowMsec,
+                const uint32_t predictionIntervalMsec,
+                const float min_covariance, 
+                const float max_covariance)
         {
+            _predictionIntervalMsec = predictionIntervalMsec;
+
+
+            _lastProcessNoiseUpdateMsec = nowMsec;
+            _lastPredictionMsec = nowMsec;
+            _isUpdated = false;
+
             _min_covariance = min_covariance;
             _max_covariance = max_covariance;
         }
