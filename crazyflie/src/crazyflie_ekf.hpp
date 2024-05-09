@@ -85,9 +85,9 @@ class CrazyflieEkf : public Ekf {
                 const uint32_t nowMsec,
                 const float xold[EKF_N],
                 float xnew[EKF_N],
-                float F[EKF_N][EKF_N])
+                float F[EKF_N][EKF_N],
+                new_quat_t & quat_predicted)
         {
-            new_quat_t quat_predicted = {};
 
             static axis3_t _gyro;
             static axis3_t _accel;
@@ -179,64 +179,62 @@ class CrazyflieEkf : public Ekf {
             quat_predicted.y = tmpq2/norm; 
             quat_predicted.z = tmpq3/norm;
 
-            /*
             const auto e0 = _gyro.x*dt/2;
             const auto e1 = _gyro.y*dt/2;
             const auto e2 = _gyro.z*dt/2;
 
-            const auto e0e0 =  1 - e1*e1/2 - e2*e2/2;
-            const auto e0e1 =  e2 + e0*e1/2;
-            const auto e0e2 = -e1 + e0*e2/2;
+            F[STATE_E0][STATE_E0] =  1 - e1*e1/2 - e2*e2/2;
+            F[STATE_E0][STATE_E1] =  e2 + e0*e1/2;
+            F[STATE_E0][STATE_E2] = -e1 + e0*e2/2;
 
-            const auto e1e0 =  -e2 + e0*e1/2;
-            const auto e1e1 = 1 - e0*e0/2 - e2*e2/2;
-            const auto e1e2 = e0 + e1*e2/2;
+            F[STATE_E1][STATE_E0] =  -e2 + e0*e1/2;
+            F[STATE_E1][STATE_E1] = 1 - e0*e0/2 - e2*e2/2;
+            F[STATE_E1][STATE_E2] = e0 + e1*e2/2;
 
-            const auto e2e0 = e1 + e0*e2/2;
-            const auto e2e1 = -e0 + e1*e2/2;
-            const auto e2e2 = 1 - e0*e0/2 - e1*e1/2;
+            F[STATE_E2][STATE_E0] = e1 + e0*e2/2;
+            F[STATE_E2][STATE_E1] = -e0 + e1*e2/2;
+            F[STATE_E2][STATE_E2] = 1 - e0*e0/2 - e1*e1/2;
 
             // altitude from body-frame velocity
-            const auto zdx  = _r.x*dt;
-            const auto zdy  = _r.y*dt;
-            const auto zdz  = _r.z*dt;
+            F[STATE_Z][STATE_DX] = _r.x*dt;
+            F[STATE_Z][STATE_DY] = _r.y*dt;
+            F[STATE_Z][STATE_DZ] = _r.z*dt;
 
             // altitude from attitude error
-            const auto ze0  = (xnew[ STATE_DY]*_r.z -
+            F[STATE_Z][STATE_E0] = (xnew[ STATE_DY]*_r.z -
                     xnew[ STATE_DZ]*_r.y)*dt;
 
-            const auto ze1  = (- xnew[ STATE_DX]*_r.z +
+            F[STATE_Z][STATE_E1] = (- xnew[ STATE_DX]*_r.z +
                     xnew[ STATE_DZ]*_r.x)*dt;
 
-            const auto ze2  = (xnew[ STATE_DX]*_r.y -
+            F[STATE_Z][STATE_E2] = (xnew[ STATE_DX]*_r.y -
                     xnew[ STATE_DY]*_r.x)*dt;
 
             // body-frame velocity from body-frame velocity
-            const auto dxdx  = 1; //drag negligible
-            const auto dydx =  -_gyro.z*dt;
-            const auto dzdx  = _gyro.y*dt;
+            F[STATE_DX][STATE_DX] = 1; //drag negligible
+            F[STATE_DY][STATE_DX] =  -_gyro.z*dt;
+            F[STATE_DZ][STATE_DX] = _gyro.y*dt;
 
-            const auto dxdy  = _gyro.z*dt;
-            const auto dydy  = 1; //drag negligible
-            const auto dzdy  = _gyro.x*dt;
+            F[STATE_DX][STATE_DY] = _gyro.z*dt;
+            F[STATE_DY][STATE_DY] = 1; //drag negligible
+            F[STATE_DZ][STATE_DY] = _gyro.x*dt;
 
-            const auto dxdz =  _gyro.y*dt;
-            const auto dydz  = _gyro.x*dt;
-            const auto dzdz  = 1; //drag negligible
+            F[STATE_DX][STATE_DZ] =  _gyro.y*dt;
+            F[STATE_DY][STATE_DZ] = _gyro.x*dt;
+            F[STATE_DZ][STATE_DZ] = 1; //drag negligible
 
             // body-frame velocity from attitude error
-            const auto dxe0  = 0;
-            const auto dye0  = -MSS_TO_GS*_r.z*dt;
-            const auto dze0  = MSS_TO_GS*_r.y*dt;
+            F[STATE_DX][STATE_E0] = 0;
+            F[STATE_DY][STATE_E0] = -MSS_TO_GS*_r.z*dt;
+            F[STATE_DZ][STATE_E0] = MSS_TO_GS*_r.y*dt;
 
-            const auto dxe1  = MSS_TO_GS*_r.z*dt;
-            const auto dye1  = 0;
-            const auto dze1  = -MSS_TO_GS*_r.x*dt;
+            F[STATE_DX][STATE_E1] = MSS_TO_GS*_r.z*dt;
+            F[STATE_DY][STATE_E1] = 0;
+            F[STATE_DZ][STATE_E1] = -MSS_TO_GS*_r.x*dt;
 
-            const auto dxe2  = -MSS_TO_GS*_r.y*dt;
-            const auto dye2  = MSS_TO_GS*_r.x*dt;
-            const auto dze2  = 0;
-            */
+            F[STATE_DX][STATE_E2] = -MSS_TO_GS*_r.y*dt;
+            F[STATE_DY][STATE_E2] = MSS_TO_GS*_r.x*dt;
+            F[STATE_DZ][STATE_E2] = 0;
         }
 
         void predict(const uint32_t nowMsec)
@@ -251,172 +249,18 @@ class CrazyflieEkf : public Ekf {
 
                 _isUpdated = true;
 
-                vector_t x_predicted = {};
+                float xnew[EKF_N] = {};
+
+                float Fdat[EKF_N][EKF_N] = {};
 
                 new_quat_t quat_predicted = {};
 
-                static axis3_t _gyro;
-                static axis3_t _accel;
-
-                const float dt = (nowMsec - _lastPredictionMsec) / 1000.0f;
-                const auto dt2 = dt * dt;
-
-                imuTakeMean(_gyroSum, DEGREES_TO_RADIANS, _gyro);
-                imuTakeMean(_accelSum, MSS_TO_GS, _accel);
-
-                // Position updates in the body frame (will be rotated to inertial frame);
-                // thrust can only be produced in the body's Z direction
-                const auto dx = get(_x, STATE_DX) * dt + 
-                    isFlying ? 0 : _accel.x * dt2 / 2;
-                const auto dy = get(_x, STATE_DY) * dt + 
-                    isFlying ? 0 : _accel.y * dt2 / 2;
-                const auto dz = get(_x, STATE_DZ) * dt + _accel.z * dt2 / 2; 
-
-                const auto accx = isFlying ? 0 : _accel.x;
-                const auto accy = isFlying ? 0 : _accel.y;
-
-                // attitude update (rotate by gyroscope), we do this in quaternions
-                // this is the gyroscope angular velocity integrated over the sample period
-                const auto dtwx = dt*_gyro.x;
-                const auto dtwy = dt*_gyro.y;
-                const auto dtwz = dt*_gyro.z;
-
-                // compute the quaternion values in [w,x,y,z] order
-                const auto angle = sqrt(dtwx*dtwx + dtwy*dtwy + dtwz*dtwz) + EPS;
-                const auto ca = cos(angle/2);
-                const auto sa = sin(angle/2);
-                const auto dqw = ca;
-                const auto dqx = sa*dtwx/angle;
-                const auto dqy = sa*dtwy/angle;
-                const auto dqz = sa*dtwz/angle;
-
-                // rotate the quad's attitude by the delta quaternion vector
-                // computed above
-
-                const auto qw = _quat.w;
-                const auto qx = _quat.x;
-                const auto qy = _quat.y;
-                const auto qz = _quat.z;
-
-                const auto tmpq0 = rotateQuat(isFlying,
-                        dqw*qw - dqx*qx - dqy*qy - dqz*qz, QW_INIT);
-                const auto tmpq1 = rotateQuat(isFlying,
-                        dqx*qw + dqw*qx + dqz*qy - dqy*qz, QX_INIT);
-                const auto tmpq2 = rotateQuat(isFlying,
-                        dqy*qw - dqz*qx + dqw*qy + dqx*qz, QY_INIT);
-                const auto tmpq3 = rotateQuat(isFlying,
-                        dqz*qw + dqy*qx - dqx*qy + dqw*qz, QZ_INIT);
-
-                // normalize and store the result
-                const auto norm = 
-                    sqrt(tmpq0*tmpq0 + tmpq1*tmpq1 + tmpq2*tmpq2 + tmpq3*tmpq3) + 
-                    EPS;
-
-                // Process noise is added after the return from the prediction step
-
-                // ====== PREDICTION STEP ======
-                // The prediction depends on whether we're on the ground, or in flight.
-                // When flying, the accelerometer directly measures thrust
-                // (hence is useless to estimate body angle while flying)
-
-                const auto tmpSDX = get(_x, STATE_DX);
-                const auto tmpSDY = get(_x, STATE_DY);
-                const auto tmpSDZ = get(_x, STATE_DZ);
-
-                set(x_predicted, STATE_Z, 
-                        get(_x, STATE_Z) + 
-                        _r.x * dx + _r.y * dy + _r.z * dz - MSS_TO_GS * dt2 / 2);
-
-                set(x_predicted, STATE_DX,
-                        get(_x, STATE_DX) +
-                        dt * (accx + _gyro.z * tmpSDY - _gyro.y * tmpSDZ -
-                            MSS_TO_GS * _r.x));
-
-                set(x_predicted, STATE_DY,
-                        get(_x, STATE_DY) +
-                        dt * (accy - _gyro.z * tmpSDX + _gyro.x * tmpSDZ -
-                            MSS_TO_GS * _r.y)); 
-
-                set(x_predicted, STATE_DZ,
-                        get(_x, STATE_DZ) +
-                        dt * (_accel.z + _gyro.y * tmpSDX - _gyro.x * tmpSDY -
-                            MSS_TO_GS * _r.z)); quat_predicted.w = tmpq0/norm;
-
-                quat_predicted.x = tmpq1/norm; 
-                quat_predicted.y = tmpq2/norm; 
-                quat_predicted.z = tmpq3/norm;
-
-                // ====== COVARIANCE UPDATE ======
-
-                const auto e0 = _gyro.x*dt/2;
-                const auto e1 = _gyro.y*dt/2;
-                const auto e2 = _gyro.z*dt/2;
-
-                const auto e0e0 =  1 - e1*e1/2 - e2*e2/2;
-                const auto e0e1 =  e2 + e0*e1/2;
-                const auto e0e2 = -e1 + e0*e2/2;
-
-                const auto e1e0 =  -e2 + e0*e1/2;
-                const auto e1e1 = 1 - e0*e0/2 - e2*e2/2;
-                const auto e1e2 = e0 + e1*e2/2;
-
-                const auto e2e0 = e1 + e0*e2/2;
-                const auto e2e1 = -e0 + e1*e2/2;
-                const auto e2e2 = 1 - e0*e0/2 - e1*e1/2;
-
-                // altitude from body-frame velocity
-                const auto zdx  = _r.x*dt;
-                const auto zdy  = _r.y*dt;
-                const auto zdz  = _r.z*dt;
-
-                // altitude from attitude error
-                const auto ze0  = (get(x_predicted, STATE_DY)*_r.z -
-                        get(x_predicted, STATE_DZ)*_r.y)*dt;
-
-                const auto ze1  = (- get(x_predicted, STATE_DX)*_r.z +
-                        get(x_predicted, STATE_DZ)*_r.x)*dt;
-
-                const auto ze2  = (get(x_predicted, STATE_DX)*_r.y -
-                        get(x_predicted, STATE_DY)*_r.x)*dt;
-
-                // body-frame velocity from body-frame velocity
-                const auto dxdx  = 1; //drag negligible
-                const auto dydx =  -_gyro.z*dt;
-                const auto dzdx  = _gyro.y*dt;
-
-                const auto dxdy  = _gyro.z*dt;
-                const auto dydy  = 1; //drag negligible
-                const auto dzdy  = _gyro.x*dt;
-
-                const auto dxdz =  _gyro.y*dt;
-                const auto dydz  = _gyro.x*dt;
-                const auto dzdz  = 1; //drag negligible
-
-                // body-frame velocity from attitude error
-                const auto dxe0  = 0;
-                const auto dye0  = -MSS_TO_GS*_r.z*dt;
-                const auto dze0  = MSS_TO_GS*_r.y*dt;
-
-                const auto dxe1  = MSS_TO_GS*_r.z*dt;
-                const auto dye1  = 0;
-                const auto dze1  = -MSS_TO_GS*_r.x*dt;
-
-                const auto dxe2  = -MSS_TO_GS*_r.y*dt;
-                const auto dye2  = MSS_TO_GS*_r.x*dt;
-                const auto dze2  = 0;
-
-                // Jacobian of transfer function
-                const float Fdat[EKF_N][EKF_N] = 
-                { 
-                    //        Z  DX    DY    DZ    E0    E1    E2
-                    /*Z*/    {0, zdx,  zdy,  zdz,  ze0,  ze1,  ze2}, 
-                    /*DX*/   {0, dxdx, dxdy, dxdz, dxe0, dxe1, dxe2}, 
-                    /*DY*/   {0, dydx, dydy, dydz, dye0, dye1, dye2},
-                    /*DZ*/   {0, dzdx, dzdy, dzdz, dze0, dze1, dze2},
-                    /*E0*/   {0, 0,    0,    0,    e0e0, e0e1, e0e2}, 
-                    /*E1*/   {0, 0,    0,    0,    e1e0, e1e1, e1e2}, 
-                    /*E2*/   {0, 0,    0,    0,    e2e0, e2e1, e2e2}  
-                };
+                get_prediction(
+                        nowMsec, 
+                        _x.dat, 
+                        xnew, 
+                        Fdat,
+                        quat_predicted);
 
                 matrix_t F = {};
                 makemat(Fdat, F);
@@ -436,10 +280,10 @@ class CrazyflieEkf : public Ekf {
 
                     _lastProcessNoiseUpdateMsec = nowMsec;
 
-                    set(_x, STATE_Z , get(x_predicted, STATE_Z));
-                    set(_x, STATE_DX , get(x_predicted, STATE_DX));
-                    set(_x, STATE_DY , get(x_predicted, STATE_DY));
-                    set(_x, STATE_DZ , get(x_predicted, STATE_DZ));
+                    set(_x, STATE_Z , xnew[STATE_Z]);
+                    set(_x, STATE_DX , xnew[STATE_DX]);
+                    set(_x, STATE_DY , xnew[STATE_DY]);
+                    set(_x, STATE_DZ , xnew[STATE_DZ]);
 
                     _quat.w = quat_predicted.w;
                     _quat.x = quat_predicted.x;
