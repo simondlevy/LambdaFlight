@@ -86,8 +86,7 @@ class CrazyflieEkf : public Ekf {
                 const bool didAddProcessNoise,
                 const float xold[EKF_N],
                 float xnew[EKF_N],
-                float F[EKF_N][EKF_N],
-                new_quat_t & quat_predicted)
+                float F[EKF_N][EKF_N])
         {
 
             static axis3_t _gyro;
@@ -175,6 +174,8 @@ class CrazyflieEkf : public Ekf {
                     dt * (_accel.z + _gyro.y * tmpSDX - _gyro.x * tmpSDY -
                         MSS_TO_GS * _r.z); 
             
+            new_quat_t quat_predicted = {};
+
             quat_predicted.w = tmpq0/norm;
             quat_predicted.x = tmpq1/norm; 
             quat_predicted.y = tmpq2/norm; 
@@ -269,18 +270,11 @@ class CrazyflieEkf : public Ekf {
 
                 float Fdat[EKF_N][EKF_N] = {};
 
-                new_quat_t quat_predicted = {};
-
                 const auto shouldAddProcessNoise = 
                     nowMsec - _lastProcessNoiseUpdateMsec > 0;
 
                 get_prediction(
-                        nowMsec, 
-                        shouldAddProcessNoise,
-                        _x.dat, 
-                        xnew, 
-                        Fdat,
-                        quat_predicted);
+                        nowMsec, shouldAddProcessNoise, _x.dat, xnew, Fdat);
 
                 matrix_t F = {};
                 makemat(Fdat, F);
