@@ -40,6 +40,7 @@ class CrazyflieEkf : public Ekf {
 
         virtual void get_prediction(
                 const float nowMsec, 
+                const bool shouldAddProcessNoise,
                 float xdat[EKF_N],
                 float Fdat[EKF_N][EKF_N]) override
         {
@@ -192,6 +193,17 @@ class CrazyflieEkf : public Ekf {
             Fdat[STATE_DX][STATE_E2] = -MSS_TO_GS*_r.y*dt;
             Fdat[STATE_DY][STATE_E2] = MSS_TO_GS*_r.x*dt;
             Fdat[STATE_DZ][STATE_E2] = 0;
+
+            if (shouldAddProcessNoise) {
+
+                _quat.w = quat_predicted.w;
+                _quat.x = quat_predicted.x;
+                _quat.y = quat_predicted.y;
+                _quat.z = quat_predicted.z;
+
+                memset(&_gyroSum, 0, sizeof(_gyroSum));
+                memset(&_accelSum, 0, sizeof(_accelSum));
+            }
         }
 
     public:

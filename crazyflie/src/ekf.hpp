@@ -20,7 +20,10 @@ class Ekf {
 
                 float xdat[EKF_N] = {};
 
-                get_prediction(nowMsec, xdat, Fdat);
+                const auto shouldAddProcessNoise = 
+                    nowMsec - _lastProcessNoiseUpdateMsec > 0;
+
+                get_prediction(nowMsec, shouldAddProcessNoise, xdat, Fdat);
 
                 matrix_t F = {};
                 makemat(Fdat, F);
@@ -33,11 +36,14 @@ class Ekf {
 
                 _lastPredictionMsec = nowMsec;
 
-                if (nowMsec - _lastProcessNoiseUpdateMsec > 0) {
+                if (shouldAddProcessNoise) {
 
                     _lastProcessNoiseUpdateMsec = nowMsec;
 
-                    //add_process_noise();
+                    for (uint8_t i=0; i<EKF_N; ++i) {
+
+                        set(_x, i, xdat[i]);
+                    }
                 }
             }
         }
@@ -46,6 +52,7 @@ class Ekf {
 
         virtual void get_prediction(
                 const float nowMsec, 
+                const bool shouldAddProcessNoise,
                 float xdat[EKF_N],
                 float Fdat[EKF_N][EKF_N]) = 0;
 
