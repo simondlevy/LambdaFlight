@@ -20,8 +20,6 @@ class Ekf {
             _min_covariance = min_covariance;
             _max_covariance = max_covariance;
 
-            memset(&_p, 0, sizeof(_p));
-
             for (uint8_t i=0; i<EKF_N; ++i) {
 
                 for (uint8_t j=0; j<EKF_N; ++j) {
