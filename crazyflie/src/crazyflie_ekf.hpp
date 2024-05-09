@@ -288,7 +288,6 @@ class CrazyflieEkf {
             cleanupCovarianceMatrix();
         }
 
-
         void finalize(const uint32_t nowMsec)
         {
             if (_isUpdated) {
@@ -359,7 +358,7 @@ class CrazyflieEkf {
             }
         }
 
-         // Crazyflie ==============================================================
+        // Crazyflie ==============================================================
 
 
     private:
@@ -391,29 +390,6 @@ class CrazyflieEkf {
         imu_t _gyroSum;
         imu_t _accelSum;
 
-        void do_init(float x[EKF_N])
-        {
-
-            x[STATE_Z] = square(STDEV_INITIAL_POSITION_Z);
-            x[STATE_DX] = square(STDEV_INITIAL_VELOCITY);
-            x[STATE_DY] = square(STDEV_INITIAL_VELOCITY);
-            x[STATE_DZ] = square(STDEV_INITIAL_VELOCITY);
-            x[STATE_E0] = square(STDEV_INITIAL_ATTITUDE_ROLL_PITCH);
-            x[STATE_E1] = square(STDEV_INITIAL_ATTITUDE_ROLL_PITCH);
-            x[STATE_E2] = square(STDEV_INITIAL_ATTITUDE_YAW);
-
-            _quat.w = QW_INIT;
-            _quat.x = QX_INIT;
-            _quat.y = QY_INIT;
-            _quat.z = QZ_INIT;
-
-            _r.x = 0;
-            _r.y = 0;
-            _r.z = 0;
-
-            isFlying = false;
-        }
-
 
     public:
 
@@ -428,7 +404,7 @@ class CrazyflieEkf {
         // Set by Estimator
         bool isFlying;
 
-       void updateWithRange(const uint32_t nowMsec, const uint32_t distance)
+        void updateWithRange(const uint32_t nowMsec, const uint32_t distance)
         {
             const auto angle = max(0, 
                     fabsf(acosf(_r.z)) - 
@@ -906,5 +882,30 @@ class CrazyflieEkf {
 
             memcpy(&A.dat, a, sizeof(A));
         } 
+
+    protected:
+
+        void do_init(float x[EKF_N])
+        {
+
+            x[STATE_Z] = square(STDEV_INITIAL_POSITION_Z);
+            x[STATE_DX] = square(STDEV_INITIAL_VELOCITY);
+            x[STATE_DY] = square(STDEV_INITIAL_VELOCITY);
+            x[STATE_DZ] = square(STDEV_INITIAL_VELOCITY);
+            x[STATE_E0] = square(STDEV_INITIAL_ATTITUDE_ROLL_PITCH);
+            x[STATE_E1] = square(STDEV_INITIAL_ATTITUDE_ROLL_PITCH);
+            x[STATE_E2] = square(STDEV_INITIAL_ATTITUDE_YAW);
+
+            _quat.w = QW_INIT;
+            _quat.x = QX_INIT;
+            _quat.y = QY_INIT;
+            _quat.z = QZ_INIT;
+
+            _r.x = 0;
+            _r.y = 0;
+            _r.z = 0;
+
+            isFlying = false;
+        }
 
 };
