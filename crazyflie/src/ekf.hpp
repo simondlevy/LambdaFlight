@@ -64,9 +64,9 @@ class Ekf {
             _lastPredictionMsec = nowMsec;
             _isUpdated = false;
 
-            _nextPredictionMsec = nowMsec > _nextPredictionMsec ?
+            _nextPredictionMsec = 0;/*nowMsec > _nextPredictionMsec ?
                 nowMsec + _predictionIntervalMsec :
-                _nextPredictionMsec;
+                _nextPredictionMsec;*/
 
         }
 
