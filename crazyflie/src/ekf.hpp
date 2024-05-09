@@ -63,19 +63,19 @@ class Ekf {
             _lastProcessNoiseUpdateMsec = nowMsec;
             _lastPredictionMsec = nowMsec;
             _isUpdated = false;
-
-            _nextPredictionMsec = 0;
         }
 
         void predict(const uint32_t nowMsec, const bool isFlying)
         {
+            static uint32_t _nextPredictionMsec;
+
             _nextPredictionMsec = nowMsec > _nextPredictionMsec ?
                 nowMsec + _predictionIntervalMsec :
                 _nextPredictionMsec;
 
-            _isUpdated = true;
-
             if (nowMsec >= _nextPredictionMsec) {
+
+                _isUpdated = true;
 
                 myvector_t x_predicted = {};
 
@@ -139,12 +139,6 @@ class Ekf {
 
         void updateWithRange(const uint32_t nowMsec, const uint32_t distance)
         {
-            /*
-            _nextPredictionMsec = nowMsec > _nextPredictionMsec ?
-                nowMsec + _predictionIntervalMsec :
-                _nextPredictionMsec;
-                */
-
             if (fabs(_r.z) > 0.1f && _r.z > 0 && 
                     distance < RANGEFINDER_OUTLIER_LIMIT_MM) {
                 ekf_updateWithRange(distance, _r.z, _p, _x);
@@ -158,11 +152,6 @@ class Ekf {
                 const float flow_dpixelx,
                 const float flow_dpixely)
         {
-            /*
-            _nextPredictionMsec = nowMsec > _nextPredictionMsec ?
-                nowMsec + _predictionIntervalMsec :
-                _nextPredictionMsec;*/
-
             ekf_updateWithFlow(
                     flow_dt,
                     flow_dpixelx,
@@ -177,11 +166,6 @@ class Ekf {
 
         void updateWithGyro(const uint32_t nowMsec, const axis3_t & gyro) 
         {
-            /*
-            _nextPredictionMsec = nowMsec > _nextPredictionMsec ?
-                nowMsec + _predictionIntervalMsec :
-                _nextPredictionMsec;*/
-
             imuAccum(gyro, _gyro);
 
             memcpy(&_gyroLatest, &gyro, sizeof(axis3_t));
@@ -189,11 +173,6 @@ class Ekf {
 
         void updateWithAccel(const uint32_t nowMsec, const axis3_t & accel) 
         {
-            /*
-            _nextPredictionMsec = nowMsec > _nextPredictionMsec ?
-                nowMsec + _predictionIntervalMsec :
-                _nextPredictionMsec;*/
-
             imuAccum(accel, _accel);
         }
 
