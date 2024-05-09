@@ -251,6 +251,10 @@ class CrazyflieEkf : public Ekf {
 
                 float xnew[EKF_N] = {};
 
+                for (uint8_t i=0; i<EKF_N; ++i) {
+                    xnew[i] = get(_x, i);
+                }
+
                 float Fdat[EKF_N][EKF_N] = {};
 
                 new_quat_t quat_predicted = {};
@@ -280,10 +284,9 @@ class CrazyflieEkf : public Ekf {
 
                     _lastProcessNoiseUpdateMsec = nowMsec;
 
-                    set(_x, STATE_Z , xnew[STATE_Z]);
-                    set(_x, STATE_DX , xnew[STATE_DX]);
-                    set(_x, STATE_DY , xnew[STATE_DY]);
-                    set(_x, STATE_DZ , xnew[STATE_DZ]);
+                    for (uint8_t i=0; i<EKF_N; ++i) {
+                        set(_x, i, xnew[i]);
+                    }
 
                     _quat.w = quat_predicted.w;
                     _quat.x = quat_predicted.x;
