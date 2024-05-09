@@ -1,7 +1,5 @@
 #pragma once
 
-#include <string.h>
-
 class Ekf {
 
     protected:
@@ -25,10 +23,15 @@ class Ekf {
             memset(&_p, 0, sizeof(_p));
 
             for (uint8_t i=0; i<EKF_N; ++i) {
-                set(_p, i, i, diag[i]);
+
+                for (uint8_t j=0; j<EKF_N; ++j) {
+
+                    set(_p, i, j, i==j ? diag[i] : 0);
+                }
+
+                set(_x, i, 0);
             }
 
-            memset(&_x, 0, sizeof(_x));
         }
 
         typedef struct {
