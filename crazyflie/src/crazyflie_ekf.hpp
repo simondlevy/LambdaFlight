@@ -24,13 +24,24 @@ class CrazyflieEkf : public Ekf {
 
         } imu_t;
 
+        axis3_t _gyroLatest;
+
+        new_quat_t _quat;
+
+        uint32_t _nextPredictionMsec;
+
+        axis3_t _r;
+
+        imu_t _gyroSum;
+        imu_t _accelSum;
     public:
+    
+        bool isFlying;
 
         void init(
                 const uint32_t nowMsec,
                 const uint32_t predictionIntervalMsec)
         {
-
             const float diag[7] = {
 
                 square(STDEV_INITIAL_POSITION_Z),
@@ -57,9 +68,11 @@ class CrazyflieEkf : public Ekf {
             _r.x = 0;
             _r.y = 0;
             _r.z = 0;
+
+            isFlying = false;
         }
 
-        void predict(const uint32_t nowMsec, const bool isFlying)
+        void predict(const uint32_t nowMsec)
         {
             static uint32_t _nextPredictionMsec;
 
@@ -651,14 +664,4 @@ class CrazyflieEkf : public Ekf {
             memcpy(&A.dat, a, sizeof(A));
         } 
 
-        axis3_t _gyroLatest;
-
-        new_quat_t _quat;
-
-        uint32_t _nextPredictionMsec;
-
-        axis3_t _r;
-
-        imu_t _gyroSum;
-        imu_t _accelSum;
 };
