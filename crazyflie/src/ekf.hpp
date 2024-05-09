@@ -10,7 +10,7 @@ class Ekf {
 
             float dat[EKF_N];
 
-        } myvector_t;
+        } vector_t;
 
         typedef struct {
 
@@ -80,7 +80,7 @@ class Ekf {
 
                 _isUpdated = true;
 
-                myvector_t x_predicted = {};
+                vector_t x_predicted = {};
 
                 new_quat_t quat_predicted = {};
 
@@ -232,7 +232,7 @@ class Ekf {
             auto measuredNX = flow_dpixelx*FLOW_RESOLUTION;
 
             // derive measurement equation with respect to dx (and z?)
-            myvector_t hx = {};
+            vector_t hx = {};
             set(hx, STATE_Z, 
                     (Npix * flow_dt / thetapix) * ((_r.z * dx_g) / (-z_g * z_g)));
             set(hx, STATE_DX, 
@@ -248,7 +248,7 @@ class Ekf {
             auto measuredNY = flow_dpixely*FLOW_RESOLUTION;
 
             // derive measurement equation with respect to dy (and z?)
-            myvector_t hy = {};
+            vector_t hy = {};
             set(hy, STATE_Z, (Npix * flow_dt / thetapix) * 
                     ((_r.z * dy_g) / (-z_g * z_g)));
             set(hy, STATE_DY, (Npix * flow_dt / thetapix) * (_r.z / z_g));
@@ -412,21 +412,21 @@ class Ekf {
         }
 
         static void scalarUpdate(
-                const myvector_t & h, 
+                const vector_t & h, 
                 const float error, 
                 const float stdMeasNoise,
                 matrix_t & p, 
-                myvector_t & x)
+                vector_t & x)
         {
 
             // ====== INNOVATION COVARIANCE ======
-            myvector_t ph = {};
+            vector_t ph = {};
             multiply(p, h, ph);
             const auto r = stdMeasNoise * stdMeasNoise;
             const auto hphr = r + dot(h, ph); // HPH' + R
 
             // Compute the Kalman gain as a column vector
-            myvector_t g = {};
+            vector_t g = {};
             for (uint8_t i=0; i<EKF_N; ++i) {
                 set(g, i, get(ph, i) / hphr);
             }
@@ -529,13 +529,13 @@ class Ekf {
                 const bool isFlying,
                 const imu_t & gyro,
                 const imu_t & accel,
-                const myvector_t & x_in,
+                const vector_t & x_in,
                 const new_quat_t & q,
                 const axis3_t & r,
                 const uint32_t lastPredictionMsec, 
                 new_quat_t & quat_out,
                 matrix_t & p,
-                myvector_t &x_out)
+                vector_t &x_out)
         {
             static axis3_t _gyro;
             static axis3_t _accel;
@@ -702,7 +702,7 @@ class Ekf {
                 const float distance,
                 const float rz, 
                 matrix_t & p, 
-                myvector_t & x)
+                vector_t & x)
         {
             const auto angle = max(0, 
                     fabsf(acosf(rz)) - 
@@ -717,7 +717,7 @@ class Ekf {
                 (1 + expf(RANGEFINDER_EXP_COEFF * 
                           (measuredDistance - RANGEFINDER_EXP_POINT_A)));
 
-            myvector_t h = {};
+            vector_t h = {};
             set(h, STATE_Z, 1 / cosf(angle));
 
             scalarUpdate(h, measuredDistance-predictedDistance, stdDev, 
@@ -731,12 +731,12 @@ class Ekf {
                 const float rz,
                 const axis3_t & gyroLatest,
                 matrix_t & p,
-                myvector_t & x)
+                vector_t & x)
         {
         }
 
         static void ekf_getVehicleState(
-                const myvector_t & x,
+                const vector_t & x,
                 const axis3_t & gyroLatest,
                 const new_quat_t & q,
                 const axis3_t & r,
@@ -794,7 +794,7 @@ class Ekf {
             }
         }
 
-        static float dot(const myvector_t & x, const myvector_t & y) 
+        static float dot(const vector_t & x, const vector_t & y) 
         {
             float d = 0;
 
@@ -810,12 +810,12 @@ class Ekf {
             return a.dat[i][j];
         }
 
-        static float get(const myvector_t & x, const uint8_t i)
+        static float get(const vector_t & x, const uint8_t i)
         {
             return x.dat[i];
         }
 
-        static void set(myvector_t & x, const uint8_t i, const float val)
+        static void set(vector_t & x, const uint8_t i, const float val)
         {
             x.dat[i] = val;
         }
@@ -853,7 +853,7 @@ class Ekf {
         }
 
         // Matrix * Vector
-        static void multiply(const matrix_t & a, const myvector_t & x, myvector_t & y)
+        static void multiply(const matrix_t & a, const vector_t & x, vector_t & y)
         {
             for (uint8_t i=0; i<EKF_N; i++) {
                 y.dat[i] = 0;
@@ -864,7 +864,7 @@ class Ekf {
         }
 
         // Outer product
-        static void multiply(const myvector_t & x, const myvector_t & y, matrix_t & a)
+        static void multiply(const vector_t & x, const vector_t & y, matrix_t & a)
         {
             for (uint8_t i=0; i<EKF_N; i++) {
                 for (uint8_t j=0; j<EKF_N; j++) {
@@ -874,7 +874,7 @@ class Ekf {
         }
 
         matrix_t _p;
-        myvector_t _x;
+        vector_t _x;
 
         bool _isUpdated;
         uint32_t _lastPredictionMsec;
