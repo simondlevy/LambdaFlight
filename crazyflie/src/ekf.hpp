@@ -207,7 +207,7 @@ class Ekf {
             if (fabs(_r.z) > 0.1f && _r.z > 0 && 
                     distance < RANGEFINDER_OUTLIER_LIMIT_MM) {
 
-                scalarUpdate(h, measuredDistance-predictedDistance, stdDev, _p, _x);
+                scalarUpdate(h, measuredDistance-predictedDistance, stdDev);
 
                 _isUpdated = true;
             }
@@ -256,8 +256,7 @@ class Ekf {
                     (Npix * flow_dt / thetapix) * (_r.z / z_g));
 
             //First update
-            scalarUpdate(hx, measuredNX-predictedNX, FLOW_STD_FIXED*FLOW_RESOLUTION,
-                    _p, _x);
+            scalarUpdate(hx, measuredNX-predictedNX, FLOW_STD_FIXED*FLOW_RESOLUTION);
 
             // ~~~ Y velocity prediction and update ~~~
             auto predictedNY = (flow_dt * Npix / thetapix ) * 
@@ -271,8 +270,7 @@ class Ekf {
             set(hy, STATE_DY, (Npix * flow_dt / thetapix) * (_r.z / z_g));
 
             // Second update
-            scalarUpdate(hy, measuredNY-predictedNY, FLOW_STD_FIXED*FLOW_RESOLUTION, 
-                    _p, _x);
+            scalarUpdate(hy, measuredNY-predictedNY, FLOW_STD_FIXED*FLOW_RESOLUTION);
 
             _isUpdated = true;
         }
@@ -461,17 +459,15 @@ class Ekf {
             }
         }
 
-        static void scalarUpdate(
+        void scalarUpdate(
                 const vector_t & h, 
                 const float error, 
-                const float stdMeasNoise,
-                matrix_t & p, 
-                vector_t & x)
+                const float stdMeasNoise)
         {
 
             // ====== INNOVATION COVARIANCE ======
             vector_t ph = {};
-            multiply(p, h, ph);
+            multiply(_p, h, ph);
             const auto r = stdMeasNoise * stdMeasNoise;
             const auto hphr = r + dot(h, ph); // HPH' + R
 
@@ -483,7 +479,7 @@ class Ekf {
 
             // Perform the state update
             for (uint8_t i=0; i<EKF_N; ++i) {
-                set(x, i, get(x, i) + get(g, i) * error);
+                set(_x, i, get(_x, i) + get(g, i) * error);
             }
 
             // ====== COVARIANCE UPDATE ======
@@ -498,18 +494,18 @@ class Ekf {
             matrix_t GHt = {};
             transpose(GH, GHt);      // (KH - I)'
             matrix_t GHIP = {};
-            multiply(GH, p, GHIP);  // (KH - I)*P
-            multiply(GHIP, GHt, p); // (KH - I)*P*(KH - I)'
+            multiply(GH, _p, GHIP);  // (KH - I)*P
+            multiply(GHIP, GHt, _p); // (KH - I)*P*(KH - I)'
 
             // Add the measurement variance 
             for (int i=0; i<EKF_N; i++) {
                 for (int j=0; j<EKF_N; j++) {
-                    p.dat[i][j] += j < i ? 0 : r * get(g, i) * get(g, j);
-                    set(p, i, j, get(p, i, j));
+                    _p.dat[i][j] += j < i ? 0 : r * get(g, i) * get(g, j);
+                    set(_p, i, j, get(_p, i, j));
                 }
             }
 
-            updateCovarianceMatrix(p);
+            updateCovarianceMatrix(_p);
         }
 
         static bool isPositionWithinBounds(const float pos)
