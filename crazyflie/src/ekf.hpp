@@ -18,7 +18,9 @@ class Ekf {
 
                 float Fdat[EKF_N][EKF_N] = {};
 
-                get_f_jacobian(nowMsec, Fdat);
+                float xdat[EKF_N] = {};
+
+                get_prediction(nowMsec, xdat, Fdat);
 
                 matrix_t F = {};
                 makemat(Fdat, F);
@@ -35,16 +37,17 @@ class Ekf {
 
                     _lastProcessNoiseUpdateMsec = nowMsec;
 
-                    add_process_noise();
+                    //add_process_noise();
                 }
             }
         }
 
     protected:
 
-        virtual void get_f_jacobian(const float nowMsec, float Fdat[EKF_N][EKF_N]) = 0;
-
-        virtual void add_process_noise(void);
+        virtual void get_prediction(
+                const float nowMsec, 
+                float xdat[EKF_N],
+                float Fdat[EKF_N][EKF_N]) = 0;
 
         void init(
                 const float diag[EKF_N],

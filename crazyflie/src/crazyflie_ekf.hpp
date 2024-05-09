@@ -38,8 +38,10 @@ class CrazyflieEkf : public Ekf {
         imu_t _gyroSum;
         imu_t _accelSum;
 
-        virtual void get_f_jacobian(
-                const float nowMsec, float Fdat[EKF_N][EKF_N]) override
+        virtual void get_prediction(
+                const float nowMsec, 
+                float xdat[EKF_N],
+                float Fdat[EKF_N][EKF_N]) override
         {
             vector_t x_predicted = {};
 
@@ -192,10 +194,6 @@ class CrazyflieEkf : public Ekf {
             Fdat[STATE_DX][STATE_E2] = -MSS_TO_GS*_r.y*dt;
             Fdat[STATE_DY][STATE_E2] = MSS_TO_GS*_r.x*dt;
             Fdat[STATE_DZ][STATE_E2] = 0;
-        }
-
-        virtual void add_process_noise(void) override
-        {
         }
 
     public:
