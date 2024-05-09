@@ -592,55 +592,6 @@ class CrazyflieEkf : public Ekf {
                 (isFlying ? 0 : ROLLPITCH_ZERO_REVERSION * initVal);
         }
 
-        void scalarUpdate(
-                const vector_t & h, 
-                const float error, 
-                const float stdMeasNoise)
-        {
-
-            // ====== INNOVATION COVARIANCE ======
-            vector_t ph = {};
-            multiply(_p, h, ph);
-            const auto r = stdMeasNoise * stdMeasNoise;
-            const auto hphr = r + dot(h, ph); // HPH' + R
-
-            // Compute the Kalman gain as a column vector
-            vector_t g = {};
-            for (uint8_t i=0; i<EKF_N; ++i) {
-                set(g, i, get(ph, i) / hphr);
-            }
-
-            // Perform the state update
-            for (uint8_t i=0; i<EKF_N; ++i) {
-                set(_x, i, get(_x, i) + get(g, i) * error);
-            }
-
-            // ====== COVARIANCE UPDATE ======
-
-            matrix_t GH = {};
-            multiply(g, h, GH); // KH
-
-            for (int i=0; i<EKF_N; i++) { 
-                set(GH, i, i, get(GH, i, i) - 1);
-            } // KH - I
-
-            matrix_t GHt = {};
-            transpose(GH, GHt);      // (KH - I)'
-            matrix_t GHIP = {};
-            multiply(GH, _p, GHIP);  // (KH - I)*P
-            multiply(GHIP, GHt, _p); // (KH - I)*P*(KH - I)'
-
-            // Add the measurement variance 
-            for (int i=0; i<EKF_N; i++) {
-                for (int j=0; j<EKF_N; j++) {
-                    _p.dat[i][j] += j < i ? 0 : r * get(g, i) * get(g, j);
-                    set(_p, i, j, get(_p, i, j));
-                }
-            }
-
-            updateCovarianceMatrix();
-        }
-
         static bool isPositionWithinBounds(const float pos)
         {
             return fabs(pos) < MAX_POSITION;
