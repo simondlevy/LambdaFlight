@@ -10,88 +10,6 @@ class CrazyflieEkf {
 
     // General ================================================================
 
-    public:
-
-        void init(
-                const uint32_t nowMsec,
-                const uint32_t predictionIntervalMsec,
-                const float min_covariance, 
-                const float max_covariance)
-        {
-            _predictionIntervalMsec = predictionIntervalMsec;
-
-            _lastProcessNoiseUpdateMsec = nowMsec;
-            _lastPredictionMsec = nowMsec;
-            _isUpdated = false;
-
-            _min_covariance = min_covariance;
-            _max_covariance = max_covariance;
-
-            float diag[EKF_N] = {};
-
-            do_init(diag);
-
-            for (uint8_t i=0; i<EKF_N; ++i) {
-
-                for (uint8_t j=0; j<EKF_N; ++j) {
-
-                    set(_p, i, j, i==j ? diag[i] : 0);
-                }
-
-                set(_x, i, 0);
-            }
-
-        }
-
-        void predict(const uint32_t nowMsec)
-        {
-            static uint32_t _nextPredictionMsec;
-
-            _nextPredictionMsec = nowMsec > _nextPredictionMsec ?
-                nowMsec + _predictionIntervalMsec :
-                _nextPredictionMsec;
-
-            if (nowMsec >= _nextPredictionMsec) {
-
-                _isUpdated = true;
-
-                float xnew[EKF_N] = {};
-
-                for (uint8_t i=0; i<EKF_N; ++i) {
-                    xnew[i] = get(_x, i);
-                }
-
-                float Fdat[EKF_N][EKF_N] = {};
-
-                const auto shouldAddProcessNoise = 
-                    nowMsec - _lastProcessNoiseUpdateMsec > 0;
-
-                get_prediction(
-                        nowMsec, shouldAddProcessNoise, _x.dat, xnew, Fdat);
-
-                matrix_t F = {};
-                makemat(Fdat, F);
-                matrix_t  Ft = {};
-                transpose(F, Ft);     // F'
-                matrix_t FP = {};
-                multiply(F, _p, FP);  // FP
-                multiply(FP, Ft, _p); // FPF'
-                updateCovarianceMatrix();
-
-                _lastPredictionMsec = nowMsec;
-
-                if (shouldAddProcessNoise) {
-
-                    _lastProcessNoiseUpdateMsec = nowMsec;
-
-                    for (uint8_t i=0; i<EKF_N; ++i) {
-                        set(_x, i, xnew[i]);
-                    }
-
-                }
-            }
-        }
-
     private:
 
         typedef struct {
@@ -118,57 +36,8 @@ class CrazyflieEkf {
 
         uint32_t _predictionIntervalMsec;
 
-        void scalarUpdate(
-                const vector_t & h, 
-                const float error, 
-                const float stdMeasNoise)
-        {
 
-            // ====== INNOVATION COVARIANCE ======
-            vector_t ph = {};
-            multiply(_p, h, ph);
-            const auto r = stdMeasNoise * stdMeasNoise;
-            const auto hphr = r + dot(h, ph); // HPH' + R
-
-            // Compute the Kalman gain as a column vector
-            vector_t g = {};
-            for (uint8_t i=0; i<EKF_N; ++i) {
-                set(g, i, get(ph, i) / hphr);
-            }
-
-            // Perform the state update
-            for (uint8_t i=0; i<EKF_N; ++i) {
-                set(_x, i, get(_x, i) + get(g, i) * error);
-            }
-
-            // ====== COVARIANCE UPDATE ======
-
-            matrix_t GH = {};
-            multiply(g, h, GH); // KH
-
-            for (int i=0; i<EKF_N; i++) { 
-                set(GH, i, i, get(GH, i, i) - 1);
-            } // KH - I
-
-            matrix_t GHt = {};
-            transpose(GH, GHt);      // (KH - I)'
-            matrix_t GHIP = {};
-            multiply(GH, _p, GHIP);  // (KH - I)*P
-            multiply(GHIP, GHt, _p); // (KH - I)*P*(KH - I)'
-
-            // Add the measurement variance 
-            for (int i=0; i<EKF_N; i++) {
-                for (int j=0; j<EKF_N; j++) {
-                    _p.dat[i][j] += j < i ? 0 : r * get(g, i) * get(g, j);
-                    set(_p, i, j, get(_p, i, j));
-                }
-            }
-
-            updateCovarianceMatrix();
-        }
-
-
-        void updateCovarianceMatrix(void)
+        void cleanupCovarianceMatrix(void)
         {
             // Enforce symmetry of the covariance matrix, and ensure the
             // values stay bounded
@@ -287,6 +156,137 @@ class CrazyflieEkf {
 
         float _min_covariance;
         float _max_covariance;
+
+    public:
+
+        void init(
+                const uint32_t nowMsec,
+                const uint32_t predictionIntervalMsec,
+                const float min_covariance, 
+                const float max_covariance)
+        {
+            _predictionIntervalMsec = predictionIntervalMsec;
+
+            _lastProcessNoiseUpdateMsec = nowMsec;
+            _lastPredictionMsec = nowMsec;
+            _isUpdated = false;
+
+            _min_covariance = min_covariance;
+            _max_covariance = max_covariance;
+
+            float diag[EKF_N] = {};
+
+            do_init(diag);
+
+            for (uint8_t i=0; i<EKF_N; ++i) {
+
+                for (uint8_t j=0; j<EKF_N; ++j) {
+
+                    set(_p, i, j, i==j ? diag[i] : 0);
+                }
+
+                set(_x, i, 0);
+            }
+
+        }
+
+        void predict(const uint32_t nowMsec)
+        {
+            static uint32_t _nextPredictionMsec;
+
+            _nextPredictionMsec = nowMsec > _nextPredictionMsec ?
+                nowMsec + _predictionIntervalMsec :
+                _nextPredictionMsec;
+
+            if (nowMsec >= _nextPredictionMsec) {
+
+                _isUpdated = true;
+
+                float xnew[EKF_N] = {};
+
+                for (uint8_t i=0; i<EKF_N; ++i) {
+                    xnew[i] = get(_x, i);
+                }
+
+                float Fdat[EKF_N][EKF_N] = {};
+
+                const auto shouldAddProcessNoise = 
+                    nowMsec - _lastProcessNoiseUpdateMsec > 0;
+
+                get_prediction(
+                        nowMsec, shouldAddProcessNoise, _x.dat, xnew, Fdat);
+
+                matrix_t F = {};
+                makemat(Fdat, F);
+                matrix_t  Ft = {};
+                transpose(F, Ft);     // F'
+                matrix_t FP = {};
+                multiply(F, _p, FP);  // FP
+                multiply(FP, Ft, _p); // FPF'
+                cleanupCovarianceMatrix();
+
+                _lastPredictionMsec = nowMsec;
+
+                if (shouldAddProcessNoise) {
+
+                    _lastProcessNoiseUpdateMsec = nowMsec;
+
+                    for (uint8_t i=0; i<EKF_N; ++i) {
+                        set(_x, i, xnew[i]);
+                    }
+
+                }
+            }
+        }
+
+        void update(
+                const vector_t & h, 
+                const float error, 
+                const float stdMeasNoise)
+        {
+
+            // ====== INNOVATION COVARIANCE ======
+            vector_t ph = {};
+            multiply(_p, h, ph);
+            const auto r = stdMeasNoise * stdMeasNoise;
+            const auto hphr = r + dot(h, ph); // HPH' + R
+
+            // Compute the Kalman gain as a column vector
+            vector_t g = {};
+            for (uint8_t i=0; i<EKF_N; ++i) {
+                set(g, i, get(ph, i) / hphr);
+            }
+
+            // Perform the state update
+            for (uint8_t i=0; i<EKF_N; ++i) {
+                set(_x, i, get(_x, i) + get(g, i) * error);
+            }
+
+            // ====== COVARIANCE UPDATE ======
+
+            matrix_t GH = {};
+            multiply(g, h, GH); // KH
+
+            for (int i=0; i<EKF_N; i++) { 
+                set(GH, i, i, get(GH, i, i) - 1);
+            } // KH - I
+
+            matrix_t GHt = {};
+            transpose(GH, GHt);      // (KH - I)'
+            matrix_t GHIP = {};
+            multiply(GH, _p, GHIP);  // (KH - I)*P
+            multiply(GHIP, GHt, _p); // (KH - I)*P*(KH - I)'
+
+            // Add the measurement variance 
+            for (int i=0; i<EKF_N; i++) {
+                for (int j=0; j<EKF_N; j++) {
+                    _p.dat[i][j] += j < i ? 0 : r * get(g, i) * get(g, j);
+                    set(_p, i, j, get(_p, i, j));
+                }
+            }
+
+            cleanupCovarianceMatrix();
+        }
 
 
         // Crazyflie ==============================================================
@@ -412,6 +412,7 @@ class CrazyflieEkf {
                 // Move attitude error into attitude if any of the angle errors are
                 // large enough
                 if (isErrorSufficient) {
+
                     matrix_t  A = {};
                     afinalize(v0, v2, v2, A);
                     matrix_t At = {};
@@ -419,7 +420,8 @@ class CrazyflieEkf {
                     matrix_t AP = {};
                     multiply(A, _p, AP);  // AP
                     multiply(AP, At, _p); // APA'
-                    updateCovarianceMatrix();
+
+                    cleanupCovarianceMatrix();
                 }
 
                 _isUpdated = false;
@@ -447,7 +449,7 @@ class CrazyflieEkf {
             if (fabs(_r.z) > 0.1f && _r.z > 0 && 
                     distance < RANGEFINDER_OUTLIER_LIMIT_MM) {
 
-                scalarUpdate(h, measuredDistance-predictedDistance, stdDev);
+                update(h, measuredDistance-predictedDistance, stdDev);
 
                 _isUpdated = true;
             }
@@ -496,7 +498,7 @@ class CrazyflieEkf {
                     (Npix * flow_dt / thetapix) * (_r.z / z_g));
 
             //First update
-            scalarUpdate(hx, measuredNX-predictedNX, FLOW_STD_FIXED*FLOW_RESOLUTION);
+            update(hx, measuredNX-predictedNX, FLOW_STD_FIXED*FLOW_RESOLUTION);
 
             // ~~~ Y velocity prediction and update ~~~
             auto predictedNY = (flow_dt * Npix / thetapix ) * 
@@ -510,7 +512,7 @@ class CrazyflieEkf {
             set(hy, STATE_DY, (Npix * flow_dt / thetapix) * (_r.z / z_g));
 
             // Second update
-            scalarUpdate(hy, measuredNY-predictedNY, FLOW_STD_FIXED*FLOW_RESOLUTION);
+            update(hy, measuredNY-predictedNY, FLOW_STD_FIXED*FLOW_RESOLUTION);
 
             _isUpdated = true;
         }
