@@ -2,7 +2,49 @@
 
 class Ekf {
 
+    public:
+
+        void _predict(const uint32_t nowMsec)
+        {
+            static uint32_t _nextPredictionMsec;
+
+            _nextPredictionMsec = nowMsec > _nextPredictionMsec ?
+                nowMsec + _predictionIntervalMsec :
+                _nextPredictionMsec;
+
+            if (nowMsec >= _nextPredictionMsec) {
+
+                _isUpdated = true;
+
+                float Fdat[EKF_N][EKF_N] = {};
+
+                get_f_jacobian(nowMsec, Fdat);
+
+                matrix_t F = {};
+                makemat(Fdat, F);
+                matrix_t  Ft = {};
+                transpose(F, Ft);     // F'
+                matrix_t FP = {};
+                multiply(F, _p, FP);  // FP
+                multiply(FP, Ft, _p); // FPF'
+                updateCovarianceMatrix();
+
+                _lastPredictionMsec = nowMsec;
+
+                if (nowMsec - _lastProcessNoiseUpdateMsec > 0) {
+
+                    _lastProcessNoiseUpdateMsec = nowMsec;
+
+                    add_process_noise();
+                }
+            }
+        }
+
     protected:
+
+        virtual void get_f_jacobian(const float nowMsec, float Fdat[EKF_N][EKF_N]) = 0;
+
+        virtual void add_process_noise(void);
 
         void init(
                 const float diag[EKF_N],
