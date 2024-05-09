@@ -30,19 +30,24 @@ class CrazyflieEkf : public Ekf {
                 const uint32_t nowMsec,
                 const uint32_t predictionIntervalMsec)
         {
+
+            const float diag[7] = {
+
+                square(STDEV_INITIAL_POSITION_Z),
+                square(STDEV_INITIAL_VELOCITY),
+                square(STDEV_INITIAL_VELOCITY),
+                square(STDEV_INITIAL_VELOCITY),
+                square(STDEV_INITIAL_ATTITUDE_ROLL_PITCH),
+                square(STDEV_INITIAL_ATTITUDE_ROLL_PITCH),
+                square(STDEV_INITIAL_ATTITUDE_YAW)
+            };
+
             Ekf::init(
+                    diag,
                     nowMsec, 
                     predictionIntervalMsec, 
                     MIN_COVARIANCE, 
                     MAX_COVARIANCE);
-
-            _p.dat[STATE_Z][STATE_Z] = square(STDEV_INITIAL_POSITION_Z);
-            _p.dat[STATE_DX][STATE_DX] = square(STDEV_INITIAL_VELOCITY);
-            _p.dat[STATE_DY][STATE_DY] = square(STDEV_INITIAL_VELOCITY);
-            _p.dat[STATE_DZ][STATE_DZ] = square(STDEV_INITIAL_VELOCITY);
-            _p.dat[STATE_E0][STATE_E0] = square(STDEV_INITIAL_ATTITUDE_ROLL_PITCH);
-            _p.dat[STATE_E1][STATE_E1] = square(STDEV_INITIAL_ATTITUDE_ROLL_PITCH);
-            _p.dat[STATE_E2][STATE_E2] = square(STDEV_INITIAL_ATTITUDE_YAW);
 
             _quat.w = 1;
             _quat.x = 0;

@@ -7,13 +7,13 @@ class Ekf {
     protected:
 
         void init(
+                const float diag[EKF_N],
                 const uint32_t nowMsec,
                 const uint32_t predictionIntervalMsec,
                 const float min_covariance, 
                 const float max_covariance)
         {
             _predictionIntervalMsec = predictionIntervalMsec;
-
 
             _lastProcessNoiseUpdateMsec = nowMsec;
             _lastPredictionMsec = nowMsec;
@@ -23,6 +23,10 @@ class Ekf {
             _max_covariance = max_covariance;
 
             memset(&_p, 0, sizeof(_p));
+
+            for (uint8_t i=0; i<EKF_N; ++i) {
+                set(_p, i, i, diag[i]);
+            }
 
             memset(&_x, 0, sizeof(_x));
         }
