@@ -198,11 +198,13 @@ class Ekf {
             vector_t h = {};
             set(h, STATE_Z, 1 / cosf(angle));
 
+            const auto measuredDistance = distance / 1000.f; // mm => m
+
             if (fabs(_r.z) > 0.1f && _r.z > 0 && 
                     distance < RANGEFINDER_OUTLIER_LIMIT_MM) {
 
                 ekf_updateWithRange(
-                        distance, 
+                        measuredDistance, 
                         predictedDistance, 
                         angle, 
                         _r.z, 
@@ -215,7 +217,7 @@ class Ekf {
         }
 
         static void ekf_updateWithRange(
-                const float distance,
+                const float measuredDistance,
                 const float predictedDistance,
                 const float angle,
                 const float rz, 
@@ -223,8 +225,6 @@ class Ekf {
                 matrix_t & p, 
                 vector_t & x)
         {
-            const auto measuredDistance = distance / 1000; // mm => m
-
             const auto stdDev =
                 RANGEFINDER_EXP_STD_A * 
                 (1 + expf(RANGEFINDER_EXP_COEFF * 
