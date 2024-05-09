@@ -163,11 +163,10 @@ class Ekf {
                     (isErrorLarge(v0) || isErrorLarge(v1) || isErrorLarge(v2)) &&
                     isErrorInBounds(v0) && isErrorInBounds(v1) && isErrorInBounds(v2);
 
-                new_quat_t quat_finalized = {};
-                quat_finalized.w = isErrorSufficient ? tmpq0 / norm : _quat.w;
-                quat_finalized.x = isErrorSufficient ? tmpq1 / norm : _quat.x;
-                quat_finalized.y = isErrorSufficient ? tmpq2 / norm : _quat.y;
-                quat_finalized.z = isErrorSufficient ? tmpq3 / norm : _quat.z;
+                _quat.w = isErrorSufficient ? tmpq0 / norm : _quat.w;
+                _quat.x = isErrorSufficient ? tmpq1 / norm : _quat.x;
+                _quat.y = isErrorSufficient ? tmpq2 / norm : _quat.y;
+                _quat.z = isErrorSufficient ? tmpq3 / norm : _quat.z;
 
                 // Move attitude error into attitude if any of the angle errors are
                 // large enough
@@ -185,11 +184,6 @@ class Ekf {
                 set(_x, STATE_E0, 0);
                 set(_x, STATE_E1, 0);
                 set(_x, STATE_E2, 0);
-
-                _quat.w = quat_finalized.w;
-                _quat.x = quat_finalized.x;
-                _quat.y = quat_finalized.y;
-                _quat.z = quat_finalized.z;
 
                 _r.x = 2 * _quat.x * _quat.z - 2 * _quat.w * _quat.y;
                 _r.y = 2 * _quat.y * _quat.z + 2 * _quat.w * _quat.x; 
