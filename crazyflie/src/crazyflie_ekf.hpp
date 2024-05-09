@@ -608,6 +608,137 @@ class CrazyflieEkf {
 
         static constexpr float FLOW_STD_FIXED = 2.0;
 
+
+        static void imuAccum(const axis3_t vals, imu_t & imu)
+        {
+            imu.sum.x += vals.x;
+            imu.sum.y += vals.y;
+            imu.sum.z += vals.z;
+            imu.count++;
+        }
+
+        static void imuTakeMean(
+                const imu_t & imu, 
+                const float conversionFactor, 
+                axis3_t & mean)
+        {
+            const auto count = imu.count;
+
+            const auto isCountNonzero = count > 0;
+
+            mean.x = isCountNonzero ? imu.sum.x * conversionFactor / count : mean.x;
+            mean.y = isCountNonzero ? imu.sum.y * conversionFactor / count : mean.y;
+            mean.z = isCountNonzero ? imu.sum.z * conversionFactor / count : mean.z;
+        }
+
+        static const float max(const float val, const float maxval)
+        {
+            return val > maxval ? maxval : val;
+        }
+
+        static const float min(const float val, const float maxval)
+        {
+            return val < maxval ? maxval : val;
+        }
+
+        static const float square(const float x)
+        {
+            return x * x;
+        }
+
+        static float rotateQuat(
+                const bool isFlying, const float val, const float initVal)
+        {
+            const auto keep = 1.0f - ROLLPITCH_ZERO_REVERSION;
+
+            return (val * (isFlying ? 1: keep)) +
+                (isFlying ? 0 : ROLLPITCH_ZERO_REVERSION * initVal);
+        }
+
+        static bool isPositionWithinBounds(const float pos)
+        {
+            return fabs(pos) < MAX_POSITION;
+        }
+
+        static bool isVelocityWithinBounds(const float vel)
+        {
+            return fabs(vel) < MAX_VELOCITY;
+        }
+
+        static bool isErrorLarge(const float v)
+        {
+            return fabs(v) > 0.1e-3f;
+        }
+
+        static bool isErrorInBounds(const float v)
+        {
+            return fabs(v) < 10;
+        }
+
+        static void afinalize(
+                const float v0, 
+                const float v1, 
+                const float v2,
+                matrix_t & A)
+        {
+            // the attitude error vector (v0,v1,v2) is small,
+            // so we use a first order approximation to e0 = tan(|v0|/2)*v0/|v0|
+            const auto e0 = v0/2; 
+            const auto e1 = v1/2; 
+            const auto e2 = v2/2;
+
+            const auto e0e0 =  1 - e1*e1/2 - e2*e2/2;
+            const auto e0e1 =  e2 + e0*e1/2;
+            const auto e0e2 = -e1 + e0*e2/2;
+
+            const auto e1e0 =  -e2 + e0*e1/2;
+            const auto e1e1 = 1 - e0*e0/2 - e2*e2/2;
+            const auto e1e2 = e0 + e1*e2/2;
+
+            const auto e2e0 = e1 + e0*e2/2;
+            const auto e2e1 = -e0 + e1*e2/2;
+            const auto e2e2 = 1 - e0*e0/2 - e1*e1/2;
+
+            const float a[EKF_N][EKF_N] = 
+            { 
+                //    Z  DX DY DZ    E0     E1    E2
+                /*Z*/   {0, 0, 0, 0, 0,     0,    0},   
+                /*DX*/  {0, 1, 0, 0, 0,     0,    0},  
+                /*DY*/  {0, 0, 1, 0, 0,     0,    0}, 
+                /*DX*/  {0, 0, 0, 1, 0,     0,    0},  
+                /*E0*/  {0, 0, 0, 0, e0e0, e0e1, e0e2},
+                /*E1*/  {0, 0, 0, 0, e1e0, e1e1, e1e2},
+                /*E2*/  {0, 0, 0, 0, e2e0, e2e1, e2e2}
+            };
+
+            memcpy(&A.dat, a, sizeof(A));
+        } 
+
+    protected:
+
+        void do_init(float x[EKF_N])
+        {
+
+            x[STATE_Z] = square(STDEV_INITIAL_POSITION_Z);
+            x[STATE_DX] = square(STDEV_INITIAL_VELOCITY);
+            x[STATE_DY] = square(STDEV_INITIAL_VELOCITY);
+            x[STATE_DZ] = square(STDEV_INITIAL_VELOCITY);
+            x[STATE_E0] = square(STDEV_INITIAL_ATTITUDE_ROLL_PITCH);
+            x[STATE_E1] = square(STDEV_INITIAL_ATTITUDE_ROLL_PITCH);
+            x[STATE_E2] = square(STDEV_INITIAL_ATTITUDE_YAW);
+
+            _quat.w = QW_INIT;
+            _quat.x = QX_INIT;
+            _quat.y = QY_INIT;
+            _quat.z = QZ_INIT;
+
+            _r.x = 0;
+            _r.y = 0;
+            _r.z = 0;
+
+            isFlying = false;
+        }
+
         void get_prediction(
                 const uint32_t nowMsec,
                 const bool didAddProcessNoise,
@@ -775,137 +906,6 @@ class CrazyflieEkf {
                 memset(&_gyroSum, 0, sizeof(_gyroSum));
                 memset(&_accelSum, 0, sizeof(_accelSum));
             }
-        }
-
-
-        static void imuAccum(const axis3_t vals, imu_t & imu)
-        {
-            imu.sum.x += vals.x;
-            imu.sum.y += vals.y;
-            imu.sum.z += vals.z;
-            imu.count++;
-        }
-
-        static void imuTakeMean(
-                const imu_t & imu, 
-                const float conversionFactor, 
-                axis3_t & mean)
-        {
-            const auto count = imu.count;
-
-            const auto isCountNonzero = count > 0;
-
-            mean.x = isCountNonzero ? imu.sum.x * conversionFactor / count : mean.x;
-            mean.y = isCountNonzero ? imu.sum.y * conversionFactor / count : mean.y;
-            mean.z = isCountNonzero ? imu.sum.z * conversionFactor / count : mean.z;
-        }
-
-        static const float max(const float val, const float maxval)
-        {
-            return val > maxval ? maxval : val;
-        }
-
-        static const float min(const float val, const float maxval)
-        {
-            return val < maxval ? maxval : val;
-        }
-
-        static const float square(const float x)
-        {
-            return x * x;
-        }
-
-        static float rotateQuat(
-                const bool isFlying, const float val, const float initVal)
-        {
-            const auto keep = 1.0f - ROLLPITCH_ZERO_REVERSION;
-
-            return (val * (isFlying ? 1: keep)) +
-                (isFlying ? 0 : ROLLPITCH_ZERO_REVERSION * initVal);
-        }
-
-        static bool isPositionWithinBounds(const float pos)
-        {
-            return fabs(pos) < MAX_POSITION;
-        }
-
-        static bool isVelocityWithinBounds(const float vel)
-        {
-            return fabs(vel) < MAX_VELOCITY;
-        }
-
-        static bool isErrorLarge(const float v)
-        {
-            return fabs(v) > 0.1e-3f;
-        }
-
-        static bool isErrorInBounds(const float v)
-        {
-            return fabs(v) < 10;
-        }
-
-        static void afinalize(
-                const float v0, 
-                const float v1, 
-                const float v2,
-                matrix_t & A)
-        {
-            // the attitude error vector (v0,v1,v2) is small,
-            // so we use a first order approximation to e0 = tan(|v0|/2)*v0/|v0|
-            const auto e0 = v0/2; 
-            const auto e1 = v1/2; 
-            const auto e2 = v2/2;
-
-            const auto e0e0 =  1 - e1*e1/2 - e2*e2/2;
-            const auto e0e1 =  e2 + e0*e1/2;
-            const auto e0e2 = -e1 + e0*e2/2;
-
-            const auto e1e0 =  -e2 + e0*e1/2;
-            const auto e1e1 = 1 - e0*e0/2 - e2*e2/2;
-            const auto e1e2 = e0 + e1*e2/2;
-
-            const auto e2e0 = e1 + e0*e2/2;
-            const auto e2e1 = -e0 + e1*e2/2;
-            const auto e2e2 = 1 - e0*e0/2 - e1*e1/2;
-
-            const float a[EKF_N][EKF_N] = 
-            { 
-                //    Z  DX DY DZ    E0     E1    E2
-                /*Z*/   {0, 0, 0, 0, 0,     0,    0},   
-                /*DX*/  {0, 1, 0, 0, 0,     0,    0},  
-                /*DY*/  {0, 0, 1, 0, 0,     0,    0}, 
-                /*DX*/  {0, 0, 0, 1, 0,     0,    0},  
-                /*E0*/  {0, 0, 0, 0, e0e0, e0e1, e0e2},
-                /*E1*/  {0, 0, 0, 0, e1e0, e1e1, e1e2},
-                /*E2*/  {0, 0, 0, 0, e2e0, e2e1, e2e2}
-            };
-
-            memcpy(&A.dat, a, sizeof(A));
-        } 
-
-    protected:
-
-        void do_init(float x[EKF_N])
-        {
-
-            x[STATE_Z] = square(STDEV_INITIAL_POSITION_Z);
-            x[STATE_DX] = square(STDEV_INITIAL_VELOCITY);
-            x[STATE_DY] = square(STDEV_INITIAL_VELOCITY);
-            x[STATE_DZ] = square(STDEV_INITIAL_VELOCITY);
-            x[STATE_E0] = square(STDEV_INITIAL_ATTITUDE_ROLL_PITCH);
-            x[STATE_E1] = square(STDEV_INITIAL_ATTITUDE_ROLL_PITCH);
-            x[STATE_E2] = square(STDEV_INITIAL_ATTITUDE_YAW);
-
-            _quat.w = QW_INIT;
-            _quat.x = QX_INIT;
-            _quat.y = QY_INIT;
-            _quat.z = QZ_INIT;
-
-            _r.x = 0;
-            _r.y = 0;
-            _r.z = 0;
-
-            isFlying = false;
         }
 
 };
