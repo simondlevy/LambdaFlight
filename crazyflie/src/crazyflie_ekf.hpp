@@ -49,10 +49,10 @@ class CrazyflieEkf : public Ekf {
                     MIN_COVARIANCE, 
                     MAX_COVARIANCE);
 
-            _quat.w = 1;
-            _quat.x = 0;
-            _quat.y = 0;
-            _quat.z = 0;
+            _quat.w = QW_INIT;
+            _quat.x = QX_INIT;
+            _quat.y = QY_INIT;
+            _quat.z = QZ_INIT;
 
             _r.x = 0;
             _r.y = 0;
@@ -225,7 +225,8 @@ class CrazyflieEkf : public Ekf {
                 const auto dye2  = MSS_TO_GS*_r.x*dt;
                 const auto dze2  = 0;
 
-                const float Adat[EKF_N][EKF_N] = 
+                // Jacobian of transfer function
+                const float Fdat[EKF_N][EKF_N] = 
                 { 
                     //        Z  DX    DY    DZ    E0    E1    E2
                     /*Z*/    {0, zdx,  zdy,  zdz,  ze0,  ze1,  ze2}, 
@@ -237,14 +238,13 @@ class CrazyflieEkf : public Ekf {
                     /*E2*/   {0, 0,    0,    0,    e2e0, e2e1, e2e2}  
                 };
 
-                matrix_t A = {};
-                makemat(Adat, A);
-
-                matrix_t  At = {};
-                transpose(A, At);     // A'
-                matrix_t AP = {};
-                multiply(A, _p, AP);  // AP
-                multiply(AP, At, _p); // APA'
+                matrix_t F = {};
+                makemat(Fdat, F);
+                matrix_t  Ft = {};
+                transpose(F, Ft);     // F'
+                matrix_t FP = {};
+                multiply(F, _p, FP);  // FP
+                multiply(FP, Ft, _p); // FPF'
                 updateCovarianceMatrix();
 
                 _lastPredictionMsec = nowMsec;
