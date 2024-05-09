@@ -2,7 +2,7 @@
 
 #include <string.h>
 
-class Ekf {
+class CrazyflieEkf {
 
     private:
 
