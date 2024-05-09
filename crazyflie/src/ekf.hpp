@@ -131,15 +131,6 @@ class Ekf {
                 }
             }
 
-            // Update ----------------------------------------------------------------
-
-            // Update with gyro
-            if (ekfAction == EKF_UPDATE_WITH_GYRO) {
-
-                imuAccum(stream_gyro, _gyro);
-                memcpy(&_gyroLatest, &stream_gyro, sizeof(axis3_t));
-            }
-
             // Finalize --------------------------------------------------------------
 
             const auto requestedFinalize = ekfAction == EKF_FINALIZE;
@@ -196,6 +187,17 @@ class Ekf {
                     _x);
 
             _isUpdated = true;
+        }
+
+        void updateWithGyro(const uint32_t nowMsec) 
+        {
+            _nextPredictionMsec = nowMsec > _nextPredictionMsec ?
+                nowMsec + _predictionIntervalMsec :
+                _nextPredictionMsec;
+
+            imuAccum(stream_gyro, _gyro);
+
+            memcpy(&_gyroLatest, &stream_gyro, sizeof(axis3_t));
         }
 
         void updateWithAccel(const uint32_t nowMsec, const axis3_t & accel) 

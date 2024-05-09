@@ -205,7 +205,7 @@ class EstimatorTask : public FreeRTOSTask {
                     case MeasurementTypeGyroscope:
                         memcpy(&stream_gyro, &measurement.data.gyroscope.gyro,
                                 sizeof(stream_gyro));
-                        _ekf.step(EKF_UPDATE_WITH_GYRO, nowMsec, _safety->isFlying());
+                        _ekf.updateWithGyro(nowMsec);
                         break;
 
                     case MeasurementTypeAcceleration:
