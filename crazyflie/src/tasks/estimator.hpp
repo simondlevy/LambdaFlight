@@ -223,8 +223,7 @@ class EstimatorTask : public FreeRTOSTask {
                 }
             }
 
-
-            _ekf.step(EKF_FINALIZE, nowMsec, _safety->isFlying()); 
+            _ekf.finalize(nowMsec); 
 
             if (!_ekf.isStateWithinBounds()) { 
 

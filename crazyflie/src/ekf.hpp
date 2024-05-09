@@ -131,11 +131,11 @@ class Ekf {
                 }
             }
 
-            // Finalize --------------------------------------------------------------
+        }
 
-            const auto requestedFinalize = ekfAction == EKF_FINALIZE;
-
-            if (requestedFinalize && _isUpdated) {
+        void finalize(const uint32_t nowMsec)
+        {
+            if (_isUpdated) {
 
                 new_quat_t quat_finalized = {};
 
