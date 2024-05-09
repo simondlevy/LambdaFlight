@@ -2,59 +2,7 @@
 
 class Ekf {
 
-    public:
-
-        void _predict(const uint32_t nowMsec)
-        {
-            static uint32_t _nextPredictionMsec;
-
-            _nextPredictionMsec = nowMsec > _nextPredictionMsec ?
-                nowMsec + _predictionIntervalMsec :
-                _nextPredictionMsec;
-
-            if (nowMsec >= _nextPredictionMsec) {
-
-                _isUpdated = true;
-
-                float Fdat[EKF_N][EKF_N] = {};
-
-                float xdat[EKF_N] = {};
-
-                const auto shouldAddProcessNoise = 
-                    nowMsec - _lastProcessNoiseUpdateMsec > 0;
-
-                get_prediction(nowMsec, shouldAddProcessNoise, xdat, Fdat);
-
-                matrix_t F = {};
-                makemat(Fdat, F);
-                matrix_t  Ft = {};
-                transpose(F, Ft);     // F'
-                matrix_t FP = {};
-                multiply(F, _p, FP);  // FP
-                multiply(FP, Ft, _p); // FPF'
-                updateCovarianceMatrix();
-
-                _lastPredictionMsec = nowMsec;
-
-                if (shouldAddProcessNoise) {
-
-                    _lastProcessNoiseUpdateMsec = nowMsec;
-
-                    for (uint8_t i=0; i<EKF_N; ++i) {
-
-                        set(_x, i, xdat[i]);
-                    }
-                }
-            }
-        }
-
     protected:
-
-        virtual void get_prediction(
-                const float nowMsec, 
-                const bool shouldAddProcessNoise,
-                float xdat[EKF_N],
-                float Fdat[EKF_N][EKF_N]) = 0;
 
         void init(
                 const float diag[EKF_N],
