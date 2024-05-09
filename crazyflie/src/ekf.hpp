@@ -64,10 +64,7 @@ class Ekf {
             _lastPredictionMsec = nowMsec;
             _isUpdated = false;
 
-            _nextPredictionMsec = 0;/*nowMsec > _nextPredictionMsec ?
-                nowMsec + _predictionIntervalMsec :
-                _nextPredictionMsec;*/
-
+            _nextPredictionMsec = 0;
         }
 
         void predict(const uint32_t nowMsec, const bool isFlying)
@@ -142,9 +139,11 @@ class Ekf {
 
         void updateWithRange(const uint32_t nowMsec, const uint32_t distance)
         {
+            /*
             _nextPredictionMsec = nowMsec > _nextPredictionMsec ?
                 nowMsec + _predictionIntervalMsec :
                 _nextPredictionMsec;
+                */
 
             if (fabs(_r.z) > 0.1f && _r.z > 0 && 
                     distance < RANGEFINDER_OUTLIER_LIMIT_MM) {
@@ -159,9 +158,10 @@ class Ekf {
                 const float flow_dpixelx,
                 const float flow_dpixely)
         {
+            /*
             _nextPredictionMsec = nowMsec > _nextPredictionMsec ?
                 nowMsec + _predictionIntervalMsec :
-                _nextPredictionMsec;
+                _nextPredictionMsec;*/
 
             ekf_updateWithFlow(
                     flow_dt,
@@ -177,9 +177,10 @@ class Ekf {
 
         void updateWithGyro(const uint32_t nowMsec, const axis3_t & gyro) 
         {
+            /*
             _nextPredictionMsec = nowMsec > _nextPredictionMsec ?
                 nowMsec + _predictionIntervalMsec :
-                _nextPredictionMsec;
+                _nextPredictionMsec;*/
 
             imuAccum(gyro, _gyro);
 
@@ -188,9 +189,10 @@ class Ekf {
 
         void updateWithAccel(const uint32_t nowMsec, const axis3_t & accel) 
         {
+            /*
             _nextPredictionMsec = nowMsec > _nextPredictionMsec ?
                 nowMsec + _predictionIntervalMsec :
-                _nextPredictionMsec;
+                _nextPredictionMsec;*/
 
             imuAccum(accel, _accel);
         }
