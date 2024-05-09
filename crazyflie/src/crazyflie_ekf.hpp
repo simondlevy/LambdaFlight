@@ -43,8 +43,6 @@ class CrazyflieEkf : public Ekf {
                 float xdat[EKF_N],
                 float Fdat[EKF_N][EKF_N]) override
         {
-            vector_t x_predicted = {};
-
             new_quat_t quat_predicted = {};
 
             static axis3_t _gyro;
@@ -115,24 +113,24 @@ class CrazyflieEkf : public Ekf {
             const auto tmpSDY = get(_x, STATE_DY);
             const auto tmpSDZ = get(_x, STATE_DZ);
 
-            set(x_predicted, STATE_Z, 
+            xdat[STATE_Z] = 
                     get(_x, STATE_Z) + 
-                    _r.x * dx + _r.y * dy + _r.z * dz - MSS_TO_GS * dt2 / 2);
+                    _r.x * dx + _r.y * dy + _r.z * dz - MSS_TO_GS * dt2 / 2;
 
-            set(x_predicted, STATE_DX,
+            xdat[STATE_DX] =
                     get(_x, STATE_DX) +
                     dt * (accx + _gyro.z * tmpSDY - _gyro.y * tmpSDZ -
-                        MSS_TO_GS * _r.x));
+                        MSS_TO_GS * _r.x);
 
-            set(x_predicted, STATE_DY,
+            xdat[STATE_DY] =
                     get(_x, STATE_DY) +
                     dt * (accy - _gyro.z * tmpSDX + _gyro.x * tmpSDZ -
-                        MSS_TO_GS * _r.y)); 
+                        MSS_TO_GS * _r.y); 
 
-            set(x_predicted, STATE_DZ,
+            xdat[STATE_DZ] =
                     get(_x, STATE_DZ) +
                     dt * (_accel.z + _gyro.y * tmpSDX - _gyro.x * tmpSDY -
-                        MSS_TO_GS * _r.z)); quat_predicted.w = tmpq0/norm;
+                        MSS_TO_GS * _r.z); quat_predicted.w = tmpq0/norm;
 
             quat_predicted.x = tmpq1/norm; 
             quat_predicted.y = tmpq2/norm; 
@@ -160,14 +158,14 @@ class CrazyflieEkf : public Ekf {
             Fdat[STATE_Z][STATE_DZ] = _r.z*dt;
 
             // altitude from attitude error
-            Fdat[STATE_Z][STATE_E0] = (get(x_predicted, STATE_DY)*_r.z -
-                    get(x_predicted, STATE_DZ)*_r.y)*dt;
+            Fdat[STATE_Z][STATE_E0] = (xdat[STATE_DY] * _r.z -
+                    xdat[STATE_DZ] * _r.y) * dt;
 
-            Fdat[STATE_Z][STATE_E1] = (- get(x_predicted, STATE_DX)*_r.z +
-                    get(x_predicted, STATE_DZ)*_r.x)*dt;
+            Fdat[STATE_Z][STATE_E1] = -(xdat[STATE_DX] * _r.z +
+                    xdat[STATE_DZ] * _r.x) * dt;
 
-            Fdat[STATE_Z][STATE_E2] = (get(x_predicted, STATE_DX)*_r.y -
-                    get(x_predicted, STATE_DY)*_r.x)*dt;
+            Fdat[STATE_Z][STATE_E2] = (xdat[STATE_DX] * _r.y -
+                    xdat[STATE_DY] * _r.x) * dt;
 
             // body-frame velocity from body-frame velocity
             Fdat[STATE_DX][STATE_DX] = 1; //drag negligible
