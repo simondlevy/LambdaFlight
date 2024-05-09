@@ -83,6 +83,7 @@ class CrazyflieEkf : public Ekf {
 
         void get_prediction(
                 const uint32_t nowMsec,
+                const bool didAddProcessNoise,
                 const float xold[EKF_N],
                 float xnew[EKF_N],
                 float F[EKF_N][EKF_N],
@@ -235,6 +236,17 @@ class CrazyflieEkf : public Ekf {
             F[STATE_DX][STATE_E2] = -MSS_TO_GS*_r.y*dt;
             F[STATE_DY][STATE_E2] = MSS_TO_GS*_r.x*dt;
             F[STATE_DZ][STATE_E2] = 0;
+
+            if (didAddProcessNoise) {
+
+                _quat.w = quat_predicted.w;
+                _quat.x = quat_predicted.x;
+                _quat.y = quat_predicted.y;
+                _quat.z = quat_predicted.z;
+
+                memset(&_gyroSum, 0, sizeof(_gyroSum));
+                memset(&_accelSum, 0, sizeof(_accelSum));
+            }
         }
 
         void predict(const uint32_t nowMsec)
@@ -259,8 +271,12 @@ class CrazyflieEkf : public Ekf {
 
                 new_quat_t quat_predicted = {};
 
+                const auto shouldAddProcessNoise = 
+                    nowMsec - _lastProcessNoiseUpdateMsec > 0;
+
                 get_prediction(
                         nowMsec, 
+                        shouldAddProcessNoise,
                         _x.dat, 
                         xnew, 
                         Fdat,
@@ -277,9 +293,6 @@ class CrazyflieEkf : public Ekf {
 
                 _lastPredictionMsec = nowMsec;
 
-                const auto shouldAddProcessNoise = 
-                    nowMsec - _lastProcessNoiseUpdateMsec > 0;
-
                 if (shouldAddProcessNoise) {
 
                     _lastProcessNoiseUpdateMsec = nowMsec;
@@ -288,13 +301,6 @@ class CrazyflieEkf : public Ekf {
                         set(_x, i, xnew[i]);
                     }
 
-                    _quat.w = quat_predicted.w;
-                    _quat.x = quat_predicted.x;
-                    _quat.y = quat_predicted.y;
-                    _quat.z = quat_predicted.z;
-
-                    memset(&_gyroSum, 0, sizeof(_gyroSum));
-                    memset(&_accelSum, 0, sizeof(_accelSum));
                 }
             }
         }
