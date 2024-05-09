@@ -25,7 +25,6 @@ static const uint8_t GND_PIN = 22;
 
 // LED settings -------------------------------------------------------------
 
-static const uint8_t LED_PIN = 13;
 static const uint32_t NUM_BLINKS = 3;
 static const uint32_t BLINK_UPTIME = 160;
 static const uint32_t BLINK_DOWNTIME = 70;
@@ -73,6 +72,7 @@ static int m3_command;
 static int m4_command;
 
 // Vehicle state set by Haskell
+static bool _armed;
 static float _phi;
 static float _theta;
 static float _psi;
@@ -81,9 +81,6 @@ static float _z;
 static float _dx;
 static float _dy;
 static float _dz;
-
-static float _dz_rangefinder;
-static float _dz_accel;
 
 // ---------------------------------------------------------------------------
 
@@ -101,38 +98,42 @@ static void powerPin(const uint8_t pin, const bool hilo)
 
 static void initLed(void)
 {
-    pinMode(LED_PIN, OUTPUT); 
-    digitalWrite(LED_PIN, HIGH);
+    pinMode(LED_BUILTIN, OUTPUT); 
+    digitalWrite(LED_BUILTIN, HIGH);
 
     for (uint32_t j = 1; j<= NUM_BLINKS; j++) {
-        digitalWrite(LED_PIN, LOW);
+        digitalWrite(LED_BUILTIN, LOW);
         delay(BLINK_DOWNTIME);
-        digitalWrite(LED_PIN, HIGH);
+        digitalWrite(LED_BUILTIN, HIGH);
         delay(BLINK_UPTIME);
     }
 }
 
 static void blinkLed(const uint32_t current_time) 
 {
-    //DESCRIPTION: Blink LED on board to indicate main loop is running
-    /*
-     * It looks cool.
-     */
-    static uint32_t blink_counter;
-    static uint32_t blink_delay;
-    static bool blinkAlternate;
+    if (_armed) {
+        digitalWrite(LED_BUILTIN, HIGH);
+    }
+    else {
 
-    if (current_time - blink_counter > blink_delay) {
-        blink_counter = micros();
-        digitalWrite(LED_PIN, blinkAlternate); //Pin LED_PIN is built in LED
+        static uint32_t blink_counter;
+        static uint32_t blink_delay;
+        static bool blinkAlternate;
 
-        if (blinkAlternate == 1) {
-            blinkAlternate = 0;
-            blink_delay = 100000;
-        }
-        else if (blinkAlternate == 0) {
-            blinkAlternate = 1;
-            blink_delay = 2000000;
+        if (current_time - blink_counter > blink_delay) {
+
+            blink_counter = micros();
+
+            digitalWrite(LED_BUILTIN, blinkAlternate);
+
+            if (blinkAlternate == 1) {
+                blinkAlternate = 0;
+                blink_delay = 100000;
+            }
+            else if (blinkAlternate == 0) {
+                blinkAlternate = 1;
+                blink_delay = 2000000;
+            }
         }
     }
 }
@@ -166,21 +167,21 @@ static void initImu(void)
 static void initRangefinder(void)
 {
     /*
-    Wire1.begin(); 
-    Wire1.setClock(400000); 
-    delay(100);
+       Wire1.begin(); 
+       Wire1.setClock(400000); 
+       delay(100);
 
-    vl53l1x.setBus(&Wire1);
+       vl53l1x.setBus(&Wire1);
 
-    while (!vl53l1x.init()) {
-        Serial.println("Failed to detect and initialize VL53L1X!");
-        delay(500);
-    }
+       while (!vl53l1x.init()) {
+       Serial.println("Failed to detect and initialize VL53L1X!");
+       delay(500);
+       }
 
-    vl53l1x.setDistanceMode(VL53L1X::Long);
-    vl53l1x.setMeasurementTimingBudget(50000);
-    vl53l1x.startContinuous(50);
-    */
+       vl53l1x.setDistanceMode(VL53L1X::Long);
+       vl53l1x.setMeasurementTimingBudget(50000);
+       vl53l1x.startContinuous(50);
+     */
 }
 
 static void readImu(void)
@@ -356,19 +357,16 @@ void loop()
 
 // Called by Copilot ---------------------------------------------------------
 
-void setState( const float phi, const float theta, const float psi) 
+void setState(
+        const bool armed,
+        const float phi, 
+        const float theta, 
+        const float psi) 
 {
-    // We swap phi, theta to accommodate sideways USFS mounting
+    _armed = armed;
     _phi = phi;
     _theta = theta;
     _psi = psi;
-}
-
-void setDz(const float dz_rangefinder, const float dz_accel, const float dz)
-{
-    _dz_rangefinder = dz_rangefinder;
-    _dz_accel = dz_accel;
-    _dz = dz;
 }
 
 void setMotors(const float m1, const float m2, const float m3, const float m4)
