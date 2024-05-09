@@ -1,7 +1,5 @@
 #pragma once
 
-#include <datatypes.h>
-
 #ifndef _MAIN
 #define EXTERN extern
 #else
@@ -12,7 +10,6 @@ EXTERN float       stream_accel_x;
 EXTERN float       stream_accel_y;
 EXTERN float       stream_accel_z;
 EXTERN float       stream_dt;
-EXTERN ekfAction_e stream_ekf_action;
 EXTERN float       stream_gyro_x;
 EXTERN float       stream_gyro_y;
 EXTERN float       stream_gyro_z;

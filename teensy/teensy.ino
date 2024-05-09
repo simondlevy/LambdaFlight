@@ -16,8 +16,6 @@
 
 #include <vector>
 
-#include "ekf.hpp"
-
 void copilot_step(void);
 
 // Power pin settings -------------------------------------------------------
@@ -167,6 +165,7 @@ static void initImu(void)
 
 static void initRangefinder(void)
 {
+    /*
     Wire1.begin(); 
     Wire1.setClock(400000); 
     delay(100);
@@ -181,6 +180,7 @@ static void initRangefinder(void)
     vl53l1x.setDistanceMode(VL53L1X::Long);
     vl53l1x.setMeasurementTimingBudget(50000);
     vl53l1x.startContinuous(50);
+    */
 }
 
 static void readImu(void)
@@ -240,7 +240,7 @@ static void readRangefinder(void)
     static uint32_t msec_prev;
 
     if (msec_curr - msec_prev > (1000 / RANGEFINDER_FREQ)) {
-        stream_rangefinder_distance =  vl53l1x.read();
+        stream_rangefinder_distance =  0; //vl53l1x.read();
         msec_prev = msec_curr;
     }
 }
@@ -310,28 +310,9 @@ static void debug(const uint32_t current_time)
     }
 }
 
-static void ekfStep(const ekfAction_e action)
-{
-    stream_ekf_action = action;
-    ekf_step();
-}
-
-static void runEkf(void)
-{
-    ekfStep(EKF_PREDICT);
-    ekfStep(EKF_UPDATE_WITH_RANGE);
-    ekfStep(EKF_UPDATE_WITH_GYRO);
-    ekfStep(EKF_UPDATE_WITH_ACCEL);
-    ekfStep(EKF_FINALIZE);
-
-
-}
-
 void setup()
 {
     Serial.begin(115200);
-
-    ekfStep(EKF_INIT);
 
     initImu();
 
@@ -360,8 +341,6 @@ void loop()
     debug(currentTime);
 
     readImu();
-
-    runEkf();
 
     readRangefinder();
 
