@@ -86,8 +86,8 @@ class Ekf {
                 ekf_predict(
                         nowMsec,
                         isFlying,
-                        _gyro, 
-                        _accel, 
+                        _gyroSum, 
+                        _accelSum, 
                         _x, 
                         _quat, 
                         _r, 
@@ -112,8 +112,8 @@ class Ekf {
                     _quat.y = quat_predicted.y;
                     _quat.z = quat_predicted.z;
 
-                    memset(&_gyro, 0, sizeof(_gyro));
-                    memset(&_accel, 0, sizeof(_gyro));
+                    memset(&_gyroSum, 0, sizeof(_gyroSum));
+                    memset(&_accelSum, 0, sizeof(_accelSum));
                 }
             }
         }
@@ -277,14 +277,14 @@ class Ekf {
 
         void updateWithGyro(const uint32_t nowMsec, const axis3_t & gyro) 
         {
-            imuAccum(gyro, _gyro);
+            imuAccum(gyro, _gyroSum);
 
             memcpy(&_gyroLatest, &gyro, sizeof(axis3_t));
         }
 
         void updateWithAccel(const uint32_t nowMsec, const axis3_t & accel) 
         {
-            imuAccum(accel, _accel);
+            imuAccum(accel, _accelSum);
         }
 
         void getState(vehicleState_t & state)
@@ -573,8 +573,8 @@ class Ekf {
         static void ekf_predict(
                 const uint32_t nowMsec,
                 const bool isFlying,
-                const imu_t & gyro,
-                const imu_t & accel,
+                const imu_t & gyroSum,
+                const imu_t & accelSum,
                 const vector_t & x_in,
                 const new_quat_t & q,
                 const axis3_t & r,
@@ -589,8 +589,8 @@ class Ekf {
             const float dt = (nowMsec - lastPredictionMsec) / 1000.0f;
             const auto dt2 = dt * dt;
 
-            imuTakeMean(gyro, DEGREES_TO_RADIANS, _gyro);
-            imuTakeMean(accel, MSS_TO_GS, _accel);
+            imuTakeMean(gyroSum, DEGREES_TO_RADIANS, _gyro);
+            imuTakeMean(accelSum, MSS_TO_GS, _accel);
 
             // Position updates in the body frame (will be rotated to inertial frame);
             // thrust can only be produced in the body's Z direction
@@ -859,7 +859,7 @@ class Ekf {
 
         axis3_t _r;
 
-        imu_t _gyro;
-        imu_t _accel;
+        imu_t _gyroSum;
+        imu_t _accelSum;
 
 };
