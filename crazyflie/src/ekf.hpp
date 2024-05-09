@@ -191,7 +191,13 @@ class Ekf {
         {
             if (fabs(_r.z) > 0.1f && _r.z > 0 && 
                     distance < RANGEFINDER_OUTLIER_LIMIT_MM) {
-                ekf_updateWithRange(distance, _r.z, _p, _x);
+
+                const auto angle = max(0, 
+                        fabsf(acosf(_r.z)) - 
+                        DEGREES_TO_RADIANS * (15.0f / 2.0f));
+
+                ekf_updateWithRange(distance, angle, _r.z, _p, _x);
+
                 _isUpdated = true;
             }
         }
@@ -700,14 +706,11 @@ class Ekf {
 
         static void ekf_updateWithRange(
                 const float distance,
+                const float angle,
                 const float rz, 
                 matrix_t & p, 
                 vector_t & x)
         {
-            const auto angle = max(0, 
-                    fabsf(acosf(rz)) - 
-                    DEGREES_TO_RADIANS * (15.0f / 2.0f));
-
             const auto predictedDistance = get(x, STATE_Z) / cosf(angle);
 
             const auto measuredDistance = distance / 1000; // mm => m
@@ -722,17 +725,6 @@ class Ekf {
 
             scalarUpdate(h, measuredDistance-predictedDistance, stdDev, 
                     p, x);
-        }
-
-        static void ekf_updateWithFlow(
-                const float flow_dt,
-                const float flow_dpixelx,
-                const float flow_dpixely,
-                const float rz,
-                const axis3_t & gyroLatest,
-                matrix_t & p,
-                vector_t & x)
-        {
         }
 
         static void ekf_getVehicleState(
