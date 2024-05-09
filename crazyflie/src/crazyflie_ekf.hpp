@@ -312,6 +312,14 @@ class CrazyflieEkf : public Ekf {
                 _quat.y = isErrorSufficient ? tmpq2 / norm : _quat.y;
                 _quat.z = isErrorSufficient ? tmpq3 / norm : _quat.z;
 
+                set(_x, STATE_E0, 0);
+                set(_x, STATE_E1, 0);
+                set(_x, STATE_E2, 0);
+
+                _r.x = 2 * _quat.x * _quat.z - 2 * _quat.w * _quat.y;
+                _r.y = 2 * _quat.y * _quat.z + 2 * _quat.w * _quat.x; 
+                _r.z = _quat.w*_quat.w-_quat.x*_quat.x-_quat.y*_quat.y+_quat.z*_quat.z;
+
                 // Move attitude error into attitude if any of the angle errors are
                 // large enough
                 if (isErrorSufficient) {
@@ -324,14 +332,6 @@ class CrazyflieEkf : public Ekf {
                     multiply(AP, At, _p); // APA'
                     updateCovarianceMatrix();
                 }
-
-                set(_x, STATE_E0, 0);
-                set(_x, STATE_E1, 0);
-                set(_x, STATE_E2, 0);
-
-                _r.x = 2 * _quat.x * _quat.z - 2 * _quat.w * _quat.y;
-                _r.y = 2 * _quat.y * _quat.z + 2 * _quat.w * _quat.x; 
-                _r.z = _quat.w*_quat.w-_quat.x*_quat.x-_quat.y*_quat.y+_quat.z*_quat.z;
 
                 _isUpdated = false;
             }
