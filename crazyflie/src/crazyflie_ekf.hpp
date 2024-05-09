@@ -292,59 +292,12 @@ class CrazyflieEkf {
         {
             if (_isUpdated) {
 
-                // Incorporate the attitude error (Kalman filter state) with the attitude
-                const auto v0 = get(_x, STATE_E0);
-                const auto v1 = get(_x, STATE_E1);
-                const auto v2 = get(_x, STATE_E2);
-
-                const auto angle = sqrt(v0*v0 + v1*v1 + v2*v2) + EPS;
-                const auto ca = cos(angle / 2.0f);
-                const auto sa = sin(angle / 2.0f);
-
-                const auto dqw = ca;
-                const auto dqx = sa * v0 / angle;
-                const auto dqy = sa * v1 / angle;
-                const auto dqz = sa * v2 / angle;
-
-                const auto qw = _quat.w;
-                const auto qx = _quat.x;
-                const auto qy = _quat.y;
-                const auto qz = _quat.z;
-
-                // Rotate the quad's attitude by the delta quaternion vector
-                // computed above
-                const auto tmpq0 = dqw * qw - dqx * qx - dqy * qy - dqz * qz;
-                const auto tmpq1 = dqx * qw + dqw * qx + dqz * qy - dqy * qz;
-                const auto tmpq2 = dqy * qw - dqz * qx + dqw * qy + dqx * qz;
-                const auto tmpq3 = dqz * qw + dqy * qx - dqx * qy + dqw * qz;
-
-                // normalize and store the result
-                const auto norm = sqrt(tmpq0 * tmpq0 + tmpq1 * tmpq1 + tmpq2 * tmpq2 + 
-                        tmpq3 * tmpq3) + EPS;
-
-                const auto isErrorSufficient  = 
-                    (isErrorLarge(v0) || isErrorLarge(v1) || isErrorLarge(v2)) &&
-                    isErrorInBounds(v0) && isErrorInBounds(v1) && isErrorInBounds(v2);
-
-                _quat.w = isErrorSufficient ? tmpq0 / norm : _quat.w;
-                _quat.x = isErrorSufficient ? tmpq1 / norm : _quat.x;
-                _quat.y = isErrorSufficient ? tmpq2 / norm : _quat.y;
-                _quat.z = isErrorSufficient ? tmpq3 / norm : _quat.z;
-
-                set(_x, STATE_E0, 0);
-                set(_x, STATE_E1, 0);
-                set(_x, STATE_E2, 0);
-
-                _r.x = 2 * _quat.x * _quat.z - 2 * _quat.w * _quat.y;
-                _r.y = 2 * _quat.y * _quat.z + 2 * _quat.w * _quat.x; 
-                _r.z = _quat.w*_quat.w-_quat.x*_quat.x-_quat.y*_quat.y+_quat.z*_quat.z;
+                matrix_t  A = {};
 
                 // Move attitude error into attitude if any of the angle errors are
                 // large enough
-                if (isErrorSufficient) {
+                if (did_finalize(A.dat)) {
 
-                    matrix_t  A = {};
-                    afinalize(v0, v2, v2, A);
                     matrix_t At = {};
                     transpose(A, At);     // A'
                     matrix_t AP = {};
@@ -675,45 +628,6 @@ class CrazyflieEkf {
             return fabs(v) < 10;
         }
 
-        static void afinalize(
-                const float v0, 
-                const float v1, 
-                const float v2,
-                matrix_t & A)
-        {
-            // the attitude error vector (v0,v1,v2) is small,
-            // so we use a first order approximation to e0 = tan(|v0|/2)*v0/|v0|
-            const auto e0 = v0/2; 
-            const auto e1 = v1/2; 
-            const auto e2 = v2/2;
-
-            const auto e0e0 =  1 - e1*e1/2 - e2*e2/2;
-            const auto e0e1 =  e2 + e0*e1/2;
-            const auto e0e2 = -e1 + e0*e2/2;
-
-            const auto e1e0 =  -e2 + e0*e1/2;
-            const auto e1e1 = 1 - e0*e0/2 - e2*e2/2;
-            const auto e1e2 = e0 + e1*e2/2;
-
-            const auto e2e0 = e1 + e0*e2/2;
-            const auto e2e1 = -e0 + e1*e2/2;
-            const auto e2e2 = 1 - e0*e0/2 - e1*e1/2;
-
-            const float a[EKF_N][EKF_N] = 
-            { 
-                //    Z  DX DY DZ    E0     E1    E2
-                /*Z*/   {0, 0, 0, 0, 0,     0,    0},   
-                /*DX*/  {0, 1, 0, 0, 0,     0,    0},  
-                /*DY*/  {0, 0, 1, 0, 0,     0,    0}, 
-                /*DX*/  {0, 0, 0, 1, 0,     0,    0},  
-                /*E0*/  {0, 0, 0, 0, e0e0, e0e1, e0e2},
-                /*E1*/  {0, 0, 0, 0, e1e0, e1e1, e1e2},
-                /*E2*/  {0, 0, 0, 0, e2e0, e2e1, e2e2}
-            };
-
-            memcpy(&A.dat, a, sizeof(A));
-        } 
-
     protected:
 
         void do_init(float x[EKF_N])
@@ -908,4 +822,77 @@ class CrazyflieEkf {
             }
         }
 
+        bool did_finalize(float A[EKF_N][EKF_N])
+        {
+            // Incorporate the attitude error (Kalman filter state) with the attitude
+            const auto v0 = get(_x, STATE_E0);
+            const auto v1 = get(_x, STATE_E1);
+            const auto v2 = get(_x, STATE_E2);
+
+            const auto angle = sqrt(v0*v0 + v1*v1 + v2*v2) + EPS;
+            const auto ca = cos(angle / 2.0f);
+            const auto sa = sin(angle / 2.0f);
+
+            const auto dqw = ca;
+            const auto dqx = sa * v0 / angle;
+            const auto dqy = sa * v1 / angle;
+            const auto dqz = sa * v2 / angle;
+
+            const auto qw = _quat.w;
+            const auto qx = _quat.x;
+            const auto qy = _quat.y;
+            const auto qz = _quat.z;
+
+            // Rotate the quad's attitude by the delta quaternion vector
+            // computed above
+            const auto tmpq0 = dqw * qw - dqx * qx - dqy * qy - dqz * qz;
+            const auto tmpq1 = dqx * qw + dqw * qx + dqz * qy - dqy * qz;
+            const auto tmpq2 = dqy * qw - dqz * qx + dqw * qy + dqx * qz;
+            const auto tmpq3 = dqz * qw + dqy * qx - dqx * qy + dqw * qz;
+
+            // normalize and store the result
+            const auto norm = sqrt(tmpq0 * tmpq0 + tmpq1 * tmpq1 + tmpq2 * tmpq2 + 
+                    tmpq3 * tmpq3) + EPS;
+
+            const auto isErrorSufficient  = 
+                (isErrorLarge(v0) || isErrorLarge(v1) || isErrorLarge(v2)) &&
+                isErrorInBounds(v0) && isErrorInBounds(v1) && isErrorInBounds(v2);
+
+            _quat.w = isErrorSufficient ? tmpq0 / norm : _quat.w;
+            _quat.x = isErrorSufficient ? tmpq1 / norm : _quat.x;
+            _quat.y = isErrorSufficient ? tmpq2 / norm : _quat.y;
+            _quat.z = isErrorSufficient ? tmpq3 / norm : _quat.z;
+
+            set(_x, STATE_E0, 0);
+            set(_x, STATE_E1, 0);
+            set(_x, STATE_E2, 0);
+
+            _r.x = 2 * _quat.x * _quat.z - 2 * _quat.w * _quat.y;
+            _r.y = 2 * _quat.y * _quat.z + 2 * _quat.w * _quat.x; 
+            _r.z = _quat.w*_quat.w-_quat.x*_quat.x-_quat.y*_quat.y+_quat.z*_quat.z;
+
+            // the attitude error vector (v0,v1,v2) is small,
+            // so we use a first order approximation to e0 = tan(|v0|/2)*v0/|v0|
+            const auto e0 = v0 / 2; 
+            const auto e1 = v1 / 2; 
+            const auto e2 = v2 / 2;
+
+            A[STATE_DX][STATE_DX] = 1;
+            A[STATE_DY][STATE_DY] = 1;
+            A[STATE_DZ][STATE_DZ] = 1;
+
+            A[STATE_E0][STATE_E0] =  1 - e1*e1/2 - e2*e2/2;
+            A[STATE_E0][STATE_E1] =  e2 + e0*e1/2;
+            A[STATE_E0][STATE_E2] = -e1 + e0*e2/2;
+
+            A[STATE_E1][STATE_E0] =  -e2 + e0*e1/2;
+            A[STATE_E1][STATE_E1] = 1 - e0*e0/2 - e2*e2/2;
+            A[STATE_E1][STATE_E2] = e0 + e1*e2/2;
+
+            A[STATE_E2][STATE_E0] = e1 + e0*e2/2;
+            A[STATE_E2][STATE_E1] = -e0 + e1*e2/2;
+            A[STATE_E2][STATE_E2] = 1 - e0*e0/2 - e1*e1/2;
+
+            return isErrorSufficient;
+        }
 };
