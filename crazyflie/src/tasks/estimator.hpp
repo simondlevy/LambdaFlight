@@ -105,7 +105,11 @@ class EstimatorTask : public FreeRTOSTask {
 
     private:
 
-        static const uint32_t WARNING_HOLD_BACK_TIME_MS = 2000;
+        // The bounds on the covariance, these shouldn't be hit, but sometimes are... why?
+        static constexpr float MAX_COVARIANCE = 100;
+        static constexpr float MIN_COVARIANCE = 1e-6;
+
+    static const uint32_t WARNING_HOLD_BACK_TIME_MS = 2000;
 
         static const size_t QUEUE_LENGTH = 20;
         static const auto QUEUE_ITEM_SIZE = sizeof(measurement_t);
@@ -140,7 +144,11 @@ class EstimatorTask : public FreeRTOSTask {
 
         void initEkf(const uint32_t nowMsec)
         {
-            _ekf.init(nowMsec, CrazyflieEkf::PREDICTION_INTERVAL_MSEC);
+            _ekf.init(
+                    nowMsec, 
+                    CrazyflieEkf::PREDICTION_INTERVAL_MSEC,
+                    CrazyflieEkf::MIN_COVARIANCE,
+                    CrazyflieEkf::MAX_COVARIANCE);
         }        
 
         uint32_t step(const uint32_t nowMsec, uint32_t nextPredictionMsec) 

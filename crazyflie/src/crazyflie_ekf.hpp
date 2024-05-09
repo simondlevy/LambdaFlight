@@ -3,82 +3,44 @@
 #include <string.h>
 
 #define EKF_N 7
-#include "ekf.hpp"
 
 #include <clock.hpp>
 
-class CrazyflieEkf : public Ekf {
+class CrazyflieEkf {
 
-    private:
-
-        typedef struct {
-
-            float w;
-            float x;
-            float y;
-            float z;
-
-        } new_quat_t;
-
-        typedef struct {
-
-            axis3_t sum;
-            uint32_t count;
-
-        } imu_t;
-
-        axis3_t _gyroLatest;
-
-        new_quat_t _quat;
-
-        uint32_t _nextPredictionMsec;
-
-        axis3_t _r;
-
-        imu_t _gyroSum;
-        imu_t _accelSum;
+    // General ================================================================
 
     public:
 
-        // this is slower than the IMU update rate of 1000Hz
-        static const uint32_t PREDICT_RATE = Clock::RATE_100_HZ; 
-        static const uint32_t PREDICTION_INTERVAL_MSEC = 1000 / PREDICT_RATE;
-
-        // Set by Estimator
-        bool isFlying;
-
         void init(
                 const uint32_t nowMsec,
-                const uint32_t predictionIntervalMsec)
+                const uint32_t predictionIntervalMsec,
+                const float min_covariance, 
+                const float max_covariance)
         {
-            const float diag[7] = {
+            _predictionIntervalMsec = predictionIntervalMsec;
 
-                square(STDEV_INITIAL_POSITION_Z),
-                square(STDEV_INITIAL_VELOCITY),
-                square(STDEV_INITIAL_VELOCITY),
-                square(STDEV_INITIAL_VELOCITY),
-                square(STDEV_INITIAL_ATTITUDE_ROLL_PITCH),
-                square(STDEV_INITIAL_ATTITUDE_ROLL_PITCH),
-                square(STDEV_INITIAL_ATTITUDE_YAW)
-            };
+            _lastProcessNoiseUpdateMsec = nowMsec;
+            _lastPredictionMsec = nowMsec;
+            _isUpdated = false;
 
-            Ekf::init(
-                    diag,
-                    nowMsec, 
-                    predictionIntervalMsec, 
-                    MIN_COVARIANCE, 
-                    MAX_COVARIANCE);
+            _min_covariance = min_covariance;
+            _max_covariance = max_covariance;
 
-            _quat.w = QW_INIT;
-            _quat.x = QX_INIT;
-            _quat.y = QY_INIT;
-            _quat.z = QZ_INIT;
+            float diag[EKF_N] = {};
 
-            _r.x = 0;
-            _r.y = 0;
-            _r.z = 0;
+            do_init(diag);
 
-            isFlying = false;
+            for (uint8_t i=0; i<EKF_N; ++i) {
+
+                for (uint8_t j=0; j<EKF_N; ++j) {
+
+                    set(_p, i, j, i==j ? diag[i] : 0);
+                }
+
+                set(_x, i, 0);
+            }
+
         }
 
         void predict(const uint32_t nowMsec)
@@ -129,6 +91,272 @@ class CrazyflieEkf : public Ekf {
                 }
             }
         }
+
+    private:
+
+        typedef struct {
+
+            float dat[EKF_N];
+
+        } vector_t;
+
+        typedef struct {
+
+            float dat[EKF_N][EKF_N];
+
+        } matrix_t;
+
+        matrix_t _p;
+
+        vector_t _x;
+
+        bool _isUpdated;
+
+        uint32_t _lastPredictionMsec;
+
+        uint32_t _lastProcessNoiseUpdateMsec;
+
+        uint32_t _predictionIntervalMsec;
+
+        void scalarUpdate(
+                const vector_t & h, 
+                const float error, 
+                const float stdMeasNoise)
+        {
+
+            // ====== INNOVATION COVARIANCE ======
+            vector_t ph = {};
+            multiply(_p, h, ph);
+            const auto r = stdMeasNoise * stdMeasNoise;
+            const auto hphr = r + dot(h, ph); // HPH' + R
+
+            // Compute the Kalman gain as a column vector
+            vector_t g = {};
+            for (uint8_t i=0; i<EKF_N; ++i) {
+                set(g, i, get(ph, i) / hphr);
+            }
+
+            // Perform the state update
+            for (uint8_t i=0; i<EKF_N; ++i) {
+                set(_x, i, get(_x, i) + get(g, i) * error);
+            }
+
+            // ====== COVARIANCE UPDATE ======
+
+            matrix_t GH = {};
+            multiply(g, h, GH); // KH
+
+            for (int i=0; i<EKF_N; i++) { 
+                set(GH, i, i, get(GH, i, i) - 1);
+            } // KH - I
+
+            matrix_t GHt = {};
+            transpose(GH, GHt);      // (KH - I)'
+            matrix_t GHIP = {};
+            multiply(GH, _p, GHIP);  // (KH - I)*P
+            multiply(GHIP, GHt, _p); // (KH - I)*P*(KH - I)'
+
+            // Add the measurement variance 
+            for (int i=0; i<EKF_N; i++) {
+                for (int j=0; j<EKF_N; j++) {
+                    _p.dat[i][j] += j < i ? 0 : r * get(g, i) * get(g, j);
+                    set(_p, i, j, get(_p, i, j));
+                }
+            }
+
+            updateCovarianceMatrix();
+        }
+
+
+        void updateCovarianceMatrix(void)
+        {
+            // Enforce symmetry of the covariance matrix, and ensure the
+            // values stay bounded
+            for (int i=0; i<EKF_N; i++) {
+
+                for (int j=i; j<EKF_N; j++) {
+
+                    const auto pval = (_p.dat[i][j] + _p.dat[j][i]) / 2;
+
+                    _p.dat[i][j] = _p.dat[j][i] = 
+                        pval > _max_covariance ?  _max_covariance :
+                        (i==j && pval < _min_covariance) ?  _min_covariance :
+                        pval;
+                }
+            }
+        }
+
+        static void makemat(const float dat[EKF_N][EKF_N], matrix_t & a)
+        {
+            for (uint8_t i=0; i<EKF_N; ++i) {
+                for (uint8_t j=0; j<EKF_N; ++j) {
+                    a.dat[i][j] = dat[i][j];
+                }
+            }
+        }
+
+        static void transpose(const matrix_t & a, matrix_t & at)
+        {
+            for (uint8_t i=0; i<EKF_N; ++i) {
+                for (uint8_t j=0; j<EKF_N; ++j) {
+                    auto tmp = a.dat[i][j];
+                    at.dat[i][j] = a.dat[j][i];
+                    at.dat[j][i] = tmp;
+                }
+            }
+        }
+
+        static float dot(const vector_t & x, const vector_t & y) 
+        {
+            float d = 0;
+
+            for (uint8_t k=0; k<EKF_N; k++) {
+                d += x.dat[k] * y.dat[k];
+            }
+
+            return d;
+        }
+
+        static float get(const matrix_t & a, const uint8_t i, const uint8_t j)
+        {
+            return a.dat[i][j];
+        }
+
+        static float get(const vector_t & x, const uint8_t i)
+        {
+            return x.dat[i];
+        }
+
+        static void set(vector_t & x, const uint8_t i, const float val)
+        {
+            x.dat[i] = val;
+        }
+
+        static void set(matrix_t & a, const uint8_t i, const uint8_t j, const float val)
+        {
+            a.dat[i][j] = val;
+        }
+
+        static float dot(
+                const matrix_t & a, 
+                const matrix_t & b, 
+                const uint8_t i, 
+                const uint8_t j)
+        {
+            float d = 0;
+
+            for (uint8_t k=0; k<EKF_N; k++) {
+                d += a.dat[i][k] * b.dat[k][j];
+            }
+
+            return d;
+        }
+
+        // Matrix * Matrix
+        static void multiply( const matrix_t a, const matrix_t b, matrix_t & c)
+        {
+            for (uint8_t i=0; i<EKF_N; i++) {
+
+                for (uint8_t j=0; j<EKF_N; j++) {
+
+                    c.dat[i][j] = dot(a, b, i, j);
+                }
+            }
+        }
+
+        // Matrix * Vector
+        static void multiply(const matrix_t & a, const vector_t & x, vector_t & y)
+        {
+            for (uint8_t i=0; i<EKF_N; i++) {
+                y.dat[i] = 0;
+                for (uint8_t j=0; j<EKF_N; j++) {
+                    y.dat[i] += a.dat[i][j] * x.dat[j];
+                }
+            }
+        }
+
+        // Outer product
+        static void multiply(const vector_t & x, const vector_t & y, matrix_t & a)
+        {
+            for (uint8_t i=0; i<EKF_N; i++) {
+                for (uint8_t j=0; j<EKF_N; j++) {
+                    a.dat[i][j] = x.dat[i] * y.dat[j];
+                }
+            }
+        }
+
+        float _min_covariance;
+        float _max_covariance;
+
+
+        // Crazyflie ==============================================================
+
+
+    private:
+
+        typedef struct {
+
+            float w;
+            float x;
+            float y;
+            float z;
+
+        } new_quat_t;
+
+        typedef struct {
+
+            axis3_t sum;
+            uint32_t count;
+
+        } imu_t;
+
+        axis3_t _gyroLatest;
+
+        new_quat_t _quat;
+
+        uint32_t _nextPredictionMsec;
+
+        axis3_t _r;
+
+        imu_t _gyroSum;
+        imu_t _accelSum;
+
+        void do_init(float x[EKF_N])
+        {
+
+            x[STATE_Z] = square(STDEV_INITIAL_POSITION_Z);
+            x[STATE_DX] = square(STDEV_INITIAL_VELOCITY);
+            x[STATE_DY] = square(STDEV_INITIAL_VELOCITY);
+            x[STATE_DZ] = square(STDEV_INITIAL_VELOCITY);
+            x[STATE_E0] = square(STDEV_INITIAL_ATTITUDE_ROLL_PITCH);
+            x[STATE_E1] = square(STDEV_INITIAL_ATTITUDE_ROLL_PITCH);
+            x[STATE_E2] = square(STDEV_INITIAL_ATTITUDE_YAW);
+
+            _quat.w = QW_INIT;
+            _quat.x = QX_INIT;
+            _quat.y = QY_INIT;
+            _quat.z = QZ_INIT;
+
+            _r.x = 0;
+            _r.y = 0;
+            _r.z = 0;
+
+            isFlying = false;
+        }
+
+
+    public:
+
+        // this is slower than the IMU update rate of 1000Hz
+        static const uint32_t PREDICT_RATE = Clock::RATE_100_HZ; 
+        static const uint32_t PREDICTION_INTERVAL_MSEC = 1000 / PREDICT_RATE;
+
+        // The bounds on the covariance, these shouldn't be hit, but sometimes are... why?
+        static constexpr float MAX_COVARIANCE = 100;
+        static constexpr float MIN_COVARIANCE = 1e-6;
+
+        // Set by Estimator
+        bool isFlying;
 
         void finalize(const uint32_t nowMsec)
         {
@@ -378,10 +606,6 @@ class CrazyflieEkf : public Ekf {
         //We do get the measurements in 10x the motion pixels (experimentally measured)
         static constexpr float FLOW_RESOLUTION = 0.1;
 
-        // The bounds on the covariance, these shouldn't be hit, but sometimes are... why?
-        static constexpr float MAX_COVARIANCE = 100;
-        static constexpr float MIN_COVARIANCE = 1e-6;
-
         // The bounds on states, these shouldn't be hit...
         static constexpr float MAX_POSITION = 100; //meters
         static constexpr float MAX_VELOCITY = 10; //meters per second
@@ -486,19 +710,19 @@ class CrazyflieEkf : public Ekf {
                 _r.x * dx + _r.y * dy + _r.z * dz - MSS_TO_GS * dt2 / 2;
 
             xnew[STATE_DX] = xold[STATE_DX] +
-                    dt * (accx + _gyro.z * tmpSDY - _gyro.y * tmpSDZ -
+                dt * (accx + _gyro.z * tmpSDY - _gyro.y * tmpSDZ -
                         MSS_TO_GS * _r.x);
 
             xnew[STATE_DY] =
-                    xold[STATE_DY] +
-                    dt * (accy - _gyro.z * tmpSDX + _gyro.x * tmpSDZ -
+                xold[STATE_DY] +
+                dt * (accy - _gyro.z * tmpSDX + _gyro.x * tmpSDZ -
                         MSS_TO_GS * _r.y); 
 
             xnew[STATE_DZ] =
-                    xold[STATE_DZ] +
-                    dt * (_accel.z + _gyro.y * tmpSDX - _gyro.x * tmpSDY -
+                xold[STATE_DZ] +
+                dt * (_accel.z + _gyro.y * tmpSDX - _gyro.x * tmpSDY -
                         MSS_TO_GS * _r.z); 
-            
+
             new_quat_t quat_predicted = {};
 
             quat_predicted.w = tmpq0/norm;
