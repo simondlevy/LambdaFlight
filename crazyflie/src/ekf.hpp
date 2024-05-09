@@ -196,12 +196,42 @@ class Ekf {
                         fabsf(acosf(_r.z)) - 
                         DEGREES_TO_RADIANS * (15.0f / 2.0f));
 
-                const auto predictedDistance = get(x, STATE_Z) / cosf(angle);
+                const auto predictedDistance = get(_x, STATE_Z) / cosf(angle);
 
-                ekf_updateWithRange(distance, predictedDistance, angle, _r.z, _p, _x);
+                vector_t h = {};
+                set(h, STATE_Z, 1 / cosf(angle));
+
+                ekf_updateWithRange(
+                        distance, 
+                        predictedDistance, 
+                        angle, 
+                        _r.z, 
+                        h,
+                        _p, 
+                        _x);
 
                 _isUpdated = true;
             }
+        }
+
+        static void ekf_updateWithRange(
+                const float distance,
+                const float predictedDistance,
+                const float angle,
+                const float rz, 
+                const vector_t & h,
+                matrix_t & p, 
+                vector_t & x)
+        {
+            const auto measuredDistance = distance / 1000; // mm => m
+
+            const auto stdDev =
+                RANGEFINDER_EXP_STD_A * 
+                (1 + expf(RANGEFINDER_EXP_COEFF * 
+                          (measuredDistance - RANGEFINDER_EXP_POINT_A)));
+
+            scalarUpdate(h, measuredDistance-predictedDistance, stdDev, 
+                    p, x);
         }
 
         void updateWithFlow(
@@ -704,28 +734,6 @@ class Ekf {
             multiply(A, p, AP);  // AP
             multiply(AP, At, p); // APA'
             updateCovarianceMatrix(p);
-        }
-
-        static void ekf_updateWithRange(
-                const float distance,
-                const float predictedDistance,
-                const float angle,
-                const float rz, 
-                matrix_t & p, 
-                vector_t & x)
-        {
-            const auto measuredDistance = distance / 1000; // mm => m
-
-            const auto stdDev =
-                RANGEFINDER_EXP_STD_A * 
-                (1 + expf(RANGEFINDER_EXP_COEFF * 
-                          (measuredDistance - RANGEFINDER_EXP_POINT_A)));
-
-            vector_t h = {};
-            set(h, STATE_Z, 1 / cosf(angle));
-
-            scalarUpdate(h, measuredDistance-predictedDistance, stdDev, 
-                    p, x);
         }
 
         static void ekf_getVehicleState(
