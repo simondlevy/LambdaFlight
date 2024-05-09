@@ -21,6 +21,10 @@ class Ekf {
 
             _min_covariance = min_covariance;
             _max_covariance = max_covariance;
+
+            memset(&_p, 0, sizeof(_p));
+
+            memset(&_x, 0, sizeof(_x));
         }
 
         typedef struct {

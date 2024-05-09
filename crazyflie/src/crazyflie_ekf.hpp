@@ -36,8 +36,6 @@ class CrazyflieEkf : public Ekf {
                     MIN_COVARIANCE, 
                     MAX_COVARIANCE);
 
-            memset(&_p, 0, sizeof(_p));
-
             _p.dat[STATE_Z][STATE_Z] = square(STDEV_INITIAL_POSITION_Z);
             _p.dat[STATE_DX][STATE_DX] = square(STDEV_INITIAL_VELOCITY);
             _p.dat[STATE_DY][STATE_DY] = square(STDEV_INITIAL_VELOCITY);
@@ -45,8 +43,6 @@ class CrazyflieEkf : public Ekf {
             _p.dat[STATE_E0][STATE_E0] = square(STDEV_INITIAL_ATTITUDE_ROLL_PITCH);
             _p.dat[STATE_E1][STATE_E1] = square(STDEV_INITIAL_ATTITUDE_ROLL_PITCH);
             _p.dat[STATE_E2][STATE_E2] = square(STDEV_INITIAL_ATTITUDE_YAW);
-
-            memset(&_x, 0, sizeof(_x));
 
             _quat.w = 1;
             _quat.x = 0;
