@@ -2,12 +2,6 @@
 
 #include <string.h>
 
-#include <clock.hpp>
-#include <console.h>
-#include <math3d.h>
-#include <datatypes.h>
-#include <streams.h>
-
 class Ekf {
 
     private:
@@ -787,7 +781,6 @@ class Ekf {
                     a.dat[i][j] = dat[i][j];
                 }
             }
-
         }
 
         static void transpose(const matrix_t & a, matrix_t & at)
