@@ -196,7 +196,9 @@ class Ekf {
                         fabsf(acosf(_r.z)) - 
                         DEGREES_TO_RADIANS * (15.0f / 2.0f));
 
-                ekf_updateWithRange(distance, angle, _r.z, _p, _x);
+                const auto predictedDistance = get(x, STATE_Z) / cosf(angle);
+
+                ekf_updateWithRange(distance, predictedDistance, angle, _r.z, _p, _x);
 
                 _isUpdated = true;
             }
@@ -706,13 +708,12 @@ class Ekf {
 
         static void ekf_updateWithRange(
                 const float distance,
+                const float predictedDistance,
                 const float angle,
                 const float rz, 
                 matrix_t & p, 
                 vector_t & x)
         {
-            const auto predictedDistance = get(x, STATE_Z) / cosf(angle);
-
             const auto measuredDistance = distance / 1000; // mm => m
 
             const auto stdDev =
