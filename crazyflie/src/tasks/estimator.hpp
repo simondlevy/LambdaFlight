@@ -187,6 +187,8 @@ class EstimatorTask : public FreeRTOSTask {
             while (pdTRUE == xQueueReceive(
                         _measurementsQueue, &measurement, 0)) {
 
+                axis3_t gyro = {};
+
                 switch (measurement.type) {
 
                     case MeasurementTypeRange:
@@ -203,9 +205,8 @@ class EstimatorTask : public FreeRTOSTask {
                         break;
 
                     case MeasurementTypeGyroscope:
-                        memcpy(&stream_gyro, &measurement.data.gyroscope.gyro,
-                                sizeof(stream_gyro));
-                        _ekf.updateWithGyro(nowMsec);
+                        memcpy(&gyro, &measurement.data.gyroscope.gyro, sizeof(gyro));
+                        _ekf.updateWithGyro(nowMsec, gyro);
                         break;
 
                     case MeasurementTypeAcceleration:

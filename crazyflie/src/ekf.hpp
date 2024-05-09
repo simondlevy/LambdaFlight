@@ -189,15 +189,15 @@ class Ekf {
             _isUpdated = true;
         }
 
-        void updateWithGyro(const uint32_t nowMsec) 
+        void updateWithGyro(const uint32_t nowMsec, const axis3_t & gyro) 
         {
             _nextPredictionMsec = nowMsec > _nextPredictionMsec ?
                 nowMsec + _predictionIntervalMsec :
                 _nextPredictionMsec;
 
-            imuAccum(stream_gyro, _gyro);
+            imuAccum(gyro, _gyro);
 
-            memcpy(&_gyroLatest, &stream_gyro, sizeof(axis3_t));
+            memcpy(&_gyroLatest, &gyro, sizeof(axis3_t));
         }
 
         void updateWithAccel(const uint32_t nowMsec, const axis3_t & accel) 

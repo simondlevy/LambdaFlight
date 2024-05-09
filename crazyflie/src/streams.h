@@ -9,7 +9,6 @@
 #define EXTERN
 #endif
 
-EXTERN axis3_t           stream_gyro;
 EXTERN bool              stream_inFlyingMode;
 EXTERN demands_t         stream_openLoopDemands;
 EXTERN bool              stream_resetPids;
