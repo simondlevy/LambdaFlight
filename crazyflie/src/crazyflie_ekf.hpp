@@ -289,75 +289,6 @@ class CrazyflieEkf {
         }
 
 
-        // Crazyflie ==============================================================
-
-
-    private:
-
-        typedef struct {
-
-            float w;
-            float x;
-            float y;
-            float z;
-
-        } new_quat_t;
-
-        typedef struct {
-
-            axis3_t sum;
-            uint32_t count;
-
-        } imu_t;
-
-        axis3_t _gyroLatest;
-
-        new_quat_t _quat;
-
-        uint32_t _nextPredictionMsec;
-
-        axis3_t _r;
-
-        imu_t _gyroSum;
-        imu_t _accelSum;
-
-        void do_init(float x[EKF_N])
-        {
-
-            x[STATE_Z] = square(STDEV_INITIAL_POSITION_Z);
-            x[STATE_DX] = square(STDEV_INITIAL_VELOCITY);
-            x[STATE_DY] = square(STDEV_INITIAL_VELOCITY);
-            x[STATE_DZ] = square(STDEV_INITIAL_VELOCITY);
-            x[STATE_E0] = square(STDEV_INITIAL_ATTITUDE_ROLL_PITCH);
-            x[STATE_E1] = square(STDEV_INITIAL_ATTITUDE_ROLL_PITCH);
-            x[STATE_E2] = square(STDEV_INITIAL_ATTITUDE_YAW);
-
-            _quat.w = QW_INIT;
-            _quat.x = QX_INIT;
-            _quat.y = QY_INIT;
-            _quat.z = QZ_INIT;
-
-            _r.x = 0;
-            _r.y = 0;
-            _r.z = 0;
-
-            isFlying = false;
-        }
-
-
-    public:
-
-        // this is slower than the IMU update rate of 1000Hz
-        static const uint32_t PREDICT_RATE = Clock::RATE_100_HZ; 
-        static const uint32_t PREDICTION_INTERVAL_MSEC = 1000 / PREDICT_RATE;
-
-        // The bounds on the covariance, these shouldn't be hit, but sometimes are... why?
-        static constexpr float MAX_COVARIANCE = 100;
-        static constexpr float MIN_COVARIANCE = 1e-6;
-
-        // Set by Estimator
-        bool isFlying;
-
         void finalize(const uint32_t nowMsec)
         {
             if (_isUpdated) {
@@ -428,7 +359,76 @@ class CrazyflieEkf {
             }
         }
 
-        void updateWithRange(const uint32_t nowMsec, const uint32_t distance)
+         // Crazyflie ==============================================================
+
+
+    private:
+
+        typedef struct {
+
+            float w;
+            float x;
+            float y;
+            float z;
+
+        } new_quat_t;
+
+        typedef struct {
+
+            axis3_t sum;
+            uint32_t count;
+
+        } imu_t;
+
+        axis3_t _gyroLatest;
+
+        new_quat_t _quat;
+
+        uint32_t _nextPredictionMsec;
+
+        axis3_t _r;
+
+        imu_t _gyroSum;
+        imu_t _accelSum;
+
+        void do_init(float x[EKF_N])
+        {
+
+            x[STATE_Z] = square(STDEV_INITIAL_POSITION_Z);
+            x[STATE_DX] = square(STDEV_INITIAL_VELOCITY);
+            x[STATE_DY] = square(STDEV_INITIAL_VELOCITY);
+            x[STATE_DZ] = square(STDEV_INITIAL_VELOCITY);
+            x[STATE_E0] = square(STDEV_INITIAL_ATTITUDE_ROLL_PITCH);
+            x[STATE_E1] = square(STDEV_INITIAL_ATTITUDE_ROLL_PITCH);
+            x[STATE_E2] = square(STDEV_INITIAL_ATTITUDE_YAW);
+
+            _quat.w = QW_INIT;
+            _quat.x = QX_INIT;
+            _quat.y = QY_INIT;
+            _quat.z = QZ_INIT;
+
+            _r.x = 0;
+            _r.y = 0;
+            _r.z = 0;
+
+            isFlying = false;
+        }
+
+
+    public:
+
+        // this is slower than the IMU update rate of 1000Hz
+        static const uint32_t PREDICT_RATE = Clock::RATE_100_HZ; 
+        static const uint32_t PREDICTION_INTERVAL_MSEC = 1000 / PREDICT_RATE;
+
+        // The bounds on the covariance, these shouldn't be hit, but sometimes are... why?
+        static constexpr float MAX_COVARIANCE = 100;
+        static constexpr float MIN_COVARIANCE = 1e-6;
+
+        // Set by Estimator
+        bool isFlying;
+
+       void updateWithRange(const uint32_t nowMsec, const uint32_t distance)
         {
             const auto angle = max(0, 
                     fabsf(acosf(_r.z)) - 
