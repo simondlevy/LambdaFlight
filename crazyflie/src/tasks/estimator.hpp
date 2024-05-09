@@ -25,7 +25,6 @@
 
 #include <streams.h>
 
-#define EKF_N 7
 #include <crazyflie_ekf.hpp>
 
 class EstimatorTask : public FreeRTOSTask {

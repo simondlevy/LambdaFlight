@@ -2,6 +2,7 @@
 
 #include <string.h>
 
+#define EKF_N 7
 #include "ekf.hpp"
 
 class CrazyflieEkf : public Ekf {
