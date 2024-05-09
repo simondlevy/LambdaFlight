@@ -18,14 +18,6 @@
 
 #include <stdint.h>
 
-typedef enum {
-
-    EKF_PREDICT,
-    EKF_FINALIZE,
-    EKF_UPDATE_WITH_GYRO
-
-} ekfAction_e;
-
 typedef struct {
 
     float thrust;  // positve upward

@@ -70,28 +70,15 @@ class Ekf {
 
         }
 
-        void step(
-                const ekfAction_e ekfAction, 
-                const uint32_t nowMsec,
-                const bool isFlying)
+        void predict(const uint32_t nowMsec, const bool isFlying)
         {
-
             _nextPredictionMsec = nowMsec > _nextPredictionMsec ?
                 nowMsec + _predictionIntervalMsec :
                 _nextPredictionMsec;
 
-            // Predict ---------------------------------------------------------------
+            _isUpdated = true;
 
-            const auto requestedPredict = ekfAction == EKF_PREDICT;
-
-            const auto predicting =
-                requestedPredict && nowMsec >= _nextPredictionMsec;
-
-            if (requestedPredict) {
-                _isUpdated = true;
-            }
-
-            if (predicting) {
+            if (nowMsec >= _nextPredictionMsec) {
 
                 myvector_t x_predicted = {};
 
@@ -130,7 +117,6 @@ class Ekf {
                     memset(&_accel, 0, sizeof(_gyro));
                 }
             }
-
         }
 
         void finalize(const uint32_t nowMsec)

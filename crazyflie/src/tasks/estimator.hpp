@@ -164,7 +164,7 @@ class EstimatorTask : public FreeRTOSTask {
                 didResetEstimation = false;
             }
 
-            _ekf.step(EKF_PREDICT, nowMsec, _safety->isFlying());
+            _ekf.predict(nowMsec, _safety->isFlying());
 
             // Run the system dynamics to predict the state forward.
             if (nowMsec >= nextPredictionMsec) {
