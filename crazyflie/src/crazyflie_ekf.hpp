@@ -235,11 +235,7 @@ class CrazyflieEkf {
                 matrix_t F = {};
                 makemat(Fdat, F);
 
-                matrix_t  Ft = {};
-                transpose(F, Ft);     // F'
-                matrix_t FP = {};
-                multiply(F, _p, FP);  // FP
-                multiply(FP, Ft, _p); // FPF'
+                multiplyCovariance(F);
 
                 cleanupCovariance();
 
@@ -291,11 +287,7 @@ class CrazyflieEkf {
                 set(GH, i, i, get(GH, i, i) - 1);
             } // KH - I
 
-            matrix_t GHt = {};
-            transpose(GH, GHt);      // (KH - I)'
-            matrix_t GHIP = {};
-            multiply(GH, _p, GHIP);  // (KH - I)*P
-            multiply(GHIP, GHt, _p); // (KH - I)*P*(KH - I)'
+            multiplyCovariance(GH);
 
             // Add the measurement variance 
             for (int i=0; i<EKF_N; i++) {
