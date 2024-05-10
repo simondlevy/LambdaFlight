@@ -6,6 +6,20 @@
 
 #include <clock.hpp>
 
+class EkfImpl {
+
+    void do_init(const float diag[EKF_N]);
+
+    void get_prediction(
+            const uint32_t nowMsec,
+            const bool didAddProcessNoise,
+            const float xold[EKF_N],
+            float xnew[EKF_N],
+            float F[EKF_N][EKF_N]);
+
+    bool did_finalize(float x[EKF_N], float A[EKF_N][EKF_N]);
+};
+
 class CrazyflieEkf {
 
     // General ================================================================
@@ -39,10 +53,10 @@ class CrazyflieEkf {
         void multiplyCovariance(const matrix_t & a)
         {
             matrix_t  at = {};
-            transpose(a, at);     // F'
+            transpose(a, at);  
             matrix_t ap = {};
-            multiply(a, _p, ap);  // ap
-            multiply(ap, at, _p); // apF'
+            multiply(a, _p, ap);
+            multiply(ap, at, _p);
 
         }
 
@@ -229,8 +243,8 @@ class CrazyflieEkf {
                 const auto shouldAddProcessNoise = 
                     nowMsec - _lastProcessNoiseUpdateMsec > 0;
 
-                get_prediction(
-                        nowMsec, shouldAddProcessNoise, _x.dat, xnew, Fdat);
+                get_prediction(nowMsec, shouldAddProcessNoise, _x.dat,
+                        xnew, Fdat);
 
                 matrix_t F = {};
                 makemat(Fdat, F);
@@ -278,14 +292,12 @@ class CrazyflieEkf {
                 set(_x, i, get(_x, i) + get(g, i) * error);
             }
 
-            // ====== COVARIANCE UPDATE ======
-
             matrix_t GH = {};
-            multiply(g, h, GH); // KH
+            multiply(g, h, GH); 
 
             for (int i=0; i<EKF_N; i++) { 
                 set(GH, i, i, get(GH, i, i) - 1);
-            } // KH - I
+            }
 
             multiplyCovariance(GH);
 
