@@ -404,16 +404,6 @@ class Ekf {
         {
             // Inclusion of flow measurements in the EKF done by two scalar updates
 
-            // ~~~ Camera constants ~~~
-            // The angle of aperture is guessed from the raw data register and
-            // thankfully look to be symmetric
-
-            float Npix = 35.0;                      // [pixels] (same in x and y)
-
-            // 2*sin(42/2); 42degree is the agnle of aperture, here we computed the
-            // corresponding ground length
-            float thetapix = 0.71674f;
-
             //~~~ Body rates ~~~
             // TODO check if this is feasible or if some filtering has to be done
             const auto omegax_b = _gyroLatest.x * DEGREES_TO_RADIANS;
@@ -427,14 +417,14 @@ class Ekf {
 
             // ~~~ X velocity prediction and update ~~~
             // predicts the number of accumulated pixels in the x-direction
-            auto predictedNX = (flow_dt * Npix / thetapix ) * 
+            auto predictedNX = (flow_dt * FLOW_NPIX / FLOW_THETAPIX ) * 
                 ((dx_g * _r.z / z_g) - omegay_b);
             auto measuredNX = flow_dpixelx*FLOW_RESOLUTION;
 
             // derive measurement equation with respect to dx (and z?)
             const float hx[7] =  {
-                (Npix * flow_dt / thetapix) * ((_r.z * dx_g) / (-z_g * z_g)),
-                (Npix * flow_dt / thetapix) * (_r.z / z_g),
+                (FLOW_NPIX * flow_dt / FLOW_THETAPIX) * ((_r.z * dx_g) / (-z_g * z_g)),
+                (FLOW_NPIX * flow_dt / FLOW_THETAPIX) * (_r.z / z_g),
                 0,
                 0,
                 0,
@@ -446,15 +436,15 @@ class Ekf {
             update(hx, measuredNX-predictedNX, FLOW_STD_FIXED*FLOW_RESOLUTION);
 
             // ~~~ Y velocity prediction and update ~~~
-            auto predictedNY = (flow_dt * Npix / thetapix ) * 
+            auto predictedNY = (flow_dt * FLOW_NPIX / FLOW_THETAPIX ) * 
                 ((dy_g * _r.z / z_g) + omegax_b);
             auto measuredNY = flow_dpixely*FLOW_RESOLUTION;
 
             // derive measurement equation with respect to dy (and z?)
             const float hy[7] = {
-                (Npix * flow_dt / thetapix) * ((_r.z * dy_g) / (-z_g * z_g)),
+                (FLOW_NPIX * flow_dt / FLOW_THETAPIX) * ((_r.z * dy_g) / (-z_g * z_g)),
                 0,
-                (Npix * flow_dt / thetapix) * (_r.z / z_g),
+                (FLOW_NPIX * flow_dt / FLOW_THETAPIX) * (_r.z / z_g),
                 0,
                 0,
                 0,
@@ -551,6 +541,16 @@ class Ekf {
         static constexpr float STDEV_INITIAL_VELOCITY = 0.01;
         static constexpr float STDEV_INITIAL_ATTITUDE_ROLL_PITCH = 0.01;
         static constexpr float STDEV_INITIAL_ATTITUDE_YAW = 0.01;
+
+        // ~~~ Camera constants ~~~
+        // The angle of aperture is guessed from the raw data register and
+        // thankfully look to be symmetric
+
+        static constexpr float FLOW_NPIX = 35.0;   // [pixels] (same in x and y)
+
+        // 2*sin(42/2); 42degree is the agnle of aperture, here we computed the
+        // corresponding ground length
+        static constexpr float FLOW_THETAPIX = 0.71674;
 
         static constexpr float MSS_TO_GS = 9.81;
 
