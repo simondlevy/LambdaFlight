@@ -396,21 +396,17 @@ class Ekf {
                     distance < RANGEFINDER_OUTLIER_LIMIT_MM;
         }
 
-        void updateWithFlow(
-                const uint32_t nowMsec, 
+        void updateWithFlowX(
                 const float flow_dt,
-                const float flow_dpixelx,
-                const float flow_dpixely)
+                const float flow_dpixelx)
         {
             // Inclusion of flow measurements in the EKF done by two scalar updates
 
             //~~~ Body rates ~~~
             // TODO check if this is feasible or if some filtering has to be done
-            const auto omegax_b = _gyroLatest.x * DEGREES_TO_RADIANS;
             const auto omegay_b = _gyroLatest.y * DEGREES_TO_RADIANS;
 
             const auto dx_g = get(_x, STATE_DX);
-            const auto dy_g = get(_x, STATE_DY);
 
             // Saturate elevation in prediction and correction to avoid singularities
             const auto z_g = get(_x, STATE_Z) < 0.1f ? 0.1f : get(_x, STATE_Z);
@@ -434,6 +430,22 @@ class Ekf {
 
             //First update
             update(hx, measuredNX-predictedNX, FLOW_STD_FIXED*FLOW_RESOLUTION);
+        }
+
+         void updateWithFlowY(
+                const float flow_dt,
+                const float flow_dpixely)
+        {
+            // Inclusion of flow measurements in the EKF done by two scalar updates
+
+            //~~~ Body rates ~~~
+            // TODO check if this is feasible or if some filtering has to be done
+            const auto omegax_b = _gyroLatest.x * DEGREES_TO_RADIANS;
+
+            const auto dy_g = get(_x, STATE_DY);
+
+            // Saturate elevation in prediction and correction to avoid singularities
+            const auto z_g = get(_x, STATE_Z) < 0.1f ? 0.1f : get(_x, STATE_Z);
 
             // ~~~ Y velocity prediction and update ~~~
             auto predictedNY = (flow_dt * FLOW_NPIX / FLOW_THETAPIX ) * 

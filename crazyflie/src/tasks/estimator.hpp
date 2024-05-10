@@ -206,10 +206,13 @@ class EstimatorTask : public FreeRTOSTask {
                 }
 
                 else if (measurement.type == MeasurementTypeFlow) {
-                    _ekf.updateWithFlow(
-                            nowMsec,
+
+                    _ekf.updateWithFlowX(
                             measurement.data.flow.dt, 
-                            measurement.data.flow.dpixelx, 
+                            measurement.data.flow.dpixelx);
+
+                     _ekf.updateWithFlowY(
+                            measurement.data.flow.dt, 
                             measurement.data.flow.dpixely);
                 }
 
