@@ -397,8 +397,8 @@ class Ekf {
         }
 
         void updateWithFlowX(
-                const float flow_dt,
-                const float flow_dpixelx)
+                const float dt,
+                const float dpixelx)
         {
             // Inclusion of flow measurements in the EKF done by two scalar updates
 
@@ -413,14 +413,14 @@ class Ekf {
 
             // ~~~ X velocity prediction and update ~~~
             // predicts the number of accumulated pixels in the x-direction
-            auto predictedNX = (flow_dt * FLOW_NPIX / FLOW_THETAPIX ) * 
+            auto predictedNX = (dt * FLOW_NPIX / FLOW_THETAPIX ) * 
                 ((dx_g * _r.z / z_g) - omegay_b);
-            auto measuredNX = flow_dpixelx*FLOW_RESOLUTION;
+            auto measuredNX = dpixelx*FLOW_RESOLUTION;
 
             // derive measurement equation with respect to dx (and z?)
             const float hx[7] =  {
-                (FLOW_NPIX * flow_dt / FLOW_THETAPIX) * ((_r.z * dx_g) / (-z_g * z_g)),
-                (FLOW_NPIX * flow_dt / FLOW_THETAPIX) * (_r.z / z_g),
+                (FLOW_NPIX * dt / FLOW_THETAPIX) * ((_r.z * dx_g) / (-z_g * z_g)),
+                (FLOW_NPIX * dt / FLOW_THETAPIX) * (_r.z / z_g),
                 0,
                 0,
                 0,
@@ -433,8 +433,8 @@ class Ekf {
         }
 
          void updateWithFlowY(
-                const float flow_dt,
-                const float flow_dpixely)
+                const float dt,
+                const float dpixely)
         {
             // Inclusion of flow measurements in the EKF done by two scalar updates
 
@@ -448,15 +448,15 @@ class Ekf {
             const auto z_g = get(_x, STATE_Z) < 0.1f ? 0.1f : get(_x, STATE_Z);
 
             // ~~~ Y velocity prediction and update ~~~
-            auto predictedNY = (flow_dt * FLOW_NPIX / FLOW_THETAPIX ) * 
+            auto predictedNY = (dt * FLOW_NPIX / FLOW_THETAPIX ) * 
                 ((dy_g * _r.z / z_g) + omegax_b);
-            auto measuredNY = flow_dpixely*FLOW_RESOLUTION;
+            auto measuredNY = dpixely*FLOW_RESOLUTION;
 
             // derive measurement equation with respect to dy (and z?)
             const float hy[7] = {
-                (FLOW_NPIX * flow_dt / FLOW_THETAPIX) * ((_r.z * dy_g) / (-z_g * z_g)),
+                (FLOW_NPIX * dt / FLOW_THETAPIX) * ((_r.z * dy_g) / (-z_g * z_g)),
                 0,
-                (FLOW_NPIX * flow_dt / FLOW_THETAPIX) * (_r.z / z_g),
+                (FLOW_NPIX * dt / FLOW_THETAPIX) * (_r.z / z_g),
                 0,
                 0,
                 0,
