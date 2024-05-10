@@ -54,6 +54,13 @@ class CrazyflieEkf {
             }
         }
 
+        static void makevec(const float dat[EKF_N], vector_t & x)
+        {
+            for (uint8_t i=0; i<EKF_N; ++i) {
+                x.dat[i] = dat[i];
+            }
+        }
+
         static void makemat(const float dat[EKF_N][EKF_N], matrix_t & a)
         {
             for (uint8_t i=0; i<EKF_N; ++i) {
@@ -240,10 +247,12 @@ class CrazyflieEkf {
         }
 
         void update(
-                const vector_t & h, 
+                const float hdat[EKF_N], 
                 const float error, 
                 const float stdMeasNoise)
         {
+            vector_t h = {};
+            makevec(hdat, h);
 
             // ====== INNOVATION COVARIANCE ======
             vector_t ph = {};
@@ -365,8 +374,7 @@ class CrazyflieEkf {
 
             const auto predictedDistance = get(_x, STATE_Z) / cosf(angle);
 
-            vector_t h = {};
-            set(h, STATE_Z, 1 / cosf(angle));
+            const float h[7] = {1/cosf(angle), 0, 0, 0, 0, 0, 0};
 
             const auto measuredDistance = distance / 1000.f; // mm => m
 
@@ -420,11 +428,15 @@ class CrazyflieEkf {
             auto measuredNX = flow_dpixelx*FLOW_RESOLUTION;
 
             // derive measurement equation with respect to dx (and z?)
-            vector_t hx = {};
-            set(hx, STATE_Z, 
-                    (Npix * flow_dt / thetapix) * ((_r.z * dx_g) / (-z_g * z_g)));
-            set(hx, STATE_DX, 
-                    (Npix * flow_dt / thetapix) * (_r.z / z_g));
+            const float hx[7] =  {
+                    (Npix * flow_dt / thetapix) * ((_r.z * dx_g) / (-z_g * z_g)),
+                    (Npix * flow_dt / thetapix) * (_r.z / z_g),
+                    0,
+                    0,
+                    0,
+                    0,
+                    0
+            };
 
             //First update
             update(hx, measuredNX-predictedNX, FLOW_STD_FIXED*FLOW_RESOLUTION);
@@ -435,10 +447,15 @@ class CrazyflieEkf {
             auto measuredNY = flow_dpixely*FLOW_RESOLUTION;
 
             // derive measurement equation with respect to dy (and z?)
-            vector_t hy = {};
-            set(hy, STATE_Z, (Npix * flow_dt / thetapix) * 
-                    ((_r.z * dy_g) / (-z_g * z_g)));
-            set(hy, STATE_DY, (Npix * flow_dt / thetapix) * (_r.z / z_g));
+            const float hy[7] = {
+                (Npix * flow_dt / thetapix) * ((_r.z * dy_g) / (-z_g * z_g)),
+                0,
+                (Npix * flow_dt / thetapix) * (_r.z / z_g),
+                0,
+                0,
+                0,
+                0
+            };
 
             // Second update
             update(hy, measuredNY-predictedNY, FLOW_STD_FIXED*FLOW_RESOLUTION);
