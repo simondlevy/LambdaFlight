@@ -14,9 +14,9 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <datatypes.h>
+#include <string.h>
 
-#include <crazyflie_ekf.h>
+#include <ekf.h>
 #include <math3d.h>
 
 typedef struct {
@@ -320,7 +320,7 @@ bool shouldUpdateWithRange(const float * x, const uint32_t distance,
 
 //////////////////////////////////////////////////////////////////////////////
 
-void Ekf::do_init(float diag[EKF_N])
+void TinyEkf::do_init(float diag[EKF_N])
 {
     diag[STATE_Z] = square(STDEV_INITIAL_POSITION_Z);
     diag[STATE_DX] = square(STDEV_INITIAL_VELOCITY);
@@ -343,7 +343,7 @@ void Ekf::do_init(float diag[EKF_N])
 }
 
 
-bool Ekf::did_finalize(float x[EKF_N], float A[EKF_N][EKF_N])
+bool TinyEkf::did_finalize(float x[EKF_N], float A[EKF_N][EKF_N])
 {
     // Incorporate the attitude error (Kalman filter state) with the attitude
     const auto v0 = x[STATE_E0];
@@ -417,7 +417,7 @@ bool Ekf::did_finalize(float x[EKF_N], float A[EKF_N][EKF_N])
     return isErrorSufficient;
 }
 
-void Ekf::get_prediction(
+void TinyEkf::get_prediction(
         const float dt,
         const bool didAddProcessNoise,
         const float xold[EKF_N],

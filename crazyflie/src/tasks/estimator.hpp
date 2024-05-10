@@ -20,13 +20,13 @@
 
 #include <clock.hpp>
 #include <crossplatform.h>
+#include <ekf.h>
 #include <rateSupervisor.hpp>
 #include <safety.hpp>
 #include <task.hpp>
 
 #include <streams.h>
 
-#include <crazyflie_ekf.h>
 
 class EstimatorTask : public FreeRTOSTask {
 
@@ -125,7 +125,7 @@ class EstimatorTask : public FreeRTOSTask {
 
         RateSupervisor _rateSupervisor;
 
-        Ekf _ekf;
+        TinyEkf _ekf;
 
         // Mutex to protect data that is shared between the task and
         // functions called by the stabilizer loop

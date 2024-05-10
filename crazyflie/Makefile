@@ -56,13 +56,14 @@ ARDUINO = $(HOME)/Documents/Arduino/libraries
 INCLUDES += -I$(ARDUINO)
 
 INCLUDES += -I$(ARDUINO)/PMW3901/src/
+INCLUDES += -I$(ARDUINO)/TinyEKF/src/
 INCLUDES += -I$(ARDUINO)/VL53L1/src/
 
-VL53L1 = $(ARDUINO)/VL53L1/src
 BOSCH = $(ARDUINO)/BoschSensors/src
+VL53L1 = $(ARDUINO)/VL53L1/src
 
-INCLUDES += -I$(VL53L1)/st
 INCLUDES += -I$(BOSCH)/bosch
+INCLUDES += -I$(VL53L1)/st
 
 INCLUDES += -I$(srctree)/incshared
 
