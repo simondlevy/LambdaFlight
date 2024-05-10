@@ -166,8 +166,6 @@ class EstimatorTask : public FreeRTOSTask {
                 didResetEstimation = false;
             }
 
-            //_crazyflieEkf.isFlying = _safety->isFlying();
-
             _ekf.predict(nowMsec);
 
             // Run the system dynamics to predict the state forward.

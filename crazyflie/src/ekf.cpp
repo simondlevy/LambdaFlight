@@ -147,13 +147,10 @@ static const float square(const float x)
     return x * x;
 }
 
-static float rotateQuat(
-        const bool isFlying, const float val, const float initVal)
+static float rotateQuat(const float val, const float initVal)
 {
-    const auto keep = 1.0f - ROLLPITCH_ZERO_REVERSION;
-
-    return (val * (isFlying ? 1: keep)) +
-        (isFlying ? 0 : ROLLPITCH_ZERO_REVERSION * initVal);
+    return (val * (1 - ROLLPITCH_ZERO_REVERSION)) + 
+        (ROLLPITCH_ZERO_REVERSION * initVal);
 }
 
 static bool isPositionWithinBounds(const float pos)
@@ -178,8 +175,6 @@ static bool isErrorInBounds(const float v)
 
 //////////////////////////////////////////////////////////////////////////////
 
-// Set by Estimator
-static bool isFlying;
 
 void getFlowUpdates(
         const float * x,
@@ -338,8 +333,6 @@ void TinyEkf::initialize_covariance_diagonal(float diag[EKF_N])
     _r.x = 0;
     _r.y = 0;
     _r.z = 0;
-
-    isFlying = false;
 }
 
 
@@ -435,14 +428,12 @@ void TinyEkf::get_prediction(
 
     // Position updates in the body frame (will be rotated to inertial frame);
     // thrust can only be produced in the body's Z direction
-    const auto dx = xold[STATE_DX] * dt + 
-        isFlying ? 0 : _accel.x * dt2 / 2;
-    const auto dy = xold[STATE_DY] * dt + 
-        isFlying ? 0 : _accel.y * dt2 / 2;
+    const auto dx = xold[STATE_DX] * dt + _accel.x * dt2 / 2;
+    const auto dy = xold[STATE_DY] * dt + _accel.y * dt2 / 2;
     const auto dz = xold[STATE_DZ] * dt + _accel.z * dt2 / 2; 
 
-    const auto accx = isFlying ? 0 : _accel.x;
-    const auto accy = isFlying ? 0 : _accel.y;
+    const auto accx = _accel.x;
+    const auto accy = _accel.y;
 
     // attitude update (rotate by gyroscope), we do this in quaternions
     // this is the gyroscope angular velocity integrated over the sample period
@@ -467,13 +458,13 @@ void TinyEkf::get_prediction(
     const auto qy = _quat.y;
     const auto qz = _quat.z;
 
-    const auto tmpq0 = rotateQuat(isFlying,
+    const auto tmpq0 = rotateQuat(
             dqw*qw - dqx*qx - dqy*qy - dqz*qz, QW_INIT);
-    const auto tmpq1 = rotateQuat(isFlying,
+    const auto tmpq1 = rotateQuat(
             dqx*qw + dqw*qx + dqz*qy - dqy*qz, QX_INIT);
-    const auto tmpq2 = rotateQuat(isFlying,
+    const auto tmpq2 = rotateQuat(
             dqy*qw - dqz*qx + dqw*qy + dqx*qz, QY_INIT);
-    const auto tmpq3 = rotateQuat(isFlying,
+    const auto tmpq3 = rotateQuat(
             dqz*qw + dqy*qx - dqx*qy + dqw*qz, QZ_INIT);
 
     // normalize and store the result
