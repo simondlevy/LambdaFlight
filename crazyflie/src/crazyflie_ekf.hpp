@@ -243,7 +243,9 @@ class CrazyflieEkf {
                 const auto shouldAddProcessNoise = 
                     nowMsec - _lastProcessNoiseUpdateMsec > 0;
 
-                get_prediction(nowMsec, shouldAddProcessNoise, _x.dat,
+                const float dt = (nowMsec - _lastPredictionMsec) / 1000.0f;
+
+                get_prediction(dt, shouldAddProcessNoise, _x.dat,
                         xnew, Fdat);
 
                 matrix_t F = {};
@@ -334,7 +336,6 @@ class CrazyflieEkf {
         }
 
         // Crazyflie ==============================================================
-
 
     private:
 
@@ -681,7 +682,7 @@ class CrazyflieEkf {
         }
 
         void get_prediction(
-                const uint32_t nowMsec,
+                const float dt,
                 const bool didAddProcessNoise,
                 const float xold[EKF_N],
                 float xnew[EKF_N],
@@ -691,7 +692,6 @@ class CrazyflieEkf {
             static axis3_t _gyro;
             static axis3_t _accel;
 
-            const float dt = (nowMsec - _lastPredictionMsec) / 1000.0f;
             const auto dt2 = dt * dt;
 
             imuTakeMean(_gyroSum, DEGREES_TO_RADIANS, _gyro);
