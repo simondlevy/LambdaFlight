@@ -16,7 +16,6 @@
 
 #include <datatypes.h>
 
-#include <ekf.hpp>
 #include <crazyflie_ekf.h>
 #include <math3d.h>
 

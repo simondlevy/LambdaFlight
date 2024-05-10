@@ -1,5 +1,8 @@
 #pragma once
 
+#define EKF_N 7
+#include <ekf.hpp>
+
 void getFlowUpdates(
         const float * x,
         const float dt, 

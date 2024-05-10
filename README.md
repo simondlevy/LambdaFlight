@@ -55,6 +55,7 @@ to your Crazyflie board.
 * [VL53L1](https://github.com/simondlevy/VL53L1)
 * [PWM3901](https://github.com/simondlevy/PMW3901)
 * [BoschSensors](https://github.com/simondlevy/BoschSensors)
+* [TinyEKF](https://github.com/simondlevy/TinyEKF)
 
 4. Edit <tt>LambdaFlight/crazyflie/Makefile</tt> to reflect where you 
 installed STM32Duino
