@@ -320,7 +320,7 @@ bool shouldUpdateWithRange(const float * x, const uint32_t distance,
 
 //////////////////////////////////////////////////////////////////////////////
 
-void TinyEkf::do_init(float diag[EKF_N])
+void TinyEkf::initialize_covariance_diagonal(float diag[EKF_N])
 {
     diag[STATE_Z] = square(STDEV_INITIAL_POSITION_Z);
     diag[STATE_DX] = square(STDEV_INITIAL_VELOCITY);
