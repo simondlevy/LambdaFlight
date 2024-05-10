@@ -207,13 +207,21 @@ class EstimatorTask : public FreeRTOSTask {
 
                 else if (measurement.type == MeasurementTypeFlow) {
 
-                    _ekf.updateWithFlowX(
-                            measurement.data.flow.dt, 
-                            measurement.data.flow.dpixelx);
+                    float hx[7] = {};
+                    float errx = 0;
+                    float hy[7] = {};
+                    float erry = 0;
+                    float stdev = 0;
 
-                     _ekf.updateWithFlowY(
+                    _ekf.getFlowUpdates(
                             measurement.data.flow.dt, 
-                            measurement.data.flow.dpixely);
+                            measurement.data.flow.dpixelx,
+                            measurement.data.flow.dpixely,
+                            hx, errx, hy, erry, stdev);
+
+                    _ekf.update(hx, errx, stdev);
+
+                    _ekf.update(hy, erry, stdev);
                 }
 
                 else if (measurement.type == MeasurementTypeGyroscope ) {

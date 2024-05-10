@@ -396,14 +396,19 @@ class Ekf {
                     distance < RANGEFINDER_OUTLIER_LIMIT_MM;
         }
 
-        void updateWithFlowX(
-                const float dt,
-                const float dpixelx)
+        void getFlowUpdates(
+                const float dt, 
+                const float dpixelx, 
+                const float dpixely,
+                float hx[7], 
+                float & errx, 
+                float hy[7], 
+                float & erry, 
+                float & stdev)
         {
             // Inclusion of flow measurements in the EKF done by two scalar updates
 
             //~~~ Body rates ~~~
-            // TODO check if this is feasible or if some filtering has to be done
             const auto omegay_b = _gyroLatest.y * DEGREES_TO_RADIANS;
 
             const auto dx_g = get(_x, STATE_DX);
@@ -418,34 +423,15 @@ class Ekf {
             auto measuredNX = dpixelx*FLOW_RESOLUTION;
 
             // derive measurement equation with respect to dx (and z?)
-            const float hx[7] =  {
-                (FLOW_NPIX * dt / FLOW_THETAPIX) * ((_r.z * dx_g) / (-z_g * z_g)),
-                (FLOW_NPIX * dt / FLOW_THETAPIX) * (_r.z / z_g),
-                0,
-                0,
-                0,
-                0,
-                0
-            };
-
-            //First update
-            update(hx, measuredNX-predictedNX, FLOW_STD_FIXED*FLOW_RESOLUTION);
-        }
-
-         void updateWithFlowY(
-                const float dt,
-                const float dpixely)
-        {
+            hx[0] = (FLOW_NPIX * dt / FLOW_THETAPIX) * ((_r.z * dx_g) / (-z_g * z_g));
+            hx[1] = (FLOW_NPIX * dt / FLOW_THETAPIX) * (_r.z / z_g);
+        
             // Inclusion of flow measurements in the EKF done by two scalar updates
 
             //~~~ Body rates ~~~
-            // TODO check if this is feasible or if some filtering has to be done
             const auto omegax_b = _gyroLatest.x * DEGREES_TO_RADIANS;
 
             const auto dy_g = get(_x, STATE_DY);
-
-            // Saturate elevation in prediction and correction to avoid singularities
-            const auto z_g = get(_x, STATE_Z) < 0.1f ? 0.1f : get(_x, STATE_Z);
 
             // ~~~ Y velocity prediction and update ~~~
             auto predictedNY = (dt * FLOW_NPIX / FLOW_THETAPIX ) * 
@@ -453,19 +439,13 @@ class Ekf {
             auto measuredNY = dpixely*FLOW_RESOLUTION;
 
             // derive measurement equation with respect to dy (and z?)
-            const float hy[7] = {
-                (FLOW_NPIX * dt / FLOW_THETAPIX) * ((_r.z * dy_g) / (-z_g * z_g)),
-                0,
-                (FLOW_NPIX * dt / FLOW_THETAPIX) * (_r.z / z_g),
-                0,
-                0,
-                0,
-                0
-            };
+            hy[0] = (FLOW_NPIX * dt / FLOW_THETAPIX) * ((_r.z * dy_g) / (-z_g * z_g));
+            hy[2] = (FLOW_NPIX * dt / FLOW_THETAPIX) * (_r.z / z_g);
 
-            // Second update
-            update(hy, measuredNY-predictedNY, FLOW_STD_FIXED*FLOW_RESOLUTION);
+            errx = measuredNX - predictedNX;
+            erry = measuredNY - predictedNY;
 
+            stdev = FLOW_STD_FIXED*FLOW_RESOLUTION;
         }
 
         void updateWithGyro(const uint32_t nowMsec, const axis3_t & gyro) 
