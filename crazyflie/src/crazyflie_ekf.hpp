@@ -36,7 +36,17 @@ class CrazyflieEkf {
 
         uint32_t _predictionIntervalMsec;
 
-        void cleanupCovarianceMatrix(void)
+        void multiplyCovariance(const matrix_t & a)
+        {
+            matrix_t  at = {};
+            transpose(a, at);     // F'
+            matrix_t ap = {};
+            multiply(a, _p, ap);  // ap
+            multiply(ap, at, _p); // apF'
+
+        }
+
+        void cleanupCovariance(void)
         {
             // Enforce symmetry of the covariance matrix, and ensure the
             // values stay bounded
@@ -224,13 +234,14 @@ class CrazyflieEkf {
 
                 matrix_t F = {};
                 makemat(Fdat, F);
+
                 matrix_t  Ft = {};
                 transpose(F, Ft);     // F'
                 matrix_t FP = {};
                 multiply(F, _p, FP);  // FP
                 multiply(FP, Ft, _p); // FPF'
 
-                cleanupCovarianceMatrix();
+                cleanupCovariance();
 
                 _lastPredictionMsec = nowMsec;
 
@@ -294,7 +305,7 @@ class CrazyflieEkf {
                 }
             }
 
-            cleanupCovarianceMatrix();
+            cleanupCovariance();
         }
 
         void finalize(const uint32_t nowMsec)
@@ -307,13 +318,9 @@ class CrazyflieEkf {
                 // large enough
                 if (did_finalize(_x.dat, A.dat)) {
 
-                    matrix_t At = {};
-                    transpose(A, At);     // A'
-                    matrix_t AP = {};
-                    multiply(A, _p, AP);  // AP
-                    multiply(AP, At, _p); // APA'
+                    multiplyCovariance(A);
 
-                    cleanupCovarianceMatrix();
+                    cleanupCovariance();
                 }
 
                 _isUpdated = false;
