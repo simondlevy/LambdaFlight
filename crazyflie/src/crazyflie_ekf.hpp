@@ -36,7 +36,6 @@ class CrazyflieEkf {
 
         uint32_t _predictionIntervalMsec;
 
-
         void cleanupCovarianceMatrix(void)
         {
             // Enforce symmetry of the covariance matrix, and ensure the
@@ -223,6 +222,7 @@ class CrazyflieEkf {
                 matrix_t FP = {};
                 multiply(F, _p, FP);  // FP
                 multiply(FP, Ft, _p); // FPF'
+
                 cleanupCovarianceMatrix();
 
                 _lastPredictionMsec = nowMsec;
@@ -296,7 +296,7 @@ class CrazyflieEkf {
 
                 // Move attitude error into attitude if any of the angle errors are
                 // large enough
-                if (did_finalize(A.dat)) {
+                if (did_finalize(_x.dat, A.dat)) {
 
                     matrix_t At = {};
                     transpose(A, At);     // A'
@@ -822,7 +822,7 @@ class CrazyflieEkf {
             }
         }
 
-        bool did_finalize(float A[EKF_N][EKF_N])
+        bool did_finalize(float x[EKF_N], float A[EKF_N][EKF_N])
         {
             // Incorporate the attitude error (Kalman filter state) with the attitude
             const auto v0 = get(_x, STATE_E0);
@@ -863,9 +863,9 @@ class CrazyflieEkf {
             _quat.y = isErrorSufficient ? tmpq2 / norm : _quat.y;
             _quat.z = isErrorSufficient ? tmpq3 / norm : _quat.z;
 
-            set(_x, STATE_E0, 0);
-            set(_x, STATE_E1, 0);
-            set(_x, STATE_E2, 0);
+            x[STATE_E0] = 0;
+            x[STATE_E1] = 0;
+            x[STATE_E2] = 0;
 
             _r.x = 2 * _quat.x * _quat.z - 2 * _quat.w * _quat.y;
             _r.y = 2 * _quat.y * _quat.z + 2 * _quat.w * _quat.x; 
