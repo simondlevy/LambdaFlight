@@ -310,6 +310,8 @@ class CrazyflieEkf {
             }
 
             cleanupCovariance();
+
+            _isUpdated = true;
         }
 
         void finalize(const uint32_t nowMsec)
@@ -398,8 +400,6 @@ class CrazyflieEkf {
                     distance < RANGEFINDER_OUTLIER_LIMIT_MM) {
 
                 update(h, measuredDistance-predictedDistance, stdDev);
-
-                _isUpdated = true;
             }
         }
 
@@ -471,7 +471,6 @@ class CrazyflieEkf {
             // Second update
             update(hy, measuredNY-predictedNY, FLOW_STD_FIXED*FLOW_RESOLUTION);
 
-            _isUpdated = true;
         }
 
         void updateWithGyro(const uint32_t nowMsec, const axis3_t & gyro) 
