@@ -18,6 +18,7 @@
 
 #include <semphr.h>
 
+#include <clock.hpp>
 #include <crossplatform.h>
 #include <rateSupervisor.hpp>
 #include <safety.hpp>
@@ -26,7 +27,7 @@
 #include <streams.h>
 
 #include <ekf.hpp>
-#include <crazyflie_ekf.hpp>
+#include <crazyflie_ekf.h>
 
 class EstimatorTask : public FreeRTOSTask {
 
@@ -166,7 +167,7 @@ class EstimatorTask : public FreeRTOSTask {
                 didResetEstimation = false;
             }
 
-            _ekf.isFlying = _safety->isFlying();
+            //_crazyflieEkf.isFlying = _safety->isFlying();
 
             _ekf.predict(nowMsec);
 
@@ -197,9 +198,12 @@ class EstimatorTask : public FreeRTOSTask {
                     float error = 0;
                     float noise = 0;
 
-                    if (_ekf.shouldUpdateWithRange(
-                                measurement.data.rangefinder_distance,
-                                h, error, noise)) {
+                    if (shouldUpdateWithRange(
+                                _ekf.getState(),
+                                measurement.data.rangefinder_distance, 
+                                h, 
+                                error, 
+                                noise)) {
 
                         _ekf.update(h, error, noise);
 
@@ -214,7 +218,8 @@ class EstimatorTask : public FreeRTOSTask {
                     float erry = 0;
                     float stdev = 0;
 
-                    _ekf.getFlowUpdates(
+                    getFlowUpdates(
+                            _ekf.getState(),
                             measurement.data.flow.dt, 
                             measurement.data.flow.dpixelx,
                             measurement.data.flow.dpixely,
@@ -228,20 +233,20 @@ class EstimatorTask : public FreeRTOSTask {
                 else if (measurement.type == MeasurementTypeGyroscope ) {
                     axis3_t gyro = {};
                     memcpy(&gyro, &measurement.data.gyroscope.gyro, sizeof(gyro));
-                    _ekf.accumulateGyro(nowMsec, gyro);
+                    accumulateGyro(nowMsec, gyro);
                 }
 
                 else if (measurement.type == MeasurementTypeAcceleration) {
                     axis3_t accel = {};
                     memcpy(&accel, &measurement.data.acceleration.acc, 
                             sizeof(accel));
-                    _ekf.accumulateAccel(nowMsec, accel);
+                    accumulateAccel(nowMsec, accel);
                 }
             }
 
             _ekf.finalize(nowMsec); 
 
-            if (!_ekf.isStateWithinBounds()) { 
+            if (!isStateWithinBounds(_ekf.getState())) { 
 
                 didResetEstimation = true;
 
@@ -253,7 +258,7 @@ class EstimatorTask : public FreeRTOSTask {
 
             xSemaphoreTake(_dataMutex, portMAX_DELAY);
 
-            _ekf.getState(_state);
+            ekf_getVehicleState(_ekf.getState(), _state);
 
             xSemaphoreGive(_dataMutex);
 
