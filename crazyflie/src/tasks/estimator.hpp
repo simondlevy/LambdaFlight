@@ -190,39 +190,30 @@ class EstimatorTask : public FreeRTOSTask {
             while (pdTRUE == xQueueReceive(
                         _measurementsQueue, &measurement, 0)) {
 
-                axis3_t gyro = {};
+                if (measurement.type == MeasurementTypeRange) {
+                    _ekf.updateWithRange(
+                            nowMsec, measurement.data.rangefinder_distance);
+                }
 
-                switch (measurement.type) {
+                else if (measurement.type == MeasurementTypeFlow) {
+                    _ekf.updateWithFlow(
+                            nowMsec,
+                            measurement.data.flow.dt, 
+                            measurement.data.flow.dpixelx, 
+                            measurement.data.flow.dpixely);
+                }
 
-                    case MeasurementTypeRange:
-                        _ekf.updateWithRange(
-                                nowMsec, measurement.data.rangefinder_distance);
-                        break;
+                else if (measurement.type == MeasurementTypeGyroscope ) {
+                    axis3_t gyro = {};
+                    memcpy(&gyro, &measurement.data.gyroscope.gyro, sizeof(gyro));
+                    _ekf.updateWithGyro(nowMsec, gyro);
+                }
 
-                    case MeasurementTypeFlow:
-                        _ekf.updateWithFlow(
-                                nowMsec,
-                                measurement.data.flow.dt, 
-                                measurement.data.flow.dpixelx, 
-                                measurement.data.flow.dpixely);
-                        break;
-
-                    case MeasurementTypeGyroscope:
-                        memcpy(&gyro, &measurement.data.gyroscope.gyro, sizeof(gyro));
-                        _ekf.updateWithGyro(nowMsec, gyro);
-                        break;
-
-                    case MeasurementTypeAcceleration:
-                        {
-                            axis3_t accel = {};
-                            memcpy(&accel, &measurement.data.acceleration.acc, 
-                                    sizeof(accel));
-                            _ekf.updateWithAccel(nowMsec, accel);
-                        }
-                        break;
-
-                    default:
-                        break;
+                else if (measurement.type == MeasurementTypeAcceleration) {
+                    axis3_t accel = {};
+                    memcpy(&accel, &measurement.data.acceleration.acc, 
+                            sizeof(accel));
+                    _ekf.updateWithAccel(nowMsec, accel);
                 }
             }
 
