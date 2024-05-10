@@ -411,12 +411,15 @@ bool TinyEkf::did_finalize(float x[EKF_N], float A[EKF_N][EKF_N])
 }
 
 void TinyEkf::get_prediction(
-        const float dt,
+        const uint32_t nowMsec,
         const bool didAddProcessNoise,
         const float xold[EKF_N],
         float xnew[EKF_N],
         float F[EKF_N][EKF_N])
 {
+    static uint32_t _lastPredictionMsec;
+    const float dt = (nowMsec - _lastPredictionMsec) / 1000.0f;
+    _lastPredictionMsec = nowMsec;
 
     static axis3_t _gyro;
     static axis3_t _accel;
