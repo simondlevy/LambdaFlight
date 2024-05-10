@@ -11,7 +11,7 @@ class EkfImpl {
     void do_init(const float diag[EKF_N]);
 
     void get_prediction(
-            const uint32_t nowMsec,
+            const float dt,
             const bool didAddProcessNoise,
             const float xold[EKF_N],
             float xnew[EKF_N],
@@ -20,7 +20,8 @@ class EkfImpl {
     bool did_finalize(float x[EKF_N], float A[EKF_N][EKF_N]);
 };
 
-class CrazyflieEkf {
+
+class Ekf {
 
     // General ================================================================
 
@@ -369,14 +370,6 @@ class CrazyflieEkf {
 
     public:
 
-        // this is slower than the IMU update rate of 1000Hz
-        static const uint32_t PREDICT_RATE = Clock::RATE_100_HZ; 
-        static const uint32_t PREDICTION_INTERVAL_MSEC = 1000 / PREDICT_RATE;
-
-        // The bounds on the covariance, these shouldn't be hit, but sometimes are... why?
-        static constexpr float MAX_COVARIANCE = 100;
-        static constexpr float MIN_COVARIANCE = 1e-6;
-
         // Set by Estimator
         bool isFlying;
 
@@ -441,13 +434,13 @@ class CrazyflieEkf {
 
             // derive measurement equation with respect to dx (and z?)
             const float hx[7] =  {
-                    (Npix * flow_dt / thetapix) * ((_r.z * dx_g) / (-z_g * z_g)),
-                    (Npix * flow_dt / thetapix) * (_r.z / z_g),
-                    0,
-                    0,
-                    0,
-                    0,
-                    0
+                (Npix * flow_dt / thetapix) * ((_r.z * dx_g) / (-z_g * z_g)),
+                (Npix * flow_dt / thetapix) * (_r.z / z_g),
+                0,
+                0,
+                0,
+                0,
+                0
             };
 
             //First update

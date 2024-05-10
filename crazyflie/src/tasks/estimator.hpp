@@ -105,11 +105,16 @@ class EstimatorTask : public FreeRTOSTask {
 
     private:
 
+        // this is slower than the IMU update rate of 1000Hz
+        static const uint32_t PREDICT_RATE = Clock::RATE_100_HZ; 
+        static const uint32_t PREDICTION_INTERVAL_MSEC = 1000 / PREDICT_RATE;
+
         // The bounds on the covariance, these shouldn't be hit, but sometimes are... why?
         static constexpr float MAX_COVARIANCE = 100;
         static constexpr float MIN_COVARIANCE = 1e-6;
 
-    static const uint32_t WARNING_HOLD_BACK_TIME_MS = 2000;
+
+        static const uint32_t WARNING_HOLD_BACK_TIME_MS = 2000;
 
         static const size_t QUEUE_LENGTH = 20;
         static const auto QUEUE_ITEM_SIZE = sizeof(measurement_t);
@@ -119,7 +124,7 @@ class EstimatorTask : public FreeRTOSTask {
 
         RateSupervisor _rateSupervisor;
 
-        CrazyflieEkf _ekf;
+        Ekf _ekf;
 
         // Mutex to protect data that is shared between the task and
         // functions called by the stabilizer loop
@@ -146,9 +151,9 @@ class EstimatorTask : public FreeRTOSTask {
         {
             _ekf.initialize(
                     nowMsec, 
-                    CrazyflieEkf::PREDICTION_INTERVAL_MSEC,
-                    CrazyflieEkf::MIN_COVARIANCE,
-                    CrazyflieEkf::MAX_COVARIANCE);
+                    PREDICTION_INTERVAL_MSEC,
+                    MIN_COVARIANCE,
+                    MAX_COVARIANCE);
         }        
 
         uint32_t step(const uint32_t nowMsec, uint32_t nextPredictionMsec) 
@@ -167,7 +172,7 @@ class EstimatorTask : public FreeRTOSTask {
             // Run the system dynamics to predict the state forward.
             if (nowMsec >= nextPredictionMsec) {
 
-                nextPredictionMsec = nowMsec + CrazyflieEkf::PREDICTION_INTERVAL_MSEC;
+                nextPredictionMsec = nowMsec + PREDICTION_INTERVAL_MSEC;
 
                 if (!_rateSupervisor.validate(nowMsec)) {
                     consolePrintf(
@@ -258,8 +263,8 @@ class EstimatorTask : public FreeRTOSTask {
             _rateSupervisor.init(
                     nextPredictionMsec, 
                     1000, 
-                    CrazyflieEkf::PREDICT_RATE - 1, 
-                    CrazyflieEkf::PREDICT_RATE + 1, 
+                    PREDICT_RATE - 1, 
+                    PREDICT_RATE + 1, 
                     1); 
 
             while (true) {
