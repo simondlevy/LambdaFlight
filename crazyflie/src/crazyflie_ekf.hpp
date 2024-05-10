@@ -448,14 +448,14 @@ class Ekf {
             stdev = FLOW_STD_FIXED*FLOW_RESOLUTION;
         }
 
-        void updateWithGyro(const uint32_t nowMsec, const axis3_t & gyro) 
+        void accumulateGyro(const uint32_t nowMsec, const axis3_t & gyro) 
         {
             imuAccum(gyro, _gyroSum);
 
             memcpy(&_gyroLatest, &gyro, sizeof(axis3_t));
         }
 
-        void updateWithAccel(const uint32_t nowMsec, const axis3_t & accel) 
+        void accumulateAccel(const uint32_t nowMsec, const axis3_t & accel) 
         {
             imuAccum(accel, _accelSum);
         }

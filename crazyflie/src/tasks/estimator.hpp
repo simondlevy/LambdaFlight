@@ -227,14 +227,14 @@ class EstimatorTask : public FreeRTOSTask {
                 else if (measurement.type == MeasurementTypeGyroscope ) {
                     axis3_t gyro = {};
                     memcpy(&gyro, &measurement.data.gyroscope.gyro, sizeof(gyro));
-                    _ekf.updateWithGyro(nowMsec, gyro);
+                    _ekf.accumulateGyro(nowMsec, gyro);
                 }
 
                 else if (measurement.type == MeasurementTypeAcceleration) {
                     axis3_t accel = {};
                     memcpy(&accel, &measurement.data.acceleration.acc, 
                             sizeof(accel));
-                    _ekf.updateWithAccel(nowMsec, accel);
+                    _ekf.accumulateAccel(nowMsec, accel);
                 }
             }
 
