@@ -373,7 +373,8 @@ class Ekf {
         // Set by Estimator
         bool isFlying;
 
-        void updateWithRange(const uint32_t nowMsec, const uint32_t distance)
+        bool shouldUpdateWithRange(const uint32_t distance, 
+                float h[7], float & error, float & noise)
         {
             const auto angle = max(0, 
                     fabsf(acosf(_r.z)) - 
@@ -381,20 +382,18 @@ class Ekf {
 
             const auto predictedDistance = get(_x, STATE_Z) / cosf(angle);
 
-            const float h[7] = {1/cosf(angle), 0, 0, 0, 0, 0, 0};
-
             const auto measuredDistance = distance / 1000.f; // mm => m
 
-            const auto stdDev =
-                RANGEFINDER_EXP_STD_A * 
+            h[0] = 1/cosf(angle);
+
+            noise = RANGEFINDER_EXP_STD_A * 
                 (1 + expf(RANGEFINDER_EXP_COEFF * 
                           (measuredDistance - RANGEFINDER_EXP_POINT_A)));
 
-            if (fabs(_r.z) > 0.1f && _r.z > 0 && 
-                    distance < RANGEFINDER_OUTLIER_LIMIT_MM) {
+            error = measuredDistance-predictedDistance;
 
-                update(h, measuredDistance-predictedDistance, stdDev);
-            }
+            return fabs(_r.z) > 0.1f && _r.z > 0 && 
+                    distance < RANGEFINDER_OUTLIER_LIMIT_MM;
         }
 
         void updateWithFlow(

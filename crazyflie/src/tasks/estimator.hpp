@@ -191,8 +191,18 @@ class EstimatorTask : public FreeRTOSTask {
                         _measurementsQueue, &measurement, 0)) {
 
                 if (measurement.type == MeasurementTypeRange) {
-                    _ekf.updateWithRange(
-                            nowMsec, measurement.data.rangefinder_distance);
+
+                    float h[7] = {};
+                    float error = 0;
+                    float noise = 0;
+
+                    if (_ekf.shouldUpdateWithRange(
+                                measurement.data.rangefinder_distance,
+                                h, error, noise)) {
+
+                        _ekf.update(h, error, noise);
+
+                    }
                 }
 
                 else if (measurement.type == MeasurementTypeFlow) {
