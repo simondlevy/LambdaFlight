@@ -38,7 +38,7 @@ class CrazyflieEkf {
                 square(STDEV_INITIAL_ATTITUDE_YAW)
             };
 
-            _tinyEkf.initialize(pdiag, nowMsec, MIN_COVARIANCE, MAX_COVARIANCE);
+            _tinyEkf.initialize(pdiag, MIN_COVARIANCE, MAX_COVARIANCE);
 
             _quat.w = QW_INIT;
             _quat.x = QX_INIT;
