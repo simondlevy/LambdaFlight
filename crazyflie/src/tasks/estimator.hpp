@@ -20,13 +20,12 @@
 
 #include <clock.hpp>
 #include <crossplatform.h>
-#include <ekf.h>
+#include <ekf.hpp>
 #include <rateSupervisor.hpp>
 #include <safety.hpp>
 #include <task.hpp>
 
 #include <streams.h>
-
 
 class EstimatorTask : public FreeRTOSTask {
 
@@ -119,6 +118,8 @@ class EstimatorTask : public FreeRTOSTask {
         StaticQueue_t measurementsQueueBuffer;
         xQueueHandle _measurementsQueue;
 
+        CrazyflieEkf _ekf;
+
         RateSupervisor _rateSupervisor;
 
         // Mutex to protect data that is shared between the task and
@@ -144,7 +145,7 @@ class EstimatorTask : public FreeRTOSTask {
 
         void initEkf(const uint32_t nowMsec)
         {
-             ekf_initialize(nowMsec);
+             _ekf.initialize(nowMsec);
        }        
 
         uint32_t step(const uint32_t nowMsec, uint32_t nextPredictionMsec) 
@@ -159,7 +160,7 @@ class EstimatorTask : public FreeRTOSTask {
             // Run the system dynamics to predict the state forward.
             if (nowMsec >= nextPredictionMsec) {
 
-                ekf_predict(nowMsec);
+                _ekf.predict(nowMsec);
 
                 nextPredictionMsec = nowMsec + PREDICTION_INTERVAL_MSEC;
 
@@ -181,12 +182,12 @@ class EstimatorTask : public FreeRTOSTask {
 
                 if (measurement.type == MeasurementTypeRange) {
 
-                    ekf_update_with_range(measurement.data.rangefinder_distance); 
+                    _ekf.update_with_range(measurement.data.rangefinder_distance); 
                 }
 
                 else if (measurement.type == MeasurementTypeFlow) {
 
-                    ekf_update_with_flow(
+                    _ekf.update_with_flow(
                             measurement.data.flow.dt, 
                             measurement.data.flow.dpixelx,
                             measurement.data.flow.dpixely);
@@ -195,18 +196,18 @@ class EstimatorTask : public FreeRTOSTask {
                 else if (measurement.type == MeasurementTypeGyroscope ) {
                     axis3_t gyro = {};
                     memcpy(&gyro, &measurement.data.gyroscope.gyro, sizeof(gyro));
-                    ekf_accumulate_gyro(nowMsec, gyro);
+                    _ekf.accumulate_gyro(nowMsec, gyro);
                 }
 
                 else if (measurement.type == MeasurementTypeAcceleration) {
                     axis3_t accel = {};
                     memcpy(&accel, &measurement.data.acceleration.acc, 
                             sizeof(accel));
-                    ekf_accumulate_accel(nowMsec, accel);
+                    _ekf.accumulate_accel(nowMsec, accel);
                 }
             }
 
-            if (!ekf_finalize()) { // state OB
+            if (!_ekf.finalize()) { // state OB
 
                 didResetEstimation = true;
 
@@ -218,7 +219,7 @@ class EstimatorTask : public FreeRTOSTask {
 
             xSemaphoreTake(_dataMutex, portMAX_DELAY);
 
-            ekf_get_vehicle_state(_state);
+            _ekf.get_vehicle_state(_state);
 
             xSemaphoreGive(_dataMutex);
 

@@ -11,7 +11,6 @@ obj-y += copilot_core.o
 obj-y += bootloader.o
 obj-y += cfassert.o
 obj-y += console.o
-obj-y += ekf.o
 obj-y += led.o
 obj-y += ledseq.o
 obj-y += main.o
