@@ -24,168 +24,6 @@
 
 class CrazyflieEkf {
 
-    private:
-
-        // Initial variances, uncertain of position, but know we're
-        // stationary and roughly flat
-        static constexpr float STDEV_INITIAL_POSITION_Z = 1;
-        static constexpr float STDEV_INITIAL_VELOCITY = 0.01;
-        static constexpr float STDEV_INITIAL_ATTITUDE_ROLL_PITCH = 0.01;
-        static constexpr float STDEV_INITIAL_ATTITUDE_YAW = 0.01;
-
-        // The bounds on the covariance, these shouldn't be hit, but sometimes are... why?
-        static constexpr float MAX_COVARIANCE = 100;
-        static constexpr float MIN_COVARIANCE = 1e-6;
-
-        typedef struct {
-
-            float w;
-            float x;
-            float y;
-            float z;
-
-        } new_quat_t;
-
-        typedef struct {
-
-            axis3_t sum;
-            uint32_t count;
-
-        } imu_t;
-
-        axis3_t _gyroLatest;
-
-        new_quat_t _quat;
-
-        uint32_t _nextPredictionMsec;
-
-        axis3_t _r;
-
-        imu_t _gyroSum;
-        imu_t _accelSum;
-
-        // Indexes to access the state
-        enum {
-
-            STATE_Z,
-            STATE_DX,
-            STATE_DY,
-            STATE_DZ,
-            STATE_E0,
-            STATE_E1,
-            STATE_E2
-        };
-
-        // Quaternion used for initial orientation
-        static constexpr float QW_INIT = 1;
-        static constexpr float QX_INIT = 0;
-        static constexpr float QY_INIT = 0;
-        static constexpr float QZ_INIT = 0;
-
-        // ~~~ Camera constexprants ~~~
-        // The angle of aperture is guessed from the raw data register and
-        // thankfully look to be symmetric
-
-        static constexpr float FLOW_NPIX = 35.0;   // [pixels] (same in x and y)
-
-        // 2*sin(42/2); 42degree is the agnle of aperture, here we computed the
-        // corresponding ground length
-        static constexpr float FLOW_THETAPIX = 0.71674;
-
-        static constexpr float MSS_TO_GS = 9.81;
-
-        //We do get the measurements in 10x the motion pixels (experimentally measured)
-        static constexpr float FLOW_RESOLUTION = 0.1;
-
-        // The bounds on states, these shouldn't be hit...
-        static constexpr float MAX_POSITION = 100; //meters
-        static constexpr float MAX_VELOCITY = 10; //meters per second
-
-        // Small number epsilon, to prevent dividing by zero
-        static constexpr float EPS = 1e-6f;
-
-        // the reversion of pitch and roll to zero
-        static constexpr float ROLLPITCH_ZERO_REVERSION = 0.001;
-
-        static constexpr uint16_t RANGEFINDER_OUTLIER_LIMIT_MM = 5000;
-
-        // Rangefinder measurement noise model
-        static constexpr float RANGEFINDER_EXP_POINT_A = 2.5;
-        static constexpr float RANGEFINDER_EXP_STD_A = 0.0025; 
-        static constexpr float RANGEFINDER_EXP_POINT_B = 4.0;
-        static constexpr float RANGEFINDER_EXP_STD_B = 0.2;   
-
-        static constexpr float RANGEFINDER_EXP_COEFF = 
-            logf( RANGEFINDER_EXP_STD_B / RANGEFINDER_EXP_STD_A) / 
-            (RANGEFINDER_EXP_POINT_B - RANGEFINDER_EXP_POINT_A);
-
-        static constexpr float FLOW_STD_FIXED = 2.0;
-
-        static void imuAccum(const axis3_t vals, imu_t & imu)
-        {
-            imu.sum.x += vals.x;
-            imu.sum.y += vals.y;
-            imu.sum.z += vals.z;
-            imu.count++;
-        }
-
-        static void imuTakeMean(
-                const imu_t & imu, 
-                const float conversionFactor, 
-                axis3_t & mean)
-        {
-            const auto count = imu.count;
-
-            const auto isCountNonzero = count > 0;
-
-            mean.x = isCountNonzero ? imu.sum.x * conversionFactor / count : mean.x;
-            mean.y = isCountNonzero ? imu.sum.y * conversionFactor / count : mean.y;
-            mean.z = isCountNonzero ? imu.sum.z * conversionFactor / count : mean.z;
-        }
-
-        static const float max(const float val, const float maxval)
-        {
-            return val > maxval ? maxval : val;
-        }
-
-        static const float min(const float val, const float maxval)
-        {
-            return val < maxval ? maxval : val;
-        }
-
-        static float rotateQuat(const float val, const float initVal)
-        {
-            return (val * (1 - ROLLPITCH_ZERO_REVERSION)) + 
-                (ROLLPITCH_ZERO_REVERSION * initVal);
-        }
-
-        static bool isPositionWithinBounds(const float pos)
-        {
-            return fabs(pos) < MAX_POSITION;
-        }
-
-        static bool isVelocityWithinBounds(const float vel)
-        {
-            return fabs(vel) < MAX_VELOCITY;
-        }
-
-        static bool isErrorLarge(const float v)
-        {
-            return fabs(v) > 0.1e-3f;
-        }
-
-        static bool isErrorInBounds(const float v)
-        {
-            return fabs(v) < 10;
-        }
-
-        TinyEkf _tinyEkf;
-
-        static float square(const float x)
-        {
-            return x * x;
-        }
-
     public:
 
         void initialize(const uint32_t nowMsec)
@@ -624,5 +462,167 @@ class CrazyflieEkf {
             state.dtheta = -_gyroLatest.y; // negate for ENU
             state.dpsi =    _gyroLatest.z;
         }
+    private:
+
+        // Initial variances, uncertain of position, but know we're
+        // stationary and roughly flat
+        static constexpr float STDEV_INITIAL_POSITION_Z = 1;
+        static constexpr float STDEV_INITIAL_VELOCITY = 0.01;
+        static constexpr float STDEV_INITIAL_ATTITUDE_ROLL_PITCH = 0.01;
+        static constexpr float STDEV_INITIAL_ATTITUDE_YAW = 0.01;
+
+        // The bounds on the covariance, these shouldn't be hit, but sometimes are... why?
+        static constexpr float MAX_COVARIANCE = 100;
+        static constexpr float MIN_COVARIANCE = 1e-6;
+
+        // Quaternion used for initial orientation
+        static constexpr float QW_INIT = 1;
+        static constexpr float QX_INIT = 0;
+        static constexpr float QY_INIT = 0;
+        static constexpr float QZ_INIT = 0;
+
+        // ~~~ Camera constexprants ~~~
+        // The angle of aperture is guessed from the raw data register and
+        // thankfully look to be symmetric
+
+        static constexpr float FLOW_NPIX = 35.0;   // [pixels] (same in x and y)
+
+        // 2*sin(42/2); 42degree is the agnle of aperture, here we computed the
+        // corresponding ground length
+        static constexpr float FLOW_THETAPIX = 0.71674;
+
+        static constexpr float MSS_TO_GS = 9.81;
+
+        //We do get the measurements in 10x the motion pixels (experimentally measured)
+        static constexpr float FLOW_RESOLUTION = 0.1;
+
+        // The bounds on states, these shouldn't be hit...
+        static constexpr float MAX_POSITION = 100; //meters
+        static constexpr float MAX_VELOCITY = 10; //meters per second
+
+        // Small number epsilon, to prevent dividing by zero
+        static constexpr float EPS = 1e-6f;
+
+        // the reversion of pitch and roll to zero
+        static constexpr float ROLLPITCH_ZERO_REVERSION = 0.001;
+
+        static constexpr uint16_t RANGEFINDER_OUTLIER_LIMIT_MM = 5000;
+
+        // Rangefinder measurement noise model
+        static constexpr float RANGEFINDER_EXP_POINT_A = 2.5;
+        static constexpr float RANGEFINDER_EXP_STD_A = 0.0025; 
+        static constexpr float RANGEFINDER_EXP_POINT_B = 4.0;
+        static constexpr float RANGEFINDER_EXP_STD_B = 0.2;   
+
+        static constexpr float RANGEFINDER_EXP_COEFF = 
+            logf( RANGEFINDER_EXP_STD_B / RANGEFINDER_EXP_STD_A) / 
+            (RANGEFINDER_EXP_POINT_B - RANGEFINDER_EXP_POINT_A);
+
+        static constexpr float FLOW_STD_FIXED = 2.0;
+
+        typedef struct {
+
+            float w;
+            float x;
+            float y;
+            float z;
+
+        } new_quat_t;
+
+        typedef struct {
+
+            axis3_t sum;
+            uint32_t count;
+
+        } imu_t;
+
+        axis3_t _gyroLatest;
+
+        new_quat_t _quat;
+
+        uint32_t _nextPredictionMsec;
+
+        axis3_t _r;
+
+        imu_t _gyroSum;
+        imu_t _accelSum;
+
+        // Indexes to access the state
+        enum {
+
+            STATE_Z,
+            STATE_DX,
+            STATE_DY,
+            STATE_DZ,
+            STATE_E0,
+            STATE_E1,
+            STATE_E2
+        };
+
+        static void imuAccum(const axis3_t vals, imu_t & imu)
+        {
+            imu.sum.x += vals.x;
+            imu.sum.y += vals.y;
+            imu.sum.z += vals.z;
+            imu.count++;
+        }
+
+        static void imuTakeMean(
+                const imu_t & imu, 
+                const float conversionFactor, 
+                axis3_t & mean)
+        {
+            const auto count = imu.count;
+
+            const auto isCountNonzero = count > 0;
+
+            mean.x = isCountNonzero ? imu.sum.x * conversionFactor / count : mean.x;
+            mean.y = isCountNonzero ? imu.sum.y * conversionFactor / count : mean.y;
+            mean.z = isCountNonzero ? imu.sum.z * conversionFactor / count : mean.z;
+        }
+
+        static const float max(const float val, const float maxval)
+        {
+            return val > maxval ? maxval : val;
+        }
+
+        static const float min(const float val, const float maxval)
+        {
+            return val < maxval ? maxval : val;
+        }
+
+        static float rotateQuat(const float val, const float initVal)
+        {
+            return (val * (1 - ROLLPITCH_ZERO_REVERSION)) + 
+                (ROLLPITCH_ZERO_REVERSION * initVal);
+        }
+
+        static bool isPositionWithinBounds(const float pos)
+        {
+            return fabs(pos) < MAX_POSITION;
+        }
+
+        static bool isVelocityWithinBounds(const float vel)
+        {
+            return fabs(vel) < MAX_VELOCITY;
+        }
+
+        static bool isErrorLarge(const float v)
+        {
+            return fabs(v) > 0.1e-3f;
+        }
+
+        static bool isErrorInBounds(const float v)
+        {
+            return fabs(v) < 10;
+        }
+
+        TinyEkf _tinyEkf;
+
+        static float square(const float x)
+        {
+            return x * x;
+        }
+
 
 };
