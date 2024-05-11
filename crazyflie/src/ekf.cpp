@@ -412,14 +412,28 @@ bool TinyEkf::did_finalize(float x[EKF_N], float A[EKF_N][EKF_N])
 
 void TinyEkf::get_prediction(
         const uint32_t nowMsec,
-        const bool didAddProcessNoise,
         const float xold[EKF_N],
+        bool & shouldAddProcessNoise,
         float xnew[EKF_N],
         float F[EKF_N][EKF_N])
 {
+    // Compute DT
     static uint32_t _lastPredictionMsec;
     const float dt = (nowMsec - _lastPredictionMsec) / 1000.0f;
     _lastPredictionMsec = nowMsec;
+
+    // Update process noise / state periodically
+
+    static uint32_t _lastProcessNoiseUpdateMsec;
+
+    shouldAddProcessNoise = 
+        nowMsec - _lastProcessNoiseUpdateMsec > 0;
+
+    if (shouldAddProcessNoise) {
+
+        _lastProcessNoiseUpdateMsec = nowMsec;
+    }
+
 
     static axis3_t _gyro;
     static axis3_t _accel;
@@ -567,7 +581,7 @@ void TinyEkf::get_prediction(
     F[STATE_DY][STATE_E2] = MSS_TO_GS*_r.x*dt;
     F[STATE_DZ][STATE_E2] = 0;
 
-    if (didAddProcessNoise) {
+    if (shouldAddProcessNoise) {
 
         _quat.w = quat_predicted.w;
         _quat.x = quat_predicted.x;
