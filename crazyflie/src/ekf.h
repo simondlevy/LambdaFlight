@@ -21,6 +21,13 @@
 
 #include <datatypes.h>
 
+// Initial variances, uncertain of position, but know we're
+// stationary and roughly flat
+static const float STDEV_INITIAL_POSITION_Z = 1;
+static const float STDEV_INITIAL_VELOCITY = 0.01;
+static const float STDEV_INITIAL_ATTITUDE_ROLL_PITCH = 0.01;
+static const float STDEV_INITIAL_ATTITUDE_YAW = 0.01;
+
 void getFlowUpdates(
         const float * x,
         const float dt, 
@@ -31,6 +38,8 @@ void getFlowUpdates(
         float hy[7], 
         float & erry, 
         float & stdev);
+
+void initialize_crazyflie_ekf(void);
 
 void accumulateGyro(const uint32_t nowMsec, const axis3_t & gyro) ;
 

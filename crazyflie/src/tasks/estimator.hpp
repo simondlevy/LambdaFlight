@@ -148,9 +148,26 @@ class EstimatorTask : public FreeRTOSTask {
             return T2M(xTaskGetTickCount());
         }
 
+        static float square(const float x)
+        {
+            return x * x;
+        }
+
         void initEkf(const uint32_t nowMsec)
         {
-            _ekf.initialize(nowMsec, MIN_COVARIANCE, MAX_COVARIANCE);
+            const float pdiag[7] = {
+                square(STDEV_INITIAL_POSITION_Z),
+                square(STDEV_INITIAL_VELOCITY),
+                square(STDEV_INITIAL_VELOCITY),
+                square(STDEV_INITIAL_VELOCITY),
+                square(STDEV_INITIAL_ATTITUDE_ROLL_PITCH),
+                square(STDEV_INITIAL_ATTITUDE_ROLL_PITCH),
+                square(STDEV_INITIAL_ATTITUDE_YAW)
+            };
+
+            _ekf.initialize(pdiag, nowMsec, MIN_COVARIANCE, MAX_COVARIANCE);
+
+            initialize_crazyflie_ekf();
         }        
 
         uint32_t step(const uint32_t nowMsec, uint32_t nextPredictionMsec) 

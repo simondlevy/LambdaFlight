@@ -64,13 +64,6 @@ static const float QX_INIT = 0;
 static const float QY_INIT = 0;
 static const float QZ_INIT = 0;
 
-// Initial variances, uncertain of position, but know we're
-// stationary and roughly flat
-static const float STDEV_INITIAL_POSITION_Z = 1;
-static const float STDEV_INITIAL_VELOCITY = 0.01;
-static const float STDEV_INITIAL_ATTITUDE_ROLL_PITCH = 0.01;
-static const float STDEV_INITIAL_ATTITUDE_YAW = 0.01;
-
 // ~~~ Camera constants ~~~
 // The angle of aperture is guessed from the raw data register and
 // thankfully look to be symmetric
@@ -140,11 +133,6 @@ static const float max(const float val, const float maxval)
 static const float min(const float val, const float maxval)
 {
     return val < maxval ? maxval : val;
-}
-
-static const float square(const float x)
-{
-    return x * x;
 }
 
 static float rotateQuat(const float val, const float initVal)
@@ -312,19 +300,8 @@ bool shouldUpdateWithRange(const float * x, const uint32_t distance,
         distance < RANGEFINDER_OUTLIER_LIMIT_MM;
 }
 
-
-//////////////////////////////////////////////////////////////////////////////
-
-void TinyEkf::initialize_covariance_diagonal(float diag[EKF_N])
+void initialize_crazyflie_ekf(void)
 {
-    diag[STATE_Z] = square(STDEV_INITIAL_POSITION_Z);
-    diag[STATE_DX] = square(STDEV_INITIAL_VELOCITY);
-    diag[STATE_DY] = square(STDEV_INITIAL_VELOCITY);
-    diag[STATE_DZ] = square(STDEV_INITIAL_VELOCITY);
-    diag[STATE_E0] = square(STDEV_INITIAL_ATTITUDE_ROLL_PITCH);
-    diag[STATE_E1] = square(STDEV_INITIAL_ATTITUDE_ROLL_PITCH);
-    diag[STATE_E2] = square(STDEV_INITIAL_ATTITUDE_YAW);
-
     _quat.w = QW_INIT;
     _quat.x = QX_INIT;
     _quat.y = QY_INIT;
@@ -334,6 +311,9 @@ void TinyEkf::initialize_covariance_diagonal(float diag[EKF_N])
     _r.y = 0;
     _r.z = 0;
 }
+
+
+//////////////////////////////////////////////////////////////////////////////
 
 
 bool TinyEkf::did_finalize(float x[EKF_N], float A[EKF_N][EKF_N])
