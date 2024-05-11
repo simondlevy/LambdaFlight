@@ -253,7 +253,6 @@ class CrazyflieEkf {
         {
             float h[7] = {};
             float error = 0;
-            float noise = 0;
 
             const auto x = _tinyEkf.getState();
 
@@ -267,16 +266,16 @@ class CrazyflieEkf {
 
             h[0] = 1/cosf(angle);
 
-            noise = RANGEFINDER_EXP_STD_A * 
+           const auto r = square(RANGEFINDER_EXP_STD_A * 
                 (1 + expf(RANGEFINDER_EXP_COEFF * 
-                          (measuredDistance - RANGEFINDER_EXP_POINT_A)));
+                          (measuredDistance - RANGEFINDER_EXP_POINT_A))));
 
             error = measuredDistance-predictedDistance;
 
             if (fabs(_r.z) > 0.1f && _r.z > 0 && 
                     distance < RANGEFINDER_OUTLIER_LIMIT_MM) {
 
-                _tinyEkf.update(h, error, noise);
+                _tinyEkf.update(h, error, r);
             }
         }
 
@@ -325,11 +324,11 @@ class CrazyflieEkf {
             const auto errx = measuredNX - predictedNX;
             const auto erry = measuredNY - predictedNY;
 
-            const auto stdev = FLOW_STD_FIXED*FLOW_RESOLUTION;
+            const auto r = square(FLOW_STD_FIXED * FLOW_RESOLUTION);
 
-            _tinyEkf.update(hx, errx, stdev);
+            _tinyEkf.update(hx, errx, r);
 
-            _tinyEkf.update(hy, erry, stdev);
+            _tinyEkf.update(hy, erry, r);
         }
 
         bool finalize(void)
