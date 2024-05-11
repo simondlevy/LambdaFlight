@@ -16,7 +16,7 @@
 
 #include <string.h>
 
-#include <ekf.h>
+#include <datatypes.h>
 #include <math3d.h>
 
 #define EKF_N 7
