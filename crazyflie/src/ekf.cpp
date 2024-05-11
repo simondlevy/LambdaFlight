@@ -186,37 +186,12 @@ static bool isStateWithinBounds(const float * x)
         isVelocityWithinBounds(x[STATE_DZ]);
 }
 
-
-static bool shouldUpdateWithRange(const float * x, const uint32_t distance,
-        float h[7], float & error, float & noise)
-{
-    const auto angle = max(0, 
-            fabsf(acosf(_r.z)) - 
-            DEGREES_TO_RADIANS * (15.0f / 2.0f));
-
-    const auto predictedDistance = x[STATE_Z] / cosf(angle);
-
-    const auto measuredDistance = distance / 1000.f; // mm => m
-
-    h[0] = 1/cosf(angle);
-
-    noise = RANGEFINDER_EXP_STD_A * 
-        (1 + expf(RANGEFINDER_EXP_COEFF * 
-                  (measuredDistance - RANGEFINDER_EXP_POINT_A)));
-
-    error = measuredDistance-predictedDistance;
-
-    return fabs(_r.z) > 0.1f && _r.z > 0 && 
-        distance < RANGEFINDER_OUTLIER_LIMIT_MM;
-}
-
-//////////////////////////////////////////////////////////////////////////////
-
 static float square(const float x)
 {
     return x * x;
 }
 
+//////////////////////////////////////////////////////////////////////////////
 
 void ekf_initialize(const uint32_t nowMsec)
 {
@@ -447,8 +422,26 @@ void ekf_update_with_range(const float distance)
     float error = 0;
     float noise = 0;
 
-    if (shouldUpdateWithRange(
-                _tinyEkf.getState(), distance, h, error, noise)) {
+    const auto x = _tinyEkf.getState();
+
+    const auto angle = max(0, 
+            fabsf(acosf(_r.z)) - 
+            DEGREES_TO_RADIANS * (15.0f / 2.0f));
+
+    const auto predictedDistance = x[STATE_Z] / cosf(angle);
+
+    const auto measuredDistance = distance / 1000.f; // mm => m
+
+    h[0] = 1/cosf(angle);
+
+    noise = RANGEFINDER_EXP_STD_A * 
+        (1 + expf(RANGEFINDER_EXP_COEFF * 
+                  (measuredDistance - RANGEFINDER_EXP_POINT_A)));
+
+    error = measuredDistance-predictedDistance;
+
+    if (fabs(_r.z) > 0.1f && _r.z > 0 && 
+        distance < RANGEFINDER_OUTLIER_LIMIT_MM) {
 
         _tinyEkf.update(h, error, noise);
     }
