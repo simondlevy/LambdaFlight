@@ -105,10 +105,10 @@ step = (phi, theta, psi, armed, m1, m2, m3, m4) where
   -- Get Euler angles from USFS hardware quaternion. We depart from the
   -- usual formula to accommdate the upside-down / sidewase IMU orientation.
 
-  theta = (atan2 (qx*qw + qz*qy) (0.5 - qw*qw - qz*qz)) * 180 / pi
-
   phi = ((-asin (constrain ((-2.0) * (qw*qy - qx*qz)) (-0.999999) 0.999999))
            * 180 / pi)
+
+  theta = -(atan2 (qx*qw + qz*qy) (0.5 - qw*qw - qz*qz)) * 180 / pi
 
   psi = (-atan2 (qw*qz + qx*qy) (0.5 - qz*qz - qy*qy)) * 180 / pi
 
