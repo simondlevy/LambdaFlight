@@ -251,9 +251,6 @@ class CrazyflieEkf {
 
         void update_with_range(const float distance)
         {
-            float h[7] = {};
-            float error = 0;
-
             const auto x = _tinyEkf.getState();
 
             const auto angle = max(0, 
@@ -263,6 +260,7 @@ class CrazyflieEkf {
             const auto predictedDistance = x[STATE_Z] / cosf(angle);
 
             const auto measuredDistance = distance / 1000.f; // mm => m
+            float h[7] = {};
 
             h[0] = 1/cosf(angle);
 
@@ -270,12 +268,10 @@ class CrazyflieEkf {
                 (1 + expf(RANGEFINDER_EXP_COEFF * 
                           (measuredDistance - RANGEFINDER_EXP_POINT_A))));
 
-            error = measuredDistance-predictedDistance;
-
             if (fabs(_r.z) > 0.1f && _r.z > 0 && 
                     distance < RANGEFINDER_OUTLIER_LIMIT_MM) {
 
-                _tinyEkf.update(h, error, r);
+                _tinyEkf.update(h, measuredDistance, predictedDistance, r);
             }
         }
 
@@ -321,14 +317,11 @@ class CrazyflieEkf {
             hy[0] = (FLOW_NPIX * dt / FLOW_THETAPIX) * ((_r.z * dy_g) / (-z_g * z_g));
             hy[2] = (FLOW_NPIX * dt / FLOW_THETAPIX) * (_r.z / z_g);
 
-            const auto errx = measuredNX - predictedNX;
-            const auto erry = measuredNY - predictedNY;
-
             const auto r = square(FLOW_STD_FIXED * FLOW_RESOLUTION);
 
-            _tinyEkf.update(hx, errx, r);
+            _tinyEkf.update(hx, measuredNX, predictedNX, r);
 
-            _tinyEkf.update(hy, erry, r);
+            _tinyEkf.update(hy, measuredNY, predictedNY, r);
         }
 
         bool finalize(void)
