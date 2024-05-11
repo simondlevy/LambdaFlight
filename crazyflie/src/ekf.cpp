@@ -177,59 +177,6 @@ static bool isErrorInBounds(const float v)
 
 static TinyEkf _tinyEkf;
 
-static void getFlowUpdates(
-        const float * x,
-        const float dt, 
-        const float dpixelx, 
-        const float dpixely,
-        float hx[7], 
-        float & errx, 
-        float hy[7], 
-        float & erry, 
-        float & stdev)
-{
-    // Inclusion of flow measurements in the EKF done by two scalar updates
-
-    //~~~ Body rates ~~~
-    const auto omegay_b = _gyroLatest.y * DEGREES_TO_RADIANS;
-
-    const auto dx_g = x[STATE_DX];
-
-    // Saturate elevation in prediction and correction to avoid singularities
-    const auto z_g = x[STATE_Z] < 0.1f ? 0.1f : x[STATE_Z];
-
-    // ~~~ X velocity prediction and update ~~~
-    // predicts the number of accumulated pixels in the x-direction
-    auto predictedNX = (dt * FLOW_NPIX / FLOW_THETAPIX ) * 
-        ((dx_g * _r.z / z_g) - omegay_b);
-    auto measuredNX = dpixelx*FLOW_RESOLUTION;
-
-    // derive measurement equation with respect to dx (and z?)
-    hx[0] = (FLOW_NPIX * dt / FLOW_THETAPIX) * ((_r.z * dx_g) / (-z_g * z_g));
-    hx[1] = (FLOW_NPIX * dt / FLOW_THETAPIX) * (_r.z / z_g);
-
-    // Inclusion of flow measurements in the EKF done by two scalar updates
-
-    //~~~ Body rates ~~~
-    const auto omegax_b = _gyroLatest.x * DEGREES_TO_RADIANS;
-
-    const auto dy_g = x[STATE_DY];
-
-    // ~~~ Y velocity prediction and update ~~~
-    auto predictedNY = (dt * FLOW_NPIX / FLOW_THETAPIX ) * 
-        ((dy_g * _r.z / z_g) + omegax_b);
-    auto measuredNY = dpixely*FLOW_RESOLUTION;
-
-    // derive measurement equation with respect to dy (and z?)
-    hy[0] = (FLOW_NPIX * dt / FLOW_THETAPIX) * ((_r.z * dy_g) / (-z_g * z_g));
-    hy[2] = (FLOW_NPIX * dt / FLOW_THETAPIX) * (_r.z / z_g);
-
-    errx = measuredNX - predictedNX;
-    erry = measuredNY - predictedNY;
-
-    stdev = FLOW_STD_FIXED*FLOW_RESOLUTION;
-}
-
 static bool isStateWithinBounds(const float * x)
 {
     return
@@ -509,15 +456,50 @@ void ekf_update_with_range(const float distance)
 
 void ekf_update_with_flow(const float dt, const float dx, const float dy)
 {
+    // Inclusion of flow measurements in the EKF done by two scalar updates
 
-    float hx[7] = {};
-    float errx = 0;
-    float hy[7] = {};
-    float erry = 0;
-    float stdev = 0;
+    //~~~ Body rates ~~~
+    const auto omegay_b = _gyroLatest.y * DEGREES_TO_RADIANS;
 
-    getFlowUpdates(
-            _tinyEkf.getState(), dt, dx, dy, hx, errx, hy, erry, stdev);
+    const auto x = _tinyEkf.getState();
+
+    const auto dx_g = x[STATE_DX];
+
+    // Saturate elevation in prediction and correction to avoid singularities
+    const auto z_g = x[STATE_Z] < 0.1f ? 0.1f : x[STATE_Z];
+
+    // ~~~ X velocity prediction and update ~~~
+    // predicts the number of accumulated pixels in the x-direction
+    auto predictedNX = (dt * FLOW_NPIX / FLOW_THETAPIX ) * 
+        ((dx_g * _r.z / z_g) - omegay_b);
+    auto measuredNX = dx*FLOW_RESOLUTION;
+
+    // derive measurement equation with respect to dx (and z?)
+    float hx[EKF_N] = {};
+    hx[0] = (FLOW_NPIX * dt / FLOW_THETAPIX) * ((_r.z * dx_g) / (-z_g * z_g));
+    hx[1] = (FLOW_NPIX * dt / FLOW_THETAPIX) * (_r.z / z_g);
+
+    // Inclusion of flow measurements in the EKF done by two scalar updates
+
+    //~~~ Body rates ~~~
+    const auto omegax_b = _gyroLatest.x * DEGREES_TO_RADIANS;
+
+    const auto dy_g = x[STATE_DY];
+
+    // ~~~ Y velocity prediction and update ~~~
+    auto predictedNY = (dt * FLOW_NPIX / FLOW_THETAPIX ) * 
+        ((dy_g * _r.z / z_g) + omegax_b);
+    auto measuredNY = dy*FLOW_RESOLUTION;
+
+    // derive measurement equation with respect to dy (and z?)
+    float hy[EKF_N] = {};
+    hy[0] = (FLOW_NPIX * dt / FLOW_THETAPIX) * ((_r.z * dy_g) / (-z_g * z_g));
+    hy[2] = (FLOW_NPIX * dt / FLOW_THETAPIX) * (_r.z / z_g);
+
+    const auto errx = measuredNX - predictedNX;
+    const auto erry = measuredNY - predictedNY;
+
+    const auto stdev = FLOW_STD_FIXED*FLOW_RESOLUTION;
 
     _tinyEkf.update(hx, errx, stdev);
 
