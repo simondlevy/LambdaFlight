@@ -22,8 +22,6 @@ void ekf_initialize(const uint32_t nowMsec);
 
 void ekf_predict(const uint32_t nowMec);
 
-void ekf_predict2(const uint32_t nowMec);
-
 void ekf_update_with_range(const float distance);
 
 void ekf_update_with_flow(const float dt, const float dx, const float dy);
