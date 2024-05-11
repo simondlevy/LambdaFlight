@@ -19,7 +19,8 @@
 #include <datatypes.h>
 #include <math3d.h>
 
-#define EKF_N 7
+#define EKF_M 3 // range, flowx, flowy
+#define EKF_N 7 // z, dx, dy, e0, e1, e2
 #include <tinyekf.hpp>
 
 class CrazyflieEkf {
