@@ -413,7 +413,6 @@ bool TinyEkf::did_finalize(float x[EKF_N], float A[EKF_N][EKF_N])
 void TinyEkf::get_prediction(
         const uint32_t nowMsec,
         const float xold[EKF_N],
-        bool & shouldAddProcessNoise,
         float xnew[EKF_N],
         float F[EKF_N][EKF_N])
 {
@@ -421,18 +420,6 @@ void TinyEkf::get_prediction(
     static uint32_t _lastPredictionMsec;
     const float dt = (nowMsec - _lastPredictionMsec) / 1000.0f;
     _lastPredictionMsec = nowMsec;
-
-    // Update process noise / state periodically
-
-    static uint32_t _lastProcessNoiseUpdateMsec;
-
-    shouldAddProcessNoise = 
-        nowMsec - _lastProcessNoiseUpdateMsec > 0;
-
-    if (shouldAddProcessNoise) {
-
-        _lastProcessNoiseUpdateMsec = nowMsec;
-    }
 
 
     static axis3_t _gyro;
@@ -500,22 +487,18 @@ void TinyEkf::get_prediction(
     const auto tmpSDY = xold[STATE_DY];
     const auto tmpSDZ = xold[STATE_DZ];
 
-    xnew[STATE_Z] = xold[STATE_Z] + 
+    const auto new_z = xold[STATE_Z] + 
         _r.x * dx + _r.y * dy + _r.z * dz - MSS_TO_GS * dt2 / 2;
 
-    xnew[STATE_DX] = xold[STATE_DX] +
+    const auto new_dx = xold[STATE_DX] +
         dt * (accx + _gyro.z * tmpSDY - _gyro.y * tmpSDZ -
                 MSS_TO_GS * _r.x);
 
-    xnew[STATE_DY] =
-        xold[STATE_DY] +
-        dt * (accy - _gyro.z * tmpSDX + _gyro.x * tmpSDZ -
-                MSS_TO_GS * _r.y); 
+    const auto new_dy = xold[STATE_DY] + 
+        dt * (accy - _gyro.z * tmpSDX + _gyro.x * tmpSDZ - MSS_TO_GS * _r.y); 
 
-    xnew[STATE_DZ] =
-        xold[STATE_DZ] +
-        dt * (_accel.z + _gyro.y * tmpSDX - _gyro.x * tmpSDY -
-                MSS_TO_GS * _r.z); 
+    const auto new_dz = xold[STATE_DZ] +
+        dt * (_accel.z + _gyro.y * tmpSDX - _gyro.x * tmpSDY - MSS_TO_GS * _r.z); 
 
     new_quat_t quat_predicted = {};
 
@@ -546,14 +529,11 @@ void TinyEkf::get_prediction(
     F[STATE_Z][STATE_DZ] = _r.z*dt;
 
     // altitude from attitude error
-    F[STATE_Z][STATE_E0] = (xnew[ STATE_DY]*_r.z -
-            xnew[ STATE_DZ]*_r.y)*dt;
+    F[STATE_Z][STATE_E0] = (new_dy*_r.z - new_dz*_r.y)*dt;
 
-    F[STATE_Z][STATE_E1] = (- xnew[ STATE_DX]*_r.z +
-            xnew[ STATE_DZ]*_r.x)*dt;
+    F[STATE_Z][STATE_E1] = (-new_dx*_r.z + new_dz*_r.x)*dt;
 
-    F[STATE_Z][STATE_E2] = (xnew[ STATE_DX]*_r.y -
-            xnew[ STATE_DY]*_r.x)*dt;
+    F[STATE_Z][STATE_E2] = (new_dx*_r.y - new_dy*_r.x)*dt;
 
     // body-frame velocity from body-frame velocity
     F[STATE_DX][STATE_DX] = 1; //drag negligible
@@ -581,7 +561,19 @@ void TinyEkf::get_prediction(
     F[STATE_DY][STATE_E2] = MSS_TO_GS*_r.x*dt;
     F[STATE_DZ][STATE_E2] = 0;
 
-    if (shouldAddProcessNoise) {
+    // Avoid multiple updates within 1 msec of each other
+    static uint32_t _lastProcessNoiseUpdateMsec;
+    if (nowMsec - _lastProcessNoiseUpdateMsec > 0) {
+
+        _lastProcessNoiseUpdateMsec = nowMsec;
+
+        xnew[STATE_Z]  = new_z;
+        xnew[STATE_DX] = new_dx;
+        xnew[STATE_DY] = new_dy;
+        xnew[STATE_DZ] = new_dz;
+        xnew[STATE_E0] = xold[STATE_E0];
+        xnew[STATE_E1] = xold[STATE_E1];
+        xnew[STATE_E2] = xold[STATE_E2];
 
         _quat.w = quat_predicted.w;
         _quat.x = quat_predicted.x;
