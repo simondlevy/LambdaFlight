@@ -314,6 +314,192 @@ void ekf_predict(const uint32_t nowMsec)
 
 }
 
+void ekf_predict2(const uint32_t nowMsec)
+{
+    // Compute DT
+    static uint32_t _lastPredictionMsec;
+    const float dt = (nowMsec - _lastPredictionMsec) / 1000.0f;
+    _lastPredictionMsec = nowMsec;
+
+    static axis3_t _gyro;
+    static axis3_t _accel;
+
+    const auto dt2 = dt * dt;
+
+    imuTakeMean(_gyroSum, DEGREES_TO_RADIANS, _gyro);
+    imuTakeMean(_accelSum, MSS_TO_GS, _accel);
+
+    const auto xold = _tinyEkf.getState();
+
+    // Position updates in the body frame (will be rotated to inertial frame);
+    // thrust can only be produced in the body's Z direction
+    const auto dx = xold[STATE_DX] * dt + _accel.x * dt2 / 2;
+    const auto dy = xold[STATE_DY] * dt + _accel.y * dt2 / 2;
+    const auto dz = xold[STATE_DZ] * dt + _accel.z * dt2 / 2; 
+
+    const auto accx = _accel.x;
+    const auto accy = _accel.y;
+
+    // attitude update (rotate by gyroscope), we do this in quaternions
+    // this is the gyroscope angular velocity integrated over the sample period
+    const auto dtwx = dt*_gyro.x;
+    const auto dtwy = dt*_gyro.y;
+    const auto dtwz = dt*_gyro.z;
+
+    // compute the quaternion values in [w,x,y,z] order
+    const auto angle = sqrt(dtwx*dtwx + dtwy*dtwy + dtwz*dtwz) + EPS;
+    const auto ca = cos(angle/2);
+    const auto sa = sin(angle/2);
+    const auto dqw = ca;
+    const auto dqx = sa*dtwx/angle;
+    const auto dqy = sa*dtwy/angle;
+    const auto dqz = sa*dtwz/angle;
+
+    // rotate the quad's attitude by the delta quaternion vector
+    // computed above
+
+    const auto qw = _quat.w;
+    const auto qx = _quat.x;
+    const auto qy = _quat.y;
+    const auto qz = _quat.z;
+
+    const auto tmpq0 = rotateQuat(
+            dqw*qw - dqx*qx - dqy*qy - dqz*qz, QW_INIT);
+    const auto tmpq1 = rotateQuat(
+            dqx*qw + dqw*qx + dqz*qy - dqy*qz, QX_INIT);
+    const auto tmpq2 = rotateQuat(
+            dqy*qw - dqz*qx + dqw*qy + dqx*qz, QY_INIT);
+    const auto tmpq3 = rotateQuat(
+            dqz*qw + dqy*qx - dqx*qy + dqw*qz, QZ_INIT);
+
+    // normalize and store the result
+    const auto norm = 
+        sqrt(tmpq0*tmpq0 + tmpq1*tmpq1 + tmpq2*tmpq2 + tmpq3*tmpq3) + 
+        EPS;
+
+    // Process noise is added after the return from the prediction step
+
+    // ====== PREDICTION STEP ======
+    // The prediction depends on whether we're on the ground, or in flight.
+    // When flying, the accelerometer directly measures thrust
+    // (hence is useless to estimate body angle while flying)
+
+    const auto tmpSDX = xold[STATE_DX];
+    const auto tmpSDY = xold[STATE_DY];
+    const auto tmpSDZ = xold[STATE_DZ];
+
+    const auto new_z = xold[STATE_Z] + 
+        _r.x * dx + _r.y * dy + _r.z * dz - MSS_TO_GS * dt2 / 2;
+
+    const auto new_dx = xold[STATE_DX] +
+        dt * (accx + _gyro.z * tmpSDY - _gyro.y * tmpSDZ -
+                MSS_TO_GS * _r.x);
+
+    const auto new_dy = xold[STATE_DY] + 
+        dt * (accy - _gyro.z * tmpSDX + _gyro.x * tmpSDZ - MSS_TO_GS * _r.y); 
+
+    const auto new_dz = xold[STATE_DZ] +
+        dt * (_accel.z + _gyro.y * tmpSDX - _gyro.x * tmpSDY - MSS_TO_GS * _r.z); 
+
+    new_quat_t quat_predicted = {};
+
+    quat_predicted.w = tmpq0/norm;
+    quat_predicted.x = tmpq1/norm; 
+    quat_predicted.y = tmpq2/norm; 
+    quat_predicted.z = tmpq3/norm;
+
+    const auto e0 = _gyro.x*dt/2;
+    const auto e1 = _gyro.y*dt/2;
+    const auto e2 = _gyro.z*dt/2;
+
+    float F[EKF_N][EKF_N] = {};
+
+    F[STATE_E0][STATE_E0] =  1 - e1*e1/2 - e2*e2/2;
+    F[STATE_E0][STATE_E1] =  e2 + e0*e1/2;
+    F[STATE_E0][STATE_E2] = -e1 + e0*e2/2;
+
+    F[STATE_E1][STATE_E0] =  -e2 + e0*e1/2;
+    F[STATE_E1][STATE_E1] = 1 - e0*e0/2 - e2*e2/2;
+    F[STATE_E1][STATE_E2] = e0 + e1*e2/2;
+
+    F[STATE_E2][STATE_E0] = e1 + e0*e2/2;
+    F[STATE_E2][STATE_E1] = -e0 + e1*e2/2;
+    F[STATE_E2][STATE_E2] = 1 - e0*e0/2 - e1*e1/2;
+
+    // altitude from body-frame velocity
+    F[STATE_Z][STATE_DX] = _r.x*dt;
+    F[STATE_Z][STATE_DY] = _r.y*dt;
+    F[STATE_Z][STATE_DZ] = _r.z*dt;
+
+    // altitude from attitude error
+    F[STATE_Z][STATE_E0] = (new_dy*_r.z - new_dz*_r.y)*dt;
+
+    F[STATE_Z][STATE_E1] = (-new_dx*_r.z + new_dz*_r.x)*dt;
+
+    F[STATE_Z][STATE_E2] = (new_dx*_r.y - new_dy*_r.x)*dt;
+
+    // body-frame velocity from body-frame velocity
+    F[STATE_DX][STATE_DX] = 1; //drag negligible
+    F[STATE_DY][STATE_DX] =  -_gyro.z*dt;
+    F[STATE_DZ][STATE_DX] = _gyro.y*dt;
+
+    F[STATE_DX][STATE_DY] = _gyro.z*dt;
+    F[STATE_DY][STATE_DY] = 1; //drag negligible
+    F[STATE_DZ][STATE_DY] = _gyro.x*dt;
+
+    F[STATE_DX][STATE_DZ] =  _gyro.y*dt;
+    F[STATE_DY][STATE_DZ] = _gyro.x*dt;
+    F[STATE_DZ][STATE_DZ] = 1; //drag negligible
+
+    // body-frame velocity from attitude error
+    F[STATE_DX][STATE_E0] = 0;
+    F[STATE_DY][STATE_E0] = -MSS_TO_GS*_r.z*dt;
+    F[STATE_DZ][STATE_E0] = MSS_TO_GS*_r.y*dt;
+
+    F[STATE_DX][STATE_E1] = MSS_TO_GS*_r.z*dt;
+    F[STATE_DY][STATE_E1] = 0;
+    F[STATE_DZ][STATE_E1] = -MSS_TO_GS*_r.x*dt;
+
+    F[STATE_DX][STATE_E2] = -MSS_TO_GS*_r.y*dt;
+    F[STATE_DY][STATE_E2] = MSS_TO_GS*_r.x*dt;
+    F[STATE_DZ][STATE_E2] = 0;
+
+    float xnew[EKF_N] = {
+
+        xold[STATE_Z] ,
+        xold[STATE_DX],
+        xold[STATE_DY],
+        xold[STATE_DZ],
+        xold[STATE_E0],
+        xold[STATE_E1],
+        xold[STATE_E2]
+    };
+
+    // Avoid multiple updates within 1 msec of each other
+    static uint32_t _lastProcessNoiseUpdateMsec;
+    if (nowMsec - _lastProcessNoiseUpdateMsec > 0) {
+
+        _lastProcessNoiseUpdateMsec = nowMsec;
+
+        xnew[STATE_Z]  = new_z;
+        xnew[STATE_DX] = new_dx;
+        xnew[STATE_DY] = new_dy;
+        xnew[STATE_DZ] = new_dz;
+
+        _quat.w = quat_predicted.w;
+        _quat.x = quat_predicted.x;
+        _quat.y = quat_predicted.y;
+        _quat.z = quat_predicted.z;
+
+        memset(&_gyroSum, 0, sizeof(_gyroSum));
+        memset(&_accelSum, 0, sizeof(_accelSum));
+    }
+
+    const float Q[EKF_N][EKF_N] = {};
+
+    _tinyEkf.predict(xnew, F, Q);
+}
+
 void ekf_update_with_range(const float distance)
 {
     float h[7] = {};

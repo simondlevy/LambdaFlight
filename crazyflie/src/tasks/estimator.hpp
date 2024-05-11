@@ -159,7 +159,7 @@ class EstimatorTask : public FreeRTOSTask {
             // Run the system dynamics to predict the state forward.
             if (nowMsec >= nextPredictionMsec) {
 
-                ekf_predict(nowMsec);
+                ekf_predict2(nowMsec);
 
                 nextPredictionMsec = nowMsec + PREDICTION_INTERVAL_MSEC;
 
