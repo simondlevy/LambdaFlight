@@ -414,7 +414,8 @@ void TinyEkf::get_prediction(
         const uint32_t nowMsec,
         const float xold[EKF_N],
         float xnew[EKF_N],
-        float F[EKF_N][EKF_N])
+        float F[EKF_N][EKF_N],
+        float Q[EKF_N][EKF_N])
 {
     // Compute DT
     static uint32_t _lastPredictionMsec;
