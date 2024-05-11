@@ -110,10 +110,6 @@ class EstimatorTask : public FreeRTOSTask {
         static const uint32_t PREDICT_RATE = Clock::RATE_100_HZ; 
         static const uint32_t PREDICTION_INTERVAL_MSEC = 1000 / PREDICT_RATE;
 
-        // The bounds on the covariance, these shouldn't be hit, but sometimes are... why?
-        static constexpr float MAX_COVARIANCE = 100;
-        static constexpr float MIN_COVARIANCE = 1e-6;
-
 
         static const uint32_t WARNING_HOLD_BACK_TIME_MS = 2000;
 
@@ -124,8 +120,6 @@ class EstimatorTask : public FreeRTOSTask {
         xQueueHandle _measurementsQueue;
 
         RateSupervisor _rateSupervisor;
-
-        TinyEkf _ekf;
 
         // Mutex to protect data that is shared between the task and
         // functions called by the stabilizer loop
@@ -148,27 +142,10 @@ class EstimatorTask : public FreeRTOSTask {
             return T2M(xTaskGetTickCount());
         }
 
-        static float square(const float x)
-        {
-            return x * x;
-        }
-
         void initEkf(const uint32_t nowMsec)
         {
-            const float pdiag[7] = {
-                square(STDEV_INITIAL_POSITION_Z),
-                square(STDEV_INITIAL_VELOCITY),
-                square(STDEV_INITIAL_VELOCITY),
-                square(STDEV_INITIAL_VELOCITY),
-                square(STDEV_INITIAL_ATTITUDE_ROLL_PITCH),
-                square(STDEV_INITIAL_ATTITUDE_ROLL_PITCH),
-                square(STDEV_INITIAL_ATTITUDE_YAW)
-            };
-
-            _ekf.initialize(pdiag, nowMsec, MIN_COVARIANCE, MAX_COVARIANCE);
-
-            initialize_crazyflie_ekf();
-        }        
+             ekf_initialize(nowMsec);
+       }        
 
         uint32_t step(const uint32_t nowMsec, uint32_t nextPredictionMsec) 
         {
@@ -182,7 +159,7 @@ class EstimatorTask : public FreeRTOSTask {
             // Run the system dynamics to predict the state forward.
             if (nowMsec >= nextPredictionMsec) {
 
-                _ekf.predict(nowMsec);
+                ekf_predict(nowMsec);
 
                 nextPredictionMsec = nowMsec + PREDICTION_INTERVAL_MSEC;
 
@@ -204,59 +181,32 @@ class EstimatorTask : public FreeRTOSTask {
 
                 if (measurement.type == MeasurementTypeRange) {
 
-                    float h[7] = {};
-                    float error = 0;
-                    float noise = 0;
-
-                    if (shouldUpdateWithRange(
-                                _ekf.getState(),
-                                measurement.data.rangefinder_distance, 
-                                h, 
-                                error, 
-                                noise)) {
-
-                        _ekf.update(h, error, noise);
-
-                    }
+                    ekf_update_with_range(measurement.data.rangefinder_distance); 
                 }
 
                 else if (measurement.type == MeasurementTypeFlow) {
 
-                    float hx[7] = {};
-                    float errx = 0;
-                    float hy[7] = {};
-                    float erry = 0;
-                    float stdev = 0;
-
-                    getFlowUpdates(
-                            _ekf.getState(),
+                    ekf_update_with_flow(
                             measurement.data.flow.dt, 
                             measurement.data.flow.dpixelx,
-                            measurement.data.flow.dpixely,
-                            hx, errx, hy, erry, stdev);
-
-                    _ekf.update(hx, errx, stdev);
-
-                    _ekf.update(hy, erry, stdev);
+                            measurement.data.flow.dpixely);
                 }
 
                 else if (measurement.type == MeasurementTypeGyroscope ) {
                     axis3_t gyro = {};
                     memcpy(&gyro, &measurement.data.gyroscope.gyro, sizeof(gyro));
-                    accumulateGyro(nowMsec, gyro);
+                    ekf_accumulate_gyro(nowMsec, gyro);
                 }
 
                 else if (measurement.type == MeasurementTypeAcceleration) {
                     axis3_t accel = {};
                     memcpy(&accel, &measurement.data.acceleration.acc, 
                             sizeof(accel));
-                    accumulateAccel(nowMsec, accel);
+                    ekf_accumulate_accel(nowMsec, accel);
                 }
             }
 
-            _ekf.finalize(); 
-
-            if (!isStateWithinBounds(_ekf.getState())) { 
+            if (!ekf_finalize()) { // state OB
 
                 didResetEstimation = true;
 
@@ -268,7 +218,7 @@ class EstimatorTask : public FreeRTOSTask {
 
             xSemaphoreTake(_dataMutex, portMAX_DELAY);
 
-            ekf_getVehicleState(_ekf.getState(), _state);
+            ekf_get_vehicle_state(_state);
 
             xSemaphoreGive(_dataMutex);
 

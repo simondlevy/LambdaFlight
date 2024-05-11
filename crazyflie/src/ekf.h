@@ -16,39 +16,20 @@
 
 #pragma once
 
-#define EKF_N 7
-#include <tinyekf.hpp>
-
 #include <datatypes.h>
 
-// Initial variances, uncertain of position, but know we're
-// stationary and roughly flat
-static const float STDEV_INITIAL_POSITION_Z = 1;
-static const float STDEV_INITIAL_VELOCITY = 0.01;
-static const float STDEV_INITIAL_ATTITUDE_ROLL_PITCH = 0.01;
-static const float STDEV_INITIAL_ATTITUDE_YAW = 0.01;
+void ekf_initialize(const uint32_t nowMsec);
 
-void getFlowUpdates(
-        const float * x,
-        const float dt, 
-        const float dpixelx, 
-        const float dpixely,
-        float hx[7], 
-        float & errx, 
-        float hy[7], 
-        float & erry, 
-        float & stdev);
+void ekf_predict(const uint32_t nowMec);
 
-void initialize_crazyflie_ekf(void);
+void ekf_update_with_range(const float distance);
 
-void accumulateGyro(const uint32_t nowMsec, const axis3_t & gyro) ;
+void ekf_update_with_flow(const float dt, const float dx, const float dy);
 
-void accumulateAccel(const uint32_t nowMsec, const axis3_t & accel);
+void ekf_accumulate_gyro(const uint32_t nowMsec, const axis3_t & gyro);
 
-void ekf_getVehicleState(const float * x, vehicleState_t & state);
+void ekf_accumulate_accel(const uint32_t nowMsec, const axis3_t & accel);
 
-bool isStateWithinBounds(const float * x);
+bool ekf_finalize(void);
 
-
-bool shouldUpdateWithRange(const float * x, const uint32_t distance,
-        float h[7], float & error, float & noise);
+void ekf_get_vehicle_state(vehicleState_t & state);

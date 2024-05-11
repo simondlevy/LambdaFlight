@@ -19,6 +19,20 @@
 #include <ekf.h>
 #include <math3d.h>
 
+#define EKF_N 7
+#include <tinyekf.hpp>
+
+// Initial variances, uncertain of position, but know we're
+// stationary and roughly flat
+static const float STDEV_INITIAL_POSITION_Z = 1;
+static const float STDEV_INITIAL_VELOCITY = 0.01;
+static const float STDEV_INITIAL_ATTITUDE_ROLL_PITCH = 0.01;
+static const float STDEV_INITIAL_ATTITUDE_YAW = 0.01;
+
+// The bounds on the covariance, these shouldn't be hit, but sometimes are... why?
+static constexpr float MAX_COVARIANCE = 100;
+static constexpr float MIN_COVARIANCE = 1e-6;
+
 typedef struct {
 
     float w;
@@ -161,10 +175,9 @@ static bool isErrorInBounds(const float v)
     return fabs(v) < 10;
 }
 
-//////////////////////////////////////////////////////////////////////////////
+static TinyEkf _tinyEkf;
 
-
-void getFlowUpdates(
+static void getFlowUpdates(
         const float * x,
         const float dt, 
         const float dpixelx, 
@@ -217,57 +230,7 @@ void getFlowUpdates(
     stdev = FLOW_STD_FIXED*FLOW_RESOLUTION;
 }
 
-void accumulateGyro(const uint32_t nowMsec, const axis3_t & gyro) 
-{
-    imuAccum(gyro, _gyroSum);
-
-    memcpy(&_gyroLatest, &gyro, sizeof(axis3_t));
-}
-
-void accumulateAccel(const uint32_t nowMsec, const axis3_t & accel) 
-{
-    imuAccum(accel, _accelSum);
-}
-
-void ekf_getVehicleState(const float * x, vehicleState_t & state)
-{
-    state.dx = x[STATE_DX];
-
-    state.dy = x[STATE_DY];
-
-    state.z = x[STATE_Z];
-
-    state.z = min(0, state.z);
-
-    state.dz = _r.x * x[STATE_DX] + _r.y * x[STATE_DY] + 
-        _r.z * x[STATE_DZ];
-
-    // Pack Z and DZ into a single float for transmission to client
-    const int8_t sgn = state.dz < 0 ? -1 : +1;
-    const float s = 1000;
-    state.z_dz = (int)(state.dz * s) + sgn * state.z / s;
-
-    const auto qw = _quat.w;
-    const auto qx = _quat.x;
-    const auto qy = _quat.y;
-    const auto qz = _quat.z;
-
-    state.phi = RADIANS_TO_DEGREES * atan2((2 * (qy*qz + qw*qx)),
-            (qw*qw - qx*qx - qy*qy + qz*qz));
-
-    // Negate for ENU
-    state.theta = -RADIANS_TO_DEGREES * asin((-2) * (qx*qz - qw*qy));
-
-    state.psi = RADIANS_TO_DEGREES * atan2((2 * (qx*qy + qw*qz)),
-            (qw*qw + qx*qx - qy*qy - qz*qz));
-
-    // Get angular velocities directly from gyro
-    state.dphi =    _gyroLatest.x;
-    state.dtheta = -_gyroLatest.y; // negate for ENU
-    state.dpsi =    _gyroLatest.z;
-}
-
-bool isStateWithinBounds(const float * x)
+static bool isStateWithinBounds(const float * x)
 {
     return
         isPositionWithinBounds(x[STATE_Z]) &&
@@ -277,7 +240,7 @@ bool isStateWithinBounds(const float * x)
 }
 
 
-bool shouldUpdateWithRange(const float * x, const uint32_t distance,
+static bool shouldUpdateWithRange(const float * x, const uint32_t distance,
         float h[7], float & error, float & noise)
 {
     const auto angle = max(0, 
@@ -300,8 +263,28 @@ bool shouldUpdateWithRange(const float * x, const uint32_t distance,
         distance < RANGEFINDER_OUTLIER_LIMIT_MM;
 }
 
-void initialize_crazyflie_ekf(void)
+//////////////////////////////////////////////////////////////////////////////
+
+static float square(const float x)
 {
+    return x * x;
+}
+
+
+void ekf_initialize(const uint32_t nowMsec)
+{
+    const float pdiag[7] = {
+        square(STDEV_INITIAL_POSITION_Z),
+        square(STDEV_INITIAL_VELOCITY),
+        square(STDEV_INITIAL_VELOCITY),
+        square(STDEV_INITIAL_VELOCITY),
+        square(STDEV_INITIAL_ATTITUDE_ROLL_PITCH),
+        square(STDEV_INITIAL_ATTITUDE_ROLL_PITCH),
+        square(STDEV_INITIAL_ATTITUDE_YAW)
+    };
+
+    _tinyEkf.initialize(pdiag, nowMsec, MIN_COVARIANCE, MAX_COVARIANCE);
+
     _quat.w = QW_INIT;
     _quat.x = QX_INIT;
     _quat.y = QY_INIT;
@@ -312,6 +295,61 @@ void initialize_crazyflie_ekf(void)
     _r.z = 0;
 }
 
+void ekf_accumulate_gyro(const uint32_t nowMsec, const axis3_t & gyro) 
+{
+    imuAccum(gyro, _gyroSum);
+
+    memcpy(&_gyroLatest, &gyro, sizeof(axis3_t));
+}
+
+void ekf_accumulate_accel(const uint32_t nowMsec, const axis3_t & accel) 
+{
+    imuAccum(accel, _accelSum);
+}
+
+
+void ekf_predict(const uint32_t nowMsec)
+{
+    _tinyEkf.predict(nowMsec);
+
+}
+
+void ekf_update_with_range(const float distance)
+{
+    float h[7] = {};
+    float error = 0;
+    float noise = 0;
+
+    if (shouldUpdateWithRange(
+                _tinyEkf.getState(), distance, h, error, noise)) {
+
+        _tinyEkf.update(h, error, noise);
+    }
+}
+
+void ekf_update_with_flow(const float dt, const float dx, const float dy)
+{
+
+    float hx[7] = {};
+    float errx = 0;
+    float hy[7] = {};
+    float erry = 0;
+    float stdev = 0;
+
+    getFlowUpdates(
+            _tinyEkf.getState(), dt, dx, dy, hx, errx, hy, erry, stdev);
+
+    _tinyEkf.update(hx, errx, stdev);
+
+    _tinyEkf.update(hy, erry, stdev);
+}
+
+bool ekf_finalize(void)
+{
+    _tinyEkf.finalize();
+
+    return isStateWithinBounds(_tinyEkf.getState());
+}
 
 //////////////////////////////////////////////////////////////////////////////
 
@@ -566,3 +604,44 @@ void TinyEkf::get_prediction(
     }
 }
 
+
+
+void ekf_get_vehicle_state(vehicleState_t & state)
+{
+    const auto x = _tinyEkf.getState();
+
+    state.dx = x[STATE_DX];
+
+    state.dy = x[STATE_DY];
+
+    state.z = x[STATE_Z];
+
+    state.z = min(0, state.z);
+
+    state.dz = _r.x * x[STATE_DX] + _r.y * x[STATE_DY] + 
+        _r.z * x[STATE_DZ];
+
+    // Pack Z and DZ into a single float for transmission to client
+    const int8_t sgn = state.dz < 0 ? -1 : +1;
+    const float s = 1000;
+    state.z_dz = (int)(state.dz * s) + sgn * state.z / s;
+
+    const auto qw = _quat.w;
+    const auto qx = _quat.x;
+    const auto qy = _quat.y;
+    const auto qz = _quat.z;
+
+    state.phi = RADIANS_TO_DEGREES * atan2((2 * (qy*qz + qw*qx)),
+            (qw*qw - qx*qx - qy*qy + qz*qz));
+
+    // Negate for ENU
+    state.theta = -RADIANS_TO_DEGREES * asin((-2) * (qx*qz - qw*qy));
+
+    state.psi = RADIANS_TO_DEGREES * atan2((2 * (qx*qy + qw*qz)),
+            (qw*qw + qx*qx - qy*qy - qz*qz));
+
+    // Get angular velocities directly from gyro
+    state.dphi =    _gyroLatest.x;
+    state.dtheta = -_gyroLatest.y; // negate for ENU
+    state.dpsi =    _gyroLatest.z;
+}
