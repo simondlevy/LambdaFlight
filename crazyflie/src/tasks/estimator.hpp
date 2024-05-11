@@ -150,11 +150,7 @@ class EstimatorTask : public FreeRTOSTask {
 
         void initEkf(const uint32_t nowMsec)
         {
-            _ekf.initialize(
-                    nowMsec, 
-                    PREDICTION_INTERVAL_MSEC,
-                    MIN_COVARIANCE,
-                    MAX_COVARIANCE);
+            _ekf.initialize(nowMsec, MIN_COVARIANCE, MAX_COVARIANCE);
         }        
 
         uint32_t step(const uint32_t nowMsec, uint32_t nextPredictionMsec) 
