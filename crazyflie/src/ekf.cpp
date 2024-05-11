@@ -177,15 +177,6 @@ static bool isErrorInBounds(const float v)
 
 static TinyEkf _tinyEkf;
 
-static bool isStateWithinBounds(const float * x)
-{
-    return
-        isPositionWithinBounds(x[STATE_Z]) &&
-        isVelocityWithinBounds(x[STATE_DX]) &&
-        isVelocityWithinBounds(x[STATE_DY]) &&
-        isVelocityWithinBounds(x[STATE_DZ]);
-}
-
 static float square(const float x)
 {
     return x * x;
@@ -582,7 +573,11 @@ bool ekf_finalize(void)
 
     _tinyEkf.finalize(newx, A, isErrorSufficient);
 
-    return isStateWithinBounds(newx);
+    return
+        isPositionWithinBounds(newx[STATE_Z]) &&
+        isVelocityWithinBounds(newx[STATE_DX]) &&
+        isVelocityWithinBounds(newx[STATE_DY]) &&
+        isVelocityWithinBounds(newx[STATE_DZ]);
 }
 
 
