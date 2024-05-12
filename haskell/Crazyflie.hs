@@ -29,7 +29,6 @@ import Clock
 import Constants
 import Demands
 import Mixers
-import Motors
 import Sensors
 import State
 import Utils
@@ -88,13 +87,9 @@ step = motors where
  
 spec = do
 
-    let motors = step
+    let (m1, m2, m3, m4) = step
 
-    trigger "setMotors" true [
-        arg $ Motors.qm1 motors, 
-        arg $ Motors.qm2 motors, 
-        arg $ Motors.qm3 motors, 
-        arg $ Motors.qm4 motors] 
+    trigger "setMotors" true [arg $ m1, arg $ m2, arg $ m3, arg $ m4] 
 
 -- Compile the spec
 main = reify spec >>= 
