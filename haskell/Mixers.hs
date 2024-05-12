@@ -31,11 +31,11 @@ import Utils
 
 quadCFMixer :: Demands -> (SFloat, SFloat, SFloat, SFloat)
 
-quadCFMixer demands = (m1, m2, m3, m4) where 
+quadCFMixer demands = (ne, se, sw, nw) where 
 
    (t, r, p, y) = (getDemands demands)
 
-   m1 = t - r + p  + y
-   m2 = t - r - p  - y
-   m3 = t + r - p  + y
-   m4 = t + r + p  - y
+   ne = t - r + p  + y
+   se = t - r - p  - y
+   sw = t + r - p  + y
+   nw = t + r + p  - y
