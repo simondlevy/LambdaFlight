@@ -59,6 +59,11 @@ static const float ACCEL_Z_OFFSET = 0.047;
 // Do not exceed 2000Hz, all filter paras tuned to 2000Hz by default
 static const uint32_t LOOP_RATE = 2000;
 
+static const uint8_t M_NE_PIN = 1;
+static const uint8_t M_SE_PIN = 2;
+static const uint8_t M_SW_PIN = 3;
+static const uint8_t M_NW_PIN = 0;
+
 static const std::vector<uint8_t> MOTOR_PINS = {2, 3, 0, 1};
 
 static auto motors = OneShot125(MOTOR_PINS);
@@ -66,10 +71,10 @@ static auto motors = OneShot125(MOTOR_PINS);
 bfs::SbusRx sbus(&Serial2);
 
 // Motors set by Haskell
-static int m1_command;
-static int m2_command;
-static int m3_command;
-static int m4_command;
+static int m_ne_command;
+static int m_se_command;
+static int m_sw_command;
+static int m_nw_command;
 
 // Vehicle state set by Haskell
 static bool _armed;
@@ -259,10 +264,10 @@ static uint32_t updateTime(void)
 
 static void runMotors() 
 {
-    motors.set(0, m1_command);
-    motors.set(1, m2_command);
-    motors.set(2, m3_command);
-    motors.set(3, m4_command);
+    motors.set(M_NE_PIN, m_ne_command);
+    motors.set(M_SE_PIN, m_se_command);
+    motors.set(M_SW_PIN, m_sw_command);
+    motors.set(M_NW_PIN, m_nw_command);
 
     motors.run();
 }
@@ -369,12 +374,12 @@ void setState(
     _psi = psi;
 }
 
-void setMotors(const float m1, const float m2, const float m3, const float m4)
+void setMotors(const float m_ne, const float m_se, const float m_sw, const float m_nw)
 {
-    m1_command = m1;
-    m2_command = m2;
-    m3_command = m3;
-    m4_command = m4;
+    m_ne_command = m_ne;
+    m_se_command = m_se;
+    m_sw_command = m_sw;
+    m_nw_command = m_nw;
 }
 
 // Debugging -----------------------------------------------------------------
@@ -399,9 +404,9 @@ void debugLoopRate(void)
 void debugMotorCommands(void) 
 {
     Serial.printf(
-            "m1_command:%d m2_command:%d m3_command:%d m4_command:%d\n",
-            m1_command, m2_command,
-            m3_command, m4_command);
+            "m_ne_command:%d m_se_command:%d m_sw_command:%d m_nw_command:%d\n",
+            m_ne_command, m_se_command,
+            m_sw_command, m_nw_command);
 }
 
 void debugQuat(void) 
