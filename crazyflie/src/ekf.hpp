@@ -21,7 +21,7 @@
 
 #define EKF_M 3 // range, flowx, flowy
 #define EKF_N 7 // z, dx, dy, e0, e1, e2
-#include <tinyekf.hpp>
+#include <ekftiny.hpp>
 
 class CrazyflieEkf {
 
@@ -272,7 +272,8 @@ class CrazyflieEkf {
             if (fabs(_r.z) > 0.1f && _r.z > 0 && 
                     distance < RANGEFINDER_OUTLIER_LIMIT_MM) {
 
-                _tinyEkf.update(h, measuredDistance, predictedDistance, r);
+                _tinyEkf.update_with_scalar(
+                        h, measuredDistance, predictedDistance, r);
             }
         }
 
@@ -320,9 +321,9 @@ class CrazyflieEkf {
 
             const auto r = square(FLOW_STD_FIXED * FLOW_RESOLUTION);
 
-            _tinyEkf.update(hx, measuredNX, predictedNX, r);
+            _tinyEkf.update_with_scalar(hx, measuredNX, predictedNX, r);
 
-            _tinyEkf.update(hy, measuredNY, predictedNY, r);
+            _tinyEkf.update_with_scalar(hy, measuredNY, predictedNY, r);
         }
 
         bool finalize(void)
