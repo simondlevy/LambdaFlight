@@ -27,7 +27,6 @@ import Copilot.Compile.C99
 
 import Demands
 import Mixers
-import Motors
 import Utils
 
 -- Streams from C++ ----------------------------------------------------------
@@ -100,7 +99,7 @@ max_yaw = 160 :: SFloat
 
 -----------------------------------------------------------------------------
 
-step = (phi, theta, psi, armed, m1, m2, m3, m4) where
+step = (phi, theta, psi, armed, m_ne, m_se, m_sw, m_nw) where
 
   -- Get Euler angles from USFS hardware quaternion. We depart from the
   -- usual formula to accommdate the upside-down / sidewase IMU orientation.
@@ -185,16 +184,17 @@ step = (phi, theta, psi, armed, m1, m2, m3, m4) where
     (kp_yaw * error_yaw + ki_yaw * integral_yaw + kd_yaw * derivative_yaw) 
 
   -- Run demands through motor mixer
-  motors = quadDFMixer $ Demands demand_throttle roll_pid pitch_pid yaw_pid
+  (m_ne', m_se', m_sw', m_nw') = 
+     quadXMixer $ Demands demand_throttle roll_pid pitch_pid yaw_pid
 
   -- Convert motors to PWM interval, with safety check for arming
 
-  safeMotor m = if armed then constrain ((m motors) * 125 + 125) 125 250 else 120
+  safeMotor m = if armed then constrain (m * 125 + 125) 125 250 else 120
 
-  m1 = safeMotor Motors.qm1 
-  m2 = safeMotor Motors.qm2 
-  m3 = safeMotor Motors.qm3 
-  m4 = safeMotor Motors.qm4 
+  m_ne = safeMotor m_ne'
+  m_se = safeMotor m_se'
+  m_sw = safeMotor m_sw'
+  m_nw = safeMotor m_nw'
 
   -- State variables ---------------------------------------------------------
 
@@ -208,11 +208,11 @@ step = (phi, theta, psi, armed, m1, m2, m3, m4) where
 
 spec = do
 
-  let (phi, theta, psi, armed, m1, m2, m3, m4) = step
+  let (phi, theta, psi, armed, m_ne, m_se, m_sw, m_nw) = step
 
   trigger "setState" true [arg armed, arg phi, arg theta, arg psi]
 
-  trigger "setMotors" true [arg m1, arg m2, arg m3, arg m4] 
+  trigger "setMotors" true [arg m_ne, arg m_se, arg m_sw, arg m_nw] 
 
 -- Compile the spec
 main = reify spec >>= 

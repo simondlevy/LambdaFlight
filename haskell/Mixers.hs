@@ -27,11 +27,9 @@ import Copilot.Compile.C99
 import Demands
 import Utils
 
--- CrazyFlie XQuad layout
+quadXMixer :: Demands -> (SFloat, SFloat, SFloat, SFloat)
 
-quadCFMixer :: Demands -> (SFloat, SFloat, SFloat, SFloat)
-
-quadCFMixer demands = (ne, se, sw, nw) where 
+quadXMixer demands = (ne, se, sw, nw) where 
 
    (t, r, p, y) = (getDemands demands)
 

@@ -78,18 +78,18 @@ step = motors where
 
   thrust'' = if inFlyingMode then ((thrust demands') * tscale + tbase) else tmin
 
-  motors = quadCFMixer $ Demands thrust''
-                                 ((roll demands') * prscale)
-                                 ((pitch demands') * prscale)
-                                 ((yaw demands') * yscale)
+  motors = quadXMixer $ Demands thrust''
+                                ((roll demands') * prscale)
+                                ((pitch demands') * prscale)
+                                ((yaw demands') * yscale)
 
 ------------------------------------------------------------------------------
  
 spec = do
 
-    let (m1, m2, m3, m4) = step
+    let (me_ne, m_se, m_sw, m_nw) = step
 
-    trigger "setMotors" true [arg $ m1, arg $ m2, arg $ m3, arg $ m4] 
+    trigger "setMotors" true [arg $ me_ne, arg $ m_se, arg $ m_sw, arg $ m_nw] 
 
 -- Compile the spec
 main = reify spec >>= 
