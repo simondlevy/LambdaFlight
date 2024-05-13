@@ -79,7 +79,7 @@ class CrazyflieEkf {
             imuTakeMean(_gyroSum, DEGREES_TO_RADIANS, _gyro);
             imuTakeMean(_accelSum, MSS_TO_GS, _accel);
 
-            const auto xold = _tinyEkf.getState();
+            const auto xold = _tinyEkf.get();
 
             // Position updates in the body frame (will be rotated to inertial frame);
             // thrust can only be produced in the body's Z direction
@@ -259,7 +259,7 @@ class CrazyflieEkf {
 
         void update_with_range(const float distance)
         {
-            const auto x = _tinyEkf.getState();
+            const auto x = _tinyEkf.get();
 
             const auto angle = max(0, 
                     fabsf(acosf(_r.z)) - 
@@ -291,7 +291,7 @@ class CrazyflieEkf {
             //~~~ Body rates ~~~
             const auto omegay_b = _gyroLatest.y * DEGREES_TO_RADIANS;
 
-            const auto x = _tinyEkf.getState();
+            const auto x = _tinyEkf.get();
 
             const auto dx_g = x[STATE_DX];
 
@@ -335,7 +335,7 @@ class CrazyflieEkf {
 
         bool finalize(void)
         {
-            const auto x = _tinyEkf.getState();
+            const auto x = _tinyEkf.get();
 
             // Incorporate the attitude error (Kalman filter state) with the attitude
             const auto v0 = x[STATE_E0];
@@ -434,7 +434,7 @@ class CrazyflieEkf {
 
         void get_vehicle_state(vehicleState_t & state)
         {
-            const auto x = _tinyEkf.getState();
+            const auto x = _tinyEkf.get();
 
             state.dx = x[STATE_DX];
 
