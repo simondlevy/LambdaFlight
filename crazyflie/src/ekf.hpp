@@ -146,10 +146,12 @@ class CrazyflieEkf {
                         MSS_TO_GS * _r.x);
 
             const auto new_dy = xold[STATE_DY] + 
-                dt * (accy - _gyro.z * tmpSDX + _gyro.x * tmpSDZ - MSS_TO_GS * _r.y); 
+                dt * (accy - _gyro.z * tmpSDX + _gyro.x * tmpSDZ - 
+                        MSS_TO_GS * _r.y);
 
             const auto new_dz = xold[STATE_DZ] +
-                dt * (_accel.z + _gyro.y * tmpSDX - _gyro.x * tmpSDY - MSS_TO_GS * _r.z); 
+                dt * (_accel.z + _gyro.y * tmpSDX - _gyro.x * tmpSDY - 
+                        MSS_TO_GS * _r.z); 
 
             new_quat_t quat_predicted = {};
 
@@ -162,57 +164,62 @@ class CrazyflieEkf {
             const auto e1 = _gyro.y*dt/2;
             const auto e2 = _gyro.z*dt/2;
 
-            float F[EKF_N][EKF_N] = {};
-
-            F[STATE_E0][STATE_E0] =  1 - e1*e1/2 - e2*e2/2;
-            F[STATE_E0][STATE_E1] =  e2 + e0*e1/2;
-            F[STATE_E0][STATE_E2] = -e1 + e0*e2/2;
-
-            F[STATE_E1][STATE_E0] =  -e2 + e0*e1/2;
-            F[STATE_E1][STATE_E1] = 1 - e0*e0/2 - e2*e2/2;
-            F[STATE_E1][STATE_E2] = e0 + e1*e2/2;
-
-            F[STATE_E2][STATE_E0] = e1 + e0*e2/2;
-            F[STATE_E2][STATE_E1] = -e0 + e1*e2/2;
-            F[STATE_E2][STATE_E2] = 1 - e0*e0/2 - e1*e1/2;
-
             // altitude from body-frame velocity
-            F[STATE_Z][STATE_DX] = _r.x*dt;
-            F[STATE_Z][STATE_DY] = _r.y*dt;
-            F[STATE_Z][STATE_DZ] = _r.z*dt;
+            const auto z_dx = _r.x*dt;
+            const auto z_dy = _r.y*dt;
+            const auto z_dz = _r.z*dt;
 
             // altitude from attitude error
-            F[STATE_Z][STATE_E0] = (new_dy*_r.z - new_dz*_r.y)*dt;
-
-            F[STATE_Z][STATE_E1] = (-new_dx*_r.z + new_dz*_r.x)*dt;
-
-            F[STATE_Z][STATE_E2] = (new_dx*_r.y - new_dy*_r.x)*dt;
+            const auto z_e0 = (new_dy*_r.z - new_dz*_r.y)*dt;
+            const auto z_e1 = (-new_dx*_r.z + new_dz*_r.x)*dt;
+            const auto z_e2 = (new_dx*_r.y - new_dy*_r.x)*dt;
 
             // body-frame velocity from body-frame velocity
-            F[STATE_DX][STATE_DX] = 1; //drag negligible
-            F[STATE_DY][STATE_DX] =  -_gyro.z*dt;
-            F[STATE_DZ][STATE_DX] = _gyro.y*dt;
+            const auto dx_dx = 1; //drag negligible
+            const auto dx_dy = _gyro.z*dt;
+            const auto dx_dz = _gyro.y*dt;
+            const auto dx_e0 = 0;
+            const auto dx_e2 = -MSS_TO_GS*_r.y*dt;
+            const auto dx_e1 = MSS_TO_GS*_r.z*dt;
 
-            F[STATE_DX][STATE_DY] = _gyro.z*dt;
-            F[STATE_DY][STATE_DY] = 1; //drag negligible
-            F[STATE_DZ][STATE_DY] = _gyro.x*dt;
+            const auto dy_dx =  -_gyro.z*dt;
+            const auto dy_dy = 1; //drag negligible
+            const auto dy_dz = _gyro.x*dt;
+            const auto dy_e0 = -MSS_TO_GS*_r.z*dt;
+            const auto dy_e1 = 0;
+            const auto dy_e2 = MSS_TO_GS*_r.x*dt;
 
-            F[STATE_DX][STATE_DZ] =  _gyro.y*dt;
-            F[STATE_DY][STATE_DZ] = _gyro.x*dt;
-            F[STATE_DZ][STATE_DZ] = 1; //drag negligible
+            const auto dz_dx = _gyro.y*dt;
+            const auto dz_dy = _gyro.x*dt;
+            const auto dz_dz = 1; //drag negligible
+            const auto dz_e0 = MSS_TO_GS*_r.y*dt;
+            const auto dz_e1 = -MSS_TO_GS*_r.x*dt;
+            const auto dz_e2 = 0;
 
-            // body-frame velocity from attitude error
-            F[STATE_DX][STATE_E0] = 0;
-            F[STATE_DY][STATE_E0] = -MSS_TO_GS*_r.z*dt;
-            F[STATE_DZ][STATE_E0] = MSS_TO_GS*_r.y*dt;
+            const auto e0_e0 =  1 - e1*e1/2 - e2*e2/2;
+            const auto e0_e1 =  e2 + e0*e1/2;
+            const auto e0_e2 = -e1 + e0*e2/2;
 
-            F[STATE_DX][STATE_E1] = MSS_TO_GS*_r.z*dt;
-            F[STATE_DY][STATE_E1] = 0;
-            F[STATE_DZ][STATE_E1] = -MSS_TO_GS*_r.x*dt;
+            const auto e1_e0 =  -e2 + e0*e1/2;
+            const auto e1_e1 = 1 - e0*e0/2 - e2*e2/2;
+            const auto e1_e2 = e0 + e1*e2/2;
 
-            F[STATE_DX][STATE_E2] = -MSS_TO_GS*_r.y*dt;
-            F[STATE_DY][STATE_E2] = MSS_TO_GS*_r.x*dt;
-            F[STATE_DZ][STATE_E2] = 0;
+            const auto e2_e0 = e1 + e0*e2/2;
+            const auto e2_e1 = -e0 + e1*e2/2;
+            const auto e2_e2 = 1 - e0*e0/2 - e1*e1/2;
+
+            // Jacobian of state-transition function
+           const float F[EKF_N*EKF_N] = {
+
+                   0, z_dx,  z_dy,  z_dz,  z_e0,  z_e1,  z_e2, 
+                   0, dx_dx, dx_dy, dx_dz, dx_e0, dx_e1, dx_e2, 
+                   0, dy_dx, dy_dy, dy_dz, dy_e0, dy_e1, dy_e2,
+                   0, dz_dx, dz_dy, dz_dz, dz_e0, dz_e1, dz_e2,
+                   0, 0,     0,     0,     e0_e0, e0_e1, e0_e2,
+                   0, 0,     0,     0,     e1_e0, e1_e1, e1_e2,
+                   0, 0,     0,     0,     e2_e0, e2_e1, e2_e2
+            };
+
 
             float xnew[EKF_N] = {
 
@@ -245,7 +252,7 @@ class CrazyflieEkf {
                 memset(&_accelSum, 0, sizeof(_accelSum));
             }
 
-            const float Q[EKF_N][EKF_N] = {};
+            const float Q[EKF_N*EKF_N] = {};
 
             _tinyEkf.predict(xnew, F, Q);
         }
@@ -389,23 +396,31 @@ class CrazyflieEkf {
             const auto e1 = v1 / 2; 
             const auto e2 = v2 / 2;
 
-            float A[EKF_N][EKF_N] = {};
+            const auto dx_dx = 1;
+            const auto dy_dy = 1;
+            const auto dz_dz = 1;
 
-            A[STATE_DX][STATE_DX] = 1;
-            A[STATE_DY][STATE_DY] = 1;
-            A[STATE_DZ][STATE_DZ] = 1;
+            const auto e0_e0 =  1 - e1*e1/2 - e2*e2/2;
+            const auto e0_e1 =  e2 + e0*e1/2;
+            const auto e0_e2 = -e1 + e0*e2/2;
 
-            A[STATE_E0][STATE_E0] =  1 - e1*e1/2 - e2*e2/2;
-            A[STATE_E0][STATE_E1] =  e2 + e0*e1/2;
-            A[STATE_E0][STATE_E2] = -e1 + e0*e2/2;
+            const auto e1_e0 =  -e2 + e0*e1/2;
+            const auto e1_e1 = 1 - e0*e0/2 - e2*e2/2;
+            const auto e1_e2 = e0 + e1*e2/2;
 
-            A[STATE_E1][STATE_E0] =  -e2 + e0*e1/2;
-            A[STATE_E1][STATE_E1] = 1 - e0*e0/2 - e2*e2/2;
-            A[STATE_E1][STATE_E2] = e0 + e1*e2/2;
+            const auto e2_e0 = e1 + e0*e2/2;
+            const auto e2_e1 = -e0 + e1*e2/2;
+            const auto e2_e2 = 1 - e0*e0/2 - e1*e1/2;
 
-            A[STATE_E2][STATE_E0] = e1 + e0*e2/2;
-            A[STATE_E2][STATE_E1] = -e0 + e1*e2/2;
-            A[STATE_E2][STATE_E2] = 1 - e0*e0/2 - e1*e1/2;
+            const float A[EKF_N*EKF_N] = {
+                0, 0,     0,     0,     0,     0,     0,
+                0, dx_dx, 0,     0,     0,     0,     0,
+                0, 0,     dy_dy, 0,     0,     0,     0,
+                0, 0,     0,     dz_dz, 0,     0,     0,
+                0, 0,     0,     0,     e0_e0, e0_e1, e0_e2,
+                0, 0,     0,     0,     e1_e0, e1_e1, e1_e2,
+                0, 0,     0,     0,     e2_e0, e2_e1, e2_e2
+            };
 
             _tinyEkf.finalize(newx, A, isErrorSufficient);
 
@@ -611,7 +626,7 @@ class CrazyflieEkf {
             return fabs(v) < 10;
         }
 
-        TinyEkf _tinyEkf;
+        TinyEKF _tinyEkf;
 
         static float square(const float x)
         {
