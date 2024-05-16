@@ -19,7 +19,6 @@
 #include <datatypes.h>
 #include <math3d.h>
 
-#define _FOO
 #define EKF_M 3 // range, flowx, flowy
 #define EKF_N 7 // z, dx, dy, e0, e1, e2
 #define _float_t float
@@ -258,20 +257,6 @@ class CrazyflieEkf {
 
             // We'll add process noise after final update
             const float Q[EKF_N*EKF_N] = {};
-
-            /*
-            // $\hat{x}_k = f(\hat{x}_{k-1})$
-            memcpy(&_ekf.x, fx, EKF_N*sizeof(_float_t));
-
-            // P_k = F_{k-1} P_{k-1} F^T_{k-1} + Q_{k-1}
-            float FP[EKF_N*EKF_N] = {};
-            _mulmat(F, _ekf.P,  FP, EKF_N, EKF_N, EKF_N);
-            float Ft[EKF_N*EKF_N] = {};
-            _transpose(F, Ft, EKF_N, EKF_N);
-            _float_t FPFt[EKF_N*EKF_N];
-            _mulmat(FP, Ft, FPFt, EKF_N, EKF_N, EKF_N);
-            _addmat(FPFt, Q, _ekf.P, EKF_N, EKF_N);
-            */
 
             ekf_predict(&_ekf, fx, F, Q);
 
@@ -579,6 +564,8 @@ class CrazyflieEkf {
                 const float hx,
                 const float r)
         {
+            (void)ekf_update;
+
             float ph[EKF_N] = {};
             _mulvec(_ekf.P, h, ph, EKF_N, EKF_N);
             const auto hphr = r + dot(h, ph); // HPH' + R
@@ -716,13 +703,15 @@ class CrazyflieEkf {
             STATE_E2
         };
 
-        void multiplyCovariance(const float a[EKF_N*EKF_N])
+        void multiplyCovariance(const _float_t A[EKF_N*EKF_N])
         {
-            float at[EKF_N*EKF_N] = {};
-            _transpose(a, at, EKF_N, EKF_N);
-            float ap[EKF_N*EKF_N] = {};
-            _mulmat(a, _ekf.P,  ap, EKF_N, EKF_N, EKF_N);
-            _mulmat(ap, at, _ekf.P, EKF_N, EKF_N, EKF_N);
+            _float_t AP[EKF_N*EKF_N] = {};
+            _mulmat(A, _ekf.P,  AP, EKF_N, EKF_N, EKF_N);
+
+            _float_t AT[EKF_N*EKF_N] = {};
+            _transpose(A, AT, EKF_N, EKF_N);
+
+            _mulmat(AP, AT, _ekf.P, EKF_N, EKF_N, EKF_N);
         }
 
         void cleanupCovariance(void)
