@@ -556,57 +556,11 @@ class CrazyflieEkf {
         {
             (void)ekf_update;
 
-            // G_k = P_k H^T_k (H_k P_k H^T_k + R)^{-1}
-            float ph[EKF_N] = {};
-            _mulvec(_ekf.P, h, ph, EKF_N, EKF_N);
-            const auto hphtr_inv = 1 / (r + dot(h, ph)); 
-            float g[EKF_N] = {};
-            for (uint8_t i=0; i<EKF_N; ++i) {
-                g[i] = ph[i] * hphtr_inv;
-            }
-            
-            // $\hat{x}_k = \hat{x_k} + G_k(z_k - h(\hat{x}_k))$
-            for (uint8_t i=0; i<EKF_N; ++i) {
-                _ekf.x[i] += g[i] * (z - hx);
-            }
-
-            // P_k = (I - G_k H_k) P_k$
-            float GH[EKF_N*EKF_N];
-            outer(g, h, GH); 
-            ekf_update_step3(&_ekf, GH);
-
-            for (int i=0; i<EKF_N; i++) {
-                for (int j=i; j<EKF_N; j++) {
-                    _ekf.P[i*EKF_N+j] += r * g[i] * g[j];
-                }
-            }
+            ekf_scalar_update(&_ekf, z, hx, h, r);
 
             cleanupCovariance();
 
             _isUpdated = true;
-        }
-
-        static void outer(
-                const float x[EKF_N],
-                const float y[EKF_N],
-                float a[EKF_N*EKF_N]) 
-        {
-            for (uint8_t i=0; i<EKF_N; i++) {
-                for (uint8_t j=0; j<EKF_N; j++) {
-                    a[i*EKF_N+j] = x[i] * y[j];
-                }
-            }
-        }
-
-        static float dot(const float x[EKF_N], const float y[EKF_N]) 
-        {
-            float d = 0;
-
-            for (uint8_t k=0; k<EKF_N; k++) {
-                d += x[k] * y[k];
-            }
-
-            return d;
         }
 
         typedef struct {
