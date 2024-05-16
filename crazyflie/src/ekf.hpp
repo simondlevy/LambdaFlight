@@ -285,7 +285,11 @@ class CrazyflieEkf {
             if (fabs(_r.z) > 0.1f && _r.z > 0 && 
                     distance < RANGEFINDER_OUTLIER_LIMIT_MM) {
 
-                update_with_scalar(h, measuredDistance, predictedDistance, r);
+                update_with_scalar(
+                        measuredDistance, 
+                        predictedDistance, 
+                        h, 
+                        r);
             }
         }
 
@@ -333,9 +337,17 @@ class CrazyflieEkf {
 
             const auto r = square(FLOW_STD_FIXED * FLOW_RESOLUTION);
 
-            update_with_scalar(hx, measuredNX, predictedNX, r);
+            update_with_scalar(
+                    measuredNX, 
+                    predictedNX, 
+                    hx, 
+                    r);
 
-            update_with_scalar(hy, measuredNY, predictedNY, r);
+            update_with_scalar(
+                    measuredNY, 
+                    predictedNY, 
+                    hy, 
+                    r);
         }
 
         bool finalize(void)
@@ -550,9 +562,9 @@ class CrazyflieEkf {
         ekf_t _ekf;
 
         void update_with_scalar(
-                const float h[EKF_N], 
                 const float z,
                 const float hx,
+                const float h[EKF_N], 
                 const float r)
         {
             (void)ekf_update;
