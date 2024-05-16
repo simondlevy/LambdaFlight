@@ -285,11 +285,7 @@ class CrazyflieEkf {
             if (fabs(_r.z) > 0.1f && _r.z > 0 && 
                     distance < RANGEFINDER_OUTLIER_LIMIT_MM) {
 
-                update_with_scalar(
-                        measuredDistance, 
-                        predictedDistance, 
-                        h, 
-                        r);
+                update_with_scalar(measuredDistance, predictedDistance, h, r);
             }
         }
 
@@ -337,17 +333,9 @@ class CrazyflieEkf {
 
             const auto r = square(FLOW_STD_FIXED * FLOW_RESOLUTION);
 
-            update_with_scalar(
-                    measuredNX, 
-                    predictedNX, 
-                    hx, 
-                    r);
+            update_with_scalar(measuredNX, predictedNX, hx, r);
 
-            update_with_scalar(
-                    measuredNY, 
-                    predictedNY, 
-                    hy, 
-                    r);
+            update_with_scalar(measuredNY, predictedNY, hy, r);
         }
 
         bool finalize(void)
@@ -569,31 +557,37 @@ class CrazyflieEkf {
         {
             (void)ekf_update;
 
+            // G_k = P_k H^T_k (H_k P_k H^T_k + R)^{-1}
             float ph[EKF_N] = {};
             _mulvec(_ekf.P, h, ph, EKF_N, EKF_N);
             const auto hphr = r + dot(h, ph); // HPH' + R
-
             float g[EKF_N] = {};
             for (uint8_t i=0; i<EKF_N; ++i) {
                 g[i] = ph[i] / hphr;
             }
 
+            
+            
+            
+            
+            
+            
+            
+            
             // $\hat{x}_k = \hat{x_k} + G_k(z_k - h(\hat{x}_k))$
             for (uint8_t i=0; i<EKF_N; ++i) {
                 _ekf.x[i] += g[i] * (z - hx);
             }
 
-            float GH[EKF_N*EKF_N] = {};
+            
+            
+            
+            // P_k = (I - G_k H_k) P_k$
+            float GH[EKF_N*EKF_N];
             outer(g, h, GH); 
-
-            for (int i=0; i<EKF_N; i++) { 
-                GH[i*EKF_N+i] -= 1;
-            }
-
-            // $P_k = (I - G_k H_k) P_k$
+            _negate(GH, EKF_N, EKF_N);
+            _addeye(GH, EKF_N);
             multiplyCovariance(GH);
-
-            // Add the measurement variance 
             for (int i=0; i<EKF_N; i++) {
                 for (int j=0; j<EKF_N; j++) {
                     _ekf.P[i*EKF_N+j] += j < i ? 0 : r * g[i] * g[j];
