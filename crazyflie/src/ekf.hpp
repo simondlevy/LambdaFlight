@@ -21,7 +21,6 @@
 
 #define EKF_M 3 // range, flowx, flowy
 #define EKF_N 7 // z, dx, dy, e0, e1, e2
-#define _float_t float
 #include <tinyekf.h>
 
 class CrazyflieEkf {
