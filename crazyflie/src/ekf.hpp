@@ -260,12 +260,17 @@ class CrazyflieEkf {
             const float Q[EKF_N*EKF_N] = {};
 
             // $\hat{x}_k = f(\hat{x}_{k-1})$
-            for (uint8_t i=0; i<EKF_N; ++i) {
-                _ekf.x[i] = fx[i];
-            }
+            memcpy(&_ekf.x, fx, EKF_N*sizeof(_float_t));
 
-            multiplyCovariance(F);
+            // P_k = F_{k-1} P_{k-1} F^T_{k-1} + Q_{k-1}
+            float FP[EKF_N*EKF_N] = {};
+            _mulmat(F, _ekf.P,  FP, EKF_N, EKF_N, EKF_N);
+            float Ft[EKF_N*EKF_N] = {};
+            _transpose(F, Ft, EKF_N, EKF_N);
+            _mulmat(FP, Ft, _ekf.P, EKF_N, EKF_N, EKF_N);
+ 
             accum(_ekf.P, Q, EKF_N, EKF_N);
+
             cleanupCovariance();
         }
 
