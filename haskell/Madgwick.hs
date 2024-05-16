@@ -31,9 +31,9 @@ invSqrt :: SFloat -> SFloat
 invSqrt x = 1 / (sqrt x)
 
 madgwick6DOF :: (SFloat, SFloat, SFloat) -> (SFloat, SFloat, SFloat) -> SFloat ->
-  (SFloat, SFloat, SFloat)
+  (SFloat, SFloat, SFloat, SFloat)
 
-madgwick6DOF (gx, gy, gz) (ax, ay, az) invSampFreq = (phi, theta, psi) where
+madgwick6DOF (gx, gy, gz) (ax, ay, az) invSampFreq = (q0, q1, q2, q3) where
 
   -- Tunable parameter
   b_madgwick = 0.04 :: SFloat
@@ -100,10 +100,3 @@ madgwick6DOF (gx, gy, gz) (ax, ay, az) invSampFreq = (phi, theta, psi) where
   q1' = [0] ++ q1
   q2' = [0] ++ q2
   q3' = [0] ++ q3
-
-  -- Compute angles in degrees
-  phi = (atan2 (q0*q1 + q2*q3) (0.5 - q1*q1 - q2*q2)) * 57.29577951
-
-  theta = (-asin (constrain ((-2.0) * (q1*q3 - q0*q2)) (-0.999999) 0.999999)) * 57.29577951
-
-  psi = (-atan2 (q1*q2 + q0*q3) (0.5 - q2*q2 - q3*q3)) * 57.29577951

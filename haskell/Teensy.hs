@@ -26,6 +26,7 @@ import Language.Copilot hiding(atan2, (!!))
 import Copilot.Compile.C99
 
 import Demands
+import Madgwick
 import Mixers
 import Utils
 
@@ -52,18 +53,6 @@ radio_failsafe = extern "stream_radio_failsafe" Nothing
 dt :: SFloat
 dt = extern "stream_dt" Nothing
 
-qw :: SFloat
-qw = extern "stream_quat_w" Nothing
-
-qx :: SFloat
-qx = extern "stream_quat_x" Nothing
-
-qy :: SFloat
-qy = extern "stream_quat_y" Nothing
-
-qz :: SFloat
-qz = extern "stream_quat_z" Nothing
-
 gyro_x :: SFloat
 gyro_x = extern "stream_gyro_x" Nothing
 
@@ -72,6 +61,15 @@ gyro_y = extern "stream_gyro_y" Nothing
 
 gyro_z :: SFloat
 gyro_z = extern "stream_gyro_z" Nothing
+
+accel_x :: SFloat
+accel_x = extern "stream_accel_x" Nothing
+
+accel_y :: SFloat
+accel_y = extern "stream_accel_y" Nothing
+
+accel_z :: SFloat
+accel_z = extern "stream_accel_z" Nothing
 
 -- PID tuning constants -----------------------------------------------------
 
@@ -101,8 +99,11 @@ max_yaw = 160 :: SFloat
 
 step = (phi, theta, psi, armed, m_ne, m_se, m_sw, m_nw) where
 
-  -- Get Euler angles from USFS hardware quaternion. We depart from the
-  -- usual formula to accommdate the upside-down / sidewase IMU orientation.
+  -- Use Madgwick algorithm to get quaternion from IMU
+
+  (qw, qx, qy, qz) = madgwick6DOF (gyro_x, gyro_y, gyro_z) 
+                                  (accel_x, accel_y, accel_z)
+                                  dt
 
   phi = ((-asin (constrain ((-2.0) * (qw*qy - qx*qz)) (-0.999999) 0.999999))
            * 180 / pi)
