@@ -259,6 +259,7 @@ class CrazyflieEkf {
             // We'll add process noise after final update
             const float Q[EKF_N*EKF_N] = {};
 
+            /*
             // $\hat{x}_k = f(\hat{x}_{k-1})$
             memcpy(&_ekf.x, fx, EKF_N*sizeof(_float_t));
 
@@ -267,9 +268,12 @@ class CrazyflieEkf {
             _mulmat(F, _ekf.P,  FP, EKF_N, EKF_N, EKF_N);
             float Ft[EKF_N*EKF_N] = {};
             _transpose(F, Ft, EKF_N, EKF_N);
-            _mulmat(FP, Ft, _ekf.P, EKF_N, EKF_N, EKF_N);
- 
-            accum(_ekf.P, Q, EKF_N, EKF_N);
+            _float_t FPFt[EKF_N*EKF_N];
+            _mulmat(FP, Ft, FPFt, EKF_N, EKF_N, EKF_N);
+            _addmat(FPFt, Q, _ekf.P, EKF_N, EKF_N);
+            */
+
+            ekf_predict(&_ekf, fx, F, Q);
 
             cleanupCovariance();
         }
