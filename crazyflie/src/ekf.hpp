@@ -705,13 +705,9 @@ class CrazyflieEkf {
 
         void multiplyCovariance(const _float_t A[EKF_N*EKF_N])
         {
-            _float_t AP[EKF_N*EKF_N] = {};
-            _mulmat(A, _ekf.P,  AP, EKF_N, EKF_N, EKF_N);
-
-            _float_t AT[EKF_N*EKF_N] = {};
-            _transpose(A, AT, EKF_N, EKF_N);
-
-            _mulmat(AP, AT, _ekf.P, EKF_N, EKF_N, EKF_N);
+            _float_t APAt[EKF_N*EKF_N];
+            ekf_multiply_covariance(&_ekf, A, APAt);
+            memcpy(_ekf.P, APAt, EKF_N*EKF_N*sizeof(_float_t));
         }
 
         void cleanupCovariance(void)
