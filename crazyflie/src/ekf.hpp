@@ -427,8 +427,21 @@ class CrazyflieEkf {
                 0, 0,     0,     0,     e2_e0, e2_e1, e2_e2
             };
 
-            finalize(newx, A, isErrorSufficient);
+            if (_isUpdated) {
 
+                for (uint8_t i=0; i<EKF_N; ++i) {
+                    _ekf.x[i] = newx[i];
+                }
+
+                if (isErrorSufficient) {
+
+                    multiplyCovariance(A);
+
+                    cleanupCovariance();
+                }
+
+                _isUpdated = false;
+            }
             return
                 isPositionWithinBounds(newx[STATE_Z]) &&
                 isVelocityWithinBounds(newx[STATE_DX]) &&
@@ -535,28 +548,6 @@ class CrazyflieEkf {
         static constexpr float FLOW_STD_FIXED = 2.0;
 
         ekf_t _ekf;
-
-        void finalize(
-                const float newx[EKF_N], 
-                const float A[EKF_N*EKF_N],
-                const bool isErrorSufficient) 
-        {
-            if (_isUpdated) {
-
-                for (uint8_t i=0; i<EKF_N; ++i) {
-                    _ekf.x[i] = newx[i];
-                }
-
-                if (isErrorSufficient) {
-
-                    multiplyCovariance(A);
-
-                    cleanupCovariance();
-                }
-
-                _isUpdated = false;
-            }
-        }
 
         void update_with_scalar(
                 const float h[EKF_N], 
@@ -727,7 +718,6 @@ class CrazyflieEkf {
                 }
             }
         }
-
 
         static void imuAccum(const axis3_t vals, imu_t & imu)
         {
