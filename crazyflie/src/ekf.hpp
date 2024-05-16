@@ -593,43 +593,6 @@ class CrazyflieEkf {
             _isUpdated = true;
         }
 
-
-
-        // A <- A + B
-        static void accum(float * a, const float * b, const int m, const int n)
-        {        
-            for (int i=0; i<m; ++i)
-                for (int j=0; j<n; ++j)
-                    a[i*n+j] += b[i*n+j];
-        }
-
-        // C <- A + B
-        static void add(const float * a, const float * b, float * c, const int n)
-        {
-            for (int j=0; j<n; ++j)
-                c[j] = a[j] + b[j];
-        }
-
-        // C <- A - B
-        static void sub(const float * a, const float * b, float * c, const int n)
-        {
-            for (int j=0; j<n; ++j)
-                c[j] = a[j] - b[j];
-        }
-
-        static void negate(float * a, const int m, const int n)
-        {        
-            for (int i=0; i<m; ++i)
-                for (int j=0; j<n; ++j)
-                    a[i*n+j] = -a[i*n+j];
-        }
-
-        static void mat_addeye(float * a, const int n)
-        {
-            for (int i=0; i<n; ++i)
-                a[i*n+i] += 1;
-        }
-
         static void outer(
                 const float x[EKF_N],
                 const float y[EKF_N],
