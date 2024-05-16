@@ -19,6 +19,7 @@
 #include <datatypes.h>
 #include <math3d.h>
 
+#define EKF_CUSTOM
 #define EKF_M 3 // range, flowx, flowy
 #define EKF_N 7 // z, dx, dy, e0, e1, e2
 #include <tinyekf.h>
@@ -554,8 +555,6 @@ class CrazyflieEkf {
                 const float h[EKF_N], 
                 const float r)
         {
-            (void)ekf_update;
-
             ekf_scalar_update(&_ekf, z, hx, h, r);
 
             cleanupCovariance();
