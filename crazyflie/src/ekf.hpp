@@ -587,10 +587,13 @@ class CrazyflieEkf {
             outer(g, h, GH); 
             _negate(GH, EKF_N, EKF_N);
             _addeye(GH, EKF_N);
-            multiplyCovariance(GH);
+            _float_t GHP[EKF_N*EKF_N];
+            _mulmat(GH, _ekf.P, GHP, EKF_N, EKF_N, EKF_N);
+            memcpy(_ekf.P, GHP, EKF_N*EKF_N*sizeof(_float_t));
+
             for (int i=0; i<EKF_N; i++) {
-                for (int j=0; j<EKF_N; j++) {
-                    _ekf.P[i*EKF_N+j] += j < i ? 0 : r * g[i] * g[j];
+                for (int j=i; j<EKF_N; j++) {
+                    _ekf.P[i*EKF_N+j] += r * g[i] * g[j];
                 }
             }
 
