@@ -43,15 +43,8 @@ class CrazyflieEkf {
 
             _isUpdated = false;
 
-            for (uint8_t i=0; i<EKF_N; ++i) {
+            ekf_initialize(&_ekf, pdiag);
 
-                for (uint8_t j=0; j<EKF_N; ++j) {
-
-                    _ekf.P[i*EKF_N+j] = i==j ? pdiag[i] : 0;
-                }
-
-                _ekf.x[i] = 0;
-            }
             _quat.w = QW_INIT;
             _quat.x = QX_INIT;
             _quat.y = QY_INIT;
@@ -263,6 +256,7 @@ class CrazyflieEkf {
                 memset(&_accelSum, 0, sizeof(_accelSum));
             }
 
+            // We'll add process noise after final update
             const float Q[EKF_N*EKF_N] = {};
 
             // $\hat{x}_k = f(\hat{x}_{k-1})$
