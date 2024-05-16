@@ -565,31 +565,16 @@ class CrazyflieEkf {
             for (uint8_t i=0; i<EKF_N; ++i) {
                 g[i] = ph[i] / hphr;
             }
-
-            
-            
-            
-            
-            
-            
-            
             
             // $\hat{x}_k = \hat{x_k} + G_k(z_k - h(\hat{x}_k))$
             for (uint8_t i=0; i<EKF_N; ++i) {
                 _ekf.x[i] += g[i] * (z - hx);
             }
-
-            
-            
             
             // P_k = (I - G_k H_k) P_k$
             float GH[EKF_N*EKF_N];
             outer(g, h, GH); 
-            _negate(GH, EKF_N, EKF_N);
-            _addeye(GH, EKF_N);
-            _float_t GHP[EKF_N*EKF_N];
-            _mulmat(GH, _ekf.P, GHP, EKF_N, EKF_N, EKF_N);
-            memcpy(_ekf.P, GHP, EKF_N*EKF_N*sizeof(_float_t));
+            ekf_update_step3(&_ekf, GH);
 
             for (int i=0; i<EKF_N; i++) {
                 for (int j=i; j<EKF_N; j++) {
