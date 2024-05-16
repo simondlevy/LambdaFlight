@@ -19,10 +19,11 @@
 #include <datatypes.h>
 #include <math3d.h>
 
+#define _FOO
 #define EKF_M 3 // range, flowx, flowy
 #define EKF_N 7 // z, dx, dy, e0, e1, e2
 #define _float_t float
-#include <tinyekf.hpp>
+#include <tinyekf.h>
 
 class CrazyflieEkf {
 
@@ -40,8 +41,17 @@ class CrazyflieEkf {
                 square(STDEV_INITIAL_ATTITUDE_YAW)
             };
 
-            _tinyEkf.initialize(pdiag, MIN_COVARIANCE, MAX_COVARIANCE);
+            _isUpdated = false;
 
+            for (uint8_t i=0; i<EKF_N; ++i) {
+
+                for (uint8_t j=0; j<EKF_N; ++j) {
+
+                    _ekf.P[i*EKF_N+j] = i==j ? pdiag[i] : 0;
+                }
+
+                _ekf.x[i] = 0;
+            }
             _quat.w = QW_INIT;
             _quat.x = QX_INIT;
             _quat.y = QY_INIT;
@@ -80,7 +90,7 @@ class CrazyflieEkf {
             imuTakeMean(_gyroSum, DEGREES_TO_RADIANS, _gyro);
             imuTakeMean(_accelSum, MSS_TO_GS, _accel);
 
-            const auto xold = _tinyEkf.get();
+            const auto xold = _ekf.x;
 
             // Position updates in the body frame (will be rotated to inertial frame);
             // thrust can only be produced in the body's Z direction
@@ -210,19 +220,19 @@ class CrazyflieEkf {
             const auto e2_e2 = 1 - e0*e0/2 - e1*e1/2;
 
             // Jacobian of state-transition function
-           const float F[EKF_N*EKF_N] = {
+            const float F[EKF_N*EKF_N] = {
 
-                   0, z_dx,  z_dy,  z_dz,  z_e0,  z_e1,  z_e2, 
-                   0, dx_dx, dx_dy, dx_dz, dx_e0, dx_e1, dx_e2, 
-                   0, dy_dx, dy_dy, dy_dz, dy_e0, dy_e1, dy_e2,
-                   0, dz_dx, dz_dy, dz_dz, dz_e0, dz_e1, dz_e2,
-                   0, 0,     0,     0,     e0_e0, e0_e1, e0_e2,
-                   0, 0,     0,     0,     e1_e0, e1_e1, e1_e2,
-                   0, 0,     0,     0,     e2_e0, e2_e1, e2_e2
+                0, z_dx,  z_dy,  z_dz,  z_e0,  z_e1,  z_e2, 
+                0, dx_dx, dx_dy, dx_dz, dx_e0, dx_e1, dx_e2, 
+                0, dy_dx, dy_dy, dy_dz, dy_e0, dy_e1, dy_e2,
+                0, dz_dx, dz_dy, dz_dz, dz_e0, dz_e1, dz_e2,
+                0, 0,     0,     0,     e0_e0, e0_e1, e0_e2,
+                0, 0,     0,     0,     e1_e0, e1_e1, e1_e2,
+                0, 0,     0,     0,     e2_e0, e2_e1, e2_e2
             };
 
 
-            float xnew[EKF_N] = {
+            float fx[EKF_N] = {
 
                 xold[STATE_Z] ,
                 xold[STATE_DX],
@@ -239,10 +249,10 @@ class CrazyflieEkf {
 
                 _lastProcessNoiseUpdateMsec = nowMsec;
 
-                xnew[STATE_Z]  = new_z;
-                xnew[STATE_DX] = new_dx;
-                xnew[STATE_DY] = new_dy;
-                xnew[STATE_DZ] = new_dz;
+                fx[STATE_Z]  = new_z;
+                fx[STATE_DX] = new_dx;
+                fx[STATE_DY] = new_dy;
+                fx[STATE_DZ] = new_dz;
 
                 _quat.w = quat_predicted.w;
                 _quat.x = quat_predicted.x;
@@ -255,12 +265,19 @@ class CrazyflieEkf {
 
             const float Q[EKF_N*EKF_N] = {};
 
-            _tinyEkf.predict(xnew, F, Q);
+            // $\hat{x}_k = f(\hat{x}_{k-1})$
+            for (uint8_t i=0; i<EKF_N; ++i) {
+                _ekf.x[i] = fx[i];
+            }
+
+            multiplyCovariance(F);
+            accum(_ekf.P, Q, EKF_N, EKF_N);
+            cleanupCovariance();
         }
 
         void update_with_range(const float distance)
         {
-            const auto x = _tinyEkf.get();
+            const auto x = _ekf.x;
 
             const auto angle = max(0, 
                     fabsf(acosf(_r.z)) - 
@@ -273,15 +290,14 @@ class CrazyflieEkf {
 
             h[0] = 1/cosf(angle);
 
-           const auto r = square(RANGEFINDER_EXP_STD_A * 
-                (1 + expf(RANGEFINDER_EXP_COEFF * 
-                          (measuredDistance - RANGEFINDER_EXP_POINT_A))));
+            const auto r = square(RANGEFINDER_EXP_STD_A * 
+                    (1 + expf(RANGEFINDER_EXP_COEFF * 
+                              (measuredDistance - RANGEFINDER_EXP_POINT_A))));
 
             if (fabs(_r.z) > 0.1f && _r.z > 0 && 
                     distance < RANGEFINDER_OUTLIER_LIMIT_MM) {
 
-                _tinyEkf.update_with_scalar(
-                        h, measuredDistance, predictedDistance, r);
+                update_with_scalar(h, measuredDistance, predictedDistance, r);
             }
         }
 
@@ -292,7 +308,7 @@ class CrazyflieEkf {
             //~~~ Body rates ~~~
             const auto omegay_b = _gyroLatest.y * DEGREES_TO_RADIANS;
 
-            const auto x = _tinyEkf.get();
+            const auto x = _ekf.x;
 
             const auto dx_g = x[STATE_DX];
 
@@ -329,14 +345,14 @@ class CrazyflieEkf {
 
             const auto r = square(FLOW_STD_FIXED * FLOW_RESOLUTION);
 
-            _tinyEkf.update_with_scalar(hx, measuredNX, predictedNX, r);
+            update_with_scalar(hx, measuredNX, predictedNX, r);
 
-            _tinyEkf.update_with_scalar(hy, measuredNY, predictedNY, r);
+            update_with_scalar(hy, measuredNY, predictedNY, r);
         }
 
         bool finalize(void)
         {
-            const auto x = _tinyEkf.get();
+            const auto x = _ekf.x;
 
             // Incorporate the attitude error (Kalman filter state) with the attitude
             const auto v0 = x[STATE_E0];
@@ -423,7 +439,7 @@ class CrazyflieEkf {
                 0, 0,     0,     0,     e2_e0, e2_e1, e2_e2
             };
 
-            _tinyEkf.finalize(newx, A, isErrorSufficient);
+            finalize(newx, A, isErrorSufficient);
 
             return
                 isPositionWithinBounds(newx[STATE_Z]) &&
@@ -435,7 +451,7 @@ class CrazyflieEkf {
 
         void get_vehicle_state(vehicleState_t & state)
         {
-            const auto x = _tinyEkf.get();
+            const auto x = _ekf.x;
 
             state.dx = x[STATE_DX];
 
@@ -530,6 +546,132 @@ class CrazyflieEkf {
 
         static constexpr float FLOW_STD_FIXED = 2.0;
 
+        ekf_t _ekf;
+
+        void finalize(
+                const float newx[EKF_N], 
+                const float A[EKF_N*EKF_N],
+                const bool isErrorSufficient) 
+        {
+            if (_isUpdated) {
+
+                for (uint8_t i=0; i<EKF_N; ++i) {
+                    _ekf.x[i] = newx[i];
+                }
+
+                if (isErrorSufficient) {
+
+                    multiplyCovariance(A);
+
+                    cleanupCovariance();
+                }
+
+                _isUpdated = false;
+            }
+        }
+
+        void update_with_scalar(
+                const float h[EKF_N], 
+                const float z,
+                const float hx,
+                const float r)
+        {
+            float ph[EKF_N] = {};
+            _mulvec(_ekf.P, h, ph, EKF_N, EKF_N);
+            const auto hphr = r + dot(h, ph); // HPH' + R
+
+            float g[EKF_N] = {};
+            for (uint8_t i=0; i<EKF_N; ++i) {
+                g[i] = ph[i] / hphr;
+            }
+
+            // $\hat{x}_k = \hat{x_k} + G_k(z_k - h(\hat{x}_k))$
+            for (uint8_t i=0; i<EKF_N; ++i) {
+                _ekf.x[i] += g[i] * (z - hx);
+            }
+
+            float GH[EKF_N*EKF_N] = {};
+            outer(g, h, GH); 
+
+            for (int i=0; i<EKF_N; i++) { 
+                GH[i*EKF_N+i] -= 1;
+            }
+
+            // $P_k = (I - G_k H_k) P_k$
+            multiplyCovariance(GH);
+
+            // Add the measurement variance 
+            for (int i=0; i<EKF_N; i++) {
+                for (int j=0; j<EKF_N; j++) {
+                    _ekf.P[i*EKF_N+j] += j < i ? 0 : r * g[i] * g[j];
+                }
+            }
+
+            cleanupCovariance();
+
+            _isUpdated = true;
+        }
+
+
+
+        // A <- A + B
+        static void accum(float * a, const float * b, const int m, const int n)
+        {        
+            for (int i=0; i<m; ++i)
+                for (int j=0; j<n; ++j)
+                    a[i*n+j] += b[i*n+j];
+        }
+
+        // C <- A + B
+        static void add(const float * a, const float * b, float * c, const int n)
+        {
+            for (int j=0; j<n; ++j)
+                c[j] = a[j] + b[j];
+        }
+
+        // C <- A - B
+        static void sub(const float * a, const float * b, float * c, const int n)
+        {
+            for (int j=0; j<n; ++j)
+                c[j] = a[j] - b[j];
+        }
+
+        static void negate(float * a, const int m, const int n)
+        {        
+            for (int i=0; i<m; ++i)
+                for (int j=0; j<n; ++j)
+                    a[i*n+j] = -a[i*n+j];
+        }
+
+        static void mat_addeye(float * a, const int n)
+        {
+            for (int i=0; i<n; ++i)
+                a[i*n+i] += 1;
+        }
+
+        static void outer(
+                const float x[EKF_N],
+                const float y[EKF_N],
+                float a[EKF_N*EKF_N]) 
+        {
+            for (uint8_t i=0; i<EKF_N; i++) {
+                for (uint8_t j=0; j<EKF_N; j++) {
+                    a[i*EKF_N+j] = x[i] * y[j];
+                }
+            }
+        }
+
+        static float dot(const float x[EKF_N], const float y[EKF_N]) 
+        {
+            float d = 0;
+
+            for (uint8_t k=0; k<EKF_N; k++) {
+                d += x[k] * y[k];
+            }
+
+            return d;
+        }
+
         typedef struct {
 
             float w;
@@ -550,6 +692,8 @@ class CrazyflieEkf {
 
         new_quat_t _quat;
 
+        bool _isUpdated;
+
         uint32_t _nextPredictionMsec;
 
         axis3_t _r;
@@ -568,6 +712,34 @@ class CrazyflieEkf {
             STATE_E1,
             STATE_E2
         };
+
+        void multiplyCovariance(const float a[EKF_N*EKF_N])
+        {
+            float at[EKF_N*EKF_N] = {};
+            _transpose(a, at, EKF_N, EKF_N);
+            float ap[EKF_N*EKF_N] = {};
+            _mulmat(a, _ekf.P,  ap, EKF_N, EKF_N, EKF_N);
+            _mulmat(ap, at, _ekf.P, EKF_N, EKF_N, EKF_N);
+        }
+
+        void cleanupCovariance(void)
+        {
+            // Enforce symmetry of the covariance matrix, and ensure the
+            // values stay bounded
+            for (int i=0; i<EKF_N; i++) {
+
+                for (int j=i; j<EKF_N; j++) {
+
+                    const auto pval = (_ekf.P[i*EKF_N+j] + _ekf.P[EKF_N*j+i]) / 2;
+
+                    _ekf.P[i*EKF_N+j] = _ekf.P[j*EKF_N+i] =
+                        pval > MAX_COVARIANCE ?  MAX_COVARIANCE :
+                        (i==j && pval < MIN_COVARIANCE) ?  MIN_COVARIANCE :
+                        pval;
+                }
+            }
+        }
+
 
         static void imuAccum(const axis3_t vals, imu_t & imu)
         {
@@ -627,12 +799,8 @@ class CrazyflieEkf {
             return fabs(v) < 10;
         }
 
-        TinyEKF _tinyEkf;
-
         static float square(const float x)
         {
             return x * x;
         }
-
-
 };
