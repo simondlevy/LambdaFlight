@@ -659,20 +659,7 @@ class CrazyflieEkf {
 
         void cleanupCovariance(void)
         {
-            // Enforce symmetry of the covariance matrix, and ensure the
-            // values stay bounded
-            for (int i=0; i<EKF_N; i++) {
-
-                for (int j=i; j<EKF_N; j++) {
-
-                    const auto pval = (_ekf.P[i*EKF_N+j] + _ekf.P[EKF_N*j+i]) / 2;
-
-                    _ekf.P[i*EKF_N+j] = _ekf.P[j*EKF_N+i] =
-                        pval > MAX_COVARIANCE ?  MAX_COVARIANCE :
-                        (i==j && pval < MIN_COVARIANCE) ?  MIN_COVARIANCE :
-                        pval;
-                }
-            }
+            ekf_cleanup_covariance(&_ekf, MIN_COVARIANCE, MAX_COVARIANCE);
         }
 
         static void imuAccum(const axis3_t vals, imu_t & imu)
