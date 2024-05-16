@@ -560,17 +560,17 @@ class CrazyflieEkf {
             // G_k = P_k H^T_k (H_k P_k H^T_k + R)^{-1}
             float ph[EKF_N] = {};
             _mulvec(_ekf.P, h, ph, EKF_N, EKF_N);
-            const auto hphr = r + dot(h, ph); // HPH' + R
+            const auto hphtr_inv = 1 / (r + dot(h, ph)); 
             float g[EKF_N] = {};
             for (uint8_t i=0; i<EKF_N; ++i) {
-                g[i] = ph[i] / hphr;
+                g[i] = ph[i] * hphtr_inv;
             }
             
             // $\hat{x}_k = \hat{x_k} + G_k(z_k - h(\hat{x}_k))$
             for (uint8_t i=0; i<EKF_N; ++i) {
                 _ekf.x[i] += g[i] * (z - hx);
             }
-            
+
             // P_k = (I - G_k H_k) P_k$
             float GH[EKF_N*EKF_N];
             outer(g, h, GH); 
