@@ -555,7 +555,7 @@ class CrazyflieEkf {
                 const float h[EKF_N], 
                 const float r)
         {
-            ekf_scalar_update(&_ekf, z, hx, h, r);
+            ekf_custom_scalar_update(&_ekf, z, hx, h, r);
 
             cleanupCovariance();
 
@@ -606,13 +606,13 @@ class CrazyflieEkf {
         void multiplyCovariance(const _float_t A[EKF_N*EKF_N])
         {
             _float_t APAt[EKF_N*EKF_N];
-            ekf_multiply_covariance(&_ekf, A, APAt);
+            ekf_custom_multiply_covariance(&_ekf, A, APAt);
             memcpy(_ekf.P, APAt, EKF_N*EKF_N*sizeof(_float_t));
         }
 
         void cleanupCovariance(void)
         {
-            ekf_cleanup_covariance(&_ekf, MIN_COVARIANCE, MAX_COVARIANCE);
+            ekf_custom_cleanup_covariance(&_ekf, MIN_COVARIANCE, MAX_COVARIANCE);
         }
 
         static void imuAccum(const axis3_t vals, imu_t & imu)
