@@ -435,7 +435,7 @@ class CrazyflieEkf {
 
                 if (isErrorSufficient) {
 
-                    multiplyCovariance(A);
+                    ekf_custom_multiply_covariance(&_ekf, A);
 
                     cleanupCovariance();
                 }
@@ -602,13 +602,6 @@ class CrazyflieEkf {
             STATE_E1,
             STATE_E2
         };
-
-        void multiplyCovariance(const _float_t A[EKF_N*EKF_N])
-        {
-            _float_t APAt[EKF_N*EKF_N];
-            ekf_custom_multiply_covariance(&_ekf, A, APAt);
-            memcpy(_ekf.P, APAt, EKF_N*EKF_N*sizeof(_float_t));
-        }
 
         void cleanupCovariance(void)
         {
