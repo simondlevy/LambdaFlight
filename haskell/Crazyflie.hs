@@ -58,7 +58,7 @@ inFlyingMode = extern "stream_inFlyingMode" Nothing
 resetPids :: SBool
 resetPids = extern "stream_resetPids" Nothing
 
-step = motors where
+step = (motors, openLoopDemands) where
 
   vehicleState = liftState stateStruct
 
@@ -87,9 +87,13 @@ step = motors where
  
 spec = do
 
-    let (me_ne, m_se, m_sw, m_nw) = step
+    let (motors, demands) = step
+
+    let (me_ne, m_se, m_sw, m_nw) = motors
 
     trigger "setMotors" true [arg $ me_ne, arg $ m_se, arg $ m_sw, arg $ m_nw] 
+
+    trigger "debugDemands" true [arg $ roll demands, arg $ pitch demands]
 
 -- Compile the spec
 main = reify spec >>= 

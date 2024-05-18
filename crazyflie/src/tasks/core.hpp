@@ -134,11 +134,6 @@ class CoreTask : public FreeRTOSTask {
 
             for (uint32_t step=1; ; step++) {
 
-                // Debugging
-                if (step % 50 == 0) {
-                    //consolePrintf("");
-                }
-
                 // The IMU should unlock at 1kHz
                 _imuTask->waitDataReady();
                 sensorData_t sensorData = {};
@@ -160,6 +155,14 @@ class CoreTask : public FreeRTOSTask {
                     // Get open-loop demands in [-1,+1], as well as timestamp
                     // when they received, and whether hover mode is indicated
                     _openLoopFun(stream_openLoopDemands, timestamp, stream_inFlyingMode);
+
+                    /*
+                    static uint32_t count;
+                    if (count++ % 200 == 0) {
+                        consolePrintf("CoreTask: %f %f\n", 
+                                (double)stream_openLoopDemands.roll, 
+                                (double)stream_openLoopDemands.pitch);
+                    }*/
 
                     // Use safety algorithm to modify demands based on sensor data
                     // and open-loop info

@@ -114,7 +114,8 @@ class Commander {
             xQueueOverwrite(priorityQueue, &priority);
         }
 
-        void getDemands(demands_t & demands, uint32_t & timestamp, bool & stream_inFlyingMode)
+        void getDemands(
+                demands_t & demands, uint32_t & timestamp, bool & stream_inFlyingMode)
         {
             setpoint_t setpoint = {};
 
@@ -133,6 +134,7 @@ class Commander {
             demands.roll   = setpoint.attitude.roll / 30;
             demands.pitch  = setpoint.attitude.pitch / 30;
             demands.yaw    = setpoint.attitudeRate.yaw / 200;
+
 
             if (stream_inFlyingMode) {
 

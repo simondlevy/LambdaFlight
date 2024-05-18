@@ -77,10 +77,16 @@ PowerMonitorTask::syslinkInfo_t pmSyslinkInfo;
 
 // Haskell Copilot callbacks --------------------------------------------------
 
-void setMotors(float m1, float m2, float m3, float m4)
+void setMotors(const float m1, const float m2, const float m3, const float m4)
 {
     coreTask.setMotors(m1, m2, m3, m4);
 }
+
+void debugDemands (const float roll, const float pitch)
+{
+    consolePrintf("%f %f\n", (double)roll, (double)pitch);
+}
+
 // ---------------------------------------------------------------------------
 
 static ImuTask imuTask;
