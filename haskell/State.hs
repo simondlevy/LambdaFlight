@@ -60,7 +60,7 @@ data State = State {
 
 instance Struct StateStruct where
 
-    typename _ = "state" -- Name of the type in C
+    typeName _ = "state" -- Name of the type in C
 
     toValues v = [ Value Float (dx' v)
                  , Value Float (dy' v)

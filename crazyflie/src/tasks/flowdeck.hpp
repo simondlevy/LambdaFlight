@@ -82,9 +82,8 @@ class FlowDeckTask : public FreeRTOSTask {
 
                 int16_t deltaX = 0;
                 int16_t deltaY = 0;
-                bool gotMotion = false;
 
-                _pmw3901.readMotion(deltaX, deltaY, gotMotion);
+                _pmw3901.readMotion(deltaX, deltaY);
 
                 // Flip motion information to comply with sensor mounting
                 // (might need to be changed if mounted differently)
@@ -111,7 +110,7 @@ class FlowDeckTask : public FreeRTOSTask {
 
                     // Push measurements into the estimator if flow is not disabled
                     //    and the PMW flow sensor indicates motion detection
-                    if (!USE_FLOW_DISABLED && gotMotion) {
+                    if (!USE_FLOW_DISABLED) {
                         _estimatorTask->enqueueFlow(&flowData, hal_isInInterrupt());
                     }
                 }
