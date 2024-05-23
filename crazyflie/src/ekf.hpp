@@ -21,7 +21,7 @@
 
 #define EKF_CUSTOM
 #define EKF_M 3 // range, flowx, flowy
-#define EKF_N 7 // z, dx, dy, e0, e1, e2
+#define EKF_N 7 // z, dx, dy, dz, e0, e1, e2
 #include <tinyekf.h>
 #include <tinyekf_custom.h>
 
