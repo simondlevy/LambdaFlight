@@ -54,7 +54,7 @@ class EstimatorTask : public FreeRTOSTask {
 
             consolePrintf("ESTIMATOR: estimatorTaskStart\n");
 
-            initEkf(msec());
+            _ekf.initialize();
         }
 
         void getVehicleState(vehicleState_t * state)
@@ -143,17 +143,12 @@ class EstimatorTask : public FreeRTOSTask {
             return T2M(xTaskGetTickCount());
         }
 
-        void initEkf(const uint32_t nowMsec)
-        {
-             _ekf.initialize(nowMsec);
-       }        
-
         uint32_t step(const uint32_t nowMsec, uint32_t nextPredictionMsec) 
         {
             xSemaphoreTake(_runTaskSemaphore, portMAX_DELAY);
 
             if (didResetEstimation) {
-                initEkf(nowMsec);
+                _ekf.initialize();
                 didResetEstimation = false;
             }
 

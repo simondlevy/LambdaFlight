@@ -29,7 +29,7 @@ class CrazyflieEkf {
 
     public:
 
-        void initialize(const uint32_t nowMsec)
+        void initialize(void)
         {
             const float pdiag[7] = {
                 square(STDEV_INITIAL_POSITION_Z),
@@ -81,7 +81,7 @@ class CrazyflieEkf {
             const auto dt2 = dt * dt;
 
             imuTakeMean(_gyroSum, DEGREES_TO_RADIANS, _gyro);
-            imuTakeMean(_accelSum, MSS_TO_GS, _accel);
+            imuTakeMean(_accelSum, GS_TO_MSS, _accel);
 
             const auto xold = _ekf.x;
 
@@ -143,19 +143,19 @@ class CrazyflieEkf {
             const auto tmpSDZ = xold[STATE_DZ];
 
             const auto new_z = xold[STATE_Z] + 
-                _r.x * dx + _r.y * dy + _r.z * dz - MSS_TO_GS * dt2 / 2;
+                _r.x * dx + _r.y * dy + _r.z * dz - GS_TO_MSS * dt2 / 2;
 
             const auto new_dx = xold[STATE_DX] +
                 dt * (accx + _gyro.z * tmpSDY - _gyro.y * tmpSDZ -
-                        MSS_TO_GS * _r.x);
+                        GS_TO_MSS * _r.x);
 
             const auto new_dy = xold[STATE_DY] + 
                 dt * (accy - _gyro.z * tmpSDX + _gyro.x * tmpSDZ - 
-                        MSS_TO_GS * _r.y);
+                        GS_TO_MSS * _r.y);
 
             const auto new_dz = xold[STATE_DZ] +
                 dt * (_accel.z + _gyro.y * tmpSDX - _gyro.x * tmpSDY - 
-                        MSS_TO_GS * _r.z); 
+                        GS_TO_MSS * _r.z); 
 
             new_quat_t quat_predicted = {};
 
@@ -183,21 +183,21 @@ class CrazyflieEkf {
             const auto dx_dy = _gyro.z*dt;
             const auto dx_dz = _gyro.y*dt;
             const auto dx_e0 = 0;
-            const auto dx_e2 = -MSS_TO_GS*_r.y*dt;
-            const auto dx_e1 = MSS_TO_GS*_r.z*dt;
+            const auto dx_e2 = -GS_TO_MSS*_r.y*dt;
+            const auto dx_e1 = GS_TO_MSS*_r.z*dt;
 
             const auto dy_dx =  -_gyro.z*dt;
             const auto dy_dy = 1; //drag negligible
             const auto dy_dz = _gyro.x*dt;
-            const auto dy_e0 = -MSS_TO_GS*_r.z*dt;
+            const auto dy_e0 = -GS_TO_MSS*_r.z*dt;
             const auto dy_e1 = 0;
-            const auto dy_e2 = MSS_TO_GS*_r.x*dt;
+            const auto dy_e2 = GS_TO_MSS*_r.x*dt;
 
             const auto dz_dx = _gyro.y*dt;
             const auto dz_dy = _gyro.x*dt;
             const auto dz_dz = 1; //drag negligible
-            const auto dz_e0 = MSS_TO_GS*_r.y*dt;
-            const auto dz_e1 = -MSS_TO_GS*_r.x*dt;
+            const auto dz_e0 = GS_TO_MSS*_r.y*dt;
+            const auto dz_e1 = -GS_TO_MSS*_r.x*dt;
             const auto dz_e2 = 0;
 
             const auto e0_e0 =  1 - e1*e1/2 - e2*e2/2;
@@ -519,7 +519,7 @@ class CrazyflieEkf {
         // corresponding ground length
         static constexpr float FLOW_THETAPIX = 0.71674;
 
-        static constexpr float MSS_TO_GS = 9.81;
+        static constexpr float GS_TO_MSS = 9.81;
 
         //We do get the measurements in 10x the motion pixels (experimentally measured)
         static constexpr float FLOW_RESOLUTION = 0.1;
