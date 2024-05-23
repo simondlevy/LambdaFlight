@@ -13,7 +13,14 @@ To try out LambdaFlight, you'll first need to install
 and
 [NASA Copilot](https://copilot-language.github.io) (the &ldquo;secret sauce&rdquo; that
 allows you to compile Haskell code to a form suitable for running on a flight 
-controller.)  Then you can run a simulated
+controller.)  I was able to do this via:
+
+```
+cabal install copilot
+cabal install copilot-c99
+```
+
+Then you can run a simulated
 quadcopter in Webots or an actual Crazyflie, following the instructions below:
 
 ## Webots
@@ -48,6 +55,7 @@ to your Crazyflie board.
 * [VL53L1](https://github.com/simondlevy/VL53L1)
 * [PWM3901](https://github.com/simondlevy/PMW3901)
 * [BoschSensors](https://github.com/simondlevy/BoschSensors)
+* [TinyEKF](https://github.com/simondlevy/TinyEKF)
 
 4. Edit <tt>LambdaFlight/crazyflie/Makefile</tt> to reflect where you 
 installed STM32Duino

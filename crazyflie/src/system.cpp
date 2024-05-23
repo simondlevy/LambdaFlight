@@ -77,41 +77,14 @@ PowerMonitorTask::syslinkInfo_t pmSyslinkInfo;
 
 // Haskell Copilot callbacks --------------------------------------------------
 
-void setMotors(float m1, float m2, float m3, float m4)
+void setMotors(const float m1, const float m2, const float m3, const float m4)
 {
     coreTask.setMotors(m1, m2, m3, m4);
 }
 
-void setKalmanStateInBounds(bool inBounds)
+void debugDemands (const float roll, const float pitch)
 {
-    estimatorTask.setKalmanStateInBounds(inBounds);
-}
-
-void setVehicleState(vehicleState_t & state)
-{
-    estimatorTask.setVehicleState(state);
-}
-
-static float cpp;
-static float haskell;
-
-void reportHaskell(float value)
-{
-    haskell = value;
-}
-
-void reportCpp(float value)
-{
-    cpp = value;
-}
-
-void report(void)
-{
-    static uint32_t count;
-    if ((count++ % 200) == 0) {
-        consolePrintf("%d\n", cpp == haskell);
-        //consolePrintf("%04d: Cpp=%f   Haskell=%f\n", count, (double)cpp, (double)haskell);
-    }
+    consolePrintf("%f %f\n", (double)roll, (double)pitch);
 }
 
 // ---------------------------------------------------------------------------
@@ -300,9 +273,9 @@ StackType_t  memTaskStackBuffer[MEM_TASK_STACK_DEPTH];
 StaticTask_t memTaskTaskBuffer;
 
 static void getOpenLoopDemands(
-        demands_t & demands, uint32_t & timestamp, bool & inHoverMode)
+        demands_t & demands, uint32_t & timestamp, bool & stream_inFlyingMode)
 {
-    commander.getDemands(demands, timestamp, inHoverMode);
+    commander.getDemands(demands, timestamp, stream_inFlyingMode);
 }
 
 static void systemTask(void *arg)

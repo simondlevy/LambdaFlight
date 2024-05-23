@@ -35,7 +35,7 @@ import Utils
 
 --}
 
-altitudePid hover dt state demands = demands'  where
+altitudePid flying dt state demands = demands'  where
 
   kp = 2.0
   ki = 0.5
@@ -43,19 +43,19 @@ altitudePid hover dt state demands = demands'  where
 
   thrustraw = thrust demands
 
-  -- In hover mode, thrust demand comes in as [-1,+1], so we convert it to a 
+  -- In flying mode, thrust demand comes in as [-1,+1], so we convert it to a 
   -- target altitude in meters
   target = rescale thrustraw (-1) 1 0.2 2.0
 
-  error = target - (z state)
+  error = target - (zz state)
 
-  -- Reset integral when not in hover mode (flying)
-  integ = if hover 
+  -- Reset integral when not in flying mode (flying)
+  integ = if flying 
           then constrain (integ' + error * dt) (-ilimit) ilimit
           else 0
 
   integ' = [0] ++ integ
 
-  thrustout = if hover then kp * error + ki * integ else thrustraw
+  thrustout = if flying then kp * error + ki * integ else thrustraw
 
   demands' = Demands thrustout (roll demands) (pitch demands) (yaw demands)

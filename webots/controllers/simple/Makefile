@@ -1,23 +1,24 @@
 CFLAGS = -Wno-unused-variable
 
 # Needed for datatypes.h
-CPPDIR = ../../../src
+CPPDIR = ../../../crazyflie/src
 INCLUDE = -I$(CPPDIR)
 
 HASKDIR = ../../../haskell
 
-CXX_SOURCES = simple.cpp copilot.cpp
+CXX_SOURCES = simple.cpp copilot_core.cpp
 
 FILES_TO_REMOVE += copilot*
 
 all: simple
 
-copilot.cpp : ./Main.hs $(HASKDIR)/*.hs $(HASKDIR)/closedloops/*.hs
-	runhaskell -i$(HASKDIR) -i$(HASKDIR)/closedloops ./Main.hs 
-	mv copilot.c copilot.cpp
+copilot_core.cpp : $(HASKDIR)/*.hs $(HASKDIR)/closedloops/*.hs
+	# runhaskell -i$(HASKDIR) -i$(HASKDIR)/closedloops $(HASKDIR)/Core.hs
+	runhaskell -i$(HASKDIR) -i$(HASKDIR)/closedloops $(HASKDIR)/Crazyflie.hs
+	mv copilot_core.c copilot_core.cpp
 
-size: copilot.cpp
-	ls -l copilot.cpp
+size: copilot_core.cpp
+	ls -l copilot_core.cpp
 
 cloc:
 	cloc *.hs
@@ -46,3 +47,6 @@ null :=
 space := $(null) $(null)
 WEBOTS_HOME_PATH=$(subst $(space),\ ,$(strip $(subst \,/,$(WEBOTS_HOME))))
 include $(WEBOTS_HOME_PATH)/resources/Makefile.include
+
+edit:
+	vim simple.cpp

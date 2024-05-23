@@ -25,8 +25,13 @@ import Language.Copilot
 import Copilot.Compile.C99
 
 type SFloat = Stream Float
+type SInt32 = Stream Int32
 type SInt8 = Stream Int8
+type SInt16 = Stream Int16
 type SBool = Stream Bool
+
+sqr :: SFloat -> SFloat
+sqr x = x * x
 
 rescale :: SFloat -> SFloat -> SFloat -> SFloat -> SFloat -> SFloat
 rescale value oldmin oldmax newmin newmax =             
@@ -40,3 +45,11 @@ rad2deg rad = 180 * rad / pi
 
 deg2rad :: SFloat -> SFloat
 deg2rad deg = deg * pi / 180
+
+atan2 :: SFloat -> SFloat -> SFloat
+atan2 y x = if x > 0 then atan (y / x)
+            else if x < 0 && y >= 0 then atan (y / x) + pi
+            else if x < 0 && y < 0 then atan (y / x) - pi
+            else if x == 0 && y > 0 then pi
+            else if x == 0 && y < 0 then (-pi)
+            else 0 -- undefined

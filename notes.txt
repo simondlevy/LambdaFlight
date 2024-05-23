@@ -1,0 +1,10 @@
+AccelX: + Nose up
+AccelY: + Roll right
+AccelZ: + Feet down
+
+GyroX: + Roll right
+GyroY: + Nose down
+GyroZ: + Nose left
+
+Accel: gs
+Gyro: dps

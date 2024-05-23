@@ -49,7 +49,7 @@ run reset kp ki ilimit dt target actual integ = (demand, integ') where
 
 --}
 
-pitchRollAnglePid reset hover dt state demands = demands' where
+pitchRollAnglePid reset dt state demands = demands' where
 
   kp = 6
   ki = 3

@@ -18,8 +18,9 @@
 
 #include <semphr.h>
 
+#include <clock.hpp>
 #include <crossplatform.h>
-#include <kalman.hpp>
+#include <ekf.hpp>
 #include <rateSupervisor.hpp>
 #include <safety.hpp>
 #include <task.hpp>
@@ -53,7 +54,7 @@ class EstimatorTask : public FreeRTOSTask {
 
             consolePrintf("ESTIMATOR: estimatorTaskStart\n");
 
-            initKalmanFilter(msec());
+            initEkf(msec());
         }
 
         void getVehicleState(vehicleState_t * state)
@@ -68,16 +69,6 @@ class EstimatorTask : public FreeRTOSTask {
             xSemaphoreGive(_dataMutex);
 
             xSemaphoreGive(_runTaskSemaphore);
-        }
-
-        void setKalmanStateInBounds(bool inBounds)
-        {
-            _isStateInBounds = inBounds;
-        }
-
-        void setVehicleState(vehicleState_t & state)
-        {
-            memcpy(&_state, &state, sizeof(vehicleState_t));
         }
 
         void enqueueGyro(const Axis3f * gyro, const bool isInInterrupt)
@@ -104,40 +95,22 @@ class EstimatorTask : public FreeRTOSTask {
             enqueue(&m, isInInterrupt);
         }
 
-        void enqueueRange(const rangeMeasurement_t * range, const bool isInInterrupt)
+        void enqueueRange(const int16_t distance, const bool isInInterrupt)
         {
             measurement_t m = {};
             m.type = MeasurementTypeRange;
-            m.data.range = *range;
+            m.data.rangefinder_distance = distance;
             enqueue(&m, isInInterrupt);
-        }
-
-        // For VisualizerTask
-        void getEulerAngles(int16_t angles[3])
-        {
-            static int16_t phi;
-            static int8_t dir;
-
-            dir = 
-                dir == 0 ? +1 : 
-                phi == +450 ? -1 :
-                phi == -450 ? +1 :
-                dir;
-
-            phi += dir;
-
-            angles[0] = phi;
-            angles[1] = 0;
-            angles[2] = 0;
         }
 
     private:
 
-        static const uint32_t WARNING_HOLD_BACK_TIME_MS = 2000;
-
         // this is slower than the IMU update rate of 1000Hz
         static const uint32_t PREDICT_RATE = Clock::RATE_100_HZ; 
-        static const uint32_t PREDICTION_UPDATE_INTERVAL_MS = 1000 / PREDICT_RATE;
+        static const uint32_t PREDICTION_INTERVAL_MSEC = 1000 / PREDICT_RATE;
+
+
+        static const uint32_t WARNING_HOLD_BACK_TIME_MS = 2000;
 
         static const size_t QUEUE_LENGTH = 20;
         static const auto QUEUE_ITEM_SIZE = sizeof(measurement_t);
@@ -145,7 +118,7 @@ class EstimatorTask : public FreeRTOSTask {
         StaticQueue_t measurementsQueueBuffer;
         xQueueHandle _measurementsQueue;
 
-        bool _isStateInBounds;
+        CrazyflieEkf _ekf;
 
         RateSupervisor _rateSupervisor;
 
@@ -161,8 +134,6 @@ class EstimatorTask : public FreeRTOSTask {
 
         Safety * _safety;
 
-        KalmanFilter _kalmanFilter;
-
         // Data used to enable the task and stabilizer loop to run with minimal locking
         // The estimator state produced by the task, copied to the stabilizer when needed.
         vehicleState_t _state;
@@ -172,33 +143,26 @@ class EstimatorTask : public FreeRTOSTask {
             return T2M(xTaskGetTickCount());
         }
 
-        void initKalmanFilter(const uint32_t nowMsec)
+        void initEkf(const uint32_t nowMsec)
         {
-            copilotMode = COPILOT_MODE_KALMAN_INIT; 
-            kalmanNowMsec = nowMsec;
-            _kalmanFilter.step();
-        }
+             _ekf.initialize(nowMsec);
+       }        
 
         uint32_t step(const uint32_t nowMsec, uint32_t nextPredictionMsec) 
         {
             xSemaphoreTake(_runTaskSemaphore, portMAX_DELAY);
 
             if (didResetEstimation) {
-                initKalmanFilter(nowMsec);
+                initEkf(nowMsec);
                 didResetEstimation = false;
             }
-
-            copilotMode = COPILOT_MODE_KALMAN_PREDICT;
-            kalmanNowMsec = nowMsec;
-            kalmanNextPredictionMsec = nextPredictionMsec;
-            kalmanIsFlying = _safety->isFlying();
-
-            _kalmanFilter.step();
 
             // Run the system dynamics to predict the state forward.
             if (nowMsec >= nextPredictionMsec) {
 
-                nextPredictionMsec = nowMsec + PREDICTION_UPDATE_INTERVAL_MS;
+                _ekf.predict(nowMsec);
+
+                nextPredictionMsec = nowMsec + PREDICTION_INTERVAL_MSEC;
 
                 if (!_rateSupervisor.validate(nowMsec)) {
                     consolePrintf(
@@ -212,20 +176,38 @@ class EstimatorTask : public FreeRTOSTask {
             // measurements since the last loop, rather than accumulating
 
             // Pull the latest sensors values of interest; discard the rest
-
+            measurement_t measurement = {};
             while (pdTRUE == xQueueReceive(
-                        _measurementsQueue, &kalmanMeasurement, 0)) {
+                        _measurementsQueue, &measurement, 0)) {
 
-                copilotMode = COPILOT_MODE_KALMAN_UPDATE; 
-                kalmanNowMsec = nowMsec;
-                _kalmanFilter.step();
+                if (measurement.type == MeasurementTypeRange) {
+
+                    _ekf.update_with_range(measurement.data.rangefinder_distance); 
+                }
+
+                else if (measurement.type == MeasurementTypeFlow) {
+
+                    _ekf.update_with_flow(
+                            measurement.data.flow.dt, 
+                            measurement.data.flow.dpixelx,
+                            measurement.data.flow.dpixely);
+                }
+
+                else if (measurement.type == MeasurementTypeGyroscope ) {
+                    axis3_t gyro = {};
+                    memcpy(&gyro, &measurement.data.gyroscope.gyro, sizeof(gyro));
+                    _ekf.accumulate_gyro(nowMsec, gyro);
+                }
+
+                else if (measurement.type == MeasurementTypeAcceleration) {
+                    axis3_t accel = {};
+                    memcpy(&accel, &measurement.data.acceleration.acc, 
+                            sizeof(accel));
+                    _ekf.accumulate_accel(nowMsec, accel);
+                }
             }
 
-            copilotMode = COPILOT_MODE_KALMAN_FINALIZE;
-            _isStateInBounds = false;
-            _kalmanFilter.step();
-
-            if (!_isStateInBounds) { 
+            if (!_ekf.finalize()) { // state OB
 
                 didResetEstimation = true;
 
@@ -237,9 +219,7 @@ class EstimatorTask : public FreeRTOSTask {
 
             xSemaphoreTake(_dataMutex, portMAX_DELAY);
 
-            copilotMode = COPILOT_MODE_KALMAN_GET_STATE;
-
-            _kalmanFilter.step();
+            _ekf.get_vehicle_state(_state);
 
             xSemaphoreGive(_dataMutex);
 

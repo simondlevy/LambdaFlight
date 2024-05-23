@@ -1,12 +1,18 @@
+#pragma once
+
 #include <datatypes.h>
+#include <math3d.h>
 
-extern demands_t openLoopDemands;
-extern vehicleState_t vehicleState;
-extern bool inHoverMode;
-extern bool resetPids;
+#ifndef _MAIN
+#define EXTERN extern
+#else
+#define EXTERN
+#endif
 
-extern copilotMode_e copilotMode;
-extern uint32_t kalmanNowMsec;
-extern uint32_t kalmanNextPredictionMsec;
-extern bool kalmanIsFlying;
-extern measurement_t kalmanMeasurement;
+EXTERN bool              stream_inFlyingMode;
+EXTERN demands_t         stream_openLoopDemands;
+EXTERN bool              stream_resetPids;
+EXTERN vehicleState_t    stream_vehicleState;
+
+void setStateIsInBounds(const bool inBounds);
+void setState(const vehicleState_t & state);

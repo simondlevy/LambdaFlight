@@ -85,25 +85,9 @@ class ZRangerTask : public FreeRTOSTask {
 
                 vTaskDelayUntil(&lastWakeTime, M2T(25));
 
-                auto range = _vl53l1->readDistance();
+                const auto range = _vl53l1->readDistance();
 
-                // check if range is feasible and push into the estimator
-                // the sensor should not be able to measure >5 [m], and outliers typically
-                // occur as >8 [m] measurements
-                if (range < OUTLIER_LIMIT_MM) {
-
-                    float distance = range * 0.001; // Scale from [mm] to [m]
-
-                    float stdDev =
-                        EXP_STD_A * (1 + expf(_expCoeff * (distance - EXP_POINT_A)));
-
-                    rangeMeasurement_t rangeData;
-                    rangeData.timestamp = xTaskGetTickCount();
-                    rangeData.distance = distance;
-                    rangeData.stdDev = stdDev;
-
-                    _estimatorTask->enqueueRange(&rangeData, hal_isInInterrupt());
-                }
+                _estimatorTask->enqueueRange(range, hal_isInInterrupt());
             }
         }
 };

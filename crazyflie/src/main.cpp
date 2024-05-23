@@ -8,6 +8,9 @@
 #include "bootloader.h"
 #include "led.h"
 
+#define _MAIN
+#include "streams.h"
+
 int main() 
 {
     check_enter_bootloader();

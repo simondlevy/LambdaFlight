@@ -29,17 +29,15 @@ import Demands
 import State
 import Utils
 
-run kp ki hover reset dt ilimit target actual integ = (demand, integ') where
+run kp ki reset dt ilimit target actual integ = (demand, integ') where
 
   error = target - actual
 
-  demand = (-(if hover then kp * error + ki * integ else actual * 30))
+  demand = (-(kp * error + ki * integ))
 
   integ' = if reset 
            then 0
-           else if hover 
-           then constrain (integ + error * dt) (-ilimit) (ilimit)
-           else integ
+           else constrain (integ + error * dt) (-ilimit) (ilimit)
 
 {--
   Position controller converts meters per second to  degrees.
@@ -52,21 +50,21 @@ run kp ki hover reset dt ilimit target actual integ = (demand, integ') where
    pitch: input forward positive => output negative
 --}
 
-positionPid :: SBool -> ClosedLoopController
+positionPid :: ClosedLoopController
 
-positionPid reset hover dt state demands = demands'  where
+positionPid reset dt state demands = demands'  where
 
   kp = 25
   ki = 1
   ilimit = 5000
     
   (rollDemand, rollInteg) = 
-    run kp ki hover reset dt ilimit (roll demands) (dy state) rollInteg'
+    run kp ki reset dt ilimit (roll demands) (dy state) rollInteg'
 
   rollInteg' = [0] ++ rollInteg
 
   (pitchDemand, pitchInteg) = 
-    run kp ki hover reset dt ilimit (pitch demands) (dx state) pitchInteg'
+    run kp ki reset dt ilimit (pitch demands) (dx state) pitchInteg'
 
   pitchInteg' = [0] ++ pitchInteg
 

@@ -56,13 +56,14 @@ ARDUINO = $(HOME)/Documents/Arduino/libraries
 INCLUDES += -I$(ARDUINO)
 
 INCLUDES += -I$(ARDUINO)/PMW3901/src/
+INCLUDES += -I$(ARDUINO)/TinyEKF/src/
 INCLUDES += -I$(ARDUINO)/VL53L1/src/
 
-VL53L1 = $(ARDUINO)/VL53L1/src
 BOSCH = $(ARDUINO)/BoschSensors/src
+VL53L1 = $(ARDUINO)/VL53L1/src
 
-INCLUDES += -I$(VL53L1)/st
 INCLUDES += -I$(BOSCH)/bosch
+INCLUDES += -I$(VL53L1)/st
 
 INCLUDES += -I$(srctree)/incshared
 
@@ -85,7 +86,6 @@ INCLUDES += -I$(VENDOR)/stm32/STM32_USB_Device_Library/Core/inc
 INCLUDES += -I$(VENDOR)/stm32/STM32_USB_OTG_Driver/inc
 
 INCLUDES += -I$(srctree)/src/
-INCLUDES += -I$(srctree)/../src/
 
 INCLUDES += -I$(KBUILD_OUTPUT)/include/generated
 
@@ -275,7 +275,7 @@ links:
 copilot:
 	rm -f $(VENDOR)/STMicroelectronics || rm -rf $(VENDOR)/STMicroelectronics # removes whether or not it has contents
 	ln -s $(STM32DUINO) $(VENDOR)
-	runhaskell -i$(HASKDIR) -i$(HASKDIR)/closedloops $(PWD)/Main.hs
+	runhaskell -i$(HASKDIR) -i$(HASKDIR)/closedloops -i$(PWD) $(HASKDIR)/Crazyflie.hs
 	cp copilot_core.c $(PWD)/src/copilot_core.cpp
 	cp copilot*.h $(PWD)/src
 

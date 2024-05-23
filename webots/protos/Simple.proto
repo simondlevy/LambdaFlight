@@ -7,7 +7,7 @@
 PROTO Simple [
   field SFVec3f    translation     0 0 0.015   # Is `Pose.translation`.
   field SFRotation rotation        0 0 1 0     # Is `Pose.rotation`.
-  field SFString   name            "Crazyflie" # Is `Solid.name`.
+  field SFString   name            "Simple"    # Is `Solid.name`.
   field SFString   controller      "simple"    # Is `Robot.controller`.
   field MFString   controllerArgs  []          # Is `Robot.controllerArgs`.
   field SFString   window          "<generic>" # Is `Robot.window`.

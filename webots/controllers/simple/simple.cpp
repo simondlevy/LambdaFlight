@@ -46,20 +46,20 @@ static WbDeviceTag _m4_motor;
 
 // These are global so they can be shared with Haskell Copilot ---------------
 
-demands_t openLoopDemands;
+demands_t stream_openLoopDemands;
 
-vehicleState_t vehicleState;
+vehicleState_t stream_vehicleState;
 
-bool inHoverMode;
+bool stream_inFlyingMode;
 
-bool resetPids;
+bool stream_resetPids;
 
 void report(float value)
 {
     printf("%f\n", value);
 }
 
-void copilot_control_step(void);
+void copilot_step_core(void);
 
 void setMotors(float m1, float m2, float m3, float m4)
 {
@@ -114,32 +114,32 @@ static void _getVehicleState(
     //   phi, dphi: positive roll right
     //   theta,dtheta: positive nose up (requires negating imu, gyro)
     //   psi,dpsi: positive nose left
-    vehicleState.z = wb_gps_get_values(gps)[2];
-    vehicleState.phi =     _rad2deg(wb_inertial_unit_get_roll_pitch_yaw(imu)[0]);
-    vehicleState.dphi =    _rad2deg(wb_gyro_get_values(gyro)[0]);
-    vehicleState.theta =  -_rad2deg(wb_inertial_unit_get_roll_pitch_yaw(imu)[1]);
-    vehicleState.dtheta = -_rad2deg(wb_gyro_get_values(gyro)[1]); 
-    vehicleState.psi =     _rad2deg(psi);
-    vehicleState.dpsi =    _rad2deg(wb_gyro_get_values(gyro)[2]);
+    stream_vehicleState.z = wb_gps_get_values(gps)[2];
+    stream_vehicleState.phi =     _rad2deg(wb_inertial_unit_get_roll_pitch_yaw(imu)[0]);
+    stream_vehicleState.dphi =    _rad2deg(wb_gyro_get_values(gyro)[0]);
+    stream_vehicleState.theta =  -_rad2deg(wb_inertial_unit_get_roll_pitch_yaw(imu)[1]);
+    stream_vehicleState.dtheta = -_rad2deg(wb_gyro_get_values(gyro)[1]); 
+    stream_vehicleState.psi =     _rad2deg(psi);
+    stream_vehicleState.dpsi =    _rad2deg(wb_gyro_get_values(gyro)[2]);
 
     // Use temporal first difference to get world-cooredinate velocities
     auto x = wb_gps_get_values(gps)[0];
     auto y = wb_gps_get_values(gps)[1];
     auto dx = (x - xprev) / dt;
     auto dy = (y - yprev) / dt;
-    vehicleState.dz = (vehicleState.z - zprev) / dt;
+    stream_vehicleState.dz = (stream_vehicleState.z - zprev) / dt;
 
     // Rotate X,Y world velocities into body frame to simulate optical-flow
     // sensor
     auto cospsi = cos(psi);
     auto sinpsi = sin(psi);
-    vehicleState.dx = dx * cospsi + dy * sinpsi;
-    vehicleState.dy = dy * cospsi - dx * sinpsi;
+    stream_vehicleState.dx = dx * cospsi + dy * sinpsi;
+    stream_vehicleState.dy = dy * cospsi - dx * sinpsi;
 
     // Save past time and position for next time step
     xprev = x;
     yprev = y;
-    zprev = vehicleState.z;
+    zprev = stream_vehicleState.z;
 }
 
 static WbDeviceTag _makeSensor(
@@ -190,8 +190,8 @@ int main(int argc, char ** argv)
 
     auto sec_start = _timesec();
 
-    inHoverMode = false;
-    resetPids = false;
+    stream_inFlyingMode = false;
+    stream_resetPids = false;
 
     while (wb_robot_step(timestep) != -1) {
 
@@ -202,29 +202,29 @@ int main(int argc, char ** argv)
         float throttle = 0;
         _sticks.read(
                 throttle,
-                openLoopDemands.roll, 
-                openLoopDemands.pitch, 
-                openLoopDemands.yaw,
-                inHoverMode);
+                stream_openLoopDemands.roll, 
+                stream_openLoopDemands.pitch, 
+                stream_openLoopDemands.yaw,
+                stream_inFlyingMode);
 
-        openLoopDemands.thrust = throttle;
+        stream_openLoopDemands.thrust = throttle;
 
         // Adjust roll for positive leftward
-        openLoopDemands.roll = -openLoopDemands.roll;
+        stream_openLoopDemands.roll = -stream_openLoopDemands.roll;
 
         // Get vehicle state from sensors
         _getVehicleState(gyro, imu, gps);
 
         // Integrate stick demand to get altitude target
         altitudeTarget = _constrain(
-                altitudeTarget + openLoopDemands.thrust * DT, 
+                altitudeTarget + stream_openLoopDemands.thrust * DT, 
                 ALTITUDE_TARGET_MIN, ALTITUDE_TARGET_MAX);
 
         // Rescale altitude target to [-1,+1]
-        openLoopDemands.thrust = 2 * ((altitudeTarget - ALTITUDE_TARGET_MIN) /
+        stream_openLoopDemands.thrust = 2 * ((altitudeTarget - ALTITUDE_TARGET_MIN) /
                 (ALTITUDE_TARGET_MAX - ALTITUDE_TARGET_MIN)) - 1;
 
-       copilot_control_step();
+       copilot_step_core();
 
         //report(sec_start);
     }
@@ -232,4 +232,8 @@ int main(int argc, char ** argv)
     wb_robot_cleanup();
 
     return 0;
+}
+
+void debugDemands(const float roll, const float pitch)
+{
 }

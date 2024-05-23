@@ -25,22 +25,15 @@ import Language.Copilot
 import Copilot.Compile.C99
 
 import Demands
-import Motors
+import Utils
 
-type Mixer = Demands -> Motors
+quadXMixer :: Demands -> (SFloat, SFloat, SFloat, SFloat)
 
-quadAPMixer :: Mixer
-quadAPMixer demands = QuadMotors m1 m2 m3 m4
-  where (t, r, p, y) = (getDemands demands)
-        m1 = t - r + p  - y
-        m2 = t - r - p  + y
-        m3 = t + r + p  + y
-        m4 = t + r - p  - y
+quadXMixer demands = (ne, se, sw, nw) where 
 
-quadCFMixer :: Mixer
-quadCFMixer demands = QuadMotors m1 m2 m3 m4
-  where (t, r, p, y) = (getDemands demands)
-        m1 = t - r + p  + y
-        m2 = t - r - p  - y
-        m3 = t + r - p  + y
-        m4 = t + r + p  - y
+   (t, r, p, y) = (getDemands demands)
+
+   ne = t - r + p  + y
+   se = t - r - p  - y
+   sw = t + r - p  + y
+   nw = t + r + p  - y
