@@ -77,7 +77,10 @@ class FlowDeckTask : public FreeRTOSTask {
                 int16_t deltaX = 0;
                 int16_t deltaY = 0;
 
-                const auto gotMotion = _pmw3901.readMotion(deltaX, deltaY);
+                bool gotMotion = false;
+
+                // _pmw3901.readMotion(deltaX, deltaY, gotMotion);
+
 
                 // Flip motion information to comply with sensor mounting
                 // (might need to be changed if mounted differently)
