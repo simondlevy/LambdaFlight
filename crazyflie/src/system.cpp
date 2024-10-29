@@ -84,7 +84,7 @@ void setMotors(const float m1, const float m2, const float m3, const float m4)
 
 void debugDemands (const float roll, const float pitch)
 {
-    consolePrintf("%f %f\n", (double)roll, (double)pitch);
+    //consolePrintf("%f %f\n", (double)roll, (double)pitch);
 }
 
 // ---------------------------------------------------------------------------

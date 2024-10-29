@@ -149,6 +149,7 @@ class EstimatorTask : public FreeRTOSTask {
 
             if (didResetEstimation) {
                 _ekf.initialize();
+                consolePrintf("reset\n");
                 didResetEstimation = false;
             }
 
@@ -156,6 +157,8 @@ class EstimatorTask : public FreeRTOSTask {
             if (nowMsec >= nextPredictionMsec) {
 
                 _ekf.predict(nowMsec);
+
+                consolePrintf("predict\n");
 
                 nextPredictionMsec = nowMsec + PREDICTION_INTERVAL_MSEC;
 
@@ -178,6 +181,8 @@ class EstimatorTask : public FreeRTOSTask {
                 if (measurement.type == MeasurementTypeRange) {
 
                     _ekf.update_with_range(measurement.data.rangefinder_distance); 
+                   
+                    consolePrintf("range\n");
                 }
 
                 else if (measurement.type == MeasurementTypeFlow) {
@@ -186,12 +191,14 @@ class EstimatorTask : public FreeRTOSTask {
                             measurement.data.flow.dt, 
                             measurement.data.flow.dpixelx,
                             measurement.data.flow.dpixely);
+                    consolePrintf("flow\n");
                 }
 
                 else if (measurement.type == MeasurementTypeGyroscope ) {
                     axis3_t gyro = {};
                     memcpy(&gyro, &measurement.data.gyroscope.gyro, sizeof(gyro));
                     _ekf.accumulate_gyro(nowMsec, gyro);
+                    consolePrintf("gyro\n");
                 }
 
                 else if (measurement.type == MeasurementTypeAcceleration) {
@@ -199,8 +206,12 @@ class EstimatorTask : public FreeRTOSTask {
                     memcpy(&accel, &measurement.data.acceleration.acc, 
                             sizeof(accel));
                     _ekf.accumulate_accel(nowMsec, accel);
+                    consolePrintf("gyro\n");
                 }
             }
+
+
+            consolePrintf("finalize\n");
 
             if (!_ekf.finalize()) { // state OB
 
@@ -213,6 +224,8 @@ class EstimatorTask : public FreeRTOSTask {
             }
 
             xSemaphoreTake(_dataMutex, portMAX_DELAY);
+
+            consolePrintf("get_state\n");
 
             _ekf.get_vehicle_state(_state);
 

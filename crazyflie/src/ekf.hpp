@@ -31,7 +31,7 @@ class CrazyflieEkf {
 
         void initialize(void)
         {
-            const float pdiag[7] = {
+            const float pdiag[EKF_N] = {
                 square(STDEV_INITIAL_POSITION_Z),
                 square(STDEV_INITIAL_VELOCITY),
                 square(STDEV_INITIAL_VELOCITY),
@@ -85,8 +85,8 @@ class CrazyflieEkf {
 
             const auto xold = _ekf.x;
 
-            // Position updates in the body frame (will be rotated to inertial frame);
-            // thrust can only be produced in the body's Z direction
+            // Position updates in the body frame (will be rotated to inertial
+            // frame); thrust can only be produced in the body's Z direction
             const auto dx = xold[STATE_DX] * dt + _accel.x * dt2 / 2;
             const auto dy = xold[STATE_DY] * dt + _accel.y * dt2 / 2;
             const auto dz = xold[STATE_DZ] * dt + _accel.z * dt2 / 2; 
@@ -95,7 +95,8 @@ class CrazyflieEkf {
             const auto accy = _accel.y;
 
             // attitude update (rotate by gyroscope), we do this in quaternions
-            // this is the gyroscope angular velocity integrated over the sample period
+            // this is the gyroscope angular velocity integrated over the
+            // sample period
             const auto dtwx = dt*_gyro.x;
             const auto dtwy = dt*_gyro.y;
             const auto dtwz = dt*_gyro.z;
@@ -134,8 +135,8 @@ class CrazyflieEkf {
             // Process noise is added after the return from the prediction step
 
             // ====== PREDICTION STEP ======
-            // The prediction depends on whether we're on the ground, or in flight.
-            // When flying, the accelerometer directly measures thrust
+            // The prediction depends on whether we're on the ground, or in
+            // flight.  When flying, the accelerometer directly measures thrust
             // (hence is useless to estimate body angle while flying)
 
             const auto tmpSDX = xold[STATE_DX];
@@ -275,7 +276,7 @@ class CrazyflieEkf {
             const auto predictedDistance = x[STATE_Z] / cosf(angle);
 
             const auto measuredDistance = distance / 1000.f; // mm => m
-            float h[7] = {};
+            float h[EKF_N] = {};
 
             h[0] = 1/cosf(angle);
 
@@ -292,7 +293,8 @@ class CrazyflieEkf {
 
         void update_with_flow(const float dt, const float dx, const float dy)
         {
-            // Inclusion of flow measurements in the EKF done by two scalar updates
+            // Inclusion of flow measurements in the EKF done by two scalar
+            // updates
 
             //~~~ Body rates ~~~
             const auto omegay_b = _gyroLatest.y * DEGREES_TO_RADIANS;
@@ -301,7 +303,8 @@ class CrazyflieEkf {
 
             const auto dx_g = x[STATE_DX];
 
-            // Saturate elevation in prediction and correction to avoid singularities
+            // Saturate elevation in prediction and correction to avoid
+            // singularities
             const auto z_g = x[STATE_Z] < 0.1f ? 0.1f : x[STATE_Z];
 
             // ~~~ X velocity prediction and update ~~~
@@ -312,10 +315,12 @@ class CrazyflieEkf {
 
             // derive measurement equation with respect to dx (and z?)
             float hx[EKF_N] = {};
-            hx[0] = (FLOW_NPIX * dt / FLOW_THETAPIX) * ((_r.z * dx_g) / (-z_g * z_g));
+            hx[0] = (FLOW_NPIX * dt / FLOW_THETAPIX) * ((_r.z * dx_g) /
+                    (-z_g * z_g));
             hx[1] = (FLOW_NPIX * dt / FLOW_THETAPIX) * (_r.z / z_g);
 
-            // Inclusion of flow measurements in the EKF done by two scalar updates
+            // Inclusion of flow measurements in the EKF done by two scalar
+            // updates
 
             //~~~ Body rates ~~~
             const auto omegax_b = _gyroLatest.x * DEGREES_TO_RADIANS;
@@ -343,7 +348,8 @@ class CrazyflieEkf {
         {
             const auto x = _ekf.x;
 
-            // Incorporate the attitude error (Kalman filter state) with the attitude
+            // Incorporate the attitude error (Kalman filter state) with the
+            // attitude
             const auto v0 = x[STATE_E0];
             const auto v1 = x[STATE_E1];
             const auto v2 = x[STATE_E2];
@@ -499,7 +505,8 @@ class CrazyflieEkf {
         static constexpr float STDEV_INITIAL_ATTITUDE_ROLL_PITCH = 0.01;
         static constexpr float STDEV_INITIAL_ATTITUDE_YAW = 0.01;
 
-        // The bounds on the covariance, these shouldn't be hit, but sometimes are... why?
+        // The bounds on the covariance, these shouldn't be hit, but sometimes
+        // are... why?
         static constexpr float MAX_COVARIANCE = 100;
         static constexpr float MIN_COVARIANCE = 1e-6;
 
@@ -521,7 +528,8 @@ class CrazyflieEkf {
 
         static constexpr float GS_TO_MSS = 9.81;
 
-        //We do get the measurements in 10x the motion pixels (experimentally measured)
+        //We do get the measurements in 10x the motion pixels (experimentally
+        //measured)
         static constexpr float FLOW_RESOLUTION = 0.1;
 
         // The bounds on states, these shouldn't be hit...
@@ -626,9 +634,12 @@ class CrazyflieEkf {
 
             const auto isCountNonzero = count > 0;
 
-            mean.x = isCountNonzero ? imu.sum.x * conversionFactor / count : mean.x;
-            mean.y = isCountNonzero ? imu.sum.y * conversionFactor / count : mean.y;
-            mean.z = isCountNonzero ? imu.sum.z * conversionFactor / count : mean.z;
+            mean.x =
+                isCountNonzero ? imu.sum.x * conversionFactor / count : mean.x;
+            mean.y =
+                isCountNonzero ? imu.sum.y * conversionFactor / count : mean.y;
+            mean.z =
+                isCountNonzero ? imu.sum.z * conversionFactor / count : mean.z;
         }
 
         static const float max(const float val, const float maxval)
