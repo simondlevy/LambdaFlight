@@ -16,16 +16,27 @@
 
 #include <string.h>
 
-#include <datatypes.h>
-#include <math3d.h>
-
 #define EKF_CUSTOM
 #define EKF_M 3 // range, flowx, flowy
 #define EKF_N 7 // z, dx, dy, dz, e0, e1, e2
 #include <tinyekf.h>
 #include <tinyekf_custom.h>
 
-class CrazyflieEkf {
+#if defined(ARDUINO)
+#include <hackflight.hpp>
+#define consolePrintf printf
+#define vehicleState_t state_t
+static constexpr float DEGREES_TO_RADIANS = M_PI / 180.0f;
+static constexpr float RADIANS_TO_DEGREES = 180.0f / M_PI;
+namespace hf {
+
+#else
+#include <datatypes.h>
+#include <math3d.h>
+int consolePrintf(const char * fmt, ...);
+#endif
+
+class EKF {
 
     public:
 
@@ -60,13 +71,14 @@ class CrazyflieEkf {
             imuAccum(gyro, _gyroSum);
 
             memcpy(&_gyroLatest, &gyro, sizeof(axis3_t));
+
+            consolePrintf("gyro: %f\n", (double)gyro.x);
         }
 
         void accumulate_accel(const uint32_t nowMsec, const axis3_t & accel) 
         {
             imuAccum(accel, _accelSum);
         }
-
 
         void predict(const uint32_t nowMsec)
         {
@@ -473,9 +485,11 @@ class CrazyflieEkf {
                 _r.z * x[STATE_DZ];
 
             // Pack Z and DZ into a single float for transmission to client
+#if !defined(ARDUINO)
             const int8_t sgn = state.dz < 0 ? -1 : +1;
             const float s = 1000;
             state.z_dz = (int)(state.dz * s) + sgn * state.z / s;
+#endif
 
             const auto qw = _quat.w;
             const auto qx = _quat.x;
@@ -683,3 +697,7 @@ class CrazyflieEkf {
             return x * x;
         }
 };
+
+#if defined(ARDUINO)
+}
+#endif
