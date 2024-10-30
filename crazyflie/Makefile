@@ -265,19 +265,12 @@ HASKDIR = $(PWD)/../haskell
 
 clean:
 	rm -f $(VENDOR)/STMicroelectronics || rm -rf $(VENDOR)/STMicroelectronics # removes whether or not it has contents
-	rm -rf copilot* build *.bin rm -f *.elf rm -f *.hex rm -f *.map *.dfu src/copilot*
+	rm -rf build *.bin rm -f *.elf rm -f *.hex rm -f *.map *.dfu
 	find . -name "*.o" -type f -delete
 	find . -name ".*.o*" -type f -delete
 
 links:
 	ln -s $(STM32DUINO) $(VENDOR)
-
-copilot:
-	rm -f $(VENDOR)/STMicroelectronics || rm -rf $(VENDOR)/STMicroelectronics # removes whether or not it has contents
-	ln -s $(STM32DUINO) $(VENDOR)
-	runhaskell -i$(HASKDIR) -i$(HASKDIR)/closedloops -i$(PWD) $(HASKDIR)/Crazyflie.hs
-	cp copilot_core.c $(PWD)/src/copilot_core.cpp
-	cp copilot*.h $(PWD)/src
 
 unbrick:
 	dfu-util -d 0483:df11 -a 0 -s 0x08000000 -D cf2loader-1.0.bin
