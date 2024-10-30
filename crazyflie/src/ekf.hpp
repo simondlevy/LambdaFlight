@@ -72,7 +72,6 @@ class EKF {
 
             memcpy(&_gyroLatest, &gyro, sizeof(axis3_t));
 
-            consolePrintf("gyro: %f\n", (double)gyro.x);
         }
 
         void accumulate_accel(const uint32_t nowMsec, const axis3_t & accel) 
@@ -277,7 +276,7 @@ class EKF {
             cleanupCovariance();
         }
 
-        void update_with_range(const float distance)
+        void update_with_range(const float distance, const uint32_t nowMsec)
         {
             const auto x = _ekf.x;
 
@@ -296,15 +295,17 @@ class EKF {
                     (1 + expf(RANGEFINDER_EXP_COEFF * 
                               (measuredDistance - RANGEFINDER_EXP_POINT_A))));
 
-            if (fabs(_r.z) > 0.1f && _r.z > 0 && 
-                    distance < RANGEFINDER_OUTLIER_LIMIT_MM) {
+            if (fabs(_r.z) > 0.1f && _r.z > 0 && distance < RANGEFINDER_OUTLIER_LIMIT_MM) {
 
                 update_with_scalar(measuredDistance, predictedDistance, h, r);
+
             }
         }
 
         void update_with_flow(const float dt, const float dx, const float dy)
         {
+            return;
+
             // Inclusion of flow measurements in the EKF done by two scalar
             // updates
 
@@ -356,7 +357,10 @@ class EKF {
             update_with_scalar(measuredNY, predictedNY, hy, r);
         }
 
-        bool finalize(void)
+        /**
+          * Returns false if state is OOB, true otherwise
+          */
+        bool finalize(const uint32_t nowMsec)
         {
             const auto x = _ekf.x;
 
@@ -461,6 +465,7 @@ class EKF {
 
                 _isUpdated = false;
             }
+
             return
                 isPositionWithinBounds(newx[STATE_Z]) &&
                 isVelocityWithinBounds(newx[STATE_DX]) &&
@@ -468,8 +473,7 @@ class EKF {
                 isVelocityWithinBounds(newx[STATE_DZ]);
         }
 
-
-        void get_vehicle_state(vehicleState_t & state)
+        void get_vehicle_state(vehicleState_t & state, const uint32_t nowMsec)
         {
             const auto x = _ekf.x;
 
@@ -509,6 +513,7 @@ class EKF {
             state.dphi =    _gyroLatest.x;
             state.dtheta = -_gyroLatest.y; // negate for ENU
             state.dpsi =    _gyroLatest.z;
+
         }
     private:
 

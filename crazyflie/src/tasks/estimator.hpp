@@ -177,7 +177,7 @@ class EstimatorTask : public FreeRTOSTask {
 
                 if (measurement.type == MeasurementTypeRange) {
 
-                    _ekf.update_with_range(measurement.data.rangefinder_distance); 
+                    _ekf.update_with_range(measurement.data.rangefinder_distance, nowMsec); 
                    
                 }
 
@@ -203,9 +203,7 @@ class EstimatorTask : public FreeRTOSTask {
                 }
             }
 
-
-
-            if (!_ekf.finalize()) { // state OB
+            if (!_ekf.finalize(nowMsec)) { // state OOB
 
                 didResetEstimation = true;
 
@@ -218,7 +216,7 @@ class EstimatorTask : public FreeRTOSTask {
             xSemaphoreTake(_dataMutex, portMAX_DELAY);
 
 
-            _ekf.get_vehicle_state(_state);
+            _ekf.get_vehicle_state(_state, nowMsec);
 
             xSemaphoreGive(_dataMutex);
 
