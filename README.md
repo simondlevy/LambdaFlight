@@ -53,7 +53,7 @@ to your Crazyflie board.
 3. Install the following Arduino libraries:
 
 * [VL53L1](https://github.com/simondlevy/VL53L1)
-* [PWM3901](https://github.com/simondlevy/PMW3901)
+* [PWM3901](https://github.com/simondlevy/PMW3901), <b>cross-platform</b> branch
 * [BoschSensors](https://github.com/simondlevy/BoschSensors)
 * [TinyEKF](https://github.com/simondlevy/TinyEKF)
 
