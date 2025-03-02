@@ -56,6 +56,11 @@ typedef enum {
     uart1ParityNone, uart1ParityEven, uart1ParityOdd
 } uart1Parity_t;
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+
 /**
  * Initialize the UART with parity None
  */
@@ -133,3 +138,9 @@ void uart1Getchar(char * ch);
  * @return true if an overrun condition has happened
  */
 bool uart1DidOverrun();
+
+#ifdef __cplusplus
+}
+#endif
+
+

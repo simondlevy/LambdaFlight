@@ -58,6 +58,18 @@ class RaspberryPiTask : public FreeRTOSTask {
 
             while (true) {
 
+                static uint8_t byte;
+
+                uart2SendData(1, &byte);
+
+                /*
+                   if (uart2GetData(1, &byte) > 0) {
+                   consolePrintf("%d\n", byte);
+                   }
+                 */
+
+                byte = (byte + 1) % 256;
+
                 vTaskDelay(1);
             }
         }
