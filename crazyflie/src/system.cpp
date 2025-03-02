@@ -23,6 +23,7 @@
 // Crazyfle tasks
 #include <tasks/log.h>
 #include <tasks/power.hpp>
+#include <tasks/rpi.hpp>
 #include <tasks/syslink.hpp>
 #include <tasks/usblink.hpp>
 
@@ -90,6 +91,8 @@ void debugDemands (const float roll, const float pitch)
 // ---------------------------------------------------------------------------
 
 static ImuTask imuTask;
+
+static RaspberryPiTask rpiTask;
 
 static ConfigBlock configBlock;
 
@@ -369,6 +372,8 @@ static void systemTask(void *arg)
             &estimatorTask,
             &imuTask,
             getOpenLoopDemands);
+
+    rpiTask.begin();
 
     // -----------------------------------------------------------------------
 
