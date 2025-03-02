@@ -27,6 +27,7 @@
 */
 
 #include <task.hpp>
+#include <hal/uart2.h>
 
 class RaspberryPiTask : public FreeRTOSTask {
 
@@ -38,6 +39,8 @@ class RaspberryPiTask : public FreeRTOSTask {
             FreeRTOSTask::begin(runRaspberryPiTask, "rpi", this, 4);
 
             consolePrintf("RASPBERRY PI: taskStart\n");
+
+            uart2Init(115200);
         }
 
     private:

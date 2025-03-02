@@ -55,6 +55,10 @@
 
 #define UART2_RX_QUEUE_LENGTH 128
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /**
  * Initialize the UART.
  */
@@ -144,3 +148,9 @@ void uart2Getchar(char * ch);
  * @return true if an overrun condition has happened
  */
 bool uart2DidOverrun();
+
+#ifdef __cplusplus
+}
+#endif
+
+
