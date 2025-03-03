@@ -27,7 +27,7 @@
 */
 
 #include <task.hpp>
-#include <hal/uart2.h>
+#include <hal/uart1.h>
 
 class RaspberryPiTask : public FreeRTOSTask {
 
@@ -40,7 +40,7 @@ class RaspberryPiTask : public FreeRTOSTask {
 
             consolePrintf("RASPBERRY PI: taskStart\n");
 
-            uart2Init(115200);
+            uart1Init(115200);
         }
 
     private:
@@ -60,10 +60,10 @@ class RaspberryPiTask : public FreeRTOSTask {
 
                 static uint8_t byte;
 
-                uart2SendData(1, &byte);
+                uart1SendData(1, &byte);
 
                 /*
-                   if (uart2GetData(1, &byte) > 0) {
+                   if (uart1GetData(1, &byte) > 0) {
                    consolePrintf("%d\n", byte);
                    }
                  */
