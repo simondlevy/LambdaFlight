@@ -40,7 +40,6 @@
 
 #include <config.h>
 #include <configblock.hpp>
-#include <radiolink.hpp>
 #include <cfassert.h>
 #include <ledseq.h>
 
