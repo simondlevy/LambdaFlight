@@ -60,9 +60,9 @@ to your Crazyflie board.
 4. Edit <tt>LambdaFlight/crazyflie/Makefile</tt> to reflect where you 
 installed STM32Duino
 
-5. <tt>cd LambdaFlight/crazyflie</tt>
+5. ```cd LambdaFlight/crazyflie```
 
-6. <tt> make cf2_defconfig && make links && make copilot && make -j 32</tt>
+6. ```make cf2_defconfig && make links && make copilot && make -j 32```
 
-7. <tt>make cload</tt>
+7. ```make cload```
 
