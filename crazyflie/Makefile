@@ -17,8 +17,6 @@ else
 CLOAD_SCRIPT      ?= $(PYTHON) -m cfloader
 endif
 
-DFU_UTIL          ?= dfu-util
-
 CLOAD_CMDS        ?=
 CLOAD_ARGS        ?=
 
@@ -201,12 +199,12 @@ flash_verify:
 #sends a usb message to the CF to place it in DFU mode, then updates firmware over usb
 flash_dfu:
 	$(PYTHON) $(srctree)/tools/make/usb-bootloader.py
-	$(DFU_UTIL) -d 0483:df11 -a 0 -s 0x08004000:leave -D $(PROG).bin
+	dfu-util -d 0483:df11 -a 0 -s 0x08004000:leave -D $(PROG).bin
 
 #uses the dfu utility to flash the firmware at 0x08004000, just after the bootloader
 #call this target directly if CF cannont be flashed automatically through flash_dfu
 flash_dfu_manual:
-	$(DFU_UTIL) -d 0483:df11 -a 0 -s 0x08004000:leave -D $(PROG).bin
+	dfu-util -d 0483:df11 -a 0 -s 0x08004000:leave -D $(PROG).bin
 
 #STM utility targets
 halt:
@@ -281,4 +279,3 @@ copilot:
 
 unbrick:
 	dfu-util -d 0483:df11 -a 0 -s 0x08000000 -D cf2loader-1.0.bin
-	$(DFU_UTIL) -d 0483:df11 -a 0 -s 0x08004000:leave -D $(PROG).bin
